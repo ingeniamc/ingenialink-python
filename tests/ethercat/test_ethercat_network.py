@@ -868,3 +868,31 @@ def test_slave_is_in_preop_state_if_exception_in_pdo_thread(
     # Net should restore servos to PREOP state
     assert servo.slave is not None
     assert servo.slave.state is pysoem.PREOP_STATE
+
+
+@pytest.mark.ethercat
+def test_recover_from_disconnection(net: "EthercatNetwork", servo: "EthercatServo") -> None:
+    """Test that recover_from_disconnection properly rediscovers slaves after disconnection.
+
+    This test uses a real EtherCAT drive and simulates a disconnection scenario by setting
+    the slave reference to None. The recover_from_disconnection method should call
+    __init_nodes() to rediscover the physical drive and restore communication.
+    """
+    # Verify initial state - servo is connected and in PREOP state
+    assert servo.slave_exists is True
+    assert servo.slave.state == pysoem.PREOP_STATE, "Servo should be in PREOP state initially"
+
+    # Verify that recover_from_disconnection returns True when servo is properly connected
+    assert net.recover_from_disconnection() is True
+
+    # Simulate slave disconnection by setting reference to None
+    servo.update_slave_reference(None)
+    assert servo.slave_exists is False
+
+    # recover_from_disconnection - it should rediscover the drive
+    result = net.recover_from_disconnection()
+    assert result is True, "recover_from_disconnection should rediscover the physical slave"
+    assert servo.slave_exists is True, "Servo slave reference should be restored after recovery"
+    assert servo.slave.state == pysoem.PREOP_STATE, "Servo should be in PREOP state after recovery"
+
+    net.close_ecat_master()
