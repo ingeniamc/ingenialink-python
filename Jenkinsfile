@@ -175,6 +175,29 @@ pipeline {
                 choices: ['MIN', 'MAX', 'MIN_MAX', 'All'],
                 name: 'PYTHON_VERSIONS'
         )
+        choice(
+            choices: [
+                '.*',
+                'virtual_drive_tests',
+                'no_pcap',
+                'pcap',
+                'ethercat.*',
+                'ethercat_everest',
+                'ethercat_capitan',
+                'ethercat_multislave',
+                'fsoe.*',
+                'fsoe_phase1',
+                'fsoe_phase2'
+                'canopen.*',
+                'canopen_everest',
+                'canopen_capitan',
+                'ethernet.*',
+                'ethernet_everest',
+                'ethernet_capitan',
+            ],
+            name: 'run_test_stages',
+            description: 'Regex pattern for which testing stage or substage to run (e.g. "fsoe.*", "ethercat_everest", ".*" for all)'
+        )
         booleanParam(name: 'WIRESHARK_LOGGING', defaultValue: false, description: 'Enable Wireshark logging')
         choice(
                 choices: ['function', 'module', 'session'],
@@ -306,6 +329,11 @@ pipeline {
                                     }
                                 }
                                 stage('Run units tests windows docker (no-pcap) tests on docker') {
+                                    when {
+                                        expression {
+                                            "no_pcap" ==~ params.run_test_stages
+                                        }
+                                    }
                                     steps {
                                         script {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
@@ -392,6 +420,9 @@ pipeline {
                                 }
                                 stage('Run unit tests on linux docker') {
                                     steps {
+                                        when{
+                                            "pcap" ==~ params.run_test_stages
+                                        }
                                         script {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
                                               pythonVersions.each { version ->
@@ -418,6 +449,11 @@ pipeline {
                                     }
                                 }
                                 stage('Run virtual drive tests on docker') {
+                                    when {
+                                        expression {
+                                            "virtual_drive_tests" ==~ params.run_test_stages
+                                        }
+                                    }
                                     steps {
                                         script {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
@@ -504,6 +540,20 @@ pipeline {
         stage('Tests') {
             parallel {
                 stage('EtherCAT/No Connection - Tests') {
+                    when {
+                        beforeOptions true
+                        beforeAgent true
+                        expression {
+                          [
+                            "pcap",
+                            "ethercat_everest",
+                            "ethercat_capitan",
+                            "ethercat_multislave",
+                            "fsoe_phase1",
+                            "fsoe_phase2"
+                          ].any { it ==~ params.run_test_stages }
+                        }
+                    }
                     options {
                         lock(ECAT_NODE_LOCK)
                     }
@@ -534,6 +584,11 @@ pipeline {
                             }
                         }
                         stage('Pcap Tests') {
+                            when {
+                                expression {
+                                    "pcap" ==~ params.run_test_stages
+                                }
+                            }
                             steps {
                                 /* Windows docker did not have npcap/winpcap installed so tests that require pcap are
                                 run on ethercat machine */
@@ -541,26 +596,51 @@ pipeline {
                             }
                         }
                         stage('EtherCAT Everest') {
+                            when {
+                                expression {
+                                    "ethercat_everest" ==~ params.run_test_stages
+                                }
+                            }
                             steps {
                                 runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('EtherCAT Capitan') {
+                            when {
+                                expression {
+                                    "ethercat_capitan" ==~ params.run_test_stages
+                                }
+                            }
                             steps {
                                 runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('EtherCAT Multislave') {
+                            when {
+                                expression {
+                                    "ethercat_multislave" ==~ params.run_test_stages
+                                }
+                            }
                             steps {
                                 runTestHW("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage("Safety Denali Phase I") {
+                            when {
+                                expression {
+                                    "fsoe_phase1" ==~ params.run_test_stages
+                                }
+                            }
                             steps {
                                 runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE1_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage("Safety Denali Phase II") {
+                            when {
+                                expression {
+                                    "fsoe_phase2" ==~ params.run_test_stages
+                                }
+                            }
                             steps {
                                 runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP", USE_WIRESHARK_LOGGING)
                             }
@@ -568,6 +648,18 @@ pipeline {
                     }
                 }
                 stage('CANopen/Ethernet - Tests') {
+                    when {
+                        beforeOptions true
+                        beforeAgent true
+                        expression {
+                          [
+                            "canopen_everest",
+                            "canopen_capitan",
+                            "ethernet_everest",
+                            "ethernet_capitan"
+                          ].any { it ==~ params.run_test_stages }
+                        }
+                    }
                     options {
                         lock(CAN_NODE_LOCK)
                     }
@@ -593,21 +685,41 @@ pipeline {
                             }
                         }
                         stage('CANopen Everest') {
+                            when {
+                                expression {
+                                    "canopen_everest" ==~ params.run_test_stages
+                                }
+                            }
                             steps {
                                 runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP")
                             }
                         }
                         stage('CANopen Capitan') {
+                            when {
+                                expression {
+                                    "canopen_capitan" ==~ params.run_test_stages
+                                }
+                            }
                             steps {
                                 runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP")
                             }
                         }
                         stage('Ethernet Everest') {
+                            when {
+                                expression {
+                                    "ethernet_everest" ==~ params.run_test_stages
+                                }
+                            }
                             steps {
                                 runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP", USE_WIRESHARK_LOGGING)
                             }
                         }
                         stage('Ethernet Capitan') {
+                            when {
+                                expression {
+                                    "ethernet_capitan" ==~ params.run_test_stages
+                                }
+                            }
                             steps {
                                 runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP", USE_WIRESHARK_LOGGING)
                             }
