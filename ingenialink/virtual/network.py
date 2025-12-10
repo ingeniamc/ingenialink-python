@@ -2,6 +2,7 @@ import socket
 from typing import Callable, Optional
 
 import ingenialogger
+from virtual_drive.core import VirtualDrive
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.ethernet.network import EthernetNetwork
@@ -9,7 +10,6 @@ from ingenialink.exceptions import ILError
 from ingenialink.network import NetState
 from ingenialink.servo import Servo
 from ingenialink.virtual.servo import VirtualServo
-from virtual_drive.core import VirtualDrive
 
 logger = ingenialogger.get_logger(__name__)
 

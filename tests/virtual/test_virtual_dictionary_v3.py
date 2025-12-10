@@ -1,9 +1,9 @@
 import pytest
+from virtual_drive import resources as virtual_drive_resources
 
 import tests.resources
 from ingenialink.dictionary import Interface, SubnodeType
 from ingenialink.virtual.dictionary import VirtualDictionaryV3
-from virtual_drive import resources as virtual_drive_resources
 
 SINGLE_AXIS_SUBNODES = {
     0: SubnodeType.COMMUNICATION,
