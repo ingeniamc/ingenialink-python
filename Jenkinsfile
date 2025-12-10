@@ -419,10 +419,12 @@ pipeline {
                                     }
                                 }
                                 stage('Run unit tests on linux docker') {
-                                    steps {
-                                        when{
+                                    when{
+                                        expression {
                                             "pcap" ==~ params.run_test_stages
                                         }
+                                    }
+                                    steps {
                                         script {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
                                               pythonVersions.each { version ->
