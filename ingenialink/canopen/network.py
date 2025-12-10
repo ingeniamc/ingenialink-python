@@ -186,6 +186,8 @@ class NetStatusListener(Thread):
         Returns:
             Updated timestamps dictionary.
         """
+        if self.__network._connection is None:
+            return timestamps
         for node_id, node in list(self.__network._connection.nodes.items()):
             sleep(1.5)
             current_timestamp = node.nmt.timestamp
@@ -210,7 +212,7 @@ class NetStatusListener(Thread):
         """Check the network status."""
         if self.__network._connection is None:
             return
-        timestamps = {}
+        timestamps: dict[int, float] = {}
         while not self.__stop:
             try:
                 timestamps = self.process(timestamps)
