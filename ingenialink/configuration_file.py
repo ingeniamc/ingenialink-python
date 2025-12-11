@@ -11,8 +11,8 @@ import numpy as np
 from ingenialink import RegAccess, RegDtype
 from ingenialink.dictionary import ACCESS_XDF_OPTIONS, DTYPE_XDF_OPTIONS, Interface, XMLBase
 from ingenialink.exceptions import ILConfigurationFileParseError
-
 from ingenialink.register import Register
+
 
 def _get_attribute_from_element(element: ElementTree.Element, attribute: str, context: str = "", kind: str = "") -> str:
     """Get attribute value from XML element.
@@ -290,7 +290,6 @@ class TableElement:
         Raises:
             ValueError: Missing required attribute.
         """
-
         address_str = _get_attribute_from_element(element, cls.__ADDRESS_ATTR, context=table_uid, kind="table element")
         address = int(address_str)
 
