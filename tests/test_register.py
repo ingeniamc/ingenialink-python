@@ -1,9 +1,9 @@
 import pytest
-from virtual_drive import resources as virtual_drive_resources
 
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILAccessError, ILValueError
 from ingenialink.register import RegAccess, RegDtype, Register, RegPhy
+from virtual_drive import resources as virtual_drive_resources
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def test_getters_register():
     reg_access = RegAccess.RW
     reg_kwargs = {
         "identifier": "MON_CFG_SOC_TYPE",
-        "units": "none",
+        "units": None,
         "pdo_access": "CONFIG",
         "phy": RegPhy.NONE,
         "subnode": 0,
