@@ -1807,7 +1807,7 @@ class DictionaryV2(Dictionary):
             return None
 
         try:
-            units = register.attrib["units"]
+            units: Optional[str] = register.attrib["units"]
             if units == "none":
                 units = None
             pdo_access = RegCyclicType(register.attrib.get("cyclic", "CONFIG"))
