@@ -21,9 +21,9 @@ class Table:
         """Initializes the Table.
 
         Args:
-            servo (Servo): Servo instance.
-            table (DictionaryTable): Dictionary table instance.
-            axis (Optional[int]): Axis number for multi-axis servos
+            servo: Servo instance.
+            table: Dictionary table instance.
+            axis: Axis number for multi-axis servos
 
         Raises:
             ValueError: If index register does not have integer range.
@@ -53,10 +53,10 @@ class Table:
         """Reads a value from the table.
 
         Args:
-            index (int): Index of the value to read.
+            index: Index of the value to read.
 
         Returns:
-            int: Value at the specified index.
+            Value at the specified index.
         """
         self.__servo.write(self.__index_register, index)
         return self.__servo.read(self.__value_register)
@@ -75,7 +75,7 @@ class Table:
         """Returns the number of elements in the table.
 
         Returns:
-            int: Number of elements in the table
+            Number of elements in the table
         """
         return self.__max_index - self.__min_index + 1
 
@@ -83,7 +83,7 @@ class Table:
         """Iterate over all values in the table.
 
         Yields:
-            REG_VALUE: Each value in the table from min_index to max_index.
+            Each value in the table from min_index to max_index.
         """
         for i in range(self.__min_index, self.__max_index + 1):
             yield self.get_value(i)
@@ -92,10 +92,10 @@ class Table:
         """Read a value from the table using bracket notation.
 
         Args:
-            index (int): Index of the value to read.
+            index: Index of the value to read.
 
         Returns:
-            REG_VALUE: Value at the specified index.
+            Value at the specified index.
 
         Raises:
             IndexError: If index is out of range.
@@ -108,8 +108,8 @@ class Table:
         """Write a value to the table using bracket notation.
 
         Args:
-            index (int): Index of the value to write.
-            value (REG_VALUE): Value to write at the specified index.
+            index: Index of the value to write.
+            value: Value to write at the specified index.
 
         Raises:
             IndexError: If index is out of range.
@@ -124,11 +124,11 @@ class Table:
         """Read multiple values from the table.
 
         Args:
-            start_index (Optional[int]): Starting index. Defaults to min_index.
-            count (Optional[int]): Number of values to read. Defaults to all remaining.
+            start_index: Starting index. Defaults to min_index.
+            count: Number of values to read. Defaults to all remaining.
 
         Returns:
-            List[REG_VALUE]: List of values read from the table.
+            List of values read from the table.
 
         Raises:
             IndexError: If the range is out of bounds.
@@ -153,8 +153,8 @@ class Table:
         """Write multiple values to the table.
 
         Args:
-            values (Sequence[REG_VALUE]): Sequence of values to write to the table.
-            start_index (Optional[int]): Starting index. Defaults to min_index.
+            values: Sequence of values to write to the table.
+            start_index: Starting index. Defaults to min_index.
 
         Raises:
             IndexError: If the range is out of bounds.
