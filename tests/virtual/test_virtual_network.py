@@ -2,13 +2,13 @@ import os
 import random
 
 import pytest
-from virtual_drive import resources as virtual_drive_resources
-from virtual_drive.core import VirtualDrive
 
 import tests.resources.ethercat
 from ingenialink.enums.register import RegAccess, RegDtype
 from ingenialink.exceptions import ILNACKError
 from ingenialink.network import NetState
+from virtual_drive import resources as virtual_drive_resources
+from virtual_drive.core import VirtualDrive
 
 
 def test_connect_to_virtual_drive(virtual_drive_custom_dict):

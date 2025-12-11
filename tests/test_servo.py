@@ -12,7 +12,6 @@ from summit_testing_framework.setups import DriveCanOpenSetup, DriveEthernetSetu
 from summit_testing_framework.setups.specifiers import (
     RackServiceConfigSpecifier,
 )
-from virtual_drive import resources as virtual_drive_resources
 
 import tests.resources
 from ingenialink import RegAccess
@@ -29,6 +28,7 @@ from ingenialink.exceptions import (
 )
 from ingenialink.register import RegAddressType
 from ingenialink.servo import Servo, ServoState
+from virtual_drive import resources as virtual_drive_resources
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
