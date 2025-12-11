@@ -15,6 +15,7 @@ from multiping import multi_ping
 from typing_extensions import override
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
+from ingenialink.ethernet.resources import BASIC_ETHERNET_V2_XDF
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
 from ingenialink.servo import Servo
@@ -35,10 +36,6 @@ MAX_NUM_UNSUCCESSFUL_PINGS = 3
 
 MAX_NUMBER_OF_SCAN_TRIES = 2
 SCAN_CONNECTION_TIMEOUT = 0.5
-
-VIRTUAL_DRIVE_DICTIONARY = os.path.join(
-    os.path.dirname(__file__), "..", "..", "virtual_drive", "resources", "virtual_drive.xdf"
-)
 
 
 class NetStatusListener(Thread):
@@ -460,7 +457,7 @@ class EthernetNetwork(Network):
             product code and revision number.
         """
         servo = self.connect_to_slave(
-            ip_address, VIRTUAL_DRIVE_DICTIONARY, connection_timeout=SCAN_CONNECTION_TIMEOUT
+            ip_address, BASIC_ETHERNET_V2_XDF, connection_timeout=SCAN_CONNECTION_TIMEOUT
         )
         try:
             product_code = servo.read("DRV_ID_PRODUCT_CODE_COCO", subnode=0)
