@@ -871,7 +871,7 @@ def test_slave_is_in_preop_state_if_exception_in_pdo_thread(
 
 
 @pytest.mark.ethercat
-def test_recover_from_disconnection(net: "EthercatNetwork", servo: "EthercatServo") -> None:
+def test_recover_from_disconnection(net: "EthercatNetwork", servo: "EthercatServo", caplog) -> None:
     """Test that recover_from_disconnection properly rediscovers slaves after disconnection.
 
     This test uses a real EtherCAT drive and simulates a disconnection scenario by setting
@@ -883,16 +883,19 @@ def test_recover_from_disconnection(net: "EthercatNetwork", servo: "EthercatServ
     assert servo.slave.state == pysoem.PREOP_STATE, "Servo should be in PREOP state initially"
 
     # Verify that recover_from_disconnection returns True when servo is properly connected
-    assert net.recover_from_disconnection() is True
+    with caplog.at_level("WARNING"):
+        assert net.recover_from_disconnection() is True
+        assert "CoE communication recovered." not in caplog.text
 
-    # Simulate slave disconnection by setting reference to None
-    servo.update_slave_reference(None)
-    assert servo.slave_exists is False
+    # Simulate slave disconnection by changing state to INIT
+    net._change_nodes_state(servo, pysoem.INIT_STATE)
+    assert servo.slave.state == pysoem.INIT_STATE, (
+        "Servo should be in INIT state after disconnection"
+    )
+    caplog.clear()
+    with caplog.at_level("WARNING"):
+        result = net.recover_from_disconnection()
+        assert result is True, "recover_from_disconnection should rediscover the physical slave"
+        assert "CoE communication recovered." in caplog.text, "Should log recovery success message"
 
-    # recover_from_disconnection - it should rediscover the drive
-    result = net.recover_from_disconnection()
-    assert result is True, "recover_from_disconnection should rediscover the physical slave"
-    assert servo.slave_exists is True, "Servo slave reference should be restored after recovery"
     assert servo.slave.state == pysoem.PREOP_STATE, "Servo should be in PREOP state after recovery"
-
-    net.close_ecat_master()
