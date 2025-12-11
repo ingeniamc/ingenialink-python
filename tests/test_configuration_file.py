@@ -103,7 +103,6 @@ def test_table_element_to_xcf():
 
 
 def test_config_table_from_xcf():
-
     xml = """<Table id="MEM_USR" subnode="0">
         <Element address="0" data="1234"/>
         <Element address="1" data="5678"/>
@@ -122,7 +121,6 @@ def test_config_table_from_xcf():
 
 
 def test_config_table_to_xcf():
-
     table = ConfigTable(uid="TEST_TABLE", subnode=1)
     table.elements.append(TableElement(0, bytes.fromhex("aa")))
     table.elements.append(TableElement(1, bytes.fromhex("bb")))
@@ -140,7 +138,6 @@ def test_config_table_to_xcf():
 
 
 def test_configuration_file_with_tables(tmp_path):
-
     # Create XCF with tables
     conf_file = ConfigurationFile.create_empty_configuration(
         Interface.ETH, "TEST-PART", 123, 456, "1.0.0"
@@ -175,3 +172,34 @@ def test_configuration_file_with_tables(tmp_path):
     assert loaded_conf.tables[0].elements[0].data == bytes.fromhex("11223344")
     assert loaded_conf.tables[0].elements[1].address == 1
     assert loaded_conf.tables[0].elements[1].data == bytes.fromhex("55667788")
+
+
+def test_register_from_xcf_reads_data_attribute():
+    # register element with only data attribute (no storage)
+    xml = (
+        '<Register id="0x2000" subnode="0" dtype="u32" access="rw" storage="165" data="01020304" />'
+    )
+    element = ElementTree.fromstring(xml)
+    reg = ConfigRegister.from_xcf(element)
+
+    assert reg is not None
+    assert reg.storage == 165
+    assert reg.data == bytes.fromhex("01020304")
+
+
+def test_register_to_xcf_writes_data_as_hex():
+    # create a register with storage None and data bytes
+    reg = ConfigRegister(
+        uid="0x2000",
+        subnode=0,
+        dtype=RegDtype.U32,
+        access=RegAccess.RW,
+        storage=1234,
+        data=bytes([0xAA, 0xBB, 0xCC]),
+    )
+
+    element = reg.to_xcf()
+    # storage should always be present
+    assert element.get("storage") == "1234"
+    # data must be hex string matching the bytes
+    assert element.get("data") == "aabbcc"

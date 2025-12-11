@@ -1,12 +1,13 @@
 import os
 import re
 from abc import ABC
-from typing import Optional, Union
+from typing import Optional, Union, overload
 from xml.dom import minidom
 from xml.etree import ElementTree
 
 import ingenialogger
 import numpy as np
+from typing_extensions import Literal
 
 from ingenialink import RegAccess, RegDtype
 from ingenialink.dictionary import ACCESS_XDF_OPTIONS, DTYPE_XDF_OPTIONS, Interface, XMLBase
@@ -14,14 +15,46 @@ from ingenialink.exceptions import ILConfigurationFileParseError
 from ingenialink.register import Register
 
 
-def _get_attribute_from_element(element: ElementTree.Element, attribute: str, context: str = "", kind: str = "") -> str:
+@overload
+def _get_attribute_from_element(
+    element: ElementTree.Element,
+    attribute: str,
+    *,
+    optional: Literal[False] = ...,
+    context: str = ...,
+    kind: str = ...,
+) -> str: ...
+
+
+@overload
+def _get_attribute_from_element(
+    element: ElementTree.Element,
+    attribute: str,
+    *,
+    optional: Literal[True],
+    context: str = ...,
+    kind: str = ...,
+) -> Optional[str]: ...
+
+
+def _get_attribute_from_element(
+    element: ElementTree.Element,
+    attribute: str,
+    *,
+    optional: bool = False,
+    context: str = "",
+    kind: str = "",
+) -> Optional[str]:
     """Get attribute value from XML element.
 
     Args:
         element: XML element.
         attribute: attribute name.
-        context: Context string for error messages (e.g., UID). Only used for error messages.
-        kind: Kind of element (e.g., 'register', 'table', 'table element'). Only used for error messages.
+        optional: If True, return None if attribute not found. Else, raise ValueError.
+        context: Context string for error messages (e.g., UID).
+            Only used for error messages.
+        kind: Kind of element (e.g., 'register', 'table', 'table element').
+            Only used for error messages.
 
     Returns:
         attribute value.
@@ -32,6 +65,8 @@ def _get_attribute_from_element(element: ElementTree.Element, attribute: str, co
     attr_value = element.attrib.get(attribute)
     if attr_value is not None:
         return attr_value
+    if optional:
+        return None
     error_msg = f"Missing {attribute} attribute"
     if kind:
         error_msg += f" in {kind}"
@@ -139,6 +174,7 @@ class ConfigRegister:
     __ID_ATTR = "id"
     __SUBNODE_ATTR = "subnode"
     __STORAGE_ATTR = "storage"
+    __DATA_ATTR = "data"
 
     def __init__(
         self,
@@ -147,12 +183,14 @@ class ConfigRegister:
         dtype: RegDtype,
         access: RegAccess,
         storage: Union[float, int, str, bool],
+        data: Optional[bytes] = None,
     ):
         self.uid = uid
         self.subnode = subnode
         self.dtype = dtype
         self.access = access
         self.storage = storage
+        self.data = data
 
         self.__access_value_to_str = {value: key for key, value in ACCESS_XDF_OPTIONS.items()}
         self.__dtype_value_to_str = {value: key for key, value in DTYPE_XDF_OPTIONS.items()}
@@ -165,13 +203,21 @@ class ConfigRegister:
             ConfigRegister filled with XML element data
         """
         uid = _get_attribute_from_element(element, cls.__ID_ATTR, kind="register")
-        subnode_str = _get_attribute_from_element(element, cls.__SUBNODE_ATTR, context=uid, kind="register")
+        subnode_str = _get_attribute_from_element(
+            element, cls.__SUBNODE_ATTR, context=uid, kind="register"
+        )
         subnode = int(subnode_str)
-        dtype_str = _get_attribute_from_element(element, cls.__DTYPE_ATTR, context=uid, kind="register")
+        dtype_str = _get_attribute_from_element(
+            element, cls.__DTYPE_ATTR, context=uid, kind="register"
+        )
         dtype = DTYPE_XDF_OPTIONS[dtype_str]
-        access_str = _get_attribute_from_element(element, cls.__ACCESS_ATTR, context=uid, kind="register")
+        access_str = _get_attribute_from_element(
+            element, cls.__ACCESS_ATTR, context=uid, kind="register"
+        )
         access = ACCESS_XDF_OPTIONS[access_str]
-        storage_str = _get_attribute_from_element(element, cls.__STORAGE_ATTR, context=uid, kind="register")
+        storage_str = _get_attribute_from_element(
+            element, cls.__STORAGE_ATTR, context=uid, kind="register"
+        )
         storage: Union[float, int, str, bool]
         if dtype == RegDtype.FLOAT:
             storage = float(storage_str)
@@ -192,7 +238,13 @@ class ConfigRegister:
             storage = bool(storage_str)
         else:
             raise NotImplementedError(f"dtype {dtype} not implemented for register {uid}.")
-        return cls(uid, subnode, dtype, access, storage)
+
+        data_attr = _get_attribute_from_element(
+            element, cls.__DATA_ATTR, optional=True, context=uid, kind="register"
+        )
+        data: Optional[bytes] = bytes.fromhex(data_attr) if data_attr is not None else None
+
+        return cls(uid, subnode, dtype, access, storage, data=data)
 
     @classmethod
     def from_register(
@@ -225,6 +277,11 @@ class ConfigRegister:
             register_xml.set(self.__STORAGE_ATTR, str(np.float32(self.storage)))
         else:
             register_xml.set(self.__STORAGE_ATTR, str(self.storage))
+
+        # Serialize 'data' attribute (stored as bytes) if present
+        if self.data is not None:
+            register_xml.set("data", self.data.hex())
+
         return register_xml
 
     @classmethod
@@ -290,10 +347,14 @@ class TableElement:
         Raises:
             ValueError: Missing required attribute.
         """
-        address_str = _get_attribute_from_element(element, cls.__ADDRESS_ATTR, context=table_uid, kind="table element")
+        address_str = _get_attribute_from_element(
+            element, cls.__ADDRESS_ATTR, context=table_uid, kind="table element"
+        )
         address = int(address_str)
 
-        data_str = _get_attribute_from_element(element, cls.__DATA_ATTR, context=table_uid, kind="table element")
+        data_str = _get_attribute_from_element(
+            element, cls.__DATA_ATTR, context=table_uid, kind="table element"
+        )
         data = bytes.fromhex(data_str)
 
         return cls(address, data)
@@ -367,8 +428,12 @@ class ConfigTable:
         Raises:
             ValueError: Missing required attribute.
         """
-        uid = _get_attribute_from_element(element, cls.__ID_ATTR, context=element.attrib.get(cls.__ID_ATTR, ""), kind="table")
-        subnode_str = _get_attribute_from_element(element, cls.__SUBNODE_ATTR, context=uid, kind="table")
+        uid = _get_attribute_from_element(
+            element, cls.__ID_ATTR, context=element.attrib.get(cls.__ID_ATTR, ""), kind="table"
+        )
+        subnode_str = _get_attribute_from_element(
+            element, cls.__SUBNODE_ATTR, context=uid, kind="table"
+        )
         subnode = int(subnode_str)
 
         elements: list[TableElement] = []
