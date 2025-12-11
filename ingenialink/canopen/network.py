@@ -202,7 +202,7 @@ class NetStatusListener(Thread):
                     self.__network._set_servo_state(node_id, NetState.CONNECTED)
                 timestamps[node_id] = node.nmt.timestamp
             elif servo_state == NetState.DISCONNECTED:
-                self.__network._reset_connection()
+                self.__network.recover_from_disconnection()
             else:
                 self.__network._notify_status(node_id, NetDevEvt.REMOVED)
                 self.__network._set_servo_state(node_id, NetState.DISCONNECTED)
@@ -1111,6 +1111,24 @@ class CanopenNetwork(Network):
     def protocol(self) -> NetProt:
         """Obtain network protocol."""
         return NetProt.CAN
+
+    def recover_from_disconnection(self) -> bool:
+        """Recover the CANopen communication with a servo after a disconnection.
+
+        This method attempts to re-establish communication by resetting the entire
+        CANopen network connection and re-adding all servos.
+
+        Returns:
+            True if communication is recovered, False otherwise.
+
+        """
+        try:
+            self._reset_connection()
+            logger.info("CANopen communication recovered.")
+            return True
+        except Exception as e:
+            logger.warning(f"Failed to recover CANopen communication: {e}")
+            return False
 
     def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
         """Get the state of a servo that's a part of network.
