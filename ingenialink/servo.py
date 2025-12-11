@@ -12,7 +12,10 @@ import numpy as np
 from ingenialink.bitfield import BitField
 from ingenialink.canopen.dictionary import CanopenDictionaryV2, CanopenDictionaryV3
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.configuration_file import ConfigRegister, ConfigurationFile
+from ingenialink.configuration_file import (
+    ConfigRegister,
+    ConfigurationFile,
+)
 from ingenialink.constants import (
     DEFAULT_DRIVE_NAME,
     DEFAULT_PDS_TIMEOUT,
@@ -366,7 +369,7 @@ class Servo:
         """
         return self.__listener_servo_status is not None
 
-    def check_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:
+    def check_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:  # TODO
         """Check if the drive is configured in the same way as the given configuration file.
 
         Compares the value of each register in the given file with the corresponding value in the
@@ -481,6 +484,31 @@ class Servo:
                     raise ILError(exception_message)
                 logger.error(exception_message)
 
+        for config_table in xcf_instance.tables:
+            # Get table from dictionary
+            try:
+                dict_table = self.dictionary.get_table(config_table.uid, axis=config_table.subnode)
+            except (KeyError, ValueError) as ex:
+                exception_message = (
+                    f"Exception during load_configuration, table {config_table.uid}: Table not"
+                    " found in dictionary"
+                )
+                if strict:
+                    raise ILError(exception_message) from ex
+                logger.error(exception_message)
+                continue
+
+            # Load values of the table
+            try:
+                Table(self, dict_table).load_from_config_table(config_table)
+            except ILError as e:  # noqa: PERF203
+                exception_message = (
+                    f"Exception during load_configuration, table {config_table.uid}: {e}"
+                )
+                if strict:
+                    raise ILError(exception_message)
+                logger.error(exception_message)
+
     def save_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:
         """Save a drive configuration.
 
@@ -536,6 +564,14 @@ class Servo:
                         str(configuration_register.identifier),
                         e,
                     )
+
+        for dict_table in self.dictionary.all_tables():
+            try:
+                config_table = Table(self, dict_table).to_config_table()
+                xcf_instance.add_config_table(config_table)
+            except Exception as e:  # noqa: PERF203
+                logger.error(f"Exception during save_configuration, table {dict_table.id}: {e}")
+
         xcf_instance.save_to_xcf(config_file)
 
     def save_configuration_csv(self, config_file: str, subnode: Optional[int] = None) -> None:
@@ -1771,8 +1807,7 @@ class Servo:
             ValueError: If the table is found in multiple axes, if axis is not provided.
 
         """
-        dictionary_table = self.dictionary.get_table(uid, axis=axis)
-        return Table(self, dictionary_table, axis=axis)
+        return Table(self, self.dictionary.get_table(uid, axis=axis))
 
     @property
     def full_name(self) -> str:

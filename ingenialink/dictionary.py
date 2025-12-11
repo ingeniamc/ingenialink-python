@@ -519,8 +519,17 @@ class Dictionary(XMLBase, ABC):
         Yields:
             Register
         """
-        for subnode in self._registers.values():
-            yield from subnode.values()
+        for subnode_registers in self._registers.values():
+            yield from subnode_registers.values()
+
+    def all_tables(self) -> Iterator[DictionaryTable]:
+        """Iterator for all tables.
+
+        Yields:
+            Table
+        """
+        for subnode_tables in self._tables.values():
+            yield from subnode_tables.values()
 
     def all_objs(self) -> Iterator[CanOpenObject]:
         """Iterator for all items.

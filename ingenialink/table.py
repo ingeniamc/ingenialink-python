@@ -1,6 +1,7 @@
 from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Optional
 
+from ingenialink.configuration_file import ConfigTable, TableElement
 from ingenialink.utils._utils import REG_VALUE
 
 if TYPE_CHECKING:
@@ -16,7 +17,9 @@ class Table:
     """
 
     def __init__(
-        self, servo: "Servo", table: "DictionaryTable", axis: Optional[int] = None
+        self,
+        servo: "Servo",
+        table: "DictionaryTable",
     ) -> None:
         """Initializes the Table.
 
@@ -29,13 +32,13 @@ class Table:
             ValueError: If index register does not have integer range.
         """
         self.__servo = servo
-        self.__table = table
+        self.__dict_table = table
 
         self.__index_register = self.__servo.dictionary.get_register(
-            self.__table.id_index, axis=axis
+            self.__dict_table.id_index, axis=self.__dict_table.axis
         )
         self.__value_register = self.__servo.dictionary.get_register(
-            self.__table.id_value, axis=axis
+            self.__dict_table.id_value, axis=self.__dict_table.axis
         )
 
         min_index, max_index = self.__index_register.range
@@ -71,6 +74,28 @@ class Table:
         self.__servo.write(self.__index_register, index)
         self.__servo.write(self.__value_register, value)
 
+    def get_value_raw(self, index: int) -> bytes:
+        """Reads a raw value from the table.
+
+        Args:
+            index: Index of the value to read.
+
+        Returns:
+            Raw value at the specified index
+        """
+        self.__servo.write(self.__index_register, index)
+        return self.__servo._read_raw(self.__value_register)
+
+    def set_value_raw(self, index: int, raw_value: bytes) -> None:
+        """Writes a raw value to the table.
+
+        Args:
+            index: Index of the value to write.
+            raw_value: Raw bytes to write at the specified index.
+        """
+        self.__servo.write(self.__index_register, index)
+        self.__servo._write_raw(self.__value_register, raw_value)
+
     def __len__(self) -> int:
         """Returns the number of elements in the table.
 
@@ -87,6 +112,14 @@ class Table:
         """
         for i in range(self.__min_index, self.__max_index + 1):
             yield self.get_value(i)
+
+    def addresses(self) -> Iterator[int]:
+        """Iterate over all addresses in the table.
+
+        Yields:
+            Each address in the table from min_index to max_index.
+        """
+        yield from range(self.__min_index, self.__max_index + 1)
 
     def __getitem__(self, index: int) -> REG_VALUE:
         """Read a value from the table using bracket notation.
@@ -172,3 +205,24 @@ class Table:
 
         for i, value in enumerate(values):
             self.set_value(start_index + i, value)
+
+    def to_config_table(self) -> ConfigTable:
+        """Convert to ConfigTable representation with the current table values.
+
+        Returns:
+            ConfigTable instance with the current table values.
+        """
+        config_table = ConfigTable(uid=self.__dict_table.id, subnode=self.__dict_table.axis or 0)
+        for address in self.addresses():
+            element = TableElement(address=address, data=self.get_value_raw(address))
+            config_table.elements.append(element)
+        return config_table
+
+    def load_from_config_table(self, config_table: ConfigTable) -> None:
+        """Load values of a config table to the current table.
+
+        Args:
+            config_table: Table configuration to load
+        """
+        for element in config_table.elements:
+            self.set_value_raw(element.address, element.data)

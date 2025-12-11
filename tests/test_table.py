@@ -2,6 +2,7 @@ import pytest
 
 import tests.resources
 from ingenialink import Servo
+from ingenialink.configuration_file import ConfigurationFile
 from ingenialink.dictionary import DictionaryTable
 from ingenialink.table import Table
 
@@ -260,3 +261,46 @@ def test_table_index_out_of_bounds(servo_with_table):
     # Try to write to an index that's out of bounds
     with pytest.raises(IndexError, match="out of range"):
         table[99999] = 123
+
+
+def test_save_and_load_xcf_with_tables(servo_with_table, tmp_path):
+    """Save configuration to XCF from a servo that has tables (virtual or real).
+
+    This test writes integer values to a table, saves the servo configuration to an XCF file,
+    verifies the XCF contains a table entry, changes the table values on the servo,
+    then calls `servo.load_configuration` to restore them from the XCF. The test uses the
+    `servo_with_table` parametrized fixture so it will run on both virtual and hardware
+    (real) servos where applicable.
+    """
+    servo, table = servo_with_table
+
+    # Write integer values to two table entries
+    val0 = 11223344
+    val1 = 55667788
+    table.set_value(0, val0)
+    table.set_value(1, val1)
+
+    # Save configuration to XCF
+    xcf_path = tmp_path / "virt_tables.xcf"
+    servo.save_configuration(str(xcf_path))
+    assert xcf_path.exists()
+
+    # Load configuration file and verify a table was saved (contents are validated
+    # by restoring them into the virtual drive and reading back).
+    loaded_conf = ConfigurationFile.load_from_xcf(str(xcf_path))
+    tables = [t for t in loaded_conf.tables if t.uid == "MEM_USR"]
+    assert len(tables) == 1
+    cfg_table = tables[0]
+    assert cfg_table.subnode == 0
+    assert len(cfg_table.elements) >= 2
+    assert cfg_table.elements[0].address == 0
+
+    # Change values on the servo and restore from file
+    table.set_value(0, 0)
+    table.set_value(1, 0)
+
+    servo.load_configuration(str(xcf_path))
+
+    # Verify integer values were restored
+    assert table.get_value(0) == val0
+    assert table.get_value(1) == val1
