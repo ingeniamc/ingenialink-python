@@ -445,7 +445,7 @@ class ConfigurationFile(XMLBase, ABC):
 
     def __init__(self, device: Device) -> None:
         self.major_version = self._SUPPORTED_MAJOR_VERSION
-        self.minor_version = 1
+        self.minor_version = 2
         self.__registers: list[ConfigRegister] = []
         self.__tables: list[ConfigTable] = []
         self.__device: Device = device
