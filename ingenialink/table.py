@@ -65,8 +65,8 @@ class Table:
         """Writes a value to the table.
 
         Args:
-            index (int): Index of the value to write.
-            value (int): Value to write at the specified index.
+            index: Index of the value to write.
+            value: Value to write at the specified index.
         """
         self.__servo.write(self.__index_register, index)
         self.__servo.write(self.__value_register, value)

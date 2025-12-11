@@ -1768,7 +1768,7 @@ class Servo:
             KeyError: If the specified axis does not exist.
             KeyError: If the table is not present in the specified axis.
             ValueError: If the table is not found in any axis, if axis is not provided.
-            ValueError: If the table is found in multiple axis, if axis is provided.
+            ValueError: If the table is found in multiple axes, if axis is not provided.
 
         """
         dictionary_table = self.dictionary.get_table(uid, axis=axis)
