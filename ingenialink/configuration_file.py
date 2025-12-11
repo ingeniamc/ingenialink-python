@@ -284,34 +284,6 @@ class ConfigRegister:
 
         return register_xml
 
-    @classmethod
-    def __get_attribute_from_element(
-        cls,
-        element: ElementTree.Element,
-        attribute: str,
-    ) -> str:
-        """Get attribute value from XML element.
-
-        Args:
-            element: XML element.
-            attribute: attribute name.
-
-        Returns:
-            attribute value.
-
-        Raises:
-            ValueError: attribute not found in element.
-
-        """
-        attr_value = element.attrib.get(attribute)
-        if attr_value is not None:
-            return attr_value
-        error_msg = f"Missing {attribute} attribute"
-        register_uid = element.attrib.get(cls.__ID_ATTR)
-        if register_uid is not None:
-            error_msg += f" for register {register_uid}."
-        raise ValueError(error_msg)
-
 
 class TableElement:
     """Table element for ConfigTable class.
@@ -359,31 +331,6 @@ class TableElement:
 
         return cls(address, data)
 
-    @classmethod
-    def __get_attribute_from_element(
-        cls, element: ElementTree.Element, attribute: str, table_uid: str = ""
-    ) -> str:
-        """Get attribute value from XML element.
-
-        Args:
-            element: XML element.
-            attribute: attribute name.
-            table_uid: Parent table UID for error messages.
-
-        Returns:
-            attribute value.
-
-        Raises:
-            ValueError: attribute not found in element.
-        """
-        attr_value = element.attrib.get(attribute)
-        if attr_value is not None:
-            return attr_value
-        error_msg = f"Missing {attribute} attribute in table element"
-        if table_uid:
-            error_msg += f" for table {table_uid}"
-        raise ValueError(error_msg)
-
     def to_xcf(self) -> ElementTree.Element:
         """Creates an XML element with class data.
 
@@ -428,9 +375,7 @@ class ConfigTable:
         Raises:
             ValueError: Missing required attribute.
         """
-        uid = _get_attribute_from_element(
-            element, cls.__ID_ATTR, context=element.attrib.get(cls.__ID_ATTR, ""), kind="table"
-        )
+        uid = _get_attribute_from_element(element, cls.__ID_ATTR, kind="table")
         subnode_str = _get_attribute_from_element(
             element, cls.__SUBNODE_ATTR, context=uid, kind="table"
         )

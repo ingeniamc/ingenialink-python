@@ -86,6 +86,7 @@ def test_config_register_from_xcf_missing_attribute(missing_attr):
 
 
 def test_table_element_from_xcf():
+    """Test TableElement.from_xcf method."""
     xml = '<Element address="5" data="deadbeef"/>'
     element = ElementTree.fromstring(xml)
     table_elem = TableElement.from_xcf(element)
@@ -95,6 +96,7 @@ def test_table_element_from_xcf():
 
 
 def test_table_element_to_xcf():
+    """Test TableElement.to_xcf method."""
     table_elem = TableElement(address=10, data=bytes.fromhex("1234abcd"))
     xml_elem = table_elem.to_xcf()
 
@@ -103,6 +105,7 @@ def test_table_element_to_xcf():
 
 
 def test_config_table_from_xcf():
+    """Test ConfigTable.from_xcf method."""
     xml = """<Table id="MEM_USR" subnode="0">
         <Element address="0" data="1234"/>
         <Element address="1" data="5678"/>
@@ -121,6 +124,7 @@ def test_config_table_from_xcf():
 
 
 def test_config_table_to_xcf():
+    """Test ConfigTable.to_xcf method."""
     table = ConfigTable(uid="TEST_TABLE", subnode=1)
     table.elements.append(TableElement(0, bytes.fromhex("aa")))
     table.elements.append(TableElement(1, bytes.fromhex("bb")))
@@ -138,7 +142,7 @@ def test_config_table_to_xcf():
 
 
 def test_configuration_file_with_tables(tmp_path):
-    # Create XCF with tables
+    """Test saving and loading ConfigurationFile with ConfigTable entries."""
     conf_file = ConfigurationFile.create_empty_configuration(
         Interface.ETH, "TEST-PART", 123, 456, "1.0.0"
     )
@@ -175,7 +179,7 @@ def test_configuration_file_with_tables(tmp_path):
 
 
 def test_register_from_xcf_reads_data_attribute():
-    # register element with only data attribute (no storage)
+    """Test ConfigRegister.from_xcf reads data attribute as bytes."""
     xml = (
         '<Register id="0x2000" subnode="0" dtype="u32" access="rw" storage="165" data="01020304" />'
     )
@@ -188,7 +192,7 @@ def test_register_from_xcf_reads_data_attribute():
 
 
 def test_register_to_xcf_writes_data_as_hex():
-    # create a register with storage None and data bytes
+    """Test ConfigRegister.to_xcf writes data attribute as hex string."""
     reg = ConfigRegister(
         uid="0x2000",
         subnode=0,
