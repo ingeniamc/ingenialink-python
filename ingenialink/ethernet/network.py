@@ -371,7 +371,8 @@ class EthernetNetwork(Network):
             logger.warning(f"Exception while pinging servo at IP {servo.ip_address}: {e}")
             raise e
 
-    def recover_from_disconnection(self, servo: EthernetServo) -> bool:
+    @override
+    def recover_from_disconnection(self, servo: Optional[EthernetServo]) -> bool:
         """Recover the communication with a servo after a disconnection.
 
         This method attempts to re-establish communication with a servo
@@ -381,9 +382,15 @@ class EthernetNetwork(Network):
         Args:
             servo: The servo to recover communication with.
 
+        Raises:
+            ValueError: If the servo argument is None.
+
         Returns:
             True if communication with the servo is recovered, False otherwise.
         """
+        if servo is None:
+            raise ValueError("Servo instance must be provided for recovery.")
+
         if EthernetNetwork._ping_servo(servo):
             logger.info(f"Communication with servo at IP {servo.ip_address} recovered.")
             return True

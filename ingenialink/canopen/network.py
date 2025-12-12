@@ -17,6 +17,7 @@ import ingenialogger
 from can import CanError
 from can.interfaces.kvaser.canlib import __get_canlib_function as get_canlib_function
 from can.interfaces.pcan.pcan import PcanCanOperationError
+from typing_extensions import override
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
@@ -1112,11 +1113,15 @@ class CanopenNetwork(Network):
         """Obtain network protocol."""
         return NetProt.CAN
 
-    def recover_from_disconnection(self) -> bool:
+    @override
+    def recover_from_disconnection(self, servo: Optional[CanopenServo] = None) -> bool:
         """Recover the CANopen communication with a servo after a disconnection.
 
         This method attempts to re-establish communication by resetting the entire
         CANopen network connection and re-adding all servos.
+
+        Args:
+            servo: not used in this implementation but kept for interface consistency.
 
         Returns:
             True if communication is recovered, False otherwise.

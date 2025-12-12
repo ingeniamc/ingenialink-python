@@ -92,6 +92,17 @@ class Network(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def recover_from_disconnection(self, servo: Optional[Servo]) -> None:
+        """Recovers the connection to a previously disconnected drive.
+
+        Args:
+            servo: Instance of the servo to recover.
+                For some protocols, this argument might be optional.
+
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def load_firmware(self, *args: Any, **kwargs: Any) -> None:
         """Loads a given firmware file to a target drive.
 

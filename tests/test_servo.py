@@ -3,6 +3,7 @@ import re
 import shutil
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING, Union
 from xml.etree import ElementTree
 
 import pytest
@@ -29,6 +30,11 @@ from ingenialink.exceptions import (
 )
 from ingenialink.register import RegAddressType
 from ingenialink.servo import Servo, ServoState
+
+if TYPE_CHECKING:
+    from ingenialink.canopen.network import CanopenNetwork
+    from ingenialink.ethercat.network import EthercatNetwork
+    from ingenialink.ethernet.network import EthernetNetwork
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
@@ -60,14 +66,6 @@ def _get_reg_address(register, descriptor):
     elif isinstance(descriptor, DriveCanOpenSetup):
         return register.idx
     raise ValueError
-
-
-def wait_until_alive(servo, timeout=None):
-    init_time = time.time()
-    while not servo.is_alive():
-        if timeout is not None and (init_time + timeout) < time.time():
-            pytest.fail("The drive is unresponsive after the recovery timeout.")
-        time.sleep(1)
 
 
 def skip_if_monitoring_is_not_available(servo):
@@ -294,7 +292,9 @@ def test_load_configuration_to_subnode_zero(setup_descriptor, servo, net):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_store_parameters(servo, environment):
+def test_store_parameters(
+    servo, environment, net: Union["CanopenNetwork", "EthernetNetwork", "EthercatNetwork"]
+) -> None:
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
     initial_user_over_voltage_value = servo.read(user_over_voltage_register)
@@ -310,13 +310,17 @@ def test_store_parameters(servo, environment):
 
     environment.power_cycle(wait_for_drives=False)
 
-    wait_until_alive(servo, timeout=20)
+    # https://novantamotion.atlassian.net/browse/CIT-526
+    connection_recovered = net.recover_from_disconnection(servo)
+    assert connection_recovered, "Failed to recover connection with the drive."
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
 
 @pytest.mark.fsoe
-def test_store_safe_parameters(servo, environment):
+def test_store_safe_parameters(
+    servo, environment, net: Union["CanopenNetwork", "EthernetNetwork", "EthercatNetwork"]
+) -> None:
     ss1_time_to_sto_register = "FSOE_SS1_TIME_TO_STO_1"
     # Change the value of a safe parameter
     initial_register_value = servo.read(ss1_time_to_sto_register)
@@ -330,7 +334,9 @@ def test_store_safe_parameters(servo, environment):
     # Power cycle the drive
     environment.power_cycle(wait_for_drives=False)
     # Wait until the drive recovers from the power cycle
-    wait_until_alive(servo, timeout=20)
+    # https://novantamotion.atlassian.net/browse/CIT-526
+    connection_recovered = net.recover_from_disconnection(servo)
+    assert connection_recovered, "Failed to recover connection with the drive."
     # Verify that the value is retained after power cycling
     assert servo.read(ss1_time_to_sto_register) == new_register_value
 
@@ -338,7 +344,9 @@ def test_store_safe_parameters(servo, environment):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_restore_parameters(servo, environment):
+def test_restore_parameters(
+    servo, environment, net: Union["CanopenNetwork", "EthernetNetwork", "EthercatNetwork"]
+) -> None:
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
     new_user_over_voltage_value = servo.read(user_over_voltage_register) + 5
@@ -353,13 +361,17 @@ def test_restore_parameters(servo, environment):
 
     environment.power_cycle(wait_for_drives=False)
 
-    wait_until_alive(servo, timeout=20)
+    # https://novantamotion.atlassian.net/browse/CIT-526
+    connection_recovered = net.recover_from_disconnection(servo)
+    assert connection_recovered, "Failed to recover connection with the drive."
 
     assert servo.read(user_over_voltage_register) != new_user_over_voltage_value
 
 
 @pytest.mark.fsoe
-def test_restore_safe_parameters(servo, environment):
+def test_restore_safe_parameters(
+    servo, environment, net: Union["CanopenNetwork", "EthernetNetwork", "EthercatNetwork"]
+) -> None:
     ss1_time_to_sto_register = "FSOE_SS1_TIME_TO_STO_1"
     # Change the value of a safe parameter
     initial_register_value = servo.read(ss1_time_to_sto_register)
@@ -373,7 +385,9 @@ def test_restore_safe_parameters(servo, environment):
     # Power cycle the drive
     environment.power_cycle(wait_for_drives=False)
     # Wait until the drive recovers from the power cycle
-    wait_until_alive(servo, timeout=20)
+    # https://novantamotion.atlassian.net/browse/CIT-526
+    connection_recovered = net.recover_from_disconnection(servo)
+    assert connection_recovered, "Failed to recover connection with the drive."
     # Verify that the value is restored to the default value after power cycling
     assert servo.read(ss1_time_to_sto_register) != new_register_value
 
