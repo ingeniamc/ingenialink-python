@@ -1,9 +1,9 @@
 import pytest
+from virtual_drive import resources as virtual_drive_resources
 
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILAccessError, ILValueError
 from ingenialink.register import RegAccess, RegDtype, Register, RegPhy
-from virtual_drive import resources as virtual_drive_resources
 
 
 @pytest.fixture
