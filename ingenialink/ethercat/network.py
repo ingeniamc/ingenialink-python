@@ -973,7 +973,7 @@ class EthercatNetwork(Network):
             callback(status)
 
     @override
-    def recover_from_disconnection(self, servo: Optional[EthercatServo] = None) -> bool:
+    def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:
         """Recover the CoE communication after a disconnection.
 
         All the connected slaves need to transitioned to the PreOp state.

@@ -1114,7 +1114,7 @@ class CanopenNetwork(Network):
         return NetProt.CAN
 
     @override
-    def recover_from_disconnection(self, servo: Optional[CanopenServo] = None) -> bool:
+    def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:
         """Recover the CANopen communication with a servo after a disconnection.
 
         This method attempts to re-establish communication by resetting the entire

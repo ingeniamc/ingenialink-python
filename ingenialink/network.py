@@ -92,12 +92,15 @@ class Network(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def recover_from_disconnection(self, servo: Optional[Servo]) -> None:
+    def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:
         """Recovers the connection to a previously disconnected drive.
 
         Args:
             servo: Instance of the servo to recover.
                 For some protocols, this argument might be optional.
+
+        Returns:
+            True if communication is recovered, False otherwise.
 
         """
         raise NotImplementedError
