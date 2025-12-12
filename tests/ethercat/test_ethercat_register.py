@@ -9,7 +9,7 @@ def test_getters_ethercat_register():
     reg_access = RegAccess.RW
     reg_kwargs = {
         "identifier": "MON_CFG_SOC_TYPE",
-        "units": "none",
+        "units": None,
         "pdo_access": "CONFIG",
         "phy": RegPhy.NONE,
         "subnode": 0,

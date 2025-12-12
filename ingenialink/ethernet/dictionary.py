@@ -53,7 +53,7 @@ class EthernetDictionaryV2(EthernetDictionary, DictionaryV2):
         return [
             EthernetRegister(
                 identifier="MON_DATA_VALUE",
-                units="none",
+                units=None,
                 subnode=0,
                 address=0x00B2,
                 pdo_access=RegCyclicType.CONFIG,
@@ -64,7 +64,7 @@ class EthernetDictionaryV2(EthernetDictionary, DictionaryV2):
             ),
             EthernetRegister(
                 identifier="DIST_DATA_VALUE",
-                units="none",
+                units=None,
                 subnode=0,
                 address=0x00B4,
                 pdo_access=RegCyclicType.CONFIG,
