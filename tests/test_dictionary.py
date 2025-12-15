@@ -14,6 +14,7 @@ from ingenialink.dictionary import (
     CanOpenObjectType,
     DictionaryDescriptor,
     DictionaryV2,
+    DictionaryV3,
     ILDictionaryParseError,
     Interface,
 )
@@ -73,6 +74,27 @@ def test_dictionary_description(
         part_number=part_number,
         revision_number=revision_number,
     )
+
+
+@pytest.mark.parametrize(
+    "dict_path, register_uid, axis, dict_type",
+    [
+        (tests.resources.DEN_NET_E_2_8_0_xdf_v3, "DRV_AXIS_NUMBER", 0, DictionaryV3),
+        (tests.resources.ethercat.TEST_DICT_ETHERCAT, "MON_CFG_EOC_TYPE", 0, DictionaryV2),
+    ],
+)
+def test_dictionary_parses_register_units_to_none(
+    dict_path: str, register_uid: str, axis: int, dict_type: type[DictionaryV3]
+) -> None:
+    """Test that registers with 'none' units are parsed correctly to None.
+
+    Test for both DictionaryV2 and DictionaryV3.
+    """
+    dictionary = DictionaryFactory.create_dictionary(dict_path, Interface.ECAT)
+    assert isinstance(dictionary, dict_type)
+
+    register = dictionary.get_register(register_uid, axis=axis)
+    assert register.units is None
 
 
 @pytest.mark.parametrize(
