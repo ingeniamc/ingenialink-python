@@ -315,15 +315,19 @@ def test_store_parameters(
 
     environment.power_cycle(wait_for_drives=False)
 
+    logger.warning("Waiting for the servo to be alive after power cycle.")
+
     wait_until_alive(servo, net, timeout=20)
+
+    logger.warning("Servo is alive after power cycle.")
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
-    logger.info("Restoring initial user over voltage value.")
+    logger.warning("Restoring initial user over voltage value.")
 
     servo.write(user_over_voltage_register, initial_user_over_voltage_value)
 
-    logger.info("Initial user over voltage value restored.")
+    logger.warning("Initial user over voltage value restored.")
 
 
 @pytest.mark.fsoe
