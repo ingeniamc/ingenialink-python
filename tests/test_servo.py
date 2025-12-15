@@ -9,7 +9,6 @@ from xml.etree import ElementTree
 import pytest
 from packaging import version
 from summit_testing_framework.rack_service_client import PartNumber
-from summit_testing_framework.setups import DriveCanOpenSetup, DriveEthernetSetup
 from summit_testing_framework.setups.specifiers import (
     RackServiceConfigSpecifier,
 )
@@ -60,12 +59,15 @@ def _clean(filename):
         os.remove(filename)
 
 
-def _get_reg_address(register, descriptor):
-    if isinstance(descriptor, DriveEthernetSetup):
-        return register.address
-    elif isinstance(descriptor, DriveCanOpenSetup):
-        return register.idx
-    raise ValueError
+def wait_until_alive(
+    servo, net: Union["CanopenNetwork", "EthernetNetwork", "EthercatNetwork"], timeout: float = None
+):
+    init_time = time.time()
+    # https://novantamotion.atlassian.net/browse/CIT-526
+    while not net.recover_from_disconnection(servo):
+        if timeout is not None and (init_time + timeout) < time.time():
+            pytest.fail("The drive is unresponsive after the recovery timeout.")
+        time.sleep(1)
 
 
 def skip_if_monitoring_is_not_available(servo):
@@ -310,9 +312,7 @@ def test_store_parameters(
 
     environment.power_cycle(wait_for_drives=False)
 
-    # https://novantamotion.atlassian.net/browse/CIT-526
-    connection_recovered = net.recover_from_disconnection(servo)
-    assert connection_recovered, "Failed to recover connection with the drive."
+    wait_until_alive(servo, net, timeout=20)
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
@@ -334,9 +334,7 @@ def test_store_safe_parameters(
     # Power cycle the drive
     environment.power_cycle(wait_for_drives=False)
     # Wait until the drive recovers from the power cycle
-    # https://novantamotion.atlassian.net/browse/CIT-526
-    connection_recovered = net.recover_from_disconnection(servo)
-    assert connection_recovered, "Failed to recover connection with the drive."
+    wait_until_alive(servo, net, timeout=20)
     # Verify that the value is retained after power cycling
     assert servo.read(ss1_time_to_sto_register) == new_register_value
 
@@ -361,9 +359,7 @@ def test_restore_parameters(
 
     environment.power_cycle(wait_for_drives=False)
 
-    # https://novantamotion.atlassian.net/browse/CIT-526
-    connection_recovered = net.recover_from_disconnection(servo)
-    assert connection_recovered, "Failed to recover connection with the drive."
+    wait_until_alive(servo, net, timeout=20)
 
     assert servo.read(user_over_voltage_register) != new_user_over_voltage_value
 
@@ -385,9 +381,7 @@ def test_restore_safe_parameters(
     # Power cycle the drive
     environment.power_cycle(wait_for_drives=False)
     # Wait until the drive recovers from the power cycle
-    # https://novantamotion.atlassian.net/browse/CIT-526
-    connection_recovered = net.recover_from_disconnection(servo)
-    assert connection_recovered, "Failed to recover connection with the drive."
+    wait_until_alive(servo, net, timeout=20)
     # Verify that the value is restored to the default value after power cycling
     assert servo.read(ss1_time_to_sto_register) != new_register_value
 

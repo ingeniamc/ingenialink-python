@@ -988,6 +988,7 @@ class EthercatNetwork(Network):
         self._ecat_master.read_state()
         if self._ecat_master.state == pysoem.PREOP_STATE:
             return True
+        logger.info(f"Ecat master state is {self._ecat_master.state}. ")
         self.__init_nodes()
         if not self.servos:
             log_message = (
