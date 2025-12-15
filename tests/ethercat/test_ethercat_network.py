@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import pytest
+from ingenialogger import get_logger
 from summit_testing_framework.setups import (
     MultiRackServiceConfigSpecifier,
     RackServiceConfigSpecifier,
@@ -31,6 +32,8 @@ if TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
     from ingenialink.ethercat.servo import EthercatServo
+
+logger = get_logger(__name__)
 
 
 @pytest.fixture
@@ -882,9 +885,12 @@ def test_recover_from_disconnection(net: "EthercatNetwork", servo: "EthercatServ
     assert servo.slave_exists is True
     assert servo.slave.state == pysoem.PREOP_STATE, "Servo should be in PREOP state initially"
 
+    logger.info("Will check recover_from_disconnection with servo connected.")
+
     # Verify that recover_from_disconnection returns True when servo is properly connected
     with caplog.at_level("WARNING"):
         assert net.recover_from_disconnection() is True
+        logger.info("recover_from_disconnection returned True as expected.")
         assert "CoE communication recovered." not in caplog.text
 
     # Simulate slave disconnection by changing state to INIT
