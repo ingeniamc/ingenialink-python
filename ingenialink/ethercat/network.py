@@ -985,10 +985,13 @@ class EthercatNetwork(Network):
             True if all the connected slaves reach the PreOp state.
 
         """
+        logger.info("Recovering CoE communication...")
         self._ecat_master.read_state()
+        master_state = self._ecat_master.state
         if self._ecat_master.state == pysoem.PREOP_STATE:
+            logger.warning("CoE communication was not lost.")
             return True
-        logger.info(f"Ecat master state is {self._ecat_master.state}. ")
+        logger.info(f"Ecat master state is {master_state}. ")
         self.__init_nodes()
         if not self.servos:
             log_message = (
@@ -997,7 +1000,7 @@ class EthercatNetwork(Network):
             return False
         all_drives_in_preop = self._check_node_state(self.servos, pysoem.PREOP_STATE)
         if all_drives_in_preop:
-            log_message = "CoE communication recovered."
+            log_message = f"CoE communication recovered. Master was in state {master_state}."
         else:
             log_message = (
                 "The CoE communication cannot be recovered. Not all slaves reached the PreOp state"
