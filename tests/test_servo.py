@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Union
 from xml.etree import ElementTree
 
 import pytest
-from ingenialogger import get_logger
 from packaging import version
 from summit_testing_framework.rack_service_client import PartNumber
 from summit_testing_framework.setups.specifiers import (
@@ -30,8 +29,6 @@ from ingenialink.exceptions import (
 )
 from ingenialink.register import RegAddressType
 from ingenialink.servo import Servo, ServoState
-
-logger = get_logger(__name__)
 
 if TYPE_CHECKING:
     from ingenialink.canopen.network import CanopenNetwork
@@ -315,19 +312,11 @@ def test_store_parameters(
 
     environment.power_cycle(wait_for_drives=False)
 
-    logger.warning("Waiting for the servo to be alive after power cycle.")
-
     wait_until_alive(servo, net, timeout=20)
-
-    logger.warning("Servo is alive after power cycle.")
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
-    logger.warning("Restoring initial user over voltage value.")
-
     servo.write(user_over_voltage_register, initial_user_over_voltage_value)
-
-    logger.warning("Initial user over voltage value restored.")
 
 
 @pytest.mark.fsoe
