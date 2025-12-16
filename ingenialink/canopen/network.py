@@ -239,6 +239,7 @@ class CanopenNetwork(Network):
     PRODUCT_CODE_SUB_IX = 2
     REVISION_NUMBER_SUB_IX = 3
     NODE_GUARDING_PERIOD_S = 1
+    MAX_NUMBER_SERVO_ALIVE_ATTEMPTS = 5
 
     def __init__(
         self,
@@ -1125,10 +1126,19 @@ class CanopenNetwork(Network):
 
         Returns:
             True if communication is recovered, False otherwise.
-
         """
         try:
             self._reset_connection()
+            for attempt in range(self.MAX_NUMBER_SERVO_ALIVE_ATTEMPTS):
+                all_servos_alive = all(s.is_alive() for s in self.servos)
+                if all_servos_alive:
+                    break
+                sleep(0.1)
+                if attempt == self.MAX_NUMBER_SERVO_ALIVE_ATTEMPTS - 1:
+                    logger.warning(
+                        "CANopen communication recovered, but some servos are still disconnected."
+                    )
+                    return False
             logger.info("CANopen communication recovered.")
             return True
         except Exception as e:
