@@ -1106,7 +1106,7 @@ class Servo:
 
     def is_alive(self, attemps: int = 1) -> bool:
         """Checks if the servo responds to a reading a register.
-        
+
         Args:
             attemps: Number of attemps to check if the servo is alive.
                 Defaults to 1.
@@ -1114,13 +1114,14 @@ class Servo:
         Returns:
             Return code with the result of the read.
         """
+
         def _is_servo_alive() -> bool:
             try:
                 self.read(self.STATUS_WORD_REGISTERS)
                 return True
             except ILError:
                 return False
-            
+
         unsuccessful_attemps = 0
         while unsuccessful_attemps < attemps:
             if not _is_servo_alive():

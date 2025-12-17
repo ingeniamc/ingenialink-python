@@ -345,7 +345,6 @@ class EthernetNetwork(Network):
         for callback in self.__observers_net_state[ip]:
             callback(status)
 
-
     @override
     def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:
         """Recover the communication with a servo after a disconnection.
