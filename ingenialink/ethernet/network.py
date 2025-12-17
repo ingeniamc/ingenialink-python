@@ -61,13 +61,13 @@ class NetStatusListener(Thread):
         for servo in self.__network.servos:
             servo_ip = servo.ip_address
             servo_state = self.__network.get_servo_state(servo_ip)
-            ping_response = EthernetNetwork._ping_servo(servo)
-            if servo_state == NetState.CONNECTED and not ping_response:
+            is_servo_alive = servo.is_alive(attemps=MAX_NUM_UNSUCCESSFUL_PINGS)
+            if servo_state == NetState.CONNECTED and not is_servo_alive:
                 self.__network._notify_status(servo_ip, NetDevEvt.REMOVED)
                 self.__network._set_servo_state(servo_ip, NetState.DISCONNECTED)
             if (
                 servo_state == NetState.DISCONNECTED
-                and ping_response
+                and is_servo_alive
                 and self.__network.recover_from_disconnection(servo)
             ):
                 self.__network._notify_status(servo_ip, NetDevEvt.ADDED)
@@ -345,31 +345,6 @@ class EthernetNetwork(Network):
         for callback in self.__observers_net_state[ip]:
             callback(status)
 
-    @staticmethod
-    def _ping_servo(servo: EthernetServo) -> bool:
-        """Ping a servo to check if it's alive.
-
-        Args:
-            servo: The servo to ping.
-
-        Returns:
-            True if the servo responds to the ping, False otherwise.
-
-        Raises:
-            Exception: If an error occurs while pinging the servo.
-        """
-        unsuccessful_pings = 0
-        try:
-            while unsuccessful_pings < MAX_NUM_UNSUCCESSFUL_PINGS:
-                # Check if the servo is alive by attempting to read its state
-                if not servo.is_alive():
-                    unsuccessful_pings += 1
-                else:
-                    return True
-            return False
-        except Exception as e:
-            logger.warning(f"Exception while pinging servo at IP {servo.ip_address}: {e}")
-            raise e
 
     @override
     def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:
@@ -391,7 +366,7 @@ class EthernetNetwork(Network):
         if servo is None or not isinstance(servo, EthernetServo):
             raise ValueError("Ethernet Servo instance must be provided for recovery.")
 
-        if EthernetNetwork._ping_servo(servo):
+        if servo.is_alive(attemps=MAX_NUM_UNSUCCESSFUL_PINGS):
             logger.info(f"Communication with servo at IP {servo.ip_address} recovered.")
             return True
         else:
