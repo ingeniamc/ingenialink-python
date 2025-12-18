@@ -250,6 +250,47 @@ def test_merge_dictionaries_image():
     assert merged_dict.image == moco_dict.image
 
 
+def test_merge_dictionaries_tables():
+    """Test that tables are merged when using + operator."""
+    coco_dict_path = tests.resources.comkit.COM_KIT_DICT
+    moco_dict_path = tests.resources.comkit.CORE_DICT
+    coco_dict = EthernetDictionaryV2(coco_dict_path)
+    moco_dict = EthernetDictionaryV2(moco_dict_path)
+
+    # Manually add tables to the dictionaries for testing
+    # Add a table to coco_dict (subnode 0)
+    dict_with_tables = DictionaryFactory.create_dictionary(
+        tests.resources.TEST_DICTIONARY_WITH_TABLES, Interface.ETH
+    )
+    if 0 not in coco_dict._tables:
+        coco_dict._tables[0] = {}
+    coco_dict._tables[0]["TEST_TABLE_COCO"] = dict_with_tables._tables[0]["MEM_USR_DATA"]
+
+    # Add a table to moco_dict (subnode 1)
+    if 1 not in moco_dict._tables:
+        moco_dict._tables[1] = {}
+    moco_dict._tables[1]["TEST_TABLE_MOCO"] = dict_with_tables._tables[1]["COGGING_COMP_TABLE"]
+
+    # Verify both have tables
+    assert "TEST_TABLE_COCO" in coco_dict._tables[0]
+    assert "TEST_TABLE_MOCO" in moco_dict._tables[1]
+
+    # Merge dictionaries using + operator
+    merged_dict = coco_dict + moco_dict
+
+    # Verify both tables are present in merged dictionary
+    assert "TEST_TABLE_COCO" in merged_dict._tables[0]
+    assert "TEST_TABLE_MOCO" in merged_dict._tables[1]
+
+    # Verify the tables are deep copies (not the same objects)
+    assert id(coco_dict._tables[0]["TEST_TABLE_COCO"]) != id(
+        merged_dict._tables[0]["TEST_TABLE_COCO"]
+    )
+    assert id(moco_dict._tables[1]["TEST_TABLE_MOCO"]) != id(
+        merged_dict._tables[1]["TEST_TABLE_MOCO"]
+    )
+
+
 def test_merge_dictionaries_new_instance():
     coco_dict_path = tests.resources.comkit.COM_KIT_DICT
     moco_dict_path = tests.resources.comkit.CORE_DICT
@@ -485,3 +526,96 @@ def test_canopen_object_writable_registers():
         ],
     )
     assert obj.all_registers_writable is False
+
+
+@pytest.mark.parametrize(
+    "interface",
+    [
+        Interface.CAN,
+        Interface.ETH,
+        Interface.ECAT,
+        Interface.EoE,
+    ],
+)
+def test_parse_tables(interface):
+    """Test that the dictionary with tables is parsed correctly."""
+
+    dict_path = tests.resources.TEST_DICTIONARY_WITH_TABLES
+    expected_tables = {
+        0: {
+            "MEM_USR_DATA": {
+                "id": "MEM_USR_DATA",
+                "axis": None,
+                "id_index": "MEM_USR_ADDR",
+                "id_value": "MEM_USR_DATA",
+            },
+        },
+        1: {
+            "COGGING_COMP_TABLE": {
+                "id": "COGGING_COMP_TABLE",
+                "axis": 1,
+                "id_index": "COGGING_COMP_TABLE_INDEX",
+                "id_value": "COGGING_COMP_TABLE_VALUE",
+            },
+        },
+    }
+    dictionary = DictionaryFactory.create_dictionary(dict_path, interface)
+    assert isinstance(dictionary._tables, dict)
+
+    for axis, tables in expected_tables.items():
+        axis_tables = dictionary._tables[axis]
+        assert isinstance(axis_tables, dict)
+
+        found_tables = {
+            uid: {
+                "id": table.id,
+                "axis": table.axis,
+                "id_index": table.id_index,
+                "id_value": table.id_value,
+            }
+            for uid, table in axis_tables.items()
+        }
+
+        assert found_tables == tables
+
+
+def test_get_table():
+    """Test that get_table method works correctly."""
+    dict_path = tests.resources.TEST_DICTIONARY_WITH_TABLES
+    dictionary = DictionaryFactory.create_dictionary(dict_path, Interface.ETH)
+
+    # Specify a uid that does not exist
+    uid = "TEST_UID"
+    with pytest.raises(ValueError, match=f"Table {uid} not found."):
+        dictionary.get_table(uid=uid, axis=None)
+    # Specify a uid and axis that does not exist
+    with pytest.raises(KeyError, match="axis=3 does not exist."):
+        dictionary.get_table(uid=uid, axis=3)
+
+    # Table present in only one axis (axis 1), no axis specified - should succeed
+    uid = "COGGING_COMP_TABLE"
+    table = dictionary.get_table(uid=uid, axis=None)
+    assert table.id == uid
+    assert table.axis == 1
+    assert table.id_index == "COGGING_COMP_TABLE_INDEX"
+    assert table.id_value == "COGGING_COMP_TABLE_VALUE"
+
+    # Specify axis explicitly
+    table_axis1 = dictionary.get_table(uid=uid, axis=1)
+    assert table_axis1.id == uid
+    assert table_axis1.axis == 1
+
+    # Specify wrong axis for this table
+    with pytest.raises(KeyError, match=f"Table {uid} not present in axis=0"):
+        dictionary.get_table(uid=uid, axis=0)
+
+    # Specify a unique uid without providing the axis (axis 0)
+    uid = "MEM_USR_DATA"
+    table_1 = dictionary.get_table(uid=uid, axis=None)
+    assert table_1.axis is None
+    assert table_1.id == uid
+    assert table_1.id_index == "MEM_USR_ADDR"
+    assert table_1.id_value == "MEM_USR_DATA"
+    # Specify the same uid, providing the axis, tables should match
+    table_2 = dictionary.get_table(uid=uid, axis=0)
+    assert table_1 == table_2

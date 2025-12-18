@@ -270,6 +270,23 @@ class DictionaryError:
 
 
 @dataclass
+class DictionaryTable:
+    """Class to store a dictionary table."""
+
+    id: str
+    """Table ID."""
+
+    axis: Optional[int]
+    """Axis the table belongs to. None if belongs to non-multiaxis register."""
+
+    id_index: str
+    """The uid of the register used to access the table index."""
+
+    id_value: str
+    """The uid of the register used to read/write the table value"""
+
+
+@dataclass
 class DictionaryDescriptor:
     """Class to store a dictionary error."""
 
@@ -386,6 +403,7 @@ class Dictionary(XMLBase, ABC):
         self.safety_modules = {}
         self._registers = {}
         self.subnodes = {}
+        self._tables = dict[int, dict[str, DictionaryTable]]()
         self.path = dictionary_path
         """Path of the dictionary."""
         self.interface = interface
@@ -478,6 +496,7 @@ class Dictionary(XMLBase, ABC):
         other_dict_copy = copy.deepcopy(other_dict)
         self_dict_copy._merge_registers(other_dict_copy)
         self_dict_copy._merge_errors(other_dict_copy)
+        self_dict_copy._merge_tables(other_dict_copy)
         self_dict_copy._merge_attributes(other_dict_copy)
         self_dict_copy._set_image(other_dict_copy)
         return self_dict_copy
@@ -549,6 +568,41 @@ class Dictionary(XMLBase, ABC):
             raise ValueError(f"Register {uid} found in multiple axis. Axis should be specified.")
 
         return matching_registers[0]
+
+    @weak_lru()
+    def get_table(self, uid: str, axis: Optional[int] = None) -> DictionaryTable:
+        """Gets the targeted table.
+
+        Args:
+            uid: table uid.
+            axis: axis. Should be specified if multiaxis, None otherwise.
+
+        Raises:
+            KeyError: if the specified axis does not exist.
+            KeyError: if the table is not present in the specified axis.
+            ValueError: if the table is not found in any axis, if axis is not provided.
+            ValueError: if the table is found in multiple axis, if axis is provided.
+
+        Returns:
+            table.
+        """
+        if axis is not None:
+            if axis not in self._tables:
+                raise KeyError(f"{axis=} does not exist.")
+            if uid not in self._tables[axis]:
+                raise KeyError(f"Table {uid} not present in {axis=}")
+            return self._tables[axis][uid]
+
+        matching_tables: list[DictionaryTable] = [
+            self._tables[axis][uid] for axis in self._tables if uid in self._tables[axis]
+        ]
+
+        if len(matching_tables) == 0:
+            raise ValueError(f"Table {uid} not found.")
+        if len(matching_tables) > 1:
+            raise ValueError(f"Table {uid} found in multiple axis. Axis should be specified.")
+
+        return matching_tables[0]
 
     @abstractmethod
     def read_dictionary(self) -> None:
@@ -653,6 +707,18 @@ class Dictionary(XMLBase, ABC):
 
         """
         self.errors.update(other_dict.errors)
+
+    def _merge_tables(self, other_dict: "Dictionary") -> None:
+        """Add the tables from another dictionary to the dictionary instance.
+
+        Args:
+            other_dict: The other dictionary instance.
+
+        """
+        for axis, tables in other_dict._tables.items():
+            if axis not in self._tables:
+                self._tables[axis] = {}
+            self._tables[axis].update(tables)
 
     def _set_image(self, other_dict: "Dictionary") -> None:
         """Set the image attribute.
@@ -794,6 +860,13 @@ class DictionaryV3(Dictionary):
 
     __ERRORS_ELEMENT = "Errors"
     __ERROR_ELEMENT = "Error"
+
+    __TABLES_ELEMENT = "Tables"
+    __TABLE_ELEMENT = "Table"
+    __TABLE_ID_ATTR = "id"
+    __TABLE_AXIS_ATTR = "axis"
+    __TABLE_ID_INDEX_ATTR = "id_index"
+    __TABLE_ID_VALUE_ATTR = "id_value"
 
     __LABELS_ELEMENT = "Labels"
     __LABEL_ELEMENT = "Label"
@@ -1062,6 +1135,7 @@ class DictionaryV3(Dictionary):
             self.__read_mcb_register(register_element)
         errors_element = self._find_and_check(root, self.__ERRORS_ELEMENT)
         self._read_errors(errors_element, self.__ERROR_ELEMENT)
+        self._read_tables(root)
 
     def __read_device_ecat(self, root: ElementTree.Element) -> None:
         """Process ECATDevice element.
@@ -1078,6 +1152,7 @@ class DictionaryV3(Dictionary):
             self.__read_canopen_object(register_element)
         errors_element = self._find_and_check(root, self.__ERRORS_ELEMENT)
         self._read_errors(errors_element, self.__ERROR_ELEMENT)
+        self._read_tables(root)
         safety_pdos_element = root.find(self.__SAFETY_PDOS_ELEMENT)
         if safety_pdos_element is not None:
             self.__read_safety_pdos(safety_pdos_element)
@@ -1100,6 +1175,7 @@ class DictionaryV3(Dictionary):
             self.__read_canopen_object(register_element)
         errors_element = self._find_and_check(root, self.__ERRORS_ELEMENT)
         self._read_errors(errors_element, self.__ERROR_ELEMENT)
+        self._read_tables(root)
 
     def __read_subnodes(self, root: ElementTree.Element) -> None:
         """Process Subnodes element and fill subnodes.
@@ -1522,6 +1598,36 @@ class DictionaryV3(Dictionary):
             module_ident=module_ident,
             application_parameters=application_parameters,
         )
+
+    def _read_tables(self, root: ElementTree.Element) -> None:
+        """Process Tables element.
+
+        Args:
+            root: Root parent element where the <Tables> element is located.
+
+        """
+        tables_element = root.find(self.__TABLES_ELEMENT)
+        if tables_element is None:
+            # Element not mandatory
+            return
+
+        table_elements = tables_element.findall(self.__TABLE_ELEMENT)
+        for table_element in table_elements:
+            uid = str(table_element.attrib.get(self.__TABLE_ID_ATTR))
+            _axis = table_element.attrib.get(self.__TABLE_AXIS_ATTR)
+            axis = int(_axis) if _axis is not None else 0
+            id_index = str(table_element.attrib.get(self.__TABLE_ID_INDEX_ATTR))
+            id_value = str(table_element.attrib.get(self.__TABLE_ID_VALUE_ATTR))
+
+            table = DictionaryTable(
+                id=uid,
+                axis=axis if _axis is not None else None,
+                id_index=id_index,
+                id_value=id_value,
+            )
+            if axis not in self._tables:
+                self._tables[axis] = {}
+            self._tables[axis][uid] = table
 
 
 class DictionaryV2(Dictionary):
