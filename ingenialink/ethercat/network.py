@@ -9,6 +9,7 @@ from threading import Thread
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
 
 import ingenialogger
+from typing_extensions import override
 
 from ingenialink.pdo_network_manager import PDONetworkManager
 from ingenialink.servo import Servo
@@ -150,7 +151,7 @@ class NetStatusListener(Thread):
             if (
                 is_servo_alive
                 and servo_state == NetState.DISCONNECTED
-                and self.__network._recover_from_disconnection()
+                and self.__network.recover_from_disconnection()
             ):
                 self.__network._notify_status(slave_id, NetDevEvt.ADDED)
                 self.__network._set_servo_state(slave_id, NetState.CONNECTED)
@@ -971,10 +972,14 @@ class EthercatNetwork(Network):
         for callback in self.__observers_net_state[slave_id]:
             callback(status)
 
-    def _recover_from_disconnection(self) -> bool:
+    @override
+    def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:
         """Recover the CoE communication after a disconnection.
 
         All the connected slaves need to transitioned to the PreOp state.
+
+        Args:
+            servo: not used in this implementation but kept for interface consistency.
 
         Returns:
             True if all the connected slaves reach the PreOp state.

@@ -770,8 +770,8 @@ def test_net_status_listener_detects_slave_reconnection(pysoem_mock_network, moc
     def status_callback(event: NetDevEvt):
         events_detected.append(event)
 
-    # Mock _recover_from_disconnection to return True
-    mocker.patch.object(EthercatNetwork, "_recover_from_disconnection", return_value=True)
+    # Mock recover_from_disconnection to return True
+    mocker.patch.object(EthercatNetwork, "recover_from_disconnection", return_value=True)
 
     net = EthercatNetwork("dummy_ifname")
 
@@ -868,3 +868,32 @@ def test_slave_is_in_preop_state_if_exception_in_pdo_thread(
     # Net should restore servos to PREOP state
     assert servo.slave is not None
     assert servo.slave.state is pysoem.PREOP_STATE
+
+
+@pytest.mark.ethercat
+def test_recover_from_disconnection(net: "EthercatNetwork", servo: "EthercatServo", caplog) -> None:
+    """Test that recover_from_disconnection properly rediscovers slaves after disconnection.
+
+    This test uses a real EtherCAT drive and simulates a disconnection scenario by setting
+    the slave reference to None. The recover_from_disconnection method should call
+    __init_nodes() to rediscover the physical drive and restore communication.
+    """
+    # Verify initial state - servo is connected and in PREOP state
+    assert servo.slave_exists is True
+    assert servo.slave.state == pysoem.PREOP_STATE, "Servo should be in PREOP state initially"
+
+    # Verify that recover_from_disconnection returns True when servo is properly connected
+    assert net.recover_from_disconnection() is True
+
+    # Simulate slave disconnection by changing state to INIT
+    net._change_nodes_state(servo, pysoem.INIT_STATE)
+    assert servo.slave.state == pysoem.INIT_STATE, (
+        "Servo should be in INIT state after disconnection"
+    )
+    caplog.clear()
+    with caplog.at_level("WARNING"):
+        result = net.recover_from_disconnection()
+        assert result is True, "recover_from_disconnection should rediscover the physical slave"
+        assert "CoE communication recovered." in caplog.text, "Should log recovery success message"
+
+    assert servo.slave.state == pysoem.PREOP_STATE, "Servo should be in PREOP state after recovery"
