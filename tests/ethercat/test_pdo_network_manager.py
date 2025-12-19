@@ -23,7 +23,8 @@ def test_pdos_min_refresh_rate(net: "EthercatNetwork"):
 
 
 @pytest.mark.ethercat
-def test_pdos_watchdog_exception_auto(net: "EthercatNetwork", servo: "EthercatServo"):  # noqa: ARG001
+@pytest.mark.usefixtures("servo")
+def test_pdos_watchdog_exception_auto(net: "EthercatNetwork"):
     exceptions = []
 
     def exception_callback(exc):
@@ -40,7 +41,8 @@ def test_pdos_watchdog_exception_auto(net: "EthercatNetwork", servo: "EthercatSe
 
 
 @pytest.mark.ethercat
-def test_pdos_watchdog_exception_manual(net: "EthercatNetwork", servo: "EthercatServo"):  # noqa: ARG001
+@pytest.mark.usefixtures("servo")
+def test_pdos_watchdog_exception_manual(net: "EthercatNetwork"):
     exceptions = []
 
     def exception_callback(exc):
