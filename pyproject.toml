@@ -141,11 +141,11 @@ cmd = "python setup.py build_ext --inplace"
 # ----------------------------- Ruff format -----------------------------
 [tool.poe.tasks.ruff-format-check]
 help = "Format check with ruff"
-cmd = "ruff format --check ingenialink tests"
+cmd = "ruff format --check ingenialink tests examples"
 
 [tool.poe.tasks.ruff-check]
 help = "Check with ruff"
-cmd = "ruff check ingenialink tests"
+cmd = "ruff check ingenialink tests examples"
 
 [tool.poe.tasks.format]
 help     = "Check format"
@@ -154,11 +154,11 @@ sequence = ["ruff-format-check", "ruff-check"]
 # ----------------------------- Ruff reformat -----------------------------
 [tool.poe.tasks.ruff-format]
 help = "Format files with ruff"
-cmd = "ruff format ingenialink tests"
+cmd = "ruff format ingenialink tests examples"
 
 [tool.poe.tasks.ruff-check-fix]
 help = "Fix lint errors"
-cmd = "ruff check --fix ingenialink tests"
+cmd = "ruff check --fix ingenialink tests examples"
 
 [tool.poe.tasks.reformat]
 help     = "Reformat files and fix lint errors"

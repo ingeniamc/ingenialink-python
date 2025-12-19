@@ -2,25 +2,15 @@ import argparse
 import sys
 import threading
 import time
-from enum import Enum
-from typing import Tuple
+from typing import TYPE_CHECKING
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.pdo import RPDOMap, RPDOMapItem, TPDOMap
 
-
-class SlaveState(Enum):
-    INIT_STATE = 1
-    NONE_STATE = 0
-    OP_STATE = 8
-    PREOP_STATE = 2
-    SAFEOP_STATE = 4
-    STATE_ACK = 16
-    STATE_ERROR = 16
-
+if TYPE_CHECKING:
+    from ingenialink.ethercat.servo import EthercatServo
 
 TPDO_REGISTERS = {
     "CL_POS_FBK_VALUE": 0,
@@ -34,7 +24,9 @@ RPDO_REGISTERS = {
 
 
 class ProcessDataExample:
-    def __init__(self, interface_name: str, dictionary_path: str, auto_stop: bool = False):
+    """Basic example on EtherCAT PDOs."""
+
+    def __init__(self, interface_name: str, dictionary_path: str, auto_stop: bool = False) -> None:
         """Basic example on EtherCAT PDOs.
 
         Args:
@@ -60,8 +52,14 @@ class ProcessDataExample:
             threading.Timer(5, self._stop_process_data).start()
 
     @staticmethod
-    def create_pdo_maps(servo: EthercatServo) -> Tuple[RPDOMap, TPDOMap]:
+    def create_pdo_maps(servo: "EthercatServo") -> tuple["RPDOMap", "TPDOMap"]:
         """Create a PDO Map with the RPDO and TPDO registers.
+
+        Args:
+            servo: Servo to create the PDO maps for.
+
+        Raises:
+            TypeError: If the register or item types are not as expected.
 
         Returns:
             Tuple with the RPDOMap and TPDOMap created.
@@ -142,6 +140,11 @@ class ProcessDataExample:
 
 
 def setup_command() -> argparse.Namespace:
+    """Parse input arguments.
+
+    Returns:
+        argparse.Namespace: Parsed arguments.
+    """
     parser = argparse.ArgumentParser(description="EtherCAT PDOs example script.")
     interface_help = """Network adapter interface name. To find it: \n
     - On Windows, \\Device\\NPF_{id}. To get the id, run the command: wmic nic get name, guid \n
