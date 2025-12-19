@@ -105,9 +105,9 @@ def test_servo_get_table(virtual_drive_custom_dict):
 
 @pytest.fixture(
     params=[
-        pytest.param("virtual_drive_with_tables", id="virtual"),
+        pytest.param(virtual_drive_with_tables.__name__, id="virtual"),
         pytest.param(
-            "real_servo_with_tables",
+            real_servo_with_tables.__name__,
             marks=[
                 pytest.mark.fsoe
             ],  # Fsoe is not related to tables, but is a modern firmware that does have user memory
@@ -264,7 +264,7 @@ def test_table_index_out_of_bounds(servo_with_table):
         table[99999] = 123
 
 
-def test_save_and_load_xcf_with_tables(servo_with_table, tmp_path):
+def test_save_and_load_xcf_with_tables(virtual_drive_with_tables, tmp_path):
     """Save configuration to XCF from a servo that has tables (virtual or real).
 
     This test writes integer values to a table, saves the servo configuration to an XCF file,
@@ -273,7 +273,7 @@ def test_save_and_load_xcf_with_tables(servo_with_table, tmp_path):
     `servo_with_table` parametrized fixture so it will run on both virtual and hardware
     (real) servos where applicable.
     """
-    servo, table = servo_with_table
+    servo, table = virtual_drive_with_tables
 
     # Write integer values to two table entries
     val0 = 11223344
@@ -307,7 +307,7 @@ def test_save_and_load_xcf_with_tables(servo_with_table, tmp_path):
     assert table.get_value(1) == val1
 
 
-def test_check_configuration_with_tables(servo_with_table, tmp_path):
+def test_check_configuration_with_tables(virtual_drive_with_tables, tmp_path):
     """Verify `check_configuration` compares table contents and raises on mismatch.
 
     Steps:
@@ -317,7 +317,7 @@ def test_check_configuration_with_tables(servo_with_table, tmp_path):
     - check_configuration should raise ILConfigurationError referencing the table address
     - Reload configuration from XCF and check_configuration should pass again
     """
-    servo, table = servo_with_table
+    servo, table = virtual_drive_with_tables
 
     filename = tmp_path / "table_check.xcf"
     servo.save_configuration(str(filename))
