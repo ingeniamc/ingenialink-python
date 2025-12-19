@@ -393,28 +393,31 @@ class Servo:
         if subnode == 0 and not xcf_instance.contains_node(subnode):
             raise ValueError(f"Cannot check {config_file} at subnode {subnode}")
         registers_errored: list[str] = []
-        for register in xcf_instance.registers:
+        for config_reg in xcf_instance.registers:
             try:
-                stored_data = self.read(register.uid, register.subnode)
+                target_reg = self._get_reg(config_reg.uid, subnode=config_reg.subnode)
+                stored_data = self.read(target_reg, config_reg.subnode)
             except ILError as e:  # noqa: PERF203
-                il_error = f"{register.uid} -- {e}"
+                il_error = f"{config_reg.uid} -- {e}"
                 logger.error(
                     "Exception during check_configuration, register %s: %s",
-                    register.uid,
+                    config_reg.uid,
                     e,
                 )
                 registers_errored.append(il_error)
             else:
                 compare_conf: Union[int, float, str, bytes, bool, np.float32] = (
-                    self._adapt_configuration_file_storage_value(xcf_instance, register)
+                    self._adapt_configuration_file_storage_value(
+                        xcf_instance, config_reg, target_reg
+                    )
                 )
                 compare_drive: Union[int, float, str, bytes, bool, np.float32] = stored_data
                 if isinstance(stored_data, float):
                     compare_drive = np.float32(stored_data)
-                    compare_conf = np.float32(register.storage)
+                    compare_conf = np.float32(config_reg.storage)
                 if compare_conf != compare_drive:
                     registers_errored.append(
-                        f"{register.uid} --- Expected: {compare_conf} | Found: {compare_drive}\n"  # type: ignore[str-bytes-safe]
+                        f"{config_reg.uid} --- Expected: {compare_conf} | Found: {compare_drive}\n"  # type: ignore[str-bytes-safe]
                     )
 
         # Check tables
@@ -454,21 +457,27 @@ class Servo:
     def _adapt_configuration_file_storage_value(
         self,
         configuration_file: ConfigurationFile,  # noqa: ARG002
-        register: ConfigRegister,
-    ) -> Union[int, float, str, bytes]:
+        config_register: ConfigRegister,
+        target_register: Register,
+    ) -> bytes:
         """Adapt storage value to the current servo.
 
-        This function performs no action unless the register is a CanOpen subitem
-        that depend on the Node ID, and the XCF file indicates it.
+        If the XCF `Register` contains a `data` attribute it will be preferred
+        and returned as-is (bytes). Otherwise, the `storage` attribute will be
+        converted to bytes using the provided `target_register.dtype`
 
         Args:
             configuration_file: target configuration file
-            register: target register
+            config_register: target register
+            target_register: register to write
 
         Returns:
-            Adapted storage value
+            Adapted storage value as bytes
         """
-        return register.storage
+        if config_register.data is not None:
+            return config_register.data
+        else:
+            return convert_dtype_to_bytes(config_register.storage, target_register.dtype)
 
     def load_configuration(
         self, config_file: str, subnode: Optional[int] = None, strict: bool = False
@@ -496,17 +505,18 @@ class Servo:
 
         if subnode == 0 and not xcf_instance.contains_node(subnode):
             raise ValueError(f"Cannot load {config_file} to subnode {subnode}")
-        for register in xcf_instance.registers:
+        for config_register in xcf_instance.registers:
             try:
-                storage = self._adapt_configuration_file_storage_value(xcf_instance, register)
-                self.write(
-                    register.uid,
-                    storage,
-                    subnode=register.subnode,
+                target_register = self._get_reg(
+                    config_register.uid, subnode=config_register.subnode
                 )
+                data = self._adapt_configuration_file_storage_value(
+                    xcf_instance, config_register, target_register
+                )
+                self._write_raw(target_register, data)
             except ILError as e:  # noqa: PERF203
                 exception_message = (
-                    f"Exception during load_configuration, register {register.uid}: {e}"
+                    f"Exception during load_configuration, register {config_register.uid}: {e}"
                 )
                 if strict:
                     raise ILError(exception_message)

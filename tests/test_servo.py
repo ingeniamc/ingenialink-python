@@ -29,6 +29,7 @@ from ingenialink.exceptions import (
 )
 from ingenialink.register import RegAddressType
 from ingenialink.servo import Servo, ServoState
+from ingenialink.utils._utils import convert_bytes_to_dtype
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
@@ -803,9 +804,12 @@ def test__adapt_configuration_file_storage_value(servo, uid, subnode, value, nod
     node_id_reg = servo.dictionary.registers(subnode)[uid]
     node_id_reg._CanopenRegister__is_node_id_dependent = dependent
     conf_file.add_register(node_id_reg, value)
-    adapted_register = servo._adapt_configuration_file_storage_value(
-        conf_file, conf_file.registers[0]
+    adapted_register_bytes = servo._adapt_configuration_file_storage_value(
+        configuration_file=conf_file,
+        config_register=conf_file.registers[0],
+        target_register=node_id_reg,
     )
+    adapted_register = convert_bytes_to_dtype(adapted_register_bytes, node_id_reg.dtype)
     if dependent:
         assert adapted_register == (value - node_id + servo.target)
     else:
