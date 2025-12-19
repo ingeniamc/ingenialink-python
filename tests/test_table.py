@@ -4,6 +4,7 @@ import tests.resources
 from ingenialink import Servo
 from ingenialink.configuration_file import ConfigurationFile
 from ingenialink.dictionary import DictionaryTable
+from ingenialink.exceptions import ILConfigurationError
 from ingenialink.table import Table
 
 
@@ -304,3 +305,40 @@ def test_save_and_load_xcf_with_tables(servo_with_table, tmp_path):
     # Verify integer values were restored
     assert table.get_value(0) == val0
     assert table.get_value(1) == val1
+
+
+def test_check_configuration_with_tables(servo_with_table, tmp_path):
+    """Verify `check_configuration` compares table contents and raises on mismatch.
+
+    Steps:
+    - Save current configuration (includes tables) to XCF
+    - check_configuration should pass
+    - Mutate a table entry on the servo
+    - check_configuration should raise ILConfigurationError referencing the table address
+    - Reload configuration from XCF and check_configuration should pass again
+    """
+    servo, table = servo_with_table
+
+    filename = tmp_path / "table_check.xcf"
+    servo.save_configuration(str(filename))
+
+    # Initial check should pass
+    servo.check_configuration(str(filename))
+
+    # Mutate table value
+    mutated_val = 123456789
+    table.set_value(0, mutated_val)
+    assert table.get_value(0) == mutated_val
+
+    # Now the servo-level check should detect the mismatch and raise
+    with pytest.raises(ILConfigurationError) as ex:
+        servo.check_configuration(str(filename))
+
+    assert ex.value.args[0] == (
+        "Configuration check failed for the following registers:\n"
+        "Table MEM_USR address 0 --- Expected: 0 | Found: 123456789\n"
+    )
+
+    # Restore configuration and verify check passes again
+    servo.load_configuration(str(filename))
+    servo.check_configuration(str(filename))

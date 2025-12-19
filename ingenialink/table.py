@@ -2,7 +2,7 @@ from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING, Optional
 
 from ingenialink.configuration_file import ConfigTable, TableElement
-from ingenialink.utils._utils import REG_VALUE
+from ingenialink.utils._utils import REG_VALUE, convert_bytes_to_dtype
 
 if TYPE_CHECKING:
     from ingenialink import Servo
@@ -226,3 +226,28 @@ class Table:
         """
         for element in config_table.elements:
             self.set_value_raw(element.address, element.data)
+
+    def compare_with_config_table(self, config_table: ConfigTable) -> list[str]:
+        """Compare the current table values with a ConfigTable.
+
+        Returns:
+            A list of mismatch/error messages (empty when identical).
+        """
+        mismatches: list[str] = []
+        # Use the dictionary id for messages
+        uid = self.__dict_table.id
+        for element in config_table.elements:
+            try:
+                drive_raw = self.get_value_raw(element.address)
+            except Exception as e:
+                mismatches.append(f"Table {uid} address {element.address} -- {e}")
+                continue
+
+            expected = convert_bytes_to_dtype(element.data, self.__value_register.dtype)
+            found = convert_bytes_to_dtype(drive_raw, self.__value_register.dtype)
+            if expected != found:
+                mismatches.append(
+                    f"Table {uid} address {element.address} --- Expected: {expected!r} "
+                    f"Found: {found!r}\n"
+                )
+        return mismatches

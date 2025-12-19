@@ -369,7 +369,7 @@ class Servo:
         """
         return self.__listener_servo_status is not None
 
-    def check_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:  # TODO
+    def check_configuration(self, config_file: str, subnode: Optional[int] = None) -> None:
         """Check if the drive is configured in the same way as the given configuration file.
 
         Compares the value of each register in the given file with the corresponding value in the
@@ -416,6 +416,34 @@ class Servo:
                     registers_errored.append(
                         f"{register.uid} --- Expected: {compare_conf} | Found: {compare_drive}\n"  # type: ignore[str-bytes-safe]
                     )
+
+        # Check tables
+        for config_table in xcf_instance.tables:
+            try:
+                dict_table = self.dictionary.get_table(config_table.uid, axis=config_table.subnode)
+            except (KeyError, ValueError):
+                logger.error(
+                    "Exception during check_configuration, table %s: Table not found in dictionary",
+                    config_table.uid,
+                )
+                registers_errored.append(
+                    f"Table {config_table.uid} --- Table not found in dictionary"
+                )
+                continue
+
+            try:
+                table_helper = Table(self, dict_table)
+            except Exception as e:  # noqa: PERF203
+                logger.error(
+                    "Exception during check_configuration creating Table %s: %s",
+                    config_table.uid,
+                    e,
+                )
+                registers_errored.append(f"Table {config_table.uid} --- {e}")
+                continue
+
+            mismatches = table_helper.compare_with_config_table(config_table)
+            registers_errored.extend(mismatches)
 
         if registers_errored:
             error_message = "Configuration check failed for the following registers:\n"
