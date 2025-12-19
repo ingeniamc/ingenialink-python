@@ -78,6 +78,20 @@ def runInFolder(folder = null, body) {
   }
 }
 
+def withVirtualEnv(venvPath, workingDir = null, body) {
+    if (isUnix()) {
+        // Linux
+        withEnv(["PATH+PYTHON=${venvPath}/bin", "VIRTUAL_ENV=${venvPath}"]) {
+            body()
+        }
+    } else {
+        // Windows
+        withEnv(["PATH+PYTHON=${venvPath}\\Scripts", "VIRTUAL_ENV=${venvPath}"]) {
+            body()
+        }
+    }
+}
+
 def createVirtualEnvironments(boolean installWheel = true, String workingDir = null, String pythonVersionList = "") {
     def versions = pythonVersionList?.trim() ? pythonVersionList : RUN_PYTHON_VERSIONS
     def pythonVersions = versions.split(',')
@@ -403,14 +417,11 @@ pipeline {
                                     steps {
                                         script {
                                             buildWheel(DEFAULT_PYTHON_VERSION)
-                                            sh """
-                                                cd ${LIN_DOCKER_TMP_PATH}
-                                                . .venv${DEFAULT_PYTHON_VERSION}/bin/activate
-                                                poetry run poe check-wheels
-                                                deactivate
-                                                mkdir -p ${env.WORKSPACE}/dist
-                                                cp dist/* ${env.WORKSPACE}/dist/
-                                            """
+                                            withVirtualEnv(LIN_DOCKER_TMP_PATH + "/.venv${DEFAULT_PYTHON_VERSION}") {
+                                                runInFolder(LIN_DOCKER_TMP_PATH, "poetry run poe check-wheels")
+                                            }
+                                            sh "mkdir -p ${env.WORKSPACE}/dist"
+                                            sh "cp ${LIN_DOCKER_TMP_PATH}/dist/* ${env.WORKSPACE}/dist/"
                                         }
                                     }
                                 }
