@@ -78,16 +78,30 @@ def runInFolder(folder = null, body) {
   }
 }
 
+
 def withVirtualEnv(venvPath, workingDir = null, body) {
+    def makeCtx = {
+        return [
+            run: { cmd ->
+                def cdCmd = workingDir ? "cd ${workingDir}\n " : ""
+                if (isUnix()) {
+                    sh """${cdCmd}${cmd}"""
+                } else {
+                    bat """${cdCmd}${cmd}"""
+                }
+            }
+        ]
+    }
+
     if (isUnix()) {
         // Linux
         withEnv(["PATH+PYTHON=${venvPath}/bin", "VIRTUAL_ENV=${venvPath}"]) {
-            body()
+            body(makeCtx())
         }
     } else {
         // Windows
         withEnv(["PATH+PYTHON=${venvPath}\\Scripts", "VIRTUAL_ENV=${venvPath}"]) {
-            body()
+            body(makeCtx())
         }
     }
 }
@@ -417,8 +431,8 @@ pipeline {
                                     steps {
                                         script {
                                             buildWheel(DEFAULT_PYTHON_VERSION)
-                                            withVirtualEnv(LIN_DOCKER_TMP_PATH + "/.venv${DEFAULT_PYTHON_VERSION}") {
-                                                runInFolder(LIN_DOCKER_TMP_PATH, "poetry run poe check-wheels")
+                                            withVirtualEnv(LIN_DOCKER_TMP_PATH + "/.venv${DEFAULT_PYTHON_VERSION}", LIN_DOCKER_TMP_PATH) { env ->
+                                                env.run("poetry run poe check-wheels")
                                             }
                                             sh "mkdir -p ${env.WORKSPACE}/dist"
                                             sh "cp ${LIN_DOCKER_TMP_PATH}/dist/* ${env.WORKSPACE}/dist/"
