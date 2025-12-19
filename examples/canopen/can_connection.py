@@ -4,8 +4,14 @@ from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 
 
 def connection_example(args: argparse.Namespace) -> None:
-    """Scans for nodes in a network, connects to the first found node, reads
-    a register and disconnects the found servo from the network."""
+    """Canopen connection example.
+
+    It scans for nodes in a network, connects to the first found node,
+    reads a register and disconnects the found servo from the network.
+
+    Args:
+        args: Command line arguments.
+    """
     can_device = CanDevice(args.transceiver)
     can_baudrate = CanBaudrate(args.baudrate)
     net = CanopenNetwork(device=can_device, channel=args.channel, baudrate=can_baudrate)
@@ -24,6 +30,11 @@ def connection_example(args: argparse.Namespace) -> None:
 
 
 def setup_command() -> argparse.Namespace:
+    """Sets up the command line argument parser.
+
+    Returns:
+        argparse.Namespace: Parsed command line arguments.
+    """
     parser = argparse.ArgumentParser(description="Canopen example")
     parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)
     parser.add_argument("-n", "--node_id", default=32, type=int, help="Node ID")

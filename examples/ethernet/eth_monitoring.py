@@ -103,7 +103,7 @@ def monitoring_example(args: argparse.Namespace) -> list[NDArray[np.float64]]:
                 if data_obtained:
                     # Single-shot mode
                     read_process_finished = True
-        except Exception as e:
+        except Exception as e:  # noqa: PERF203
             print(f"Exception monitoring: {e}")
             break
     print("Finished")

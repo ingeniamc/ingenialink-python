@@ -1,10 +1,21 @@
 import argparse
+from typing import TYPE_CHECKING
 
 from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
-from ingenialink.canopen.servo import CanopenServo
+
+if TYPE_CHECKING:
+    from ingenialink.canopen.servo import CanopenServo
 
 
-def connect_slave(args: argparse.Namespace) -> tuple[CanopenServo, CanopenNetwork]:
+def connect_slave(args: argparse.Namespace) -> tuple["CanopenServo", "CanopenNetwork"]:
+    """Connects to a CANopen drive.
+
+    Args:
+        args: Command line arguments.
+
+    Returns:
+        A tuple containing the connected servo and network objects.
+    """
     can_device = CanDevice(args.transceiver)
     can_baudrate = CanBaudrate(args.baudrate)
     net = CanopenNetwork(device=can_device, channel=args.channel, baudrate=can_baudrate)
@@ -26,7 +37,6 @@ def load_config_example(args: argparse.Namespace) -> None:
 
 def save_config_example(args: argparse.Namespace) -> None:
     """Saves the drive configuration into a file."""
-
     servo, net = connect_slave(args)
     servo.save_configuration("can_config.xcf")
     servo.save_configuration("can_config_0.xcf", subnode=0)
@@ -36,6 +46,11 @@ def save_config_example(args: argparse.Namespace) -> None:
 
 
 def setup_command() -> argparse.Namespace:
+    """Sets up the command line argument parser.
+
+    Returns:
+        argparse.Namespace: Parsed command line arguments.
+    """
     parser = argparse.ArgumentParser(description="Canopen example")
     parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)
     parser.add_argument("-n", "--node_id", default=32, type=int, help="Node ID")
