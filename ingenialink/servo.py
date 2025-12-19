@@ -407,8 +407,11 @@ class Servo:
                 registers_errored.append(il_error)
             else:
                 compare_conf: Union[int, float, str, bytes, bool, np.float32] = (
-                    self._adapt_configuration_file_storage_value(
-                        xcf_instance, config_reg, target_reg
+                    convert_bytes_to_dtype(
+                        self._adapt_configuration_file_storage_value(
+                            xcf_instance, config_reg, target_reg
+                        ),
+                        target_reg.dtype,
                     )
                 )
                 compare_drive: Union[int, float, str, bytes, bool, np.float32] = stored_data

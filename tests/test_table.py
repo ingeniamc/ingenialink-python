@@ -336,7 +336,7 @@ def test_check_configuration_with_tables(servo_with_table, tmp_path):
 
     assert ex.value.args[0] == (
         "Configuration check failed for the following registers:\n"
-        "Table MEM_USR address 0 --- Expected: 0 | Found: 123456789\n"
+        "Table MEM_USR address 0 --- Expected: 0 Found: 123456789\n"
     )
 
     # Restore configuration and verify check passes again

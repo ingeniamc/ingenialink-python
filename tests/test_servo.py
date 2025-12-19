@@ -231,7 +231,9 @@ def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: 
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     _, _, servo = virtual_drive_custom_dict(dictionary)
     test_file = tests.resources.TEST_CONFIG_FILE
-    mocker.patch("ingenialink.servo.Servo.write", side_effect=ILError("Error writing"))
+    mocker.patch(
+        "ingenialink.ethernet.servo.EthernetServo._write_raw", side_effect=ILError("Error writing")
+    )
     with pytest.raises(ILError) as exc_info:
         servo.load_configuration(test_file, strict=True)
     assert (
