@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.16') _
+@Library('cicd-lib@082433e5c584906095151fa8faceb88bf3a45a03') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -71,34 +71,8 @@ def archiveWiresharkLogs() {
 
 def createVirtualEnvironments(boolean installWheel = true, String workingDir = null, String pythonVersionList = "") {
     def versions = pythonVersionList?.trim() ? pythonVersionList : RUN_PYTHON_VERSIONS
-    def pythonVersions = versions.split(',')
-    // Ensure DEFAULT_PYTHON_VERSION is included if not already present
-    if (!pythonVersions.contains(DEFAULT_PYTHON_VERSION)) {
-        pythonVersions = pythonVersions + [DEFAULT_PYTHON_VERSION]
-    }
-    pythonVersions.each { version ->
-        def venvName = ".venv${version}"
-        def cdCmd = workingDir ? "cd ${workingDir}" : ""
-        if (isUnix()) {
-            sh """
-                ${cdCmd}
-                python${version} -m venv --without-pip ${venvName}
-                . ${venvName}/bin/activate
-                poetry sync --no-root --all-groups --extras virtual_drive
-                deactivate
-            """
-        } else {
-            def installWheelCmd = installWheel ? "poetry run poe install-wheel" : ""
-            bat """
-                ${cdCmd}
-                py -${version} -m venv ${venvName}
-                call ${venvName}/Scripts/activate
-                poetry sync --no-root --all-groups --extras virtual_drive
-                ${installWheelCmd}
-                deactivate
-            """
-        }
-    }
+    def installWheelCmd = installWheel ? "poetry run poe install-wheel" : ""
+    setupPoetryVirtualEnvironment("poetry sync --no-root --all-groups --extras virtual_drive", versions, DEFAULT_PYTHON_VERSION, installWheelCmd, workingDir)
 }
 
 def buildWheel(py_version) {
