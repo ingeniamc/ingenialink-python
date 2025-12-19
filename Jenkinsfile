@@ -304,14 +304,12 @@ pipeline {
                                             pythonVersions.each { version ->
                                                 buildWheel(version)
                                             }
+                                            withVirtualEnv(WIN_DOCKER_TMP_PATH + "/.venv${DEFAULT_PYTHON_VERSION}", WIN_DOCKER_TMP_PATH) { env ->
+                                                env.run("poetry run poe check-wheels")
+                                            }
+                                            bat "COPY ${WIN_DOCKER_TMP_PATH}\\ingenialink\\_version.py ${env.WORKSPACE}\\ingenialink\\_version.py"
+                                            bat "XCOPY ${WIN_DOCKER_TMP_PATH}\\dist ${env.WORKSPACE}\\dist /s /i"
                                         }
-                                        bat """
-                                            cd ${WIN_DOCKER_TMP_PATH}
-                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
-                                            poetry run poe check-wheels
-                                            COPY ingenialink\\_version.py ${env.WORKSPACE}\\ingenialink\\_version.py
-                                            XCOPY dist ${env.WORKSPACE}\\dist /s /i
-                                        """
                                     }
                                 }
                                 stage('Make a static type analysis') {
