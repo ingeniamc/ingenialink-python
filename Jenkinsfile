@@ -69,6 +69,15 @@ def archiveWiresharkLogs() {
     archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
 }
 
+def runInFolder(folder = null, body) {
+  def cdCmd = folder ? "cd ${folder}\n " : ""
+  if (isUnix()) {
+    sh """${cdCmd}${body}"""
+  } else {
+    bat """${cdCmd}${body}"""
+  }
+}
+
 def createVirtualEnvironments(boolean installWheel = true, String workingDir = null, String pythonVersionList = "") {
     def versions = pythonVersionList?.trim() ? pythonVersionList : RUN_PYTHON_VERSIONS
     def pythonVersions = versions.split(',')
@@ -78,25 +87,22 @@ def createVirtualEnvironments(boolean installWheel = true, String workingDir = n
     }
     pythonVersions.each { version ->
         def venvName = ".venv${version}"
-        def cdCmd = workingDir ? "cd ${workingDir}" : ""
         if (isUnix()) {
-            sh """
-                ${cdCmd}
+            runInFolder(workingDir, """
                 python${version} -m venv --without-pip ${venvName}
                 . ${venvName}/bin/activate
                 poetry sync --no-root --all-groups --extras virtual_drive
                 deactivate
-            """
+            """)
         } else {
             def installWheelCmd = installWheel ? "poetry run poe install-wheel" : ""
-            bat """
-                ${cdCmd}
+            runInFolder(workingDir, """
                 py -${version} -m venv ${venvName}
                 call ${venvName}/Scripts/activate
                 poetry sync --no-root --all-groups --extras virtual_drive
                 ${installWheelCmd}
                 deactivate
-            """
+            """)
         }
     }
 }
