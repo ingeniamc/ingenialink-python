@@ -3,7 +3,7 @@ import re
 import shutil
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 from xml.etree import ElementTree
 
 import pytest
@@ -31,9 +31,8 @@ from ingenialink.register import RegAddressType
 from ingenialink.servo import Servo, ServoState
 
 if TYPE_CHECKING:
-    from ingenialink.canopen.network import CanopenNetwork
-    from ingenialink.ethercat.network import EthercatNetwork
-    from ingenialink.ethernet.network import EthernetNetwork
+    from summit_testing_framework.environment import Environment
+
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
@@ -57,17 +56,6 @@ class RegisterUpdateTest:
 def _clean(filename):
     if os.path.isfile(filename):
         os.remove(filename)
-
-
-def wait_until_alive(
-    servo, net: Union["CanopenNetwork", "EthernetNetwork", "EthercatNetwork"], timeout: float = None
-):
-    init_time = time.time()
-    # https://novantamotion.atlassian.net/browse/CIT-526
-    while not net.recover_from_disconnection(servo):
-        if timeout is not None and (init_time + timeout) < time.time():
-            pytest.fail("The drive is unresponsive after the recovery timeout.")
-        time.sleep(1)
 
 
 def skip_if_monitoring_is_not_available(servo):
@@ -294,9 +282,7 @@ def test_load_configuration_to_subnode_zero(setup_descriptor, servo, net):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_store_parameters(
-    servo, environment, net: Union["CanopenNetwork", "EthernetNetwork", "EthercatNetwork"]
-) -> None:
+def test_store_parameters(servo, environment: "Environment") -> None:
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
     initial_user_over_voltage_value = servo.read(user_over_voltage_register)
@@ -310,9 +296,10 @@ def test_store_parameters(
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
-    environment.power_cycle(wait_for_drives=False)
-
-    wait_until_alive(servo, net, timeout=20)
+    drives_reconnected = environment.power_cycle(
+        wait_for_drives=False, reconnect_drives=True, reconnect_timeout=20
+    )
+    assert drives_reconnected is True, "The drive is unresponsive after the recovery timeout."
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
@@ -320,9 +307,7 @@ def test_store_parameters(
 
 
 @pytest.mark.fsoe
-def test_store_safe_parameters(
-    servo, environment, net: Union["CanopenNetwork", "EthernetNetwork", "EthercatNetwork"]
-) -> None:
+def test_store_safe_parameters(servo, environment: "Environment") -> None:
     ss1_time_to_sto_register = "FSOE_SS1_TIME_TO_STO_1"
     # Change the value of a safe parameter
     initial_register_value = servo.read(ss1_time_to_sto_register)
@@ -334,9 +319,10 @@ def test_store_safe_parameters(
     # Store the parameters
     servo.store_parameters()
     # Power cycle the drive
-    environment.power_cycle(wait_for_drives=False)
-    # Wait until the drive recovers from the power cycle
-    wait_until_alive(servo, net, timeout=20)
+    drives_reconnected = environment.power_cycle(
+        wait_for_drives=False, reconnect_drives=True, reconnect_timeout=20
+    )
+    assert drives_reconnected is True, "The drive is unresponsive after the recovery timeout."
     # Verify that the value is retained after power cycling
     assert servo.read(ss1_time_to_sto_register) == new_register_value
 
@@ -344,9 +330,7 @@ def test_store_safe_parameters(
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_restore_parameters(
-    servo, environment, net: Union["CanopenNetwork", "EthernetNetwork", "EthercatNetwork"]
-) -> None:
+def test_restore_parameters(servo, environment: "Environment") -> None:
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
     new_user_over_voltage_value = servo.read(user_over_voltage_register) + 5
@@ -359,17 +343,16 @@ def test_restore_parameters(
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
-    environment.power_cycle(wait_for_drives=False)
-
-    wait_until_alive(servo, net, timeout=20)
+    drives_reconnected = environment.power_cycle(
+        wait_for_drives=False, reconnect_drives=True, reconnect_timeout=20
+    )
+    assert drives_reconnected is True, "The drive is unresponsive after the recovery timeout."
 
     assert servo.read(user_over_voltage_register) != new_user_over_voltage_value
 
 
 @pytest.mark.fsoe
-def test_restore_safe_parameters(
-    servo, environment, net: Union["CanopenNetwork", "EthernetNetwork", "EthercatNetwork"]
-) -> None:
+def test_restore_safe_parameters(servo, environment: "Environment") -> None:
     ss1_time_to_sto_register = "FSOE_SS1_TIME_TO_STO_1"
     # Change the value of a safe parameter
     initial_register_value = servo.read(ss1_time_to_sto_register)
@@ -381,9 +364,10 @@ def test_restore_safe_parameters(
     # Restore parameters
     servo.restore_parameters()
     # Power cycle the drive
-    environment.power_cycle(wait_for_drives=False)
-    # Wait until the drive recovers from the power cycle
-    wait_until_alive(servo, net, timeout=20)
+    drives_reconnected = environment.power_cycle(
+        wait_for_drives=False, reconnect_drives=True, reconnect_timeout=20
+    )
+    assert drives_reconnected is True, "The drive is unresponsive after the recovery timeout."
     # Verify that the value is restored to the default value after power cycling
     assert servo.read(ss1_time_to_sto_register) != new_register_value
 

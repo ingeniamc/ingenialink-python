@@ -596,7 +596,10 @@ class EthercatNetwork(Network):
 
         Raises:
             ILStateError: If slaves can not reach SafeOp or Op state.
+            RuntimeError: If EtherCAT master is not running.
         """
+        if not self.__is_master_running:
+            raise RuntimeError("EtherCAT master is not running.")
         op_servo_list = [servo for servo in self.servos if servo._rpdo_maps or servo._tpdo_maps]
         if not op_servo_list:
             logger.warning("There are no PDOs assigned to any connected slave.")
@@ -621,6 +624,9 @@ class EthercatNetwork(Network):
 
     def stop_pdos(self) -> None:
         """For all slaves not in PreOp state, set state to PreOp."""
+        if not self.__is_master_running:
+            logger.warning("EtherCAT master is not running, no PDOs to stop.")
+            return
         self._ecat_master.read_state()
         restore_servos_list = [
             servo for servo in self.servos if servo.slave.state != pysoem.PREOP_STATE
