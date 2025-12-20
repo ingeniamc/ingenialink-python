@@ -70,25 +70,27 @@ def archiveWiresharkLogs() {
 }
 
 def runInFolder(folder = null, body) {
-  def cdCmd = folder ? "cd ${folder}\n " : ""
-  if (isUnix()) {
-    sh """${cdCmd}${body}"""
-  } else {
-    bat """${cdCmd}${body}"""
-  }
-}
+    ctx = [
+        run: { cmd ->
+            def cdCmd = folder ? "cd ${folder}\n " : ""
+            if (isUnix()) {
+              sh """${cdCmd}${cmd}"""
+            } else {
+              bat """${cdCmd}${cmd}"""
+            }
+        }
+    ]
 
+    body(ctx)
+}
 
 def withVirtualEnv(venvPath, workingDir = null, body) {
     ctx = [
         run: { cmd ->
-            def cdCmd = workingDir ? "cd ${workingDir}\n " : ""
-            if (isUnix()) {
-                sh """${cdCmd}${cmd}"""
-            } else {
-                bat """${cdCmd}${cmd}"""
+            runInFolder(workingDir) { folderCtx ->
+                folderCtx.run(cmd)
             }
-        }
+        },
     ]
 
 
@@ -115,21 +117,25 @@ def createVirtualEnvironments(boolean installWheel = true, String workingDir = n
     pythonVersions.each { version ->
         def venvName = ".venv${version}"
         if (isUnix()) {
-            runInFolder(workingDir, """
+            runInFolder(workingDir) { ctx ->
+                ctx.run("""
                 python${version} -m venv --without-pip ${venvName}
                 . ${venvName}/bin/activate
                 poetry sync --no-root --all-groups --extras virtual_drive
                 deactivate
-            """)
+                """)
+            }
         } else {
             def installWheelCmd = installWheel ? "poetry run poe install-wheel" : ""
-            runInFolder(workingDir, """
+            runInFolder(workingDir) { ctx ->
+                ctx.run("""
                 py -${version} -m venv ${venvName}
                 call ${venvName}/Scripts/activate
                 poetry sync --no-root --all-groups --extras virtual_drive
                 ${installWheelCmd}
                 deactivate
-            """)
+                """)
+            }
         }
     }
 }
