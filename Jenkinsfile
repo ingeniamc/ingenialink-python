@@ -12,7 +12,7 @@ def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
 
 DEFAULT_PYTHON_VERSION = "3.9"
 
-ALL_PYTHON_VERSIONS = ["3.9", "3.10", "3.11", "3.12"]
+ALL_PYTHON_VERSIONS = ["3.9", "3.10", "3.11", "3.12"] as Set
 PYTHON_VERSION_MIN = "3.9"
 PYTHON_VERSION_MAX = "3.12"
 
@@ -190,7 +190,7 @@ class VEnvManager {
     /*
     * Create multiple virtual environments
     * Arguments:
-    *   pythonVersions: List of Python versions to create venvs for
+    *   pythonVersions: Iterable of Python versions to create venvs for (List or Set)
     *   workingDir: Directory where to create the venvs. If null, uses current workspace
     */
     def createVirtualEnvironments(Map args = [pythonVersions: [], workingDir: null]) {
@@ -225,11 +225,11 @@ class VEnvManager {
     * Iterate over specific virtual environments for a specific workspace/node
     * Arguments:
     *   workingDir: Directory where the venvs were created. Must be explicitly provided
-    *   pythonVersions: List of Python versions to iterate venvs for
+    *   pythonVersions: Iterable of Python versions to iterate venvs for (List or Set)
     *   body: Closure to execute for each venv. Receives the venv context
     */
 
-    def forPythons(String workingDir, List pythonVersions, body) {
+    def forPythons(String workingDir, Iterable pythonVersions, body) {
         pythonVersions.each { version ->
             def venvName = ".venv${version}"
             pipeline.withVirtualEnv(venvName, workingDir) { venv ->
@@ -264,7 +264,7 @@ class VEnvManager {
     /*
     * Create multiple Poetry virtual environments
     * Arguments: (as Map):
-    *   pythonVersions: List of Python versions to create venvs for 
+    *   pythonVersions: Iterable of Python versions to create venvs for (List or Set)
     *   workingDir: Directory where to create the venvs. If null, uses current workspace
     *   installCommand: Command to install dependencies with Poetry. If null, uses poetry_default_install_command
     *   additionalCommands: List of additional commands to run inside each venv after installation
@@ -284,7 +284,7 @@ class VEnvManager {
 class PyTestManager {
     def venvManager
     def pipeline
-    def runPythonVersions = []
+    def runPythonVersions = [] as Set
     def wiresharkScope = ""
     def clearSuccessfulWiresharkLogs = true
     def startWiresharkTimeoutS = 10.0
@@ -393,15 +393,15 @@ pipeline {
                         testManager.runPythonVersions = ALL_PYTHON_VERSIONS
                     } else {
                         if (env.PYTHON_VERSIONS == "MIN_MAX") {
-                            testManager.runPythonVersions = [PYTHON_VERSION_MIN, PYTHON_VERSION_MAX]
+                            testManager.runPythonVersions = [PYTHON_VERSION_MIN, PYTHON_VERSION_MAX] as Set
                         } else if (env.PYTHON_VERSIONS == "MIN") {
-                            testManager.runPythonVersions = [PYTHON_VERSION_MIN]
+                            testManager.runPythonVersions = [PYTHON_VERSION_MIN] as Set
                         } else if (env.PYTHON_VERSIONS == "MAX") {
-                            testManager.runPythonVersions = [PYTHON_VERSION_MAX]
+                            testManager.runPythonVersions = [PYTHON_VERSION_MAX] as Set
                         } else if (env.PYTHON_VERSIONS == "All") {
                             testManager.runPythonVersions = ALL_PYTHON_VERSIONS
                         } else { // Branch-indexing
-                            testManager.runPythonVersions = [PYTHON_VERSION_MIN]
+                            testManager.runPythonVersions = [PYTHON_VERSION_MIN] as Set
                         }
                     }
 
@@ -569,7 +569,10 @@ pipeline {
                                 stage('Create virtual environments') {
                                     steps {
                                         script {
-                                            venvManager.createPoetryEnvironment(workingDir: env.WORKING_FOLDER)
+                                            venvManager.createPoetryEnvironments(
+                                              pythonVersions: ([DEFAULT_PYTHON_VERSION] as Set) + testManager.runPythonVersions,
+                                              workingDir: env.WORKING_FOLDER
+                                            )
                                         }
                                     }
                                 }
