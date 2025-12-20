@@ -57,12 +57,27 @@ def clearCoverageFiles() {
     bat(script: 'del /f "*.coverage*"', returnStatus: true)
 }
 
-def runPython(command, py_version = DEFAULT_PYTHON_VERSION) {
-    if (isUnix()) {
-        sh "python${py_version} -I -m ${command}"
-    } else {
-        bat "py -${py_version} -I -m ${command}"
+/**
+ * Join path segments into a single path string
+ * - Accepts varargs (strings or anything with toString()).
+ * - Skips null/blank segments.
+ * - Trims leading/trailing separators on each segment to avoid double slashes.
+ * - Uses '/' on Linux, '\' on Windows.
+ */
+def joinPath(Object... parts) {
+  // Normalize segments: toString, trim, remove leading/trailing separators
+  def cleaned = (parts as List)
+    .findAll { it != null }
+    .collect { it.toString().trim() }
+    .findAll { it } // drop empty strings
+    .collect { seg ->
+      // Remove leading/trailing both types of separators to be safe
+      seg.replaceAll('^[\\\\/]+', '').replaceAll('[\\\\/]+$', '')
     }
+
+  // Join using POSIX separator, then normalize for Windows if needed
+  def joined = cleaned.join('/')
+  return isUnix() ? joined : joined.replace('/', '\\')
 }
 
 def archiveWiresharkLogs() {
@@ -84,27 +99,22 @@ def runInFolder(folder = null, body) {
     body(ctx)
 }
 
-def withVirtualEnv(venvPath, workingDir = null, body) {
+def withVirtualEnv(venvName, workingDir = null, body) {
     ctx = [
         run: { cmd ->
+            def activateCmd
+            if (isUnix()) {
+                activateCmd = ". ${venvName}/bin/activate\n "
+            } else {
+                activateCmd = "call ${venvName}\\Scripts\\activate\n "
+            }
             runInFolder(workingDir) { folderCtx ->
-                folderCtx.run(cmd)
+                folderCtx.run(activateCmd + cmd)
             }
         },
     ]
 
-
-    if (isUnix()) {
-        // Linux
-        withEnv(["PATH+PYTHON=${venvPath}/bin", "VIRTUAL_ENV=${venvPath}"]) {
-            body(ctx)
-        }
-    } else {
-        // Windows
-        withEnv(["PATH+PYTHON=${venvPath}\\Scripts", "VIRTUAL_ENV=${venvPath}"]) {
-            body(ctx)
-        }
-    }
+    body(ctx)
 }
 
 def createVirtualEnvironments(boolean installWheel = true, String workingDir = null, String pythonVersionList = "") {
@@ -118,23 +128,20 @@ def createVirtualEnvironments(boolean installWheel = true, String workingDir = n
         def venvName = ".venv${version}"
         if (isUnix()) {
             runInFolder(workingDir) { ctx ->
-                ctx.run("""
-                python${version} -m venv --without-pip ${venvName}
-                . ${venvName}/bin/activate
-                poetry sync --no-root --all-groups --extras virtual_drive
-                deactivate
-                """)
+                ctx.run("python${version} -m venv --without-pip ${venvName}")
+                withVirtualEnv(venvName, workingDir) { env ->
+                    env.run("poetry sync --no-root --all-groups --extras virtual_drive")
+                }
             }
         } else {
-            def installWheelCmd = installWheel ? "poetry run poe install-wheel" : ""
             runInFolder(workingDir) { ctx ->
-                ctx.run("""
-                py -${version} -m venv ${venvName}
-                call ${venvName}/Scripts/activate
-                poetry sync --no-root --all-groups --extras virtual_drive
-                ${installWheelCmd}
-                deactivate
-                """)
+                ctx.run("py -${version} -m venv ${venvName}")
+                withVirtualEnv(venvName, workingDir) { env ->
+                    env.run("poetry sync --no-root --all-groups --extras virtual_drive")
+                    if(installWheel) {
+                        env.run("poetry run poe install-wheel")
+                    }
+                }
             }
         }
     }
@@ -309,7 +316,7 @@ pipeline {
                                             pythonVersions.each { version ->
                                                 buildWheel(version)
                                             }
-                                            withVirtualEnv(WIN_DOCKER_TMP_PATH + "/.venv${DEFAULT_PYTHON_VERSION}", WIN_DOCKER_TMP_PATH) { env ->
+                                            withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", WIN_DOCKER_TMP_PATH) { env ->
                                                 env.run("poetry run poe check-wheels")
                                             }
                                             bat "COPY ${WIN_DOCKER_TMP_PATH}\\ingenialink\\_version.py ${env.WORKSPACE}\\ingenialink\\_version.py"
@@ -434,7 +441,7 @@ pipeline {
                                     steps {
                                         script {
                                             buildWheel(DEFAULT_PYTHON_VERSION)
-                                            withVirtualEnv(LIN_DOCKER_TMP_PATH + "/.venv${DEFAULT_PYTHON_VERSION}", LIN_DOCKER_TMP_PATH) { env ->
+                                            withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", LIN_DOCKER_TMP_PATH) { env ->
                                                 env.run("poetry run poe check-wheels")
                                             }
                                             sh "mkdir -p ${env.WORKSPACE}/dist"
