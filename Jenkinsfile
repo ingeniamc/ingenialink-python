@@ -80,28 +80,27 @@ def runInFolder(folder = null, body) {
 
 
 def withVirtualEnv(venvPath, workingDir = null, body) {
-    def makeCtx = {
-        return [
-            run: { cmd ->
-                def cdCmd = workingDir ? "cd ${workingDir}\n " : ""
-                if (isUnix()) {
-                    sh """${cdCmd}${cmd}"""
-                } else {
-                    bat """${cdCmd}${cmd}"""
-                }
+    ctx = [
+        run: { cmd ->
+            def cdCmd = workingDir ? "cd ${workingDir}\n " : ""
+            if (isUnix()) {
+                sh """${cdCmd}${cmd}"""
+            } else {
+                bat """${cdCmd}${cmd}"""
             }
-        ]
-    }
+        }
+    ]
+
 
     if (isUnix()) {
         // Linux
         withEnv(["PATH+PYTHON=${venvPath}/bin", "VIRTUAL_ENV=${venvPath}"]) {
-            body(makeCtx())
+            body(ctx)
         }
     } else {
         // Windows
         withEnv(["PATH+PYTHON=${venvPath}\\Scripts", "VIRTUAL_ENV=${venvPath}"]) {
-            body(makeCtx())
+            body(ctx)
         }
     }
 }
