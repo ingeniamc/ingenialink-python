@@ -12,7 +12,8 @@ def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
 
 DEFAULT_PYTHON_VERSION = "3.9"
 
-ALL_PYTHON_VERSIONS = "3.9,3.10,3.11,3.12"
+ALL_PYTHON_VERSIONS = "3.9,3.10,3.11,3.12" // TODO Deprecate this in favor of passing lists
+ALL_PYTHON_VERSIONS_LST = ALL_PYTHON_VERSIONS.split(',')
 RUN_PYTHON_VERSIONS = ""
 PYTHON_VERSION_MIN = "3.9"
 PYTHON_VERSION_MAX = "3.12"
@@ -57,7 +58,7 @@ def clearCoverageFiles() {
     bat(script: 'del /f "*.coverage*"', returnStatus: true)
 }
 
-/**
+/*
  * Join path segments into a single path string
  * - Accepts varargs (strings or anything with toString()).
  * - Skips null/blank segments.
@@ -188,6 +189,160 @@ def runTestHW(markers, setup_name = "", extra_args = "") {
     }
 }
 
+class VEnvManager {
+    def script
+    String default_python_version
+    String poetry_default_install_command
+
+    /*
+    * Map of workspace paths to their virtual environments.
+    * Structure: {
+    *   workspacePath1: {
+    *     venvName1: venvPath1,
+    *     venvName2: venvPath2,
+    *     ...
+    *   },
+    */
+    Map venvs = [:]
+
+    /*
+    * Constructor
+    * Arguments:
+    *   script: The pipeline script context (this)
+    *   default_python_version: Default Python version to use when creating venvs
+    *   poetry_default_install_command: Default command to install dependencies with Poetry
+    */
+    VEnvManager(Map args = [script: null, default_python_version: null, poetry_default_install_command: "poetry sync --all-groups"]) {
+        this.script = args.script
+        this.default_python_version = args.default_python_version
+        this.poetry_default_install_command = args.poetry_default_install_command
+    }
+
+    /* Get virtual environment path
+    * from a previously created venv
+    * Arguments:
+    *   venvName: Name of the virtual environment
+    *   workingDir: Directory where the venv was created. Required.
+    * Returns: Path to the virtual environment, or null if not found
+    */
+    def getVirtualEnvPath(String venvName, String workingDir) {
+        return venvs.get(workingDir)?.get(venvName)
+    }
+
+    /*
+    * Create a virtual environment
+    * Arguments (as Map):
+    *   venvName: Name of the virtual environment to create
+    *   pythonVersion: Python version to use (e.g., "3.9"). If null, uses default_python_version
+    *   workingDir: Directory where to create the venv. Required.
+    * Returns: Path to the created virtual environment
+    */
+    def createVirtualEnvironment(Map args = [venvName: null, pythonVersion: null, workingDir: null]) {
+        def ws = args.workingDir
+        if (!ws) {
+            throw new IllegalArgumentException("workingDir is required for createVirtualEnvironment")
+        }
+        // Use default python version if not specified
+        def pythonVersion = args.pythonVersion ?: this.default_python_version
+        // Use default venv name if not specified
+        def venvName = args.venvName ?: ".venv${pythonVersion}"
+
+        // Create the virtual environment using script context
+        script.runInFolder(ws) { ctx ->
+          ctx.run("py -${pythonVersion} -m venv --without-pip ${venvName}")
+        }
+
+        // Store the created venv path
+        def venvPath = script.joinPath(ws, venvName)
+        if (!venvs.containsKey(ws)) {
+            venvs[ws] = [:]
+        }
+        venvs[ws][venvName] = venvPath
+        return venvPath
+    }
+
+    /*
+    * Create multiple virtual environments
+    * Arguments:
+    *   pythonVersions: List of Python versions to create venvs for
+    *   workingDir: Directory where to create the venvs. If null, uses current workspace
+    */
+    def createVirtualEnvironments(Map args = [pythonVersions: [], workingDir: null]) {
+        args.pythonVersions.each { version ->
+            def venvName = ".venv${version}"
+            createVirtualEnvironment([venvName: venvName, pythonVersion: version, workingDir: args.workingDir])
+        }
+    }
+
+    /*
+    * Iterate over virtual environments for a specific workspace/node
+    * Arguments:
+    *   workingDir: Directory where the venvs were created. Must be explicitly provided (e.g., env.WORKSPACE)
+    *   body: Closure to execute for each venv. Receives the venv context as argument
+    */
+    def forEachEnvironment(String workingDir, body) {
+        if (!workingDir) {
+            throw new IllegalArgumentException("workingDir is required. Pass env.WORKSPACE from the caller's context.")
+        }
+        def venvMap = venvs.get(workingDir)
+        if (venvMap) {
+            venvMap.each { venvName, venvPath ->
+                script.withVirtualEnv(venvName, workingDir) { venv ->
+                    body(venv)
+                }
+            }
+        }
+    }
+
+    /*
+    * Create a Poetry virtual environment and install dependencies
+    * Arguments (as Map):
+    *  pythonVersion: Python version to use (e.g., "3.9"). If null, uses default_python_version
+    *  workingDir: Directory where to create the venv. If null, uses current workspace
+    *  installCommand: Command to install dependencies with Poetry. If null, uses poetry_default_install_command
+    *  additionalCommands: List of additional commands to run inside the venv after installation
+    */
+    def createPoetryEnvironment(Map args = [pythonVersion: null, workingDir: null, installCommand: null, additionalCommands: []]) {
+        def version = args.pythonVersion ?: this.default_python_version
+        def venvName = ".venv${version}"
+        def installCmd = args.containsKey('installCommand') && args.installCommand ? args.installCommand : this.poetry_default_install_command
+        def additionalCmds = args.containsKey('additionalCommands') && args.additionalCommands ? args.additionalCommands : []
+
+        createVirtualEnvironment([venvName: venvName, pythonVersion: version, workingDir: args.workingDir])
+        script.withVirtualEnv(venvName, args.workingDir) { venv ->
+            venv.run(installCmd)
+            additionalCmds.each { cmd ->
+                venv.run(cmd)
+            }
+        }
+    }
+
+    /*
+    * Create multiple Poetry virtual environments
+    * Arguments: (as Map):
+    *   pythonVersions: List of Python versions to create venvs for 
+    *   workingDir: Directory where to create the venvs. If null, uses current workspace
+    *   installCommand: Command to install dependencies with Poetry. If null, uses poetry_default_install_command
+    *   additionalCommands: List of additional commands to run inside each venv after installation
+    */
+    def createPoetryEnvironments(Map args = [pythonVersions: [], workingDir: null, installCommand: null, additionalCommands: []]) {
+        args.pythonVersions.each { version ->
+            createPoetryEnvironment(
+              pythonVersion: version,
+              workingDir: args.workingDir,
+              installCommand: args.installCommand,
+              additionalCommands: args.additionalCommands
+            )
+        }
+    }
+}
+
+VEnvManager venvManager = new VEnvManager(
+  script:this, 
+  default_python_version: DEFAULT_PYTHON_VERSION,
+  poetry_default_install_command: "poetry sync --no-root --all-groups --extras virtual_drive"
+)
+
 /* Build develop everyday 3 times starting at 19:00 UTC (21:00 Barcelona Time), running all tests */
 CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * * % PYTHON_VERSIONS=All''' : ""
 
@@ -285,7 +440,10 @@ pipeline {
                                 stage('Create virtual environments') {
                                     steps {
                                         script {
-                                            createVirtualEnvironments(false, WIN_DOCKER_TMP_PATH, ALL_PYTHON_VERSIONS)
+                                            venvManager.createPoetryEnvironments(
+                                              pythonVersions: ALL_PYTHON_VERSIONS_LST,
+                                              workingDir: WIN_DOCKER_TMP_PATH
+                                            )
                                         }
                                     }
                                 }
@@ -413,7 +571,9 @@ pipeline {
                                 }
                                 stage('Create virtual environments') {
                                     steps {
-                                        createVirtualEnvironments(false, LIN_DOCKER_TMP_PATH)
+                                        script {
+                                            venvManager.createPoetryEnvironment(workingDir: LIN_DOCKER_TMP_PATH)
+                                        }
                                     }
                                 }
                                 stage('Build wheels') {
@@ -598,7 +758,11 @@ pipeline {
                         stage('Create virtual environments') {
                             steps {
                                 script {
-                                    createVirtualEnvironments()
+                                    venvManager.createPoetryEnvironments(
+                                        pythonVersions: RUN_PYTHON_VERSIONS.split(','),
+                                        workingDir: env.WORKSPACE,
+                                        additionalCommands: ["poetry run poe install-wheel"]
+                                    )
                                 }
                             }
                         }
@@ -699,7 +863,11 @@ pipeline {
                         stage('Create virtual environments') {
                             steps {
                                 script {
-                                    createVirtualEnvironments()
+                                    venvManager.createPoetryEnvironments(
+                                        pythonVersions: RUN_PYTHON_VERSIONS.split(','),
+                                        workingDir: env.WORKSPACE,
+                                        additionalCommands: ["poetry run poe install-wheel"]
+                                    )
                                 }
                             }
                         }
@@ -765,7 +933,10 @@ pipeline {
                         unstash stash_name
                     }
                     bat "XCOPY ${env.WORKSPACE} ${WIN_DOCKER_TMP_PATH} /s /i /y /e /h"
-                    createVirtualEnvironments(true, WIN_DOCKER_TMP_PATH, DEFAULT_PYTHON_VERSION)
+                    venvManager.createPoetryEnvironment(
+                      workingDir: WIN_DOCKER_TMP_PATH,
+                      additionalCommands: ["poetry run poe install-wheel"]
+                    )
                     script {
                         withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", WIN_DOCKER_TMP_PATH) { venv ->
                             venv.run("poetry run poe cov-combine --${coverage_files}")
