@@ -126,21 +126,12 @@ def createVirtualEnvironments(boolean installWheel = true, String workingDir = n
     }
     pythonVersions.each { version ->
         def venvName = ".venv${version}"
-        if (isUnix()) {
-            runInFolder(workingDir) { ctx ->
-                ctx.run("python${version} -m venv --without-pip ${venvName}")
-                withVirtualEnv(venvName, workingDir) { venv ->
-                    venv.run("poetry sync --no-root --all-groups --extras virtual_drive")
-                }
-            }
-        } else {
-            runInFolder(workingDir) { ctx ->
-                ctx.run("py -${version} -m venv ${venvName}")
-                withVirtualEnv(venvName, workingDir) { venv ->
-                    venv.run("poetry sync --no-root --all-groups --extras virtual_drive")
-                    if(installWheel) {
-                        venv.run("poetry run poe install-wheel")
-                    }
+        runInFolder(workingDir) { ctx ->
+            ctx.run("py -${version} -m venv --without-pip ${venvName}")
+            withVirtualEnv(venvName, workingDir) { venv ->
+                venv.run("poetry sync --no-root --all-groups --extras virtual_drive")
+                if(installWheel) {
+                    venv.run("poetry run poe install-wheel")
                 }
             }
         }
