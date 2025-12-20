@@ -99,14 +99,14 @@ def runInFolder(folder = null, body) {
     body(ctx)
 }
 
-def withVirtualEnv(venvName, workingDir = null, body) {
+def withVirtualEnv(vvenvName, workingDir = null, body) {
     ctx = [
         run: { cmd ->
             def activateCmd
             if (isUnix()) {
-                activateCmd = ". ${venvName}/bin/activate\n "
+                activateCmd = ". ${vvenvName}/bin/activate\n "
             } else {
-                activateCmd = "call ${venvName}\\Scripts\\activate\n "
+                activateCmd = "call ${vvenvName}\\Scripts\\activate\n "
             }
             runInFolder(workingDir) { folderCtx ->
                 folderCtx.run(activateCmd + cmd)
@@ -129,17 +129,17 @@ def createVirtualEnvironments(boolean installWheel = true, String workingDir = n
         if (isUnix()) {
             runInFolder(workingDir) { ctx ->
                 ctx.run("python${version} -m venv --without-pip ${venvName}")
-                withVirtualEnv(venvName, workingDir) { env ->
-                    env.run("poetry sync --no-root --all-groups --extras virtual_drive")
+                withVirtualEnv(venvName, workingDir) { venv ->
+                    venv.run("poetry sync --no-root --all-groups --extras virtual_drive")
                 }
             }
         } else {
             runInFolder(workingDir) { ctx ->
                 ctx.run("py -${version} -m venv ${venvName}")
-                withVirtualEnv(venvName, workingDir) { env ->
-                    env.run("poetry sync --no-root --all-groups --extras virtual_drive")
+                withVirtualEnv(venvName, workingDir) { venv ->
+                    venv.run("poetry sync --no-root --all-groups --extras virtual_drive")
                     if(installWheel) {
-                        env.run("poetry run poe install-wheel")
+                        venv.run("poetry run poe install-wheel")
                     }
                 }
             }
@@ -150,19 +150,13 @@ def createVirtualEnvironments(boolean installWheel = true, String workingDir = n
 def buildWheel(py_version) {
      echo "Running build for Python ${py_version} in Docker environment"
     if (isUnix()) {
-        sh """
-            cd ${LIN_DOCKER_TMP_PATH}
-            . .venv${py_version}/bin/activate
-            poetry run poe build-wheel
-            deactivate
-        """
+        withVirtualEnv(".venv${py_version}", LIN_DOCKER_TMP_PATH) { venv ->
+            venv.run("poetry run poe build-wheel")
+        }
     } else {
-        bat """
-            cd ${WIN_DOCKER_TMP_PATH}
-            call .venv${py_version}/Scripts/activate
-            poetry run poe build-wheel
-            deactivate
-        """
+        withVirtualEnv(".venv${py_version}", WIN_DOCKER_TMP_PATH) { venv ->
+            venv.run("poetry run poe build-wheel")
+        }
     }
 }
 
@@ -177,11 +171,9 @@ def runTestHW(markers, setup_name = "", extra_args = "") {
                     try {
                         def setupArg = setup_name ? "--setup ${setup_name} " : ""
                         def venvName = ".venv${version}"
-                        bat """
-                            call ${venvName}/Scripts/activate
-                            poetry run poe tests --import-mode=importlib --cov=${venvName}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-${version}.xml --junit-prefix=${version} -m \"${markers}\" ${setupArg} --job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}"
-                            deactivate
-                        """
+                        withVirtualEnv(venvName) { venv ->
+                            venv.run("""poetry run poe tests --import-mode=importlib --cov=${venvName}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-${version}.xml --junit-prefix=${version} -m \"${markers}\" ${setupArg} --job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}""")
+                        }
                     } catch (err) {
                         unstable(message: "Tests failed")
                     } finally {
@@ -316,8 +308,8 @@ pipeline {
                                             pythonVersions.each { version ->
                                                 buildWheel(version)
                                             }
-                                            withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", WIN_DOCKER_TMP_PATH) { env ->
-                                                env.run("poetry run poe check-wheels")
+                                            withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", WIN_DOCKER_TMP_PATH) { venv ->
+                                                venv.run("poetry run poe check-wheels")
                                             }
                                             bat "COPY ${WIN_DOCKER_TMP_PATH}\\ingenialink\\_version.py ${env.WORKSPACE}\\ingenialink\\_version.py"
                                             bat "XCOPY ${WIN_DOCKER_TMP_PATH}\\dist ${env.WORKSPACE}\\dist /s /i"
@@ -326,20 +318,20 @@ pipeline {
                                 }
                                 stage('Make a static type analysis') {
                                     steps {
-                                        bat """
-                                            cd ${WIN_DOCKER_TMP_PATH}
-                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
-                                            poetry run poe type
-                                        """
+                                        script {
+                                            withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", WIN_DOCKER_TMP_PATH) { venv ->
+                                                venv.run("poetry run poe type")
+                                            }
+                                        }
                                     }
                                 }
                                 stage('Check formatting') {
                                     steps {
-                                        bat """
-                                            cd ${WIN_DOCKER_TMP_PATH}
-                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
-                                            poetry run poe format
-                                        """
+                                        script {
+                                            withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", WIN_DOCKER_TMP_PATH) { venv ->
+                                                venv.run("poetry run poe format")
+                                            }
+                                        }
                                     }
                                 }
                                 stage('Archive artifacts') {
@@ -354,12 +346,12 @@ pipeline {
                                 }
                                 stage('Generate documentation') {
                                     steps {
-                                        bat """
-                                            cd ${WIN_DOCKER_TMP_PATH}
-                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
-                                            poetry run poe install-wheel
-                                            poetry run poe docs
-                                        """
+                                        script {
+                                            withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", WIN_DOCKER_TMP_PATH) { venv ->
+                                                venv.run("poetry run poe install-wheel")
+                                                venv.run("poetry run poe docs")
+                                            }
+                                        }
                                     }
                                     post {
                                         success {
@@ -384,12 +376,11 @@ pipeline {
                                             pythonVersions.each { version ->
                                                 /* Windows docker does not have npcap/winpcap installed so runs no_pcap tests */
                                                 def win_marker = markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
-                                                bat """
-                                                    cd ${WIN_DOCKER_TMP_PATH}
-                                                    call .venv${version}/Scripts/activate
-                                                    poetry run poe install-wheel
-                                                    poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "${win_marker}" -o log_cli=True
-                                                """
+                                                withVirtualEnv(".venv${version}", WIN_DOCKER_TMP_PATH) { venv ->
+                                                    venv.run("poetry run poe install-wheel")
+                                                    venv.run("""poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "${win_marker}" -o log_cli=True
+                                                """)
+                                                }
                                             }
                                         }
                                     }
@@ -441,8 +432,8 @@ pipeline {
                                     steps {
                                         script {
                                             buildWheel(DEFAULT_PYTHON_VERSION)
-                                            withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", LIN_DOCKER_TMP_PATH) { env ->
-                                                env.run("poetry run poe check-wheels")
+                                            withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", LIN_DOCKER_TMP_PATH) { venv ->
+                                                venv.run("poetry run poe check-wheels")
                                             }
                                             sh "mkdir -p ${env.WORKSPACE}/dist"
                                             sh "cp ${LIN_DOCKER_TMP_PATH}/dist/* ${env.WORKSPACE}/dist/"
@@ -471,13 +462,10 @@ pipeline {
                                               pythonVersions.each { version ->
                                                 /* Linux has libpcap installed so does not run no_pcap, but runs pcap tests */
                                                 def lin_marker = markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
-                                                sh """
-                                                    cd ${LIN_DOCKER_TMP_PATH}
-                                                    . .venv${version}/bin/activate
-                                                    poetry run poe install-wheel
-                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "${lin_marker}" -o log_cli=True
-                                                    deactivate
-                                                """
+                                                withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", LIN_DOCKER_TMP_PATH) { venv ->
+                                                    venv.run("poetry run poe install-wheel")
+                                                    venv.run("""poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m '${lin_marker}' -o log_cli=True""")
+                                                }
                                             }
                                         }
                                     }
@@ -501,13 +489,10 @@ pipeline {
                                         script {
                                             def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
                                             pythonVersions.each { version ->
-                                                sh """
-                                                    cd ${LIN_DOCKER_TMP_PATH}
-                                                    . .venv${version}/bin/activate
-                                                    poetry run poe install-wheel
-                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True
-                                                    deactivate
-                                                """
+                                                withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", LIN_DOCKER_TMP_PATH) { venv ->
+                                                    venv.run("poetry run poe install-wheel")
+                                                    venv.run("""poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True""")
+                                                }
                                             }
                                         }
                                     }
@@ -790,14 +775,13 @@ pipeline {
                     }
                     bat "XCOPY ${env.WORKSPACE} ${WIN_DOCKER_TMP_PATH} /s /i /y /e /h"
                     createVirtualEnvironments(true, WIN_DOCKER_TMP_PATH, DEFAULT_PYTHON_VERSION)
-                    bat """
-                        cd ${WIN_DOCKER_TMP_PATH}
-                        call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
-                        poetry run poe cov-combine --${coverage_files}
-                        poetry run poe cov-report
-                        XCOPY coverage.xml ${env.WORKSPACE}
-                        deactivate
-                    """
+                    script {
+                        withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", WIN_DOCKER_TMP_PATH) { venv ->
+                            venv.run("poetry run poe cov-combine --${coverage_files}")
+                            venv.run("poetry run poe cov-report")
+                            venv.run("XCOPY coverage.xml ${env.WORKSPACE}")
+                        }
+                    }
                     recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
                     archiveArtifacts artifacts: '*.xml'
                 }
