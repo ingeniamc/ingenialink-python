@@ -280,7 +280,7 @@ class ConfigRegister:
 
         # Serialize 'data' attribute (stored as bytes) if present
         if self.data is not None:
-            register_xml.set("data", self.data.hex())
+            register_xml.set(self.__DATA_ATTR, self.data.hex())
 
         return register_xml
 
