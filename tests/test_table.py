@@ -265,14 +265,11 @@ def test_table_index_out_of_bounds(servo_with_table):
 
 
 def test_save_and_load_xcf_with_tables(virtual_drive_with_tables, tmp_path):
-    """Save configuration to XCF from a servo that has tables (virtual or real).
+    """Save configuration to XCF from a virtual servo that has tables.
 
     This test writes integer values to a table, saves the servo configuration to an XCF file,
     verifies the XCF contains a table entry, changes the table values on the servo,
-    then calls `servo.load_configuration` to restore them from the XCF. The test uses the
-    `servo_with_table` parametrized fixture so it will run on both virtual and hardware
-    (real) servos where applicable.
-    """
+    then calls `servo.load_configuration` to restore them from the XCF."""
     servo, table = virtual_drive_with_tables
 
     # Write integer values to two table entries

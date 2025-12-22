@@ -327,7 +327,13 @@ class TableElement:
         data_str = _get_attribute_from_element(
             element, cls.__DATA_ATTR, context=table_uid, kind="table element"
         )
-        data = bytes.fromhex(data_str)
+        try:
+            data = bytes.fromhex(data_str)
+        except ValueError as exc:
+            context = f" in table '{table_uid}'" if table_uid else ""
+            raise ValueError(
+                f"Invalid hexadecimal data '{data_str}' for attribute '{cls.__DATA_ATTR}'{context}"
+            ) from exc
 
         return cls(address, data)
 
@@ -389,33 +395,6 @@ class ConfigTable:
                 logger.warning(f"Cannot load table element for table {uid}: {e}")
 
         return cls(uid, subnode, elements)
-
-    @classmethod
-    def __get_attribute_from_element(
-        cls, element: ElementTree.Element, attribute: str, table_uid: str = ""
-    ) -> str:
-        """Get attribute value from XML element.
-
-        Args:
-            element: XML element.
-            attribute: attribute name.
-            table_uid: Table UID for error messages.
-
-        Returns:
-            attribute value.
-
-        Raises:
-            ValueError: attribute not found in element.
-        """
-        attr_value = element.attrib.get(attribute)
-        if attr_value is not None:
-            return attr_value
-        error_msg = f"Missing {attribute} attribute"
-        if table_uid:
-            error_msg += f" for table {table_uid}"
-        else:
-            error_msg += " in table"
-        raise ValueError(error_msg)
 
     def to_xcf(self) -> ElementTree.Element:
         """Creates an XML element with class data.
