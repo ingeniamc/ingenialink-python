@@ -213,7 +213,10 @@ def convert_int_to_ip(int_ip: int) -> str:
     return f"{drive_ip1}.{drive_ip2}.{drive_ip3}.{drive_ip4}"
 
 
-def convert_bytes_to_dtype(data: bytes, dtype: RegDtype) -> Union[float, int, str, bytes]:
+REG_VALUE = Union[float, int, str, bytes]
+
+
+def convert_bytes_to_dtype(data: bytes, dtype: RegDtype) -> REG_VALUE:
     """Convert data in bytes to corresponding dtype.
 
     Bytes have to be ordered in LSB.
@@ -253,7 +256,7 @@ def convert_bytes_to_dtype(data: bytes, dtype: RegDtype) -> Union[float, int, st
     return value
 
 
-def convert_dtype_to_bytes(data: Union[int, float, str, bytes], dtype: RegDtype) -> bytes:
+def convert_dtype_to_bytes(data: REG_VALUE, dtype: RegDtype) -> bytes:
     """Convert data in dtype to bytes.
 
     Bytes will be ordered in LSB.

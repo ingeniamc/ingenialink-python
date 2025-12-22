@@ -1,0 +1,262 @@
+import pytest
+
+import tests.resources
+from ingenialink import Servo
+from ingenialink.dictionary import DictionaryTable
+from ingenialink.table import Table
+
+
+@pytest.fixture
+def virtual_drive_with_tables(virtual_drive_custom_dict) -> tuple[Servo, Table]:
+    """Fixture that provides a virtual servo with user memory table.
+
+    Returns:
+        Tuple[Servo, Table]: The virtual servo and the user memory table.
+    """
+    dict_path = tests.resources.DEN_NET_E_WITH_TABLES
+    _, _, servo = virtual_drive_custom_dict(dict_path)
+    table = servo.get_table(uid="MEM_USR", axis=0)
+    return servo, table
+
+
+@pytest.fixture
+def real_servo_with_tables(servo) -> tuple[Servo, Table]:
+    """Fixture that provides a real servo with user memory table.
+
+    Real servos have table functionality in hardware, but their XDF dictionaries
+    don't define the tables. This fixture injects the table definition.
+
+    Raises:
+        AssertionError: If the MEM_USR table is already defined in the XDF.
+
+    Returns:
+        Tuple[Servo, Table]: The real servo and the user memory table.
+    """
+    # Assert that the table is not already defined in the XDF
+    # When XDFs are updated to include tables, this assertion will fail
+    # and we can remove this injection logic
+    try:
+        servo.get_table(uid="MEM_USR", axis=0)
+        raise AssertionError(
+            "MEM_USR table is now defined in the XDF dictionary! "
+            "Please remove the table injection logic from this fixture."
+        )
+    except (ValueError, KeyError):
+        # Expected: table not found in dictionary
+        pass
+
+    # Inject the MEM_USR table definition into the servo's dictionary
+    # The table uses MEM_USR_ADDR as index register and MEM_USR_DATA as value register
+    mem_usr_table = DictionaryTable(
+        id="MEM_USR",
+        axis=None,  # Non-axis specific
+        id_index="MEM_USR_ADDR",
+        id_value="MEM_USR_DATA",
+    )
+
+    # Add the table to axis 0 in the dictionary
+    if 0 not in servo.dictionary._tables:
+        servo.dictionary._tables[0] = {}
+    servo.dictionary._tables[0]["MEM_USR"] = mem_usr_table
+
+    # Now get the table from the servo
+    table = servo.get_table(uid="MEM_USR", axis=None)
+    return servo, table
+
+
+def test_servo_get_table(virtual_drive_custom_dict):
+    """Test that Servo.get_table method works correctly."""
+    dict_path = tests.resources.DEN_NET_E_WITH_TABLES
+
+    _, _, servo = virtual_drive_custom_dict(dict_path)
+
+    # Test with existing table
+    uid = "COGGING_COMP"
+    table = servo.get_table(uid=uid, axis=None)
+    assert isinstance(table, Table)
+
+    # Test with axis specified
+    table_axis1 = servo.get_table(uid=uid, axis=1)
+    assert isinstance(table_axis1, Table)
+
+    # Test with non-existent table
+    uid = "TEST_UID"
+    with pytest.raises(ValueError, match=f"Table {uid} not found."):
+        servo.get_table(uid=uid, axis=None)
+
+    # Test with non-existent axis
+    with pytest.raises(KeyError, match="axis=3 does not exist."):
+        servo.get_table(uid=uid, axis=3)
+
+    # Test with wrong axis for a table
+    uid = "COGGING_COMP"
+    with pytest.raises(KeyError, match=f"Table {uid} not present in axis=0"):
+        servo.get_table(uid=uid, axis=0)
+
+    # Test with table of non-axis
+    uid = "MEM_USR"
+    table_1 = servo.get_table(uid=uid, axis=None)
+    assert isinstance(table_1, Table)
+    table_2 = servo.get_table(uid=uid, axis=0)
+    assert isinstance(table_2, Table)
+
+
+@pytest.fixture(
+    params=[
+        pytest.param("virtual_drive_with_tables", id="virtual"),
+        pytest.param(
+            "real_servo_with_tables",
+            marks=[
+                pytest.mark.fsoe
+            ],  # Fsoe is not related to tables, but is a modern firmware that does have user memory
+            id="real",
+        ),
+    ]
+)
+def servo_with_table(request) -> tuple[Servo, Table]:
+    """Parametrized fixture that provides both virtual and real servos with tables.
+
+    This fixture makes each test run as a virtual drive with custom dictionary,
+    and as a real servo with injected table definition.
+    Each case is run separately in the corresponding Jenkins stage
+
+    Returns:
+        Tuple[Servo, Table]: The servo and table from either virtual or real fixture.
+    """
+    return request.getfixturevalue(request.param)
+
+
+def test_table_set_and_get_value(servo_with_table):
+    """Test that Table.set_value and get_value methods work correctly."""
+    _servo, table = servo_with_table
+
+    # Test writing and reading a value
+    index = 0
+    value = 12345
+    table.set_value(index, value)
+    read_value = table.get_value(index)
+    assert read_value == value
+
+    # Test writing and reading at different indices
+    test_data = {
+        0: 100,
+        1: 200,
+        5: 500,
+        10: 1000,
+    }
+
+    for idx, val in test_data.items():
+        table.set_value(idx, val)
+
+    for idx, val in test_data.items():
+        read_val = table.get_value(idx)
+        assert read_val == val, f"Expected {val} at index {idx}, got {read_val}"
+
+
+def test_table_iteration(servo_with_table):
+    """Test that Table supports iteration over all values."""
+    _servo, table = servo_with_table
+
+    # Write known values to the table
+    test_values = [10, 20, 30, 40, 50]
+    for idx, val in enumerate(test_values):
+        table.set_value(idx, val)
+
+    # Iterate over the table and verify values
+    values_read = []
+    for value in table:
+        values_read.append(value)
+        if len(values_read) >= len(test_values):
+            break
+
+    # Verify the first few values match what we wrote
+    for i, expected_val in enumerate(test_values):
+        assert values_read[i] == expected_val, (
+            f"Index {i}: expected {expected_val}, got {values_read[i]}"
+        )
+
+
+def test_table_bulk_write(servo_with_table):
+    """Test that Table.write() method works for writing multiple values at once."""
+    _servo, table = servo_with_table
+
+    # Test writing a list of values starting from default index (min_index)
+    test_values = [10, 20, 30, 40, 50]
+    table.write(test_values)
+
+    # Verify the values were written correctly
+    for idx, expected_val in enumerate(test_values):
+        read_val = table.get_value(idx)
+        assert read_val == expected_val, f"Index {idx}: expected {expected_val}, got {read_val}"
+
+
+def test_table_bulk_write_with_start_index(servo_with_table):
+    """Test that Table.write() works with a custom start index."""
+    _servo, table = servo_with_table
+
+    # Write values starting at index 5
+    start_index = 5
+    test_values = [100, 200, 300]
+    table.write(test_values, start_index=start_index)
+
+    # Verify the values were written at the correct indices
+    for i, expected_val in enumerate(test_values):
+        idx = start_index + i
+        read_val = table.get_value(idx)
+        assert read_val == expected_val, f"Index {idx}: expected {expected_val}, got {read_val}"
+
+
+def test_table_bulk_read(servo_with_table):
+    """Test that Table.read() method works for reading multiple values at once."""
+    _servo, table = servo_with_table
+
+    # Write known values
+    test_values = [111, 222, 333, 444, 555]
+    for idx, val in enumerate(test_values):
+        table.set_value(idx, val)
+
+    # Read all values using bulk read
+    read_values = table.read(start_index=0, count=len(test_values))
+
+    # Verify
+    assert read_values == test_values, f"Expected {test_values}, got {read_values}"
+
+
+def test_table_bracket_notation(servo_with_table):
+    """Test that Table supports bracket notation for reading and writing."""
+    _servo, table = servo_with_table
+
+    # Test writing with bracket notation
+    table[0] = 123
+    table[1] = 456
+    table[5] = 789
+
+    # Test reading with bracket notation
+    assert table[0] == 123
+    assert table[1] == 456
+    assert table[5] == 789
+
+
+def test_table_len(servo_with_table):
+    """Test that Table supports len() function."""
+    _servo, table = servo_with_table
+
+    # Get the length of the table
+    table_len = len(table)
+
+    # Verify it's a positive integer
+    assert isinstance(table_len, int)
+    assert table_len > 0
+
+
+def test_table_index_out_of_bounds(servo_with_table):
+    """Test that Table raises IndexError for out of bounds access."""
+    _servo, table = servo_with_table
+
+    # Try to access an index that's definitely out of bounds
+    with pytest.raises(IndexError, match="out of range"):
+        _ = table[99999]
+
+    # Try to write to an index that's out of bounds
+    with pytest.raises(IndexError, match="out of range"):
+        table[99999] = 123
