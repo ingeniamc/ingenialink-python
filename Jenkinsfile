@@ -79,40 +79,6 @@ def archiveWiresharkLogs() {
     archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
 }
 
-def runInFolder(folder = null, body) {
-    ctx = [
-        run: { cmd ->
-            def cdCmd = folder ? "cd ${folder}\n " : ""
-            if (isUnix()) {
-              sh """${cdCmd}${cmd}"""
-            } else {
-              bat """${cdCmd}${cmd}"""
-            }
-        }
-    ]
-
-    body(ctx)
-}
-
-def withVirtualEnv(venvName, workingDir = null, body) {
-    ctx = [
-        run: { cmd ->
-            def activateCmd
-            if (isUnix()) {
-                activateCmd = ". ${venvName}/bin/activate\n "
-            } else {
-                activateCmd = "call ${venvName}\\Scripts\\activate\n "
-            }
-            runInFolder(workingDir) { folderCtx ->
-                folderCtx.run(activateCmd + cmd)
-            }
-        },
-
-        name: venvName,
-    ]
-
-    body(ctx)
-}
 
 
 class VEnvManager {
@@ -132,6 +98,15 @@ class VEnvManager {
     Map venvs = [:]
 
     /*
+    * Cache for OS type per workspace.
+    * Structure: {
+    *   workspacePath1: true/false (true = Unix, false = Windows),
+    *   ...
+    * }
+    */
+    Map osCache = [:]
+
+    /*
     * Constructor
     * Arguments:
     *   pipeline: The pipeline script context (this)
@@ -144,15 +119,81 @@ class VEnvManager {
         this.poetry_default_install_command = args.poetry_default_install_command
     }
 
-    /* Get virtual environment path
-    * from a previously created venv
+    /*
+    * Generate the default virtual environment name for a given Python version
+    * Convention: .venv{pythonVersion} (e.g., ".venv3.9", ".venv3.10")
+    * Arguments:
+    *   pythonVersion: Python version string (e.g., "3.9", "3.10")
+    * Returns: Default venv name following the convention
+    */
+    def pythonVersionDefaultVenvName(String pythonVersion) {
+        return ".venv${pythonVersion}"
+    }
+
+    /*
+    * Check if a workspace is running on Unix (cached)
+    * Arguments:
+    *   workingDir: Directory/workspace path (optional, uses current pipeline isUnix if not provided)
+    * Returns: true if Unix, false if Windows
+    */
+    def isUnixWorkspace(String workingDir = null) {
+        if (!workingDir) {
+            return this.pipeline.isUnix()
+        }
+
+        if (!this.osCache.containsKey(workingDir)) {
+            this.osCache[workingDir] = this.pipeline.isUnix()
+        }
+        return this.osCache[workingDir]
+    }
+
+    /*
+    * Execute code within a specific folder
+    * Arguments:
+    *   folder: Folder path to change to (optional)
+    *   body: Closure to execute inside the folder
+    */
+    def runInFolder(folder = null, body) {
+        def ctx = [
+            run: { cmd ->
+                def cdCmd = folder ? "cd ${folder}\n " : ""
+                if (this.isUnixWorkspace(folder)) {
+                    this.pipeline.sh """${cdCmd}${cmd}"""
+                } else {
+                    this.pipeline.bat """${cdCmd}${cmd}"""
+                }
+            }
+        ]
+
+        body(ctx)
+    }
+
+    /*
+    * Execute code within a virtual environment
     * Arguments:
     *   venvName: Name of the virtual environment
-    *   workingDir: Directory where the venv was created. Required.
-    * Returns: Path to the virtual environment, or null if not found
+    *   workingDir: Working directory where the venv is located (optional)
+    *   pythonVersion: Python version for this venv (optional, used to set venv.version)
+    *   body: Closure to execute inside the venv
     */
-    def getVirtualEnvPath(String venvName, String workingDir) {
-        return venvs.get(workingDir)?.get(venvName)
+    def withVirtualEnv(String venvName, workingDir = null, String pythonVersion = null, body) {
+        def ctx = [
+            run: { cmd ->
+                def activateCmd
+                if (this.isUnixWorkspace(workingDir)) {
+                    activateCmd = ". ${venvName}/bin/activate\n "
+                } else {
+                    activateCmd = "call ${venvName}\\Scripts\\activate\n "
+                }
+                this.runInFolder(workingDir) { folderCtx ->
+                    folderCtx.run(activateCmd + cmd)
+                }
+            },
+            name: venvName,
+            version: pythonVersion,
+        ]
+
+        body(ctx)
     }
 
     /*
@@ -171,19 +212,19 @@ class VEnvManager {
         // Use default python version if not specified
         def pythonVersion = args.pythonVersion ?: this.default_python_version
         // Use default venv name if not specified
-        def venvName = args.venvName ?: ".venv${pythonVersion}"
+        def venvName = args.venvName ?: this.pythonVersionDefaultVenvName(pythonVersion)
 
         // Create the virtual environment using pipeline context
-        pipeline.runInFolder(ws) { ctx ->
+        this.runInFolder(ws) { ctx ->
           ctx.run("py -${pythonVersion} -m venv --without-pip ${venvName}")
         }
 
         // Store the created venv path
-        def venvPath = pipeline.joinPath(ws, venvName)
-        if (!venvs.containsKey(ws)) {
-            venvs[ws] = [:]
+        def venvPath = this.pipeline.joinPath(ws, venvName)
+        if (!this.venvs.containsKey(ws)) {
+            this.venvs[ws] = [:]
         }
-        venvs[ws][venvName] = venvPath
+        this.venvs[ws][venvName] = venvPath
         return venvPath
     }
 
@@ -195,8 +236,11 @@ class VEnvManager {
     */
     def createVirtualEnvironments(Map args = [pythonVersions: [], workingDir: null]) {
         args.pythonVersions.each { version ->
-            def venvName = ".venv${version}"
-            createVirtualEnvironment([venvName: venvName, pythonVersion: version, workingDir: args.workingDir])
+            this.createVirtualEnvironment([
+              venvName: this.pythonVersionDefaultVenvName(version),
+              pythonVersion: version,
+              workingDir: args.workingDir
+            ])
         }
     }
 
@@ -207,7 +251,7 @@ class VEnvManager {
     *   body: Closure to execute for each venv. Receives the venv context as argument
     */
     def forEachEnvironment(String workingDir, body) {
-        def venvMap = venvs.get(workingDir)
+        def venvMap = this.venvs.get(workingDir)
         if (!venvMap) {
           throw new IllegalArgumentException("No virtual environments found for workingDir: ${workingDir}. Did you call createVirtualEnvironment or createPoetryEnvironments first?")
         }
@@ -215,11 +259,24 @@ class VEnvManager {
           throw new IllegalArgumentException("Virtual environments map is empty for workingDir: ${workingDir}")
         }
         venvMap.each { venvName, venvPath ->
-            pipeline.withVirtualEnv(venvName, workingDir) { venv ->
+            this.withVirtualEnv(venvName, workingDir) { venv ->
                 body(venv)
             }
         }
     }
+
+   /*
+    * Execute code within a Python virtual environment
+    * Arguments:
+    *   pythonVersion: Python version to use (required)
+    *   workingDir: Directory where the venv is located
+    *   body: Closure to execute inside the venv
+    */
+    def withPython(String pythonVersion, String workingDir = null, body) {
+        def venvName = this.pythonVersionDefaultVenvName(pythonVersion)
+        this.withVirtualEnv(venvName, workingDir, pythonVersion, body)
+    }
+
 
     /**
     * Iterate over specific virtual environments for a specific workspace/node
@@ -231,12 +288,12 @@ class VEnvManager {
 
     def forPythons(String workingDir, Iterable pythonVersions, body) {
         pythonVersions.each { version ->
-            def venvName = ".venv${version}"
-            pipeline.withVirtualEnv(venvName, workingDir) { venv ->
+            this.withPython(version, workingDir) { venv ->
                 body(venv)
             }
         }
     }
+
 
     /*
     * Create a Poetry virtual environment and install dependencies
@@ -245,15 +302,16 @@ class VEnvManager {
     *  workingDir: Directory where to create the venv. If null, uses current workspace
     *  installCommand: Command to install dependencies with Poetry. If null, uses poetry_default_install_command
     *  additionalCommands: List of additional commands to run inside the venv after installation
+    * Note: Virtual environment is created using default naming convention .venv{pythonVersion}
     */
     def createPoetryEnvironment(Map args = [pythonVersion: null, workingDir: null, installCommand: null, additionalCommands: []]) {
         def version = args.pythonVersion ?: this.default_python_version
-        def venvName = ".venv${version}"
-        def installCmd = args.containsKey('installCommand') && args.installCommand ? args.installCommand : this.poetry_default_install_command
-        def additionalCmds = args.containsKey('additionalCommands') && args.additionalCommands ? args.additionalCommands : []
+        def venvName = this.pythonVersionDefaultVenvName(version)
+        def installCmd = args.installCommand ?: this.poetry_default_install_command
+        def additionalCmds = args.additionalCommands ?: []
 
-        createVirtualEnvironment([venvName: venvName, pythonVersion: version, workingDir: args.workingDir])
-        pipeline.withVirtualEnv(venvName, args.workingDir) { venv ->
+        this.createVirtualEnvironment([venvName: venvName, pythonVersion: version, workingDir: args.workingDir])
+        this.withVirtualEnv(venvName, args.workingDir) { venv ->
             venv.run(installCmd)
             additionalCmds.each { cmd ->
                 venv.run(cmd)
@@ -271,7 +329,7 @@ class VEnvManager {
     */
     def createPoetryEnvironments(Map args = [pythonVersions: [], workingDir: null, installCommand: null, additionalCommands: []]) {
         args.pythonVersions.each { version ->
-            createPoetryEnvironment(
+            this.createPoetryEnvironment(
               pythonVersion: version,
               workingDir: args.workingDir,
               installCommand: args.installCommand,
@@ -300,11 +358,11 @@ class PyTestManager {
             pipeline.timeout(time: 1, unit: 'HOURS') {
                 pipeline.clearCoverageFiles()
                 def firstIteration = true
-                venvManager.forPythons(pipeline.env.WORKSPACE, runPythonVersions) { venv, version ->
+                venvManager.forPythons(pipeline.env.WORKSPACE, runPythonVersions) { venv ->
                     pipeline.withEnv(["WIRESHARK_SCOPE=${wiresharkScope}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${clearSuccessfulWiresharkLogs}", "START_WIRESHARK_TIMEOUT_S=${startWiresharkTimeoutS}"]) {
                         try {
                             def setupArg = setup_name ? "--setup ${setup_name} " : ""
-                            venv.run("""poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-${version}.xml --junit-prefix=${version} -m \"${markers}\" ${setupArg} --job_name=\"${pipeline.env.JOB_NAME}-#${pipeline.env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}""")
+                            venv.run("""poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-${venv.version}.xml --junit-prefix=${venv.version} -m \"${markers}\" ${setupArg} --job_name=\"${pipeline.env.JOB_NAME}-#${pipeline.env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}""")
                         } catch (err) {
                             pipeline.unstable(message: "Tests failed")
                         } finally {
@@ -466,7 +524,7 @@ pipeline {
                                 stage('Make a static type analysis') {
                                     steps {
                                         script {
-                                            withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", env.WORKING_FOLDER) { venv ->
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION, env.WORKING_FOLDER) { venv ->
                                                 venv.run("poetry run poe type")
                                             }
                                         }
@@ -475,7 +533,7 @@ pipeline {
                                 stage('Check formatting') {
                                     steps {
                                         script {
-                                            withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", env.WORKING_FOLDER) { venv ->
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION, env.WORKING_FOLDER) { venv ->
                                                 venv.run("poetry run poe format")
                                             }
                                         }
@@ -494,7 +552,7 @@ pipeline {
                                 stage('Generate documentation') {
                                     steps {
                                         script {
-                                            withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", env.WORKING_FOLDER) { venv ->
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION, env.WORKING_FOLDER) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                                 venv.run("poetry run poe docs")
                                             }
@@ -521,9 +579,9 @@ pipeline {
                                         script {
                                             /* Windows docker does not have npcap/winpcap installed so runs no_pcap tests */
                                             def win_marker = markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
-                                            venvManager.forPythons(env.WORKING_FOLDER, testManager.runPythonVersions) { venv, version ->
+                                            venvManager.forPythons(env.WORKING_FOLDER, testManager.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
-                                                venv.run("""poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "${win_marker}" -o log_cli=True""")
+                                                venv.run("""poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m "${win_marker}" -o log_cli=True""")
                                             }
                                         }
                                     }
@@ -584,7 +642,7 @@ pipeline {
                                         script {
                                             // Linux for now does not contain compiled code
                                             // so building on one python version is enough
-                                            withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", env.WORKING_FOLDER) { venv ->
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION, env.WORKING_FOLDER) { venv ->
                                                 venv.run("poetry run poe build-wheel")
                                                 venv.run("poetry run poe check-wheels")
                                             }
@@ -612,7 +670,7 @@ pipeline {
                                     steps {
                                         script {
                                             def lin_marker = markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
-                                            withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", env.WORKING_FOLDER) { venv ->
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION, env.WORKING_FOLDER) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                                 venv.run("""poetry run poe tests --junitxml=pytest_reports/junit-tests-${venv.name}.xml --junit-prefix=${venv.name} -m '${lin_marker}' -o log_cli=True""")
                                             }
@@ -636,9 +694,9 @@ pipeline {
                                     }
                                     steps {
                                         script {
-                                            venvManager.forPythons(env.WORKING_FOLDER, testManager.runPythonVersions) { venv, version ->
+                                            venvManager.forPythons(env.WORKING_FOLDER, testManager.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
-                                                venv.run("""poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True""")
+                                                venv.run("""poetry run poe tests --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True""")
                                             }
                                         }
                                     }
@@ -956,7 +1014,7 @@ pipeline {
                       additionalCommands: ["poetry run poe install-wheel"]
                     )
                     script {
-                        withVirtualEnv(".venv${DEFAULT_PYTHON_VERSION}", env.WORKING_FOLDER) { venv ->
+                        venvManager.withPython(DEFAULT_PYTHON_VERSION, env.WORKING_FOLDER) { venv ->
                             venv.run("poetry run poe cov-combine --${coverage_files}")
                             venv.run("poetry run poe cov-report")
                             venv.run("XCOPY coverage.xml ${env.WORKSPACE}")
