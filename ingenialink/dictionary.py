@@ -1352,6 +1352,8 @@ class DictionaryV3(Dictionary):
         default = bytes.fromhex(register.attrib[self.__DEFAULT_ATTR])
         cat_id = register.attrib[self.__CAT_ID_ATTR]
         units = register.attrib.get(self.__UNITS_ATTR)
+        if units == "none":
+            units = None
         # Labels
         labels_element = self._find_and_check(register, self.__LABELS_ELEMENT)
         labels = self.__read_labels(labels_element)
@@ -1444,6 +1446,8 @@ class DictionaryV3(Dictionary):
         default = bytes.fromhex(subitem.attrib[self.__DEFAULT_ATTR])
         cat_id = subitem.attrib[self.__CAT_ID_ATTR]
         units = subitem.attrib.get(self.__UNITS_ATTR)
+        if units == "none":
+            units = None
         is_node_id_dependent = (
             subitem.attrib.get(self.__IS_NODE_ID_DEPENDENT_ATTR)
             == self.__IS_NODE_ID_DEPENDENT_TRUE_ATTR_VALUE
@@ -1909,7 +1913,9 @@ class DictionaryV2(Dictionary):
             return None
 
         try:
-            units = register.attrib["units"]
+            units: Optional[str] = register.attrib["units"]
+            if units == "none":
+                units = None
             pdo_access = RegCyclicType(register.attrib.get("cyclic", "CONFIG"))
 
             # Data type

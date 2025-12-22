@@ -1105,20 +1105,32 @@ class Servo:
             return
         self.__observers_servo_state.remove(callback)
 
-    def is_alive(self) -> bool:
+    def is_alive(self, attemps: int = 1) -> bool:
         """Checks if the servo responds to a reading a register.
+
+        Args:
+            attemps: Number of attemps to check if the servo is alive.
+                Defaults to 1.
 
         Returns:
             Return code with the result of the read.
-
         """
-        _is_alive = True
-        try:
-            self.read(self.STATUS_WORD_REGISTERS)
-        except ILError as e:
-            _is_alive = False
-            logger.error(e)
-        return _is_alive
+
+        def _is_servo_alive() -> bool:
+            try:
+                self.read(self.STATUS_WORD_REGISTERS)
+                return True
+            except ILError:
+                return False
+
+        unsuccessful_attemps = 0
+        while unsuccessful_attemps < attemps:
+            if not _is_servo_alive():
+                unsuccessful_attemps += 1
+            else:
+                return True
+        logger.error("Servo is not alive after %d attempts", attemps)
+        return False
 
     def reload_errors(self, dictionary: str) -> None:
         """Force to reload all dictionary errors.

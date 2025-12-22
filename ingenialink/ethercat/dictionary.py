@@ -55,7 +55,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
             registers=[
                 EthercatRegister(
                     identifier="MON_DATA_SUBINDEX_0",
-                    units="none",
+                    units=None,
                     idx=0x58B2,
                     subidx=0x00,
                     pdo_access=RegCyclicType.CONFIG,
@@ -67,7 +67,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 ),
                 EthercatRegister(
                     identifier="MON_DATA_VALUE",
-                    units="none",
+                    units=None,
                     idx=0x58B2,
                     subidx=0x01,
                     pdo_access=RegCyclicType.CONFIG,
@@ -86,7 +86,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
             registers=[
                 EthercatRegister(
                     identifier="DIST_DATA_SUBINDEX_0",
-                    units="none",
+                    units=None,
                     idx=0x58B4,
                     subidx=0x00,
                     pdo_access=RegCyclicType.CONFIG,
@@ -98,7 +98,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                 ),
                 EthercatRegister(
                     identifier="DIST_DATA_VALUE",
-                    units="none",
+                    units=None,
                     idx=0x58B4,
                     subidx=0x01,
                     pdo_access=RegCyclicType.CONFIG,
@@ -296,7 +296,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                     # Element registers
                     EthercatRegister(
                         identifier=f"{base_uid}_{i}",
-                        units="none",
+                        units=None,
                         subnode=0,
                         idx=idx,
                         subidx=i,
@@ -346,7 +346,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                     # Total register
                     EthercatRegister(
                         identifier=f"{base_uid}_TOTAL",
-                        units="none",
+                        units=None,
                         subnode=subnode,
                         idx=idx,
                         subidx=0x00,
@@ -362,7 +362,7 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
                     # Element registers
                     EthercatRegister(
                         identifier=f"{base_uid}_{i}",
-                        units="none",
+                        units=None,
                         subnode=subnode,
                         idx=idx,
                         subidx=i,
