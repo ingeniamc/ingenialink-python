@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 ### Added
-- Parsing of Dictionary tables
+- Add support for tables
 
 ## [7.5.2] - 2025-11-24
 ### Added

@@ -29,7 +29,6 @@ dependencies = [
     "ingenialogger>=0.2.1",
     "ping3==4.0.3",
     "pysoem>=1.1.11, <1.2.0",
-    "numpy>=1.26.0",
     "bitarray==2.9.2",
     "multiping==1.1.2",
 ]
@@ -43,7 +42,7 @@ Source = "https://github.com/ingeniamc/ingenialink-python"
 version = "7.5.2"  # base version
 
 [project.optional-dependencies]
-virtual_drive = ["virtual_drive==0.0.0+gced50b1fe"]
+virtual_drive = ["virtual_drive==0.0.0+pr4b9"]
 
 [[tool.poetry.source]]
 name = "PyPI"
@@ -119,7 +118,7 @@ pytest-cov = "==2.12.1"
 pytest-mock = "==3.6.1"
 pytest-console-scripts = "==1.4.1"
 twisted = "==24.11.0"
-summit-testing-framework = {extras = ["ingeniamotion"], version = "==0.1.5+pr55b1"}
+summit-testing-framework = {extras = ["ingeniamotion"], version = "==0.1.5+pr58b12"}
 
 # -----------------------------------------------------------------------
 #                                   TASKS

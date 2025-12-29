@@ -23,6 +23,7 @@ def test_pdos_min_refresh_rate(net: "EthercatNetwork"):
 
 
 @pytest.mark.ethercat
+@pytest.mark.usefixtures("servo")
 def test_pdos_watchdog_exception_auto(net: "EthercatNetwork"):
     exceptions = []
 
@@ -40,6 +41,7 @@ def test_pdos_watchdog_exception_auto(net: "EthercatNetwork"):
 
 
 @pytest.mark.ethercat
+@pytest.mark.usefixtures("servo")
 def test_pdos_watchdog_exception_manual(net: "EthercatNetwork"):
     exceptions = []
 

@@ -52,6 +52,7 @@ from ingenialink.exceptions import (
     ILValueError,
 )
 from ingenialink.register import Register
+from ingenialink.table import Table
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 from ingenialink.virtual.dictionary import VirtualDictionaryV2, VirtualDictionaryV3
 
@@ -1764,6 +1765,26 @@ class Servo:
     def dictionary(self, dictionary: Dictionary) -> None:
         """Sets the dictionary object."""
         self._dictionary = dictionary
+
+    def get_table(self, uid: str, axis: Optional[int] = None) -> Table:
+        """Get a table from the dictionary.
+
+        Args:
+            uid: Table uid.
+            axis: Axis. Should be specified if multiaxis, None otherwise.
+
+        Returns:
+            Table: The requested table object.
+
+        Raises:
+            KeyError: If the specified axis does not exist.
+            KeyError: If the table is not present in the specified axis.
+            ValueError: If the table is not found in any axis, if axis is not provided.
+            ValueError: If the table is found in multiple axes, if axis is not provided.
+
+        """
+        dictionary_table = self.dictionary.get_table(uid, axis=axis)
+        return Table(self, dictionary_table, axis=axis)
 
     @property
     def full_name(self) -> str:
