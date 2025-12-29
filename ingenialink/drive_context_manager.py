@@ -271,9 +271,6 @@ class DriveContextManager:
         Args:
             original_values: Dictionary mapping CanOpenObject to its original byte value.
             changed_values: Dictionary mapping CanOpenObject to changed byte value.
-
-        Raises:
-            ValueError: if there is no original data for an object to restore.
         """
         for obj, current_value in changed_values.items():
             # https://novantamotion.atlassian.net/browse/DRIVSUS-137
@@ -281,7 +278,10 @@ class DriveContextManager:
                 continue
             restore_value = original_values.get(obj)
             if restore_value is None:
-                raise ValueError(f"No original data for the object {obj} to restore.")
+                logger.warning(
+                    f"No original data for the object {obj} to restore. Skipping restoration."
+                )
+                continue
 
             # If we have current_value, check if it differs
             if current_value and current_value == restore_value:
