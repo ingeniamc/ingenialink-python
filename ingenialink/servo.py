@@ -1420,7 +1420,7 @@ class Servo:
             buffer_size: Size of the buffer to read.
 
         Raises:
-            ValueError: if buffer size is not specified or cannot be detected
+            ValueError: if buffer size is not specified or cannot be detected for EthercatRegister.
             TypeError: if the register is not a CanopenRegister or EthercatRegister.
 
         Returns:
@@ -1434,14 +1434,17 @@ class Servo:
             _reg = reg.registers[0]
             buffer_size = reg.byte_length
 
-        if buffer_size is None:
-            raise ValueError(
-                "Buffer size must be specified for complete access read."
-                "Alternatively, use a CanOpenObject to infer the size required "
-                "automatically."
-            )
+        if isinstance(_reg, EthercatRegister):
+            if buffer_size is None:
+                raise ValueError(
+                    "Buffer size must be specified for complete access read."
+                    "Alternatively, use a CanOpenObject to infer the size required "
+                    "automatically."
+                )
+            value = self._read_raw(reg=_reg, buffer_size=buffer_size, complete_access=True)
+        else:
+            value = self._read_raw(reg=_reg)
 
-        value = self._read_raw(_reg, buffer_size=buffer_size, complete_access=True)
         self._notify_register_update_complete_access(
             _reg, value, operation=RegisterAccessOperation.READ
         )
