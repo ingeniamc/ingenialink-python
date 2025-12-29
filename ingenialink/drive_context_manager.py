@@ -5,6 +5,7 @@ from ingenialogger import get_logger
 
 from ingenialink.dictionary import CanOpenObject
 from ingenialink.enums.register import RegAccess
+from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILIOError
 from ingenialink.register import Register
 from ingenialink.servo import RegisterAccessOperation, Servo
@@ -185,6 +186,8 @@ class DriveContextManager:
                 self._original_register_values[axis][uid] = register_value
 
     def _store_objects_data(self) -> None:
+        if not isinstance(self.drive, EthercatServo):
+            return
         for obj in self.drive.dictionary.all_objs():
             uid = obj.uid
             # Always read the rpdo/tpdo map objects using complete access
