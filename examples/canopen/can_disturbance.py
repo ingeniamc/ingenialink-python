@@ -23,6 +23,7 @@ def disturbance_example(args: argparse.Namespace) -> None:
     signal_amplitude = 1
     # Calculate number of samples to load a complete oscillation
     n_samples = int(1 / (signal_frequency * sample_period))
+    # Generate a SHM with the formula x(t)=A*sin(t*w) where:
     data_pos = cast(
         "list[Union[int, float]]",
         [
