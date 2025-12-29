@@ -168,7 +168,7 @@ def test_drive_context_manager_restores_complete_access_registers(
 
     with context:
         assert context._registers_changed == {}
-        assert context._objects_changed == set()
+        assert context._objects_changed == {}
         servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
         servo.map_pdos(slave_index=setup_descriptor.slave)
 
