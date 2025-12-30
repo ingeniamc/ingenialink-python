@@ -1,4 +1,9 @@
+from typing import TYPE_CHECKING
+
 import pytest
+
+if TYPE_CHECKING:
+    from summit_testing_framework.setup_fixtures import ConnectionWrapper
 
 
 @pytest.fixture
@@ -19,7 +24,11 @@ def arguments(setup_descriptor):
 
 
 @pytest.mark.canopen
-def test_connection_example(arguments, script_runner):
+@pytest.mark.parametrize("servo_with_reconnect", [True], indirect=True)
+def test_connection_example(
+    arguments, script_runner, servo_with_reconnect: "ConnectionWrapper"
+) -> None:
+    servo_with_reconnect.disconnect()
     script_path = "examples/canopen/can_connection.py"
     result = script_runner.run([script_path, *arguments])
     assert result.returncode == 0, f"Script failed with stderr:\n{result.stderr}"
@@ -27,14 +36,22 @@ def test_connection_example(arguments, script_runner):
 
 
 @pytest.mark.canopen
-def test_disturbance_example(arguments, script_runner):
+@pytest.mark.parametrize("servo_with_reconnect", [True], indirect=True)
+def test_disturbance_example(
+    arguments, script_runner, servo_with_reconnect: "ConnectionWrapper"
+) -> None:
+    servo_with_reconnect.disconnect()
     script_path = "examples/canopen/can_disturbance.py"
     result = script_runner.run([script_path, *arguments])
     assert result.returncode == 0, f"Script failed with stderr:\n{result.stderr}"
 
 
 @pytest.mark.canopen
-def test_load_firmware_example(arguments, script_runner, mocker):
+@pytest.mark.parametrize("servo_with_reconnect", [True], indirect=True)
+def test_load_firmware_example(
+    arguments, script_runner, mocker, servo_with_reconnect: "ConnectionWrapper"
+) -> None:
+    servo_with_reconnect.disconnect()
     mock = mocker.patch("ingenialink.canopen.network.CanopenNetwork.load_firmware")
     script_path = "examples/canopen/can_load_firmware.py"
     result = script_runner.run([script_path, "--firmware_path=./dummy.sfu", *arguments])
@@ -43,21 +60,33 @@ def test_load_firmware_example(arguments, script_runner, mocker):
 
 
 @pytest.mark.canopen
-def test_load_save_config_example(arguments, script_runner):
+@pytest.mark.parametrize("servo_with_reconnect", [True], indirect=True)
+def test_load_save_config_example(
+    arguments, script_runner, servo_with_reconnect: "ConnectionWrapper"
+) -> None:
+    servo_with_reconnect.disconnect()
     script_path = "examples/canopen/can_load_save_config.py"
     result = script_runner.run([script_path, *arguments])
     assert result.returncode == 0, f"Script failed with stderr:\n{result.stderr}"
 
 
 @pytest.mark.canopen
-def test_monitoring_example(arguments, script_runner):
+@pytest.mark.parametrize("servo_with_reconnect", [True], indirect=True)
+def test_monitoring_example(
+    arguments, script_runner, servo_with_reconnect: "ConnectionWrapper"
+) -> None:
+    servo_with_reconnect.disconnect()
     script_path = "examples/canopen/can_monitoring.py"
     result = script_runner.run([script_path, *arguments])
     assert result.returncode == 0, f"Script failed with stderr:\n{result.stderr}"
 
 
 @pytest.mark.canopen
-def test_store_restore_example(arguments, script_runner):
+@pytest.mark.parametrize("servo_with_reconnect", [True], indirect=True)
+def test_store_restore_example(
+    arguments, script_runner, servo_with_reconnect: "ConnectionWrapper"
+) -> None:
+    servo_with_reconnect.disconnect()
     script_path = "examples/canopen/can_store_restore.py"
     result = script_runner.run([script_path, *arguments])
     assert result.returncode == 0, f"Script failed with stderr:\n{result.stderr}"

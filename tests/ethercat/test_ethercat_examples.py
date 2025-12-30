@@ -1,4 +1,9 @@
+from typing import TYPE_CHECKING
+
 import pytest
+
+if TYPE_CHECKING:
+    from summit_testing_framework.setup_fixtures import ConnectionWrapper
 
 
 @pytest.fixture
@@ -12,14 +17,24 @@ def arguments(setup_descriptor):
 
 
 @pytest.mark.ethercat
-def test_connection_example(arguments, script_runner):
+@pytest.mark.parametrize("servo_with_reconnect", [True], indirect=True)
+def test_connection_example(
+    arguments, script_runner, servo_with_reconnect: "ConnectionWrapper"
+) -> None:
+    servo_with_reconnect.disconnect()
+
     script_path = "examples/ethercat/ecat_connection.py"
     result = script_runner.run([script_path, *arguments])
     assert result.returncode == 0, f"Script failed with stderr:\n{result.stderr}"
 
 
 @pytest.mark.ethercat
-def test_load_firmware_example(arguments, script_runner, mocker, setup_descriptor):
+@pytest.mark.parametrize("servo_with_reconnect", [True], indirect=True)
+def test_load_firmware_example(
+    arguments, script_runner, mocker, setup_descriptor, servo_with_reconnect: "ConnectionWrapper"
+) -> None:
+    servo_with_reconnect.disconnect()
+
     slave_id = setup_descriptor.slave
     mock = mocker.patch("ingenialink.ethercat.network.EthercatNetwork.load_firmware")
     arguments[0] = "--firmware_path=dummy_file.lfu"

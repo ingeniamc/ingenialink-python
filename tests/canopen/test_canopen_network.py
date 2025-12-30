@@ -109,17 +109,13 @@ def test_scan_slaves_info(setup_specifier, setup_descriptor, request):
 
 
 @pytest.mark.canopen
-def test_disconnect_from_slave(setup_descriptor):
+def test_disconnect_from_slave(setup_descriptor, servo_with_reconnect, net):
+    servo_with_reconnect.disconnect()
+
     disconnected_servos = []
 
     def dummy_callback(servo):
         disconnected_servos.append(servo.target)
-
-    net = CanopenNetwork(
-        device=CanDevice(setup_descriptor.device),
-        channel=setup_descriptor.channel,
-        baudrate=CanBaudrate(setup_descriptor.baudrate),
-    )
 
     servo = net.connect_to_slave(
         target=setup_descriptor.node_id,
