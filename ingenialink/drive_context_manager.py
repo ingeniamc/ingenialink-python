@@ -228,12 +228,14 @@ class DriveContextManager:
         self,
         original_values: OrderedDict[tuple[int, str], Union[int, float, str, bytes]],
         changed_values: OrderedDict[tuple[int, str], Union[int, float, str, bytes]],
+        force_restore: bool = False,
     ) -> None:
         """Restores the drive values.
 
         Args:
             original_values: OrderedDict mapping (axis, uid) to original value.
             changed_values: OrderedDict mapping (axis, uid) to changed value.
+            force_restore: If True, registers are being restored by force mode.
         """
         axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
         restored_registers: dict[int, list[str]] = {axis: [] for axis in axes}
@@ -244,6 +246,11 @@ class DriveContextManager:
                 continue
             # Register has already been restored with a newer value than the evaluated one
             if uid in restored_registers[axis]:
+                continue
+            # Skip PDO mapping registers: handled via complete access in _restore_objects_data
+            if force_restore and (
+                _PDO_RPDO_MAP_REGISTER_UID in uid or _PDO_TPDO_MAP_REGISTER_UID in uid
+            ):
                 continue
             restore_value = original_values[(axis, uid)]
             # No change with respect to the original value
@@ -328,6 +335,7 @@ class DriveContextManager:
                 self._restore_register_data(
                     original_values=self._original_register_values,
                     changed_values=current_register_values,
+                    force_restore=True,
                 )
 
             if restore_objects:
@@ -352,6 +360,7 @@ class DriveContextManager:
         self._restore_register_data(
             original_values=self._original_register_values,
             changed_values=self._registers_changed,
+            force_restore=False,
         )
         self._restore_objects_data(
             original_values=self._original_canopen_object_values,
