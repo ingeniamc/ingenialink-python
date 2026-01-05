@@ -61,12 +61,7 @@ def test_connect_to_slave_none_nodes(virtual_network):
 
 
 @pytest.mark.canopen
-def test_scan_slaves(setup_descriptor):
-    net = CanopenNetwork(
-        device=CanDevice(setup_descriptor.device),
-        channel=setup_descriptor.channel,
-        baudrate=CanBaudrate(setup_descriptor.baudrate),
-    )
+def test_scan_slaves(net: "CanopenNetwork") -> None:
     slaves = net.scan_slaves()
     assert len(slaves) > 0
 
