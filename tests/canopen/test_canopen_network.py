@@ -11,6 +11,10 @@ from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 from ingenialink.exceptions import ILError
 
 if TYPE_CHECKING:
+    from pytest import FixtureRequest
+    from summit_testing_framework.setup_fixtures import ConnectionWrapper
+    from summit_testing_framework.setups.descriptors import DriveCanOpenSetup
+
     from ingenialink.canopen.servo import CanopenServo
 
 test_bus = "virtual"
@@ -34,24 +38,18 @@ def test_getters_canopen(virtual_network):
 
 
 @pytest.mark.canopen
-def test_connect_to_slave(servo, net):
-    assert servo is not None and net is not None
+def test_connect_to_slave(servo: "CanopenServo", net: "CanopenNetwork") -> None:
     assert len(net.servos) == 1
     fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
     assert fw_version is not None and fw_version != ""
 
 
 @pytest.mark.canopen
-def test_connect_to_slave_target_not_in_nodes(setup_descriptor):
-    net = CanopenNetwork(
-        device=CanDevice(setup_descriptor.device),
-        channel=setup_descriptor.channel,
-        baudrate=CanBaudrate(setup_descriptor.baudrate),
-    )
-
+def test_connect_to_slave_target_not_in_nodes(
+    net: "CanopenNetwork", setup_descriptor: "DriveCanOpenSetup"
+) -> None:
     with pytest.raises(ILError):
         net.connect_to_slave(target=1234, dictionary=setup_descriptor.dictionary)
-    net._teardown_connection()
 
 
 def test_connect_to_slave_none_nodes(virtual_network):
@@ -83,29 +81,31 @@ def test_scan_slaves_missing_drivers(can_device):
 
 
 @pytest.mark.canopen
-def test_scan_slaves_info(setup_specifier, setup_descriptor, request):
-    if not isinstance(
-        setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)
-    ):
-        pytest.skip("Only available for rack specifiers.")
+def test_scan_slaves_info(
+    setup_specifier,
+    setup_descriptor: "DriveCanOpenSetup",
+    servo_with_reconnect: "ConnectionWrapper",
+    request: "FixtureRequest",
+) -> None:
+    servo_with_reconnect.disconnect()
+    net = servo_with_reconnect.get_net()
 
-    net = CanopenNetwork(
-        device=CanDevice(setup_descriptor.device),
-        channel=setup_descriptor.channel,
-        baudrate=CanBaudrate(setup_descriptor.baudrate),
-    )
     slaves_info = net.scan_slaves_info()
-
-    drive = request.getfixturevalue("get_drive_configuration_from_rack_service")
 
     assert len(slaves_info) > 0
     assert setup_descriptor.node_id in slaves_info
-    assert slaves_info[setup_descriptor.node_id].product_code == drive.product_code
+
+    if isinstance(setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)):
+        drive = request.getfixturevalue("get_drive_configuration_from_rack_service")
+        assert slaves_info[setup_descriptor.node_id].product_code == drive.product_code
 
 
 @pytest.mark.canopen
-def test_disconnect_from_slave(setup_descriptor, servo_with_reconnect, net):
+def test_disconnect_from_slave(
+    setup_descriptor: "DriveCanOpenSetup", servo_with_reconnect: "ConnectionWrapper"
+) -> None:
     servo_with_reconnect.disconnect()
+    net = servo_with_reconnect.get_net()
 
     disconnected_servos = []
 
@@ -126,7 +126,7 @@ def test_disconnect_from_slave(setup_descriptor, servo_with_reconnect, net):
     assert disconnected_servos[0] == setup_descriptor.node_id
 
 
-def test_setup_and_teardown_connection(virtual_network):
+def test_setup_and_teardown_connection(virtual_network) -> None:
     if platform.system() != "Windows":
         pytest.skip("Only for window machines")
     assert virtual_network._connection is None
@@ -137,8 +137,9 @@ def test_setup_and_teardown_connection(virtual_network):
 
 
 @pytest.mark.skip
-def test_load_firmware(servo, net, setup_descriptor):
-    assert servo is not None and net is not None
+def test_load_firmware(
+    servo: "CanopenServo", net: "CanopenNetwork", setup_descriptor: "DriveCanOpenSetup"
+) -> None:
     assert len(net.servos) == 1
     fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
 
@@ -150,7 +151,7 @@ def test_load_firmware(servo, net, setup_descriptor):
 
 
 @pytest.mark.canopen
-def test_recover_from_disconnection(net: "CanopenNetwork", servo: "CanopenServo", caplog):
+def test_recover_from_disconnection(net: "CanopenNetwork", servo: "CanopenServo", caplog) -> None:
     """Test that recover_from_disconnection properly resets the CANopen network.
 
     This test uses a real CANopen drive and verifies that the recover_from_disconnection

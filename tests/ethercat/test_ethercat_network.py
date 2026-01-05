@@ -28,6 +28,7 @@ from ingenialink.network import NetDevEvt, NetState
 from ingenialink.pdo import PDOMap, RPDOMap, TPDOMap
 
 if TYPE_CHECKING:
+    from pytest import FixtureRequest
     from pytest_mock import MockerFixture
     from summit_testing_framework.setup_fixtures import ConnectionWrapper
     from summit_testing_framework.setups.descriptors import DriveEcatSetup
@@ -223,19 +224,21 @@ def test_scan_slaves_raises_exception_if_drive_is_already_connected(
 
 @pytest.mark.ethercat
 def test_scan_slaves_info(
-    setup_specifier, setup_descriptor: "DriveEcatSetup", request, net: "EthercatNetwork"
+    setup_specifier,
+    servo_with_reconnect: "ConnectionWrapper",
+    setup_descriptor: "DriveEcatSetup",
+    request: "FixtureRequest",
 ) -> None:
-    if not isinstance(
-        setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)
-    ):
-        pytest.skip("Only available for rack specifiers.")
-
+    servo_with_reconnect.disconnect()
+    net = servo_with_reconnect.get_net()
     slaves_info = net.scan_slaves_info()
-    drive = request.getfixturevalue("get_drive_configuration_from_rack_service")
 
     assert len(slaves_info) > 0
     assert setup_descriptor.slave in slaves_info
-    assert slaves_info[setup_descriptor.slave].product_code == drive.product_code
+
+    if isinstance(setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)):
+        drive = request.getfixturevalue("get_drive_configuration_from_rack_service")
+        assert slaves_info[setup_descriptor.slave].product_code == drive.product_code
 
 
 @pytest.mark.ethercat
