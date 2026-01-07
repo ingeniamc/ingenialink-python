@@ -3,6 +3,7 @@
 ## [Unreleased]
 ### Added
 - Add support for tables
+- Added context-like behaviour to EtherCAT network
 
 ## [7.5.2] - 2025-11-24
 ### Added
