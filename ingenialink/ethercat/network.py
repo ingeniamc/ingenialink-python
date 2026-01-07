@@ -240,6 +240,9 @@ class EthercatNetwork(Network):
         # List of subscribers to PDO thread status
         self._pdo_thread_status_observers: list[Callable[[bool], None]] = []
 
+        # Context manager state tracking
+        self.__context_opened_master = False
+
     @staticmethod
     def pysoem_available() -> bool:
         """Check if pysoem is available.
@@ -425,14 +428,9 @@ class EthercatNetwork(Network):
         """
         if self.servos:
             raise ILError("Some slaves are already connected")
-        is_master_running_before_scan = self.__is_master_running
-        if not is_master_running_before_scan:
-            self._start_master()
-        self.__init_nodes()
-        slaves_found = self.__last_init_nodes
-        if not is_master_running_before_scan:
-            self.close_ecat_master(release_reference=False)
-        return slaves_found
+        with self:
+            self.__init_nodes()
+        return self.__last_init_nodes
 
     def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
         """Scans for slaves in the network and return an ordered dict with the slave information.
@@ -460,6 +458,9 @@ class EthercatNetwork(Network):
                 True to release the GIL, False otherwise.
                 If not specified, default GIL release configuration will be used.
         """
+        # Ensure network reference is set when master is running (important for no-GIL operations)
+        self.__ensure_network_reference()
+
         if release_gil is None:
             release_gil = self.__gil_release_config.config_init
         self._lock.acquire()
@@ -515,8 +516,7 @@ class EthercatNetwork(Network):
             raise ValueError("Invalid slave ID value")
         if not self.__is_master_running:
             self._start_master()
-            if self not in ETHERCAT_NETWORK_REFERENCES:
-                set_network_reference(network=self)
+            self.__ensure_network_reference()
         if slave_id not in self.__last_init_nodes:
             self.__init_nodes()
         if len(self.__last_init_nodes) == 0:
@@ -652,6 +652,9 @@ class EthercatNetwork(Network):
             ILWrongWorkingCountError: If processdata working count is wrong
 
         """
+        # Ensure network reference is set before releasing GIL
+        self._ensure_network_reference()
+
         if release_gil is None:
             release_gil = self.__gil_release_config.send_receive_processdata
         for servo in self.servos:
@@ -806,58 +809,56 @@ class EthercatNetwork(Network):
 
         if not isinstance(slave_id, int) or slave_id < 0:
             raise ValueError("Invalid slave ID value")
-        is_master_running_before_loading_firmware = self.__is_master_running
-        if not is_master_running_before_loading_firmware:
-            self._start_master()
+        with self:
             self.__init_nodes()
-        if len(self.__last_init_nodes) == 0:
-            raise ILError("Could not find any slaves in the network.")
-        if slave_id not in self.__last_init_nodes:
-            raise ILError(f"Slave {slave_id} was not found.")
+            if len(self.__last_init_nodes) == 0:
+                raise ILError("Could not find any slaves in the network.")
+            if slave_id not in self.__last_init_nodes:
+                raise ILError(f"Slave {slave_id} was not found.")
 
-        slave = self._ecat_master.slaves[slave_id - 1]
-        error_messages: list[str] = []
-        for iteration in range(self.__MAX_FOE_TRIES):
-            if not boot_in_app:
-                self._force_boot_mode(slave)
-            if not self._switch_to_boot_state(slave):
-                error_message = f"Attempt {iteration + 1}: The slave cannot reach the Boot state."
-                logger.info(error_message)
+            slave = self._ecat_master.slaves[slave_id - 1]
+            error_messages: list[str] = []
+            for iteration in range(self.__MAX_FOE_TRIES):
+                if not boot_in_app:
+                    self._force_boot_mode(slave)
+                if not self._switch_to_boot_state(slave):
+                    error_message = (
+                        f"Attempt {iteration + 1}: The slave cannot reach the Boot state."
+                    )
+                    logger.info(error_message)
+                    error_messages.append(error_message)
+                    continue
+                foe_write_result = self._write_foe(slave, fw_file, password)
+                if foe_write_result > 0:
+                    break
+                error_message = (
+                    f"Attempt {iteration + 1}: "
+                    f"{self.__get_foe_error_message(error_code=foe_write_result)}."
+                )
+                logger.info(f"FoE write failed: {error_message}")
                 error_messages.append(error_message)
-                continue
-            foe_write_result = self._write_foe(slave, fw_file, password)
-            if foe_write_result > 0:
-                break
-            error_message = (
-                f"Attempt {iteration + 1}: "
-                f"{self.__get_foe_error_message(error_code=foe_write_result)}."
-            )
-            logger.info(f"FoE write failed: {error_message}")
-            error_messages.append(error_message)
-            self.__init_nodes()
-        else:
-            combined_errors = "\n".join(error_messages)
-            raise ILFirmwareLoadError(
-                f"The firmware file could not be loaded correctly after {self.__MAX_FOE_TRIES}"
-                f" attempts. Errors:\n{combined_errors}"
-            )
-        start_time = time.time()
-        recovered = False
-        while time.time() < (start_time + self.__FOE_RECOVERY_TIMEOUT_S) and not recovered:
-            self.__init_nodes()
-            slave.state = pysoem.PREOP_STATE
-            slave.write_state()
-            recovered = (
-                slave.state_check(pysoem.PREOP_STATE, ECAT_STATE_CHANGE_TIMEOUT_US)
-                == pysoem.PREOP_STATE
-            )
-            time.sleep(self.__FOE_RECOVERY_SLEEP_S)
-        if recovered:
-            logger.info("Firmware updated successfully")
-        else:
-            logger.info(f"The slave {slave_id} cannot reach the PreOp state.")
-        if not is_master_running_before_loading_firmware:
-            self.close_ecat_master(release_reference=False)
+                self.__init_nodes()
+            else:
+                combined_errors = "\n".join(error_messages)
+                raise ILFirmwareLoadError(
+                    f"The firmware file could not be loaded correctly after {self.__MAX_FOE_TRIES}"
+                    f" attempts. Errors:\n{combined_errors}"
+                )
+            start_time = time.time()
+            recovered = False
+            while time.time() < (start_time + self.__FOE_RECOVERY_TIMEOUT_S) and not recovered:
+                self.__init_nodes()
+                slave.state = pysoem.PREOP_STATE
+                slave.write_state()
+                recovered = (
+                    slave.state_check(pysoem.PREOP_STATE, ECAT_STATE_CHANGE_TIMEOUT_US)
+                    == pysoem.PREOP_STATE
+                )
+                time.sleep(self.__FOE_RECOVERY_SLEEP_S)
+            if recovered:
+                logger.info("Firmware updated successfully")
+            else:
+                logger.info(f"The slave {slave_id} cannot reach the PreOp state.")
 
     def _switch_to_boot_state(self, slave: "CdefSlave") -> bool:
         """Transitions the slave to the boot state.
@@ -920,6 +921,9 @@ class EthercatNetwork(Network):
             The FOE operation result.
 
         """
+        # Ensure network reference is set before releasing GIL
+        self._ensure_network_reference()
+
         if release_gil is None:
             release_gil = self.__gil_release_config.foe_read_write
         with open(file_path, "rb") as file:
@@ -939,6 +943,68 @@ class EthercatNetwork(Network):
         """Start the EtherCAT master."""
         self._ecat_master.open(self.interface_name)
         self.__is_master_running = True
+
+    def __ensure_network_reference(self) -> None:
+        """Ensure the network reference is set.
+
+        This is important for no-GIL operations to prevent garbage collection issues.
+        """
+        if self not in ETHERCAT_NETWORK_REFERENCES:
+            set_network_reference(network=self)
+
+    def __enter__(self) -> "EthercatNetwork":
+        """Enter the context manager.
+
+        Ensures the network reference is set and starts the master if it's not already running.
+        The context manager tracks whether it started the master to decide whether to
+        close it on exit.
+
+        Returns:
+            The network instance.
+        """
+        # Track if we need to start the master
+        self.__context_opened_master = self.__is_master_running is False
+
+        # Start the master if it's not already running
+        if self.__context_opened_master:
+            self._start_master()
+
+        # Ensure network reference is set (might have been released previously)
+        self.__ensure_network_reference()
+
+        return self
+
+    def __exit__(
+        self,
+        exc_type: Optional[type],
+        exc_value: Optional[BaseException],
+        traceback: Optional[Any],
+    ) -> None:
+        """Exit the context manager.
+
+        Only closes the master and releases the network reference if the context manager
+        started the master. If the master was already running before entering the context,
+        this method does nothing, making the context completely transparent and tolerant
+        to already-opened networks.
+
+        Args:
+            exc_type: Exception type if an exception occurred.
+            exc_value: Exception value if an exception occurred.
+            traceback: Traceback if an exception occurred.
+        """
+        # Only close and release if this context opened the master
+        if not self.__context_opened_master:
+            return
+
+        if self.__is_master_running:
+            try:
+                self.close_ecat_master(release_reference=True)
+            except Exception as e:
+                logger.error(f"Error cleaning up EtherCAT network in context manager: {e}")
+        elif self in ETHERCAT_NETWORK_REFERENCES:
+            release_network_reference(network=self)
+
+        self.__context_opened_master = False
 
     @property
     def protocol(self) -> NetProt:
