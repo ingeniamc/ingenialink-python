@@ -430,7 +430,9 @@ class EthercatNetwork(Network):
             raise ILError("Some slaves are already connected")
         with self:
             self.__init_nodes()
-        return self.__last_init_nodes
+            # Check the slaves before exiting context (which may clear __last_init_nodes)
+            slaves_found = self.__last_init_nodes
+        return slaves_found
 
     def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
         """Scans for slaves in the network and return an ordered dict with the slave information.

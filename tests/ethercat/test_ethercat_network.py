@@ -515,20 +515,30 @@ def test_master_reference_is_kept_while_network_is_alive(mocker):
 
 
 @pytest.mark.ethercat
-def test_master_reference_is_kept_after_scan(setup_descriptor):
+def test_master_reference_is_not_kept_after_scan(setup_descriptor, mocker):
+    """Scan slaves should use the network context, so the reference is not kept after the call."""
     previous_networks = ETHERCAT_NETWORK_REFERENCES.copy()
     net_1 = EthercatNetwork(setup_descriptor.ifname, gil_release_config=GilReleaseConfig.always())
     assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks) + 1
     assert net_1 in ETHERCAT_NETWORK_REFERENCES
 
+    # Spy on context manager methods to verify they're called during scan_slaves
+    enter_spy = mocker.spy(net_1, "__enter__")
+    exit_spy = mocker.spy(net_1, "__exit__")
+
     net_1.scan_slaves()
 
-    assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks) + 1
-    assert net_1 in ETHERCAT_NETWORK_REFERENCES
+    # Verify context manager was used internally
+    assert enter_spy.call_count == 1, (
+        "Context manager __enter__ should be called during scan_slaves"
+    )
+    assert exit_spy.call_count == 1, "Context manager __exit__ should be called during scan_slaves"
 
-    net_1.close_ecat_master()
-
+    # Reference should NOT be present after scan - context started and stopped the master,
+    # so it released the reference on exit
     assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks)
+    assert net_1 not in ETHERCAT_NETWORK_REFERENCES
+    assert net_1._EthercatNetwork__is_master_running is False
 
 
 @pytest.mark.ethercat
