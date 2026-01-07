@@ -46,8 +46,8 @@ def mocked_network_for_firmware_loading(mocker):
     mock_slave = mocker.Mock()
     net._ecat_master.slaves = [mock_slave]
     net._EthercatNetwork__last_init_nodes = {1}
-    yield net, mock_slave
-    net.close_ecat_master()
+    with net:
+        yield net, mock_slave
 
 
 @pytest.mark.no_pcap
