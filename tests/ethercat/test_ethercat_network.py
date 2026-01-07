@@ -213,7 +213,6 @@ def test_scan_slaves_info(setup_specifier, setup_descriptor, request):
     assert len(slaves_info) > 0
     assert setup_descriptor.slave in slaves_info
     assert slaves_info[setup_descriptor.slave].product_code == drive.product_code
-    net.close_ecat_master()
 
 
 @pytest.mark.ethercat
@@ -522,17 +521,20 @@ def test_master_reference_is_not_kept_after_scan(setup_descriptor, mocker):
     assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks) + 1
     assert net_1 in ETHERCAT_NETWORK_REFERENCES
 
-    # Spy on context manager methods to verify they're called during scan_slaves
-    enter_spy = mocker.spy(net_1, "__enter__")
-    exit_spy = mocker.spy(net_1, "__exit__")
+    # Spy on the actual methods that context manager calls to verify behavior
+    start_master_spy = mocker.spy(net_1, "_start_master")
+    close_master_spy = mocker.spy(net_1, "close_ecat_master")
 
-    net_1.scan_slaves()
+    slaves = net_1.scan_slaves()
 
-    # Verify context manager was used internally
-    assert enter_spy.call_count == 1, (
-        "Context manager __enter__ should be called during scan_slaves"
+    # Verify context manager behavior: master was started and then closed
+    assert start_master_spy.call_count == 1, (
+        "Context manager should start master during scan_slaves"
     )
-    assert exit_spy.call_count == 1, "Context manager __exit__ should be called during scan_slaves"
+    assert close_master_spy.call_count == 1, "Context manager should close master after scan_slaves"
+
+    # Verify we got the slave list before the context closed
+    assert len(slaves) > 0, "Should have detected slaves"
 
     # Reference should NOT be present after scan - context started and stopped the master,
     # so it released the reference on exit
