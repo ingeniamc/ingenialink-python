@@ -17,11 +17,10 @@ def arguments(setup_descriptor):
 
 
 @pytest.mark.ethernet
-@pytest.mark.parametrize("servo_with_reconnect", [True], indirect=True)
 def test_connection_example(
-    arguments, script_runner, servo_with_reconnect: "ConnectionWrapper"
+    arguments, script_runner, servo_with_reconnect_force_restore: "ConnectionWrapper"
 ) -> None:
-    servo_with_reconnect.disconnect()
+    servo_with_reconnect_force_restore.disconnect()
 
     script_path = "examples/ethernet/eth_connection.py"
     result = script_runner.run([script_path, *arguments])
@@ -29,11 +28,10 @@ def test_connection_example(
 
 
 @pytest.mark.ethernet
-@pytest.mark.parametrize("servo_with_reconnect", [True], indirect=True)
 def test_load_firmware_example(
-    arguments, script_runner, mocker, servo_with_reconnect: "ConnectionWrapper"
+    arguments, script_runner, mocker, servo_with_reconnect_force_restore: "ConnectionWrapper"
 ) -> None:
-    servo_with_reconnect.disconnect()
+    servo_with_reconnect_force_restore.disconnect()
 
     mock = mocker.patch("ingenialink.ethernet.network.EthernetNetwork.load_firmware")
     script_path = "examples/ethernet/eth_load_firmware.py"
@@ -43,11 +41,10 @@ def test_load_firmware_example(
 
 
 @pytest.mark.ethernet
-@pytest.mark.parametrize("servo_with_reconnect", [True], indirect=True)
 def test_load_save_config_example(
-    arguments, script_runner, servo_with_reconnect: "ConnectionWrapper"
+    arguments, script_runner, servo_with_reconnect_force_restore: "ConnectionWrapper"
 ) -> None:
-    servo_with_reconnect.disconnect()
+    servo_with_reconnect_force_restore.disconnect()
 
     script_path = "examples/ethernet/eth_load_save_config.py"
     result = script_runner.run([script_path, *arguments])
@@ -55,11 +52,10 @@ def test_load_save_config_example(
 
 
 @pytest.mark.ethernet
-@pytest.mark.parametrize("servo_with_reconnect", [True], indirect=True)
 def test_monitoring_example(
-    arguments, script_runner, servo_with_reconnect: "ConnectionWrapper"
+    arguments, script_runner, servo_with_reconnect_force_restore: "ConnectionWrapper"
 ) -> None:
-    servo_with_reconnect.disconnect()
+    servo_with_reconnect_force_restore.disconnect()
 
     script_path = "examples/ethernet/eth_monitoring.py"
     result = script_runner.run([script_path, *arguments])
@@ -67,11 +63,10 @@ def test_monitoring_example(
 
 
 @pytest.mark.ethernet
-@pytest.mark.parametrize("servo_with_reconnect", [True], indirect=True)
 def test_store_restore_example(
-    arguments, script_runner, servo_with_reconnect: "ConnectionWrapper"
+    arguments, script_runner, servo_with_reconnect_force_restore: "ConnectionWrapper"
 ) -> None:
-    servo_with_reconnect.disconnect()
+    servo_with_reconnect_force_restore.disconnect()
 
     script_path = "examples/ethernet/eth_store_restore.py"
     result = script_runner.run([script_path, *arguments])

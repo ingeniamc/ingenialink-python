@@ -17,11 +17,10 @@ def arguments(setup_descriptor):
 
 
 @pytest.mark.ethercat
-@pytest.mark.parametrize("servo_with_reconnect", [True], indirect=True)
 def test_connection_example(
-    arguments, script_runner, servo_with_reconnect: "ConnectionWrapper"
+    arguments, script_runner, servo_with_reconnect_force_restore: "ConnectionWrapper"
 ) -> None:
-    servo_with_reconnect.disconnect()
+    servo_with_reconnect_force_restore.disconnect()
 
     script_path = "examples/ethercat/ecat_connection.py"
     result = script_runner.run([script_path, *arguments])
@@ -29,11 +28,14 @@ def test_connection_example(
 
 
 @pytest.mark.ethercat
-@pytest.mark.parametrize("servo_with_reconnect", [True], indirect=True)
 def test_load_firmware_example(
-    arguments, script_runner, mocker, setup_descriptor, servo_with_reconnect: "ConnectionWrapper"
+    arguments,
+    script_runner,
+    mocker,
+    setup_descriptor,
+    servo_with_reconnect_force_restore: "ConnectionWrapper",
 ) -> None:
-    servo_with_reconnect.disconnect()
+    servo_with_reconnect_force_restore.disconnect()
 
     slave_id = setup_descriptor.slave
     mock = mocker.patch("ingenialink.ethercat.network.EthercatNetwork.load_firmware")
