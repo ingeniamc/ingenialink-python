@@ -653,7 +653,7 @@ class EthercatNetwork(Network):
 
         """
         # Ensure network reference is set before releasing GIL
-        self._ensure_network_reference()
+        self.__ensure_network_reference()
 
         if release_gil is None:
             release_gil = self.__gil_release_config.send_receive_processdata
@@ -922,7 +922,7 @@ class EthercatNetwork(Network):
 
         """
         # Ensure network reference is set before releasing GIL
-        self._ensure_network_reference()
+        self.__ensure_network_reference()
 
         if release_gil is None:
             release_gil = self.__gil_release_config.foe_read_write
