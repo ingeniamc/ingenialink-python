@@ -9,6 +9,22 @@ from ingenialink.exceptions import ILRegisterNotFoundError
 
 
 def monitoring_example(args: argparse.Namespace) -> list[NDArray[np.float64]]:
+    """Connects to a CANopen drive and performs monitoring of specific registers.
+
+    Args:
+        args: Command line arguments.
+
+    Raises:
+        TypeError: If the register type is not as expected.
+        TypeError: If the read register value type is not as expected.
+        TypeError: If the monitor status type is not as expected.
+        TypeError: If the read register value type is not as expected.
+        TypeError: If the register or item types are not as expected.
+        ValueError: If the monitor status indicates an error.
+
+    Returns:
+        List of numpy arrays with the monitored data for each register.
+    """
     registers_key = [
         "DRV_PROT_TEMP_VALUE",
     ]
@@ -96,7 +112,7 @@ def monitoring_example(args: argparse.Namespace) -> list[NDArray[np.float64]]:
                 if data_obtained:
                     # Single-shot mode
                     read_process_finished = True
-        except Exception as e:
+        except Exception as e:  # noqa: PERF203
             print(f"Exception monitoring: {e}")
             break
     print("Finished")
@@ -106,6 +122,11 @@ def monitoring_example(args: argparse.Namespace) -> list[NDArray[np.float64]]:
 
 
 def setup_command() -> argparse.Namespace:
+    """Parse input arguments.
+
+    Returns:
+        Parsed arguments.
+    """
     parser = argparse.ArgumentParser(description="Canopen example")
     parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)
     parser.add_argument("-n", "--node_id", default=32, type=int, help="Node ID")

@@ -67,6 +67,11 @@ def load_firmware_example_disconnected() -> None:
 
 
 def setup_command() -> argparse.Namespace:
+    """Parse input arguments.
+
+    Returns:
+        Parsed command line arguments.
+    """
     parser = argparse.ArgumentParser(description="Canopen example")
     parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)
     parser.add_argument("-f", "--firmware_path", help="Path to the firmware file", required=True)
