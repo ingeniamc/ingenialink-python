@@ -27,7 +27,7 @@ def eth_restore_parameters(args: argparse.Namespace) -> None:
     """Restore parameters to the servo.
 
     Args:
-        args (argparse.Namespace): Parsed command-line arguments.
+        args: Parsed command-line arguments.
     """
     net = EthernetNetwork()
     servo = net.connect_to_slave(args.ip_address, args.dictionary_path, args.port)
@@ -47,7 +47,7 @@ def setup_command() -> argparse.Namespace:
     """Parse input arguments.
 
     Returns:
-        argparse.Namespace: parsed arguments.
+        parsed arguments.
     """
     parser = argparse.ArgumentParser(description="Ethernet connection example")
     parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)

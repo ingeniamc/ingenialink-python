@@ -19,7 +19,7 @@ def setup_command() -> argparse.Namespace:
     """Parse input arguments.
 
     Returns:
-        argparse.Namespace: Parsed arguments.
+        Parsed arguments.
     """
     parser = argparse.ArgumentParser(description="Ethernet load firmware example")
     parser.add_argument("-f", "--firmware_path", help="Path to firmware file", required=True)

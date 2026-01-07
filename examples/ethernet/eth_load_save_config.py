@@ -45,7 +45,7 @@ def setup_command() -> argparse.Namespace:
     """Parse input arguments.
 
     Returns:
-        argparse.Namespace: Parsed arguments.
+        Parsed arguments.
     """
     parser = argparse.ArgumentParser(description="Ethernet connection example")
     parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)

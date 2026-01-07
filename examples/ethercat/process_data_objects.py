@@ -143,7 +143,7 @@ def setup_command() -> argparse.Namespace:
     """Parse input arguments.
 
     Returns:
-        argparse.Namespace: Parsed arguments.
+        Parsed arguments.
     """
     parser = argparse.ArgumentParser(description="EtherCAT PDOs example script.")
     interface_help = """Network adapter interface name. To find it: \n

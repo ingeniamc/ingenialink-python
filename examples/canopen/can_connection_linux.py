@@ -32,7 +32,7 @@ def setup_command() -> argparse.Namespace:
     """Sets up the command line argument parser.
 
     Returns:
-        argparse.Namespace: Parsed command line arguments.
+        Parsed command line arguments.
     """
     parser = argparse.ArgumentParser(description="Canopen example")
     parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)

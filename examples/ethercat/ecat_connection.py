@@ -20,7 +20,7 @@ def setup_command() -> argparse.Namespace:
     """Setup command line argument parser.
 
     Returns:
-        argparse.Namespace: Parsed arguments.
+        Parsed arguments.
     """
     parser = argparse.ArgumentParser(description="EtherCAT connection example script.")
     interface_help = """Network adapter interface name. To find it: \n
