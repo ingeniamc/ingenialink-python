@@ -1,10 +1,21 @@
 import argparse
+from typing import TYPE_CHECKING
 
 from ingenialink.ethernet.network import EthernetNetwork
-from ingenialink.ethernet.servo import EthernetServo
+
+if TYPE_CHECKING:
+    from ingenialink.ethernet.servo import EthernetServo
 
 
-def connect_slave(args: argparse.Namespace) -> tuple[EthernetServo, EthernetNetwork]:
+def connect_slave(args: argparse.Namespace) -> tuple["EthernetServo", "EthernetNetwork"]:
+    """Connect to a slave device using the provided arguments.
+
+    Args:
+        args: Parsed command-line arguments.
+
+    Returns:
+        Connected servo and network objects.
+    """
     net = EthernetNetwork()
     servo = net.connect_to_slave(args.ip_address, args.dictionary_path, args.port)
     return servo, net
@@ -31,6 +42,11 @@ def save_config_example(args: argparse.Namespace) -> None:
 
 
 def setup_command() -> argparse.Namespace:
+    """Parse input arguments.
+
+    Returns:
+        Parsed arguments.
+    """
     parser = argparse.ArgumentParser(description="Ethernet connection example")
     parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)
     parser.add_argument("-ip", "--ip_address", help="IP address", type=str, required=True)
