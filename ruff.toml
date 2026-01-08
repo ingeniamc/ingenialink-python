@@ -55,3 +55,6 @@ ignore = [
 "tests/*" = [
     "D", # Docstring rules
 ]
+"examples/*" = [
+    "T20", # flake8 prints
+]
