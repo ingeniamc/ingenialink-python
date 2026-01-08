@@ -5,7 +5,7 @@ from ingenialink.configuration_file import ConfigTable, TableElement
 from ingenialink.utils._utils import REG_VALUE, convert_bytes_to_dtype
 
 if TYPE_CHECKING:
-    from ingenialink import Servo
+    from ingenialink import Register, Servo
     from ingenialink.dictionary import DictionaryTable
 
 
@@ -51,6 +51,16 @@ class Table:
 
         self.__min_index = min_index
         self.__max_index = max_index
+
+    @property
+    def index_register(self) -> "Register":
+        """Index register used to access the table."""
+        return self.__index_register
+
+    @property
+    def value_register(self) -> "Register":
+        """Value register used to read/write table values."""
+        return self.__value_register
 
     def get_value(self, index: int) -> REG_VALUE:
         """Reads a value from the table.
@@ -120,6 +130,24 @@ class Table:
             Each address in the table from min_index to max_index.
         """
         yield from range(self.__min_index, self.__max_index + 1)
+
+    def items(self) -> Iterator[tuple[int, REG_VALUE]]:
+        """Iterate over all index-value pairs in the table.
+
+        Yields:
+            Tuples of (index, value) for each entry in the table.
+        """
+        for addr in self.addresses():
+            yield addr, self.get_value(addr)
+
+    def items_raw(self) -> Iterator[tuple[int, bytes]]:
+        """Iterate over all index-raw_value pairs in the table.
+
+        Yields:
+            Tuples of (index, raw_value) for each entry in the table.
+        """
+        for addr in self.addresses():
+            yield addr, self.get_value_raw(addr)
 
     def __getitem__(self, index: int) -> REG_VALUE:
         """Read a value from the table using bracket notation.
@@ -213,8 +241,8 @@ class Table:
             ConfigTable instance with the current table values.
         """
         config_table = ConfigTable(uid=self.__dict_table.id, subnode=self.__dict_table.axis or 0)
-        for address in self.addresses():
-            element = TableElement(address=address, data=self.get_value_raw(address))
+        for address, raw_value in self.items_raw():
+            element = TableElement(address=address, data=raw_value)
             config_table.elements.append(element)
         return config_table
 

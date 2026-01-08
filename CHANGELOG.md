@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 ### Added
-- Add support for tables for XDF and XCF. XCF version has been updated to 2.2
+- Add support for tables for XDF and XCF and CSV export. XCF version has been updated to 2.2
 
 ## [7.5.2] - 2025-11-24
 ### Added
