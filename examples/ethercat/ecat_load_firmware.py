@@ -4,12 +4,22 @@ from ingenialink.ethercat.network import EthercatNetwork
 
 
 def ecat_load_fw(args: argparse.Namespace) -> None:
+    """Load firmware to an EtherCAT slave.
+
+    Args:
+        args: Command line arguments.
+    """
     net = EthercatNetwork(args.interface)
     boot_in_app = args.firmware_path.endswith(".sfu")
     net.load_firmware(args.firmware_path, boot_in_app, slave_id=args.slave_id)
 
 
 def setup_command() -> argparse.Namespace:
+    """Setup command line argument parser.
+
+    Returns:
+        Parsed arguments.
+    """
     parser = argparse.ArgumentParser(description="EtherCAT connection example script.")
     interface_help = """Network adapter interface name. To find it: \n
     - On Windows, \\Device\\NPF_{id}. To get the id, run the command: wmic nic get name, guid \n

@@ -9,6 +9,7 @@ from threading import Thread
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
 
 import ingenialogger
+from typing_extensions import override
 
 from ingenialink.pdo_network_manager import PDONetworkManager
 from ingenialink.servo import Servo
@@ -150,7 +151,7 @@ class NetStatusListener(Thread):
             if (
                 is_servo_alive
                 and servo_state == NetState.DISCONNECTED
-                and self.__network._recover_from_disconnection()
+                and self.__network.recover_from_disconnection()
             ):
                 self.__network._notify_status(slave_id, NetDevEvt.ADDED)
                 self.__network._set_servo_state(slave_id, NetState.CONNECTED)
@@ -595,7 +596,10 @@ class EthercatNetwork(Network):
 
         Raises:
             ILStateError: If slaves can not reach SafeOp or Op state.
+            RuntimeError: If EtherCAT master is not running.
         """
+        if not self.__is_master_running:
+            raise RuntimeError("EtherCAT master is not running.")
         op_servo_list = [servo for servo in self.servos if servo._rpdo_maps or servo._tpdo_maps]
         if not op_servo_list:
             logger.warning("There are no PDOs assigned to any connected slave.")
@@ -620,6 +624,9 @@ class EthercatNetwork(Network):
 
     def stop_pdos(self) -> None:
         """For all slaves not in PreOp state, set state to PreOp."""
+        if not self.__is_master_running:
+            logger.warning("EtherCAT master is not running, no PDOs to stop.")
+            return
         self._ecat_master.read_state()
         restore_servos_list = [
             servo for servo in self.servos if servo.slave.state != pysoem.PREOP_STATE
@@ -971,10 +978,14 @@ class EthercatNetwork(Network):
         for callback in self.__observers_net_state[slave_id]:
             callback(status)
 
-    def _recover_from_disconnection(self) -> bool:
+    @override
+    def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:
         """Recover the CoE communication after a disconnection.
 
         All the connected slaves need to transitioned to the PreOp state.
+
+        Args:
+            servo: not used in this implementation but kept for interface consistency.
 
         Returns:
             True if all the connected slaves reach the PreOp state.

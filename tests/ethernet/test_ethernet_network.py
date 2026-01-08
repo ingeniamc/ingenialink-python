@@ -3,6 +3,7 @@ import socket
 import time
 from ftplib import error_temp
 from threading import Thread
+from typing import TYPE_CHECKING
 
 import pytest
 from summit_testing_framework.setups import (
@@ -19,6 +20,9 @@ from twisted.protocols.ftp import FTPFactory, FTPRealm
 
 from ingenialink.ethernet.network import EthernetNetwork, NetDevEvt, NetProt, NetState
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
+
+if TYPE_CHECKING:
+    from ingenialink.ethernet.servo import EthernetServo
 
 
 class FTPServer(Thread):
@@ -271,3 +275,26 @@ def test_unsubscribe_from_status(virtual_drive, mocker):
 
     # Assert that the net status callback is not notified of net status change event
     assert len(status_list) == 0
+
+
+@pytest.mark.ethernet
+def test_recover_from_disconnection(net: "EthernetNetwork", servo: "EthernetServo", mocker) -> None:
+    """Test that recover_from_disconnection properly checks if a servo can communicate.
+
+    This test uses a real Ethernet drive and simulates disconnection/reconnection
+    scenarios to verify the recovery behavior.
+    """
+    assert len(net.servos) == 1
+    assert servo in net.servos
+    assert servo.is_alive() is True
+
+    # Verify that recover_from_disconnection returns True when servo is connected
+    assert net.recover_from_disconnection(servo) is True
+
+    # Simulate servo disconnection by mocking is_alive to return False
+    mocker.patch.object(servo, "is_alive", return_value=False)
+    assert net.recover_from_disconnection(servo) is False
+
+    # Simulate servo reconnection by mocking is_alive to return True again
+    mocker.patch.object(servo, "is_alive", return_value=True)
+    assert net.recover_from_disconnection(servo) is True

@@ -1,4 +1,5 @@
 import platform
+from typing import TYPE_CHECKING
 
 import pytest
 from summit_testing_framework.setups import (
@@ -8,6 +9,9 @@ from summit_testing_framework.setups import (
 
 from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 from ingenialink.exceptions import ILError
+
+if TYPE_CHECKING:
+    from ingenialink.canopen.servo import CanopenServo
 
 test_bus = "virtual"
 test_baudrate = 1000000
@@ -152,3 +156,35 @@ def test_load_firmware(servo, net, setup_descriptor):
 
     assert new_fw_version != fw_version
     net.disconnect_from_slave(servo)
+
+
+@pytest.mark.canopen
+def test_recover_from_disconnection(net: "CanopenNetwork", servo: "CanopenServo", caplog):
+    """Test that recover_from_disconnection properly resets the CANopen network.
+
+    This test uses a real CANopen drive and verifies that the recover_from_disconnection
+    method successfully calls _reset_connection() to re-establish communication.
+    """
+    assert servo is not None
+    assert len(net.servos) == 1
+    assert net._connection is not None
+
+    # Read the firmware version to ensure communication is working
+    fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
+    assert fw_version is not None and fw_version != ""
+
+    # Call recover_from_disconnection and verify it succeeds
+    with caplog.at_level("INFO"):
+        result = net.recover_from_disconnection()
+        assert result is True, "recover_from_disconnection should successfully reset connection"
+        assert "CANopen communication recovered." in caplog.text, (
+            "Should log recovery success message"
+        )
+
+    # Verify connection is still established after recovery
+    assert net._connection is not None
+    assert len(net.servos) == 1
+
+    # Verify we can still communicate with the servo after recovery
+    new_fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
+    assert new_fw_version == fw_version, "Firmware version should remain the same after recovery"
