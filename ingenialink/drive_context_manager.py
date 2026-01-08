@@ -199,9 +199,9 @@ class DriveContextManager:
         Returns:
             Dictionary mapping CanOpenObject to its byte value.
         """
-        if not isinstance(self.drive, EthercatServo):
-            return
         object_values: dict[CanOpenObject, bytes] = {}
+        if not isinstance(self.drive, EthercatServo):
+            return object_values
         for obj in self.drive.dictionary.all_objs():
             uid = obj.uid
             # Always read the rpdo/tpdo map objects using complete access
