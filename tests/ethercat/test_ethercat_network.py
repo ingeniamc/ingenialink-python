@@ -1,4 +1,5 @@
 import contextlib
+import time
 
 import tests.resources
 
@@ -6,7 +7,6 @@ with contextlib.suppress(ImportError):
     import pysoem
 import random
 import threading
-import time
 from collections.abc import Generator
 from typing import TYPE_CHECKING, cast
 
@@ -31,6 +31,7 @@ from ingenialink.pdo import PDOMap, RPDOMap, TPDOMap
 
 if TYPE_CHECKING:
     from pytest_mock import MockerFixture
+    from summit_testing_framework.setup_fixtures import ConnectionWrapper
 
     from ingenialink.ethercat.servo import EthercatServo
 
@@ -1033,32 +1034,222 @@ class TestEthercatNetworkContextManager:
             assert net_mocker in ETHERCAT_NETWORK_REFERENCES
         assert net_mocker in ETHERCAT_NETWORK_REFERENCES
 
-
-@pytest.mark.ethercat
-def test_context_manager_nested_contexts(net: "EthercatNetwork") -> None:
-    """Test that nested context managers work correctly."""
-    # Network reference should be set on creation
-    assert net in ETHERCAT_NETWORK_REFERENCES
-    assert net._EthercatNetwork__is_master_running is False
-
-    n_networks = len(ETHERCAT_NETWORK_REFERENCES)
-
-    # Outer context starts the master
-    with net.running():
-        assert net._EthercatNetwork__is_master_running is True
+    @pytest.mark.ethercat
+    def test_context_manager_nested_contexts(self, net: "EthercatNetwork") -> None:
+        """Test that nested context managers work correctly."""
+        # Network reference should be set on creation
         assert net in ETHERCAT_NETWORK_REFERENCES
+        assert net._EthercatNetwork__is_master_running is False
 
+        n_networks = len(ETHERCAT_NETWORK_REFERENCES)
+
+        # Outer context starts the master
         with net.running():
             assert net._EthercatNetwork__is_master_running is True
             assert net in ETHERCAT_NETWORK_REFERENCES
-            assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks
 
-        # Master should still be running after nested scan_slaves()
-        # (because outer context started it, not the internal scan_slaves() context)
-        assert net._EthercatNetwork__is_master_running is True
-        assert net in ETHERCAT_NETWORK_REFERENCES
+            with net.running():
+                assert net._EthercatNetwork__is_master_running is True
+                assert net in ETHERCAT_NETWORK_REFERENCES
+                assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks
 
-    # After outer context exits, master should be closed and reference released
-    assert net._EthercatNetwork__is_master_running is False
-    assert net not in ETHERCAT_NETWORK_REFERENCES
-    assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks - 1
+            # Master should still be running after nested scan_slaves()
+            # (because outer context started it, not the internal scan_slaves() context)
+            assert net._EthercatNetwork__is_master_running is True
+            assert net in ETHERCAT_NETWORK_REFERENCES
+
+        # After outer context exits, master should be closed and reference released
+        assert net._EthercatNetwork__is_master_running is False
+        assert net not in ETHERCAT_NETWORK_REFERENCES
+        assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks - 1
+
+    @pytest.mark.ethercat
+    def test_context_manager_counting_semaphore(self, net: "EthercatNetwork") -> None:
+        """Test that the counting semaphore approach correctly tracks multiple contexts."""
+        # Initially: counter should be 0, master not running
+        assert net._EthercatNetwork__running_contexts_count == 0
+        assert net._EthercatNetwork__is_master_running is False
+
+        # Enter first context: counter=1, master starts
+        with net.running():
+            assert net._EthercatNetwork__running_contexts_count == 1
+            assert net._EthercatNetwork__is_master_running is True
+
+            # Enter nested context: counter=2, master stays running
+            with net.running():
+                assert net._EthercatNetwork__running_contexts_count == 2
+                assert net._EthercatNetwork__is_master_running is True
+
+                # Enter another nested context: counter=3
+                with net.running():
+                    assert net._EthercatNetwork__running_contexts_count == 3
+                    assert net._EthercatNetwork__is_master_running is True
+
+                # After exiting innermost: counter=2, master still running
+                assert net._EthercatNetwork__running_contexts_count == 2
+                assert net._EthercatNetwork__is_master_running is True
+
+            # After exiting second: counter=1, master still running
+            assert net._EthercatNetwork__running_contexts_count == 1
+            assert net._EthercatNetwork__is_master_running is True
+
+        # After exiting all contexts: counter=0, master closed
+        assert net._EthercatNetwork__running_contexts_count == 0
+        assert net._EthercatNetwork__is_master_running is False
+
+    @pytest.mark.ethercat
+    def test_context_manager_concurrent_threads(self, net: "EthercatNetwork") -> None:
+        """Test that concurrent threads using running() context are handled safely."""
+
+        results = {"errors": [], "master_was_running": []}
+
+        def thread_func(thread_id: int, delay: float):
+            """Function to run in separate thread."""
+            try:
+                time.sleep(delay)
+                with net.running():
+                    # Record that master was running during this context
+                    results["master_was_running"].append((
+                        thread_id,
+                        net._EthercatNetwork__is_master_running,
+                    ))
+                    time.sleep(0.1)  # Keep context active for a bit
+            except Exception as e:
+                results["errors"].append((thread_id, str(e)))
+
+        # Create multiple threads that will use running() concurrently
+        threads = []
+        try:
+            for i in range(5):
+                t = threading.Thread(target=thread_func, args=(i, i * 0.02))
+                threads.append(t)
+                t.start()
+
+            # Wait for all threads to complete
+            for t in threads:
+                t.join()
+
+            # Verify no errors occurred
+            assert len(results["errors"]) == 0, f"Errors occurred: {results['errors']}"
+
+            # Verify master was running in all contexts
+            assert len(results["master_was_running"]) == 5
+            for thread_id, was_running in results["master_was_running"]:
+                assert was_running, f"Master was not running in thread {thread_id}"
+
+            # After all threads exit, master should be closed and counter at 0
+            assert net._EthercatNetwork__running_contexts_count == 0
+            assert net._EthercatNetwork__is_master_running is False
+        finally:
+            # Ensure all threads are joined even if test fails
+            for t in threads:
+                if t.is_alive():
+                    t.join(timeout=2.0)
+
+    @pytest.mark.ethercat
+    def test_context_manager_with_scan_in_nested_context(
+        self, net: "EthercatNetwork", servo_with_reconnect: "ConnectionWrapper"
+    ) -> None:
+        """Test that scan_slaves() works correctly within a running() context."""
+        servo_with_reconnect.disconnect()
+        assert net not in ETHERCAT_NETWORK_REFERENCES
+        n_networks = len(ETHERCAT_NETWORK_REFERENCES)
+
+        # Use running() context and call scan_slaves() within it
+        with net.running():
+            assert net._EthercatNetwork__is_master_running is True
+
+            # scan_slaves() internally uses running() - this creates nested contexts
+            slaves = net.scan_slaves()
+            assert len(slaves) > 0
+
+            # Master should still be running (outer context holds it open)
+            assert net._EthercatNetwork__is_master_running is True
+            assert net in ETHERCAT_NETWORK_REFERENCES
+
+        # After exiting, master should be closed
+        assert net._EthercatNetwork__is_master_running is False
+        assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks
+
+    @pytest.mark.ethercat
+    def test_context_manager_does_not_close_if_servos_connected(
+        self, net: "EthercatNetwork", servo_with_reconnect: "ConnectionWrapper"
+    ) -> None:
+        """Test that running() context doesn't close master if servos are still connected.
+
+        This tests the scenario where:
+        1. Thread A uses running() to start the master
+        2. Thread B connects a servo (outside any context)
+        3. Thread A exits running() - should NOT close master (servo still using it)
+        """
+        servo_with_reconnect.disconnect()
+
+        servo = None
+        context_exited = threading.Event()
+        servo_connected = threading.Event()
+        errors = []
+
+        def thread_a_context():
+            """Thread A: Use running() context."""
+            try:
+                with net.running():
+                    assert net._EthercatNetwork__is_master_running is True
+                    servo_connected.wait(timeout=5)  # Wait for Thread B to connect servo
+                    # Sleep a bit to let Thread B use the servo
+                    time.sleep(0.2)
+                # After exiting context
+                context_exited.set()
+            except Exception as e:
+                errors.append(("thread_a", str(e)))
+
+        def thread_b_connect():
+            """Thread B: Connect servo normally (outside context)."""
+            nonlocal servo
+            try:
+                # Wait a bit for Thread A to start the master
+                time.sleep(0.1)
+                # Connect servo normally (master already running from Thread A's context)
+                servo_with_reconnect.connect()
+                servo = servo_with_reconnect.get_servo()
+                assert servo is not None
+                servo_connected.set()
+
+                # Wait for Thread A's context to exit
+                context_exited.wait(timeout=5)
+
+                # Master should STILL be running because servo is connected
+                assert net._EthercatNetwork__is_master_running is True, (
+                    "Master should not be closed when servos are still connected"
+                )
+
+                # Try to read from servo - should work
+                _ = servo.read("DRV_OP_CMD")
+
+            except Exception as e:
+                errors.append(("thread_b", str(e)))
+
+        # Start both threads
+        t_a = threading.Thread(target=thread_a_context)
+        t_b = threading.Thread(target=thread_b_connect)
+
+        try:
+            t_a.start()
+            t_b.start()
+
+            t_a.join(timeout=10)
+            t_b.join(timeout=10)
+
+            # Check for errors
+            assert len(errors) == 0, f"Errors occurred: {errors}"
+
+            # Master should still be running (servo connected)
+            assert net._EthercatNetwork__is_master_running is True
+
+        finally:
+            # Cleanup
+            if servo is not None:
+                with contextlib.suppress(Exception):
+                    servo_with_reconnect.disconnect()
+            for t in [t_a, t_b]:
+                if t.is_alive():
+                    t.join(timeout=2.0)
