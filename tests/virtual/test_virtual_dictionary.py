@@ -27,7 +27,6 @@ def test_read_xdf_register_canopen(reg_id, subnode, address):
     assert ethernet_dict.registers(subnode)[reg_id].address == address
 
 
-@pytest.mark.no_connection
 def test_no_cia_registers_in_dictionary():
     dictionary_path = tests.resources.canopen.TEST_DICT_CAN
 

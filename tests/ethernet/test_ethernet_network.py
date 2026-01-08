@@ -121,20 +121,17 @@ def test_scan_slaves(setup_descriptor):
 
 @pytest.mark.ethernet
 def test_scan_slaves_info(setup_specifier, setup_descriptor, request):
-    if not isinstance(
-        setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)
-    ):
-        pytest.skip("Only available for rack specifiers.")
     drive_ip = setup_descriptor.ip
     subnet = drive_ip + "/24"
     net = EthernetNetwork(subnet)
     slaves_info = net.scan_slaves_info()
 
-    drive = request.getfixturevalue("get_drive_configuration_from_rack_service")
-
     assert len(slaves_info) > 0
     assert drive_ip in slaves_info
-    assert slaves_info[drive_ip].product_code == drive.product_code
+
+    if isinstance(setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)):
+        drive = request.getfixturevalue("get_drive_configuration_from_rack_service")
+        assert slaves_info[drive_ip].product_code == drive.product_code
 
 
 @pytest.mark.ethernet
