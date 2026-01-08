@@ -5,6 +5,7 @@ from ingenialogger import get_logger
 
 from ingenialink.dictionary import CanOpenObject
 from ingenialink.enums.register import RegAccess
+from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILIOError
 from ingenialink.register import Register
 from ingenialink.servo import RegisterAccessOperation, Servo
@@ -198,6 +199,8 @@ class DriveContextManager:
         Returns:
             Dictionary mapping CanOpenObject to its byte value.
         """
+        if not isinstance(self.drive, EthercatServo):
+            return
         object_values: dict[CanOpenObject, bytes] = {}
         for obj in self.drive.dictionary.all_objs():
             uid = obj.uid
