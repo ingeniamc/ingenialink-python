@@ -46,7 +46,7 @@ def mocked_network_for_firmware_loading(mocker):
     mock_slave = mocker.Mock()
     net._ecat_master.slaves = [mock_slave]
     net._EthercatNetwork__last_init_nodes = {1}
-    with net:
+    with net.running():
         yield net, mock_slave
 
 
@@ -962,7 +962,7 @@ class TestEthercatNetworkContextManager:
         """Test that context manager starts master if not running and closes it on exit."""
         assert net_mocker._EthercatNetwork__is_master_running is False
 
-        with net_mocker:
+        with net_mocker.running():
             net_mocker._start_master.assert_called_once()
             # Simulate master running
             net_mocker._EthercatNetwork__is_master_running = True
@@ -978,7 +978,7 @@ class TestEthercatNetworkContextManager:
         # Simulate master already running
         net_mocker._EthercatNetwork__is_master_running = True
 
-        with net_mocker:
+        with net_mocker.running():
             net_mocker._start_master.assert_not_called()
 
         net_mocker.close_ecat_master.assert_not_called()
@@ -992,7 +992,7 @@ class TestEthercatNetworkContextManager:
             release_network_reference(network=net_mocker)
         assert net_mocker not in ETHERCAT_NETWORK_REFERENCES
 
-        with net_mocker:
+        with net_mocker.running():
             assert net_mocker in ETHERCAT_NETWORK_REFERENCES
 
         assert net_mocker not in ETHERCAT_NETWORK_REFERENCES
@@ -1000,7 +1000,7 @@ class TestEthercatNetworkContextManager:
     @pytest.mark.pcap
     def test_context_manager_handles_exceptions(self, net_mocker: "EthercatNetwork") -> None:
         """Test that context manager properly closes master even when exception occurs."""  # noqa: DOC501
-        with pytest.raises(ValueError, match="test exception"), net_mocker:
+        with pytest.raises(ValueError, match="test exception"), net_mocker.running():
             # Simulate master running
             net_mocker._EthercatNetwork__is_master_running = True
             raise ValueError("test exception")
@@ -1018,7 +1018,7 @@ class TestEthercatNetworkContextManager:
         assert net_mocker not in ETHERCAT_NETWORK_REFERENCES
 
         # First usage should add the reference and release it
-        with net_mocker:
+        with net_mocker.running():
             assert net_mocker in ETHERCAT_NETWORK_REFERENCES
         assert net_mocker not in ETHERCAT_NETWORK_REFERENCES
 
@@ -1029,6 +1029,36 @@ class TestEthercatNetworkContextManager:
         # Second usage should not close the master since it was already running
         # and the reference should remain after context
         assert net_mocker in ETHERCAT_NETWORK_REFERENCES
-        with net_mocker:
+        with net_mocker.running():
             assert net_mocker in ETHERCAT_NETWORK_REFERENCES
         assert net_mocker in ETHERCAT_NETWORK_REFERENCES
+
+
+@pytest.mark.ethercat
+def test_context_manager_nested_contexts(net: "EthercatNetwork") -> None:
+    """Test that nested context managers work correctly."""
+    # Network reference should be set on creation
+    assert net in ETHERCAT_NETWORK_REFERENCES
+    assert net._EthercatNetwork__is_master_running is False
+
+    n_networks = len(ETHERCAT_NETWORK_REFERENCES)
+
+    # Outer context starts the master
+    with net.running():
+        assert net._EthercatNetwork__is_master_running is True
+        assert net in ETHERCAT_NETWORK_REFERENCES
+
+        with net.running():
+            assert net._EthercatNetwork__is_master_running is True
+            assert net in ETHERCAT_NETWORK_REFERENCES
+            assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks
+
+        # Master should still be running after nested scan_slaves()
+        # (because outer context started it, not the internal scan_slaves() context)
+        assert net._EthercatNetwork__is_master_running is True
+        assert net in ETHERCAT_NETWORK_REFERENCES
+
+    # After outer context exits, master should be closed and reference released
+    assert net._EthercatNetwork__is_master_running is False
+    assert net not in ETHERCAT_NETWORK_REFERENCES
+    assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks - 1

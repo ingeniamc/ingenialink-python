@@ -4,6 +4,8 @@ import re
 import threading
 import time
 from collections import OrderedDict, defaultdict
+from collections.abc import Generator
+from contextlib import contextmanager
 from enum import Enum
 from threading import Thread
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
@@ -240,9 +242,6 @@ class EthercatNetwork(Network):
         # List of subscribers to PDO thread status
         self._pdo_thread_status_observers: list[Callable[[bool], None]] = []
 
-        # Context manager state tracking
-        self.__context_opened_master = False
-
     @staticmethod
     def pysoem_available() -> bool:
         """Check if pysoem is available.
@@ -428,7 +427,7 @@ class EthercatNetwork(Network):
         """
         if self.servos:
             raise ILError("Some slaves are already connected")
-        with self:
+        with self.running():
             self.__init_nodes()
             # Check the slaves before exiting context (which may clear __last_init_nodes)
             slaves_found = self.__last_init_nodes
@@ -811,7 +810,7 @@ class EthercatNetwork(Network):
 
         if not isinstance(slave_id, int) or slave_id < 0:
             raise ValueError("Invalid slave ID value")
-        with self:
+        with self.running():
             self.__init_nodes()
             if len(self.__last_init_nodes) == 0:
                 raise ILError("Could not find any slaves in the network.")
@@ -954,59 +953,44 @@ class EthercatNetwork(Network):
         if self not in ETHERCAT_NETWORK_REFERENCES:
             set_network_reference(network=self)
 
-    def __enter__(self) -> "EthercatNetwork":
-        """Enter the context manager.
+    @contextmanager
+    def running(self) -> Generator["EthercatNetwork", None, None]:
+        """Context manager for the EtherCAT network.
 
         Ensures the network reference is set and starts the master if it's not already running.
-        The context manager tracks whether it started the master to decide whether to
-        close it on exit.
+        The context manager tracks whether it started the master (via local variable on the stack)
+        to decide whether to close it on exit.
 
-        Returns:
+        This implementation uses @contextmanager decorator to naturally keep state on the stack,
+        avoiding issues with nested contexts that would occur with instance variables.
+
+        Yields:
             The network instance.
         """
-        # Track if we need to start the master
-        self.__context_opened_master = self.__is_master_running is False
+        # Track if we need to start the master (local variable, naturally stack-based)
+        context_opened_master = self.__is_master_running is False
 
         # Start the master if it's not already running
-        if self.__context_opened_master:
+        if context_opened_master:
             self._start_master()
 
         # Ensure network reference is set (might have been released previously)
         self.__ensure_network_reference()
 
-        return self
+        try:
+            yield self
+        finally:
+            # Only close and release if this context opened the master
+            if not context_opened_master:
+                return
 
-    def __exit__(
-        self,
-        exc_type: Optional[type],
-        exc_value: Optional[BaseException],
-        traceback: Optional[Any],
-    ) -> None:
-        """Exit the context manager.
-
-        Only closes the master and releases the network reference if the context manager
-        started the master. If the master was already running before entering the context,
-        this method does nothing, making the context completely transparent and tolerant
-        to already-opened networks.
-
-        Args:
-            exc_type: Exception type if an exception occurred.
-            exc_value: Exception value if an exception occurred.
-            traceback: Traceback if an exception occurred.
-        """
-        # Only close and release if this context opened the master
-        if not self.__context_opened_master:
-            return
-
-        if self.__is_master_running:
-            try:
-                self.close_ecat_master(release_reference=True)
-            except Exception as e:
-                logger.error(f"Error cleaning up EtherCAT network in context manager: {e}")
-        elif self in ETHERCAT_NETWORK_REFERENCES:
-            release_network_reference(network=self)
-
-        self.__context_opened_master = False
+            if self.__is_master_running:
+                try:
+                    self.close_ecat_master(release_reference=True)
+                except Exception as e:
+                    logger.error(f"Error cleaning up EtherCAT network in context manager: {e}")
+            elif self in ETHERCAT_NETWORK_REFERENCES:
+                release_network_reference(network=self)
 
     @property
     def protocol(self) -> NetProt:
