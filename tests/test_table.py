@@ -168,10 +168,17 @@ def test_table_set_all_values(servo_with_table):
     """Test that Table.set_all_values method works correctly."""
     _servo, table = servo_with_table
 
+    # Write a deterministic value for each address
     for address in table.addresses():
         table.set_value(address, address * 2)
 
-
+    # Read back and verify each value was set correctly
+    for address in table.addresses():
+        read_value = table.get_value(address)
+        expected_value = address * 2
+        assert read_value == expected_value, (
+            f"Address {address}: expected {expected_value}, got {read_value}"
+        )
 def test_table_iteration(servo_with_table):
     """Test that Table supports iteration over all values."""
     _servo, table = servo_with_table
@@ -395,7 +402,7 @@ def test_save_configuration_csv_with_tables(real_servo_with_tables, tmp_path: Pa
         _crc_line = next(reader)
         file_data_rows = list(reader)
 
-    # All expected rows hardcoded (index/value pairs for addresses 0,1 and last index 511)
+    # All expected rows hardcoded (index/value pairs for addresses 0, 1 and last index 255)
     # Expected contiguous index/value pairs (hardcoded)
     expected_blocks = [
         (["0x5940", "0x00", "0x0000"], ["0x5941", "0x00", "0x00000001"]),
