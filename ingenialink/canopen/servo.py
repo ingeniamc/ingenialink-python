@@ -1,3 +1,5 @@
+import contextlib
+from collections.abc import Iterator
 from typing import Callable, Optional, Union
 
 import canopen
@@ -87,10 +89,11 @@ class CanopenServo(Servo):
         Args:
             subnode: Subnode of the axis. `None` by default which stores all the parameters.
             sdo_timeout: Timeout value for each SDO response.
+                Drive takes longer to respond while storing parameters.
+                the value is temporarily set to this value and then rolled back to the original one.
         """
-        self._change_sdo_timeout(sdo_timeout)
-        super().store_parameters(subnode)
-        self._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
+        with self._minimum_sdo_timeout(sdo_timeout):
+            super().store_parameters(subnode)
 
     def _write_raw(self, reg: CanopenRegister, data: bytes) -> None:  # type: ignore [override]
         try:
@@ -152,6 +155,27 @@ class CanopenServo(Servo):
     def _change_sdo_timeout(self, value: float) -> None:
         """Changes the SDO timeout of the node."""
         self.__node.sdo.RESPONSE_TIMEOUT = value
+
+    @contextlib.contextmanager
+    def _minimum_sdo_timeout(self, value: float) -> Iterator[None]:
+        """Context manager to temporarily change the SDO timeout of the node.
+
+        Args:
+            value: New SDO timeout value.
+        """
+        old_timeout = self.__node.sdo.RESPONSE_TIMEOUT
+
+        if old_timeout > value:
+            # The current timeout is already higher than the requested one
+            yield
+            return
+
+        # Temporarily change the SDO timeout
+        try:
+            yield
+        finally:
+            # Always roll back to the old timeout
+            self._change_sdo_timeout(old_timeout)
 
     def _is_register_valid_for_configuration_file(self, register: Register) -> bool:
         is_register_valid = super()._is_register_valid_for_configuration_file(register)
