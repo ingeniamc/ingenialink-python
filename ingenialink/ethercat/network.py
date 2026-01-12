@@ -977,11 +977,16 @@ class EthercatNetwork(Network):
         # Ensure network reference is set (might have been released previously)
         self.__ensure_network_reference()
 
+        exception = None
         try:
             yield self
+        except Exception as e:
+            exception = e
         finally:
             # Only close and release if this context opened the master
             if not context_opened_master:
+                if exception is not None:
+                    raise exception
                 return
 
             if self.__is_master_running:
@@ -989,8 +994,12 @@ class EthercatNetwork(Network):
                     self.close_ecat_master(release_reference=True)
                 except Exception as e:
                     logger.error(f"Error cleaning up EtherCAT network in context manager: {e}")
+                    raise e
             elif self in ETHERCAT_NETWORK_REFERENCES:
                 release_network_reference(network=self)
+
+            if exception is not None:
+                raise exception
 
     @property
     def protocol(self) -> NetProt:
