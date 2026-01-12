@@ -1,4 +1,3 @@
-import re
 import threading
 import time
 from typing import TYPE_CHECKING, Callable, Optional
@@ -164,19 +163,18 @@ class PDONetworkManager:
                 for servo in self._net.servos:
                     servo.set_pdo_watchdog_time(self._watchdog_timeout)
             except AttributeError as e:
-                max_pdo_watchdog = re.findall("wd_time_ms is limited to (.+) ms", e.__str__())
-                max_pdo_watchdog_ms = None
-                if max_pdo_watchdog is not None:
-                    max_pdo_watchdog_ms = float(max_pdo_watchdog[0])
+                max_pdo_watchdog_s = servo.get_max_pdo_watchdog_time()
                 if is_watchdog_timeout_manually_set:
-                    error_msg = "The watchdog timeout is too high."
-                    if max_pdo_watchdog_ms is not None:
-                        error_msg += f" The max watchdog timeout is {max_pdo_watchdog_ms} ms."
+                    error_msg = (
+                        "The watchdog timeout is too high. "
+                        f"The max watchdog timeout is {max_pdo_watchdog_s} s."
+                    )
                 else:
-                    error_msg = "The sampling time is too high."
-                    if max_pdo_watchdog_ms is not None:
-                        max_sampling_time = max_pdo_watchdog_ms / self.PDO_WATCHDOG_INCREMENT_FACTOR
-                        error_msg += f" The max sampling time is {max_sampling_time} ms."
+                    max_sampling_time_s = max_pdo_watchdog_s / self.PDO_WATCHDOG_INCREMENT_FACTOR
+                    error_msg = (
+                        "The sampling time is too high. "
+                        f"The max sampling time is {max_sampling_time_s} s."
+                    )
                 raise ILError(error_msg) from e
 
     def __init__(self, net: "EthercatNetwork") -> None:
