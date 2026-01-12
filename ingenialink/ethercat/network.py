@@ -658,7 +658,7 @@ class EthercatNetwork(Network):
             servo.generate_pdo_outputs()
         self._lock.acquire()
         if self._overlapping_io_map:
-            self._ecat_master.send_overlap_processdata()
+            self._ecat_master.send_overlap_processdata(release_gil=release_gil)
         else:
             self._ecat_master.send_processdata(release_gil=release_gil)
         processdata_wkc = self._ecat_master.receive_processdata(
