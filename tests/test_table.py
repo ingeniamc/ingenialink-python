@@ -1,4 +1,5 @@
 import csv
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -25,7 +26,7 @@ def virtual_drive_with_tables(virtual_drive_custom_dict) -> tuple[Servo, Table]:
 
 
 @pytest.fixture
-def real_servo_with_tables(servo) -> tuple[Servo, Table]:
+def real_servo_with_tables(servo) -> Generator[tuple[Servo, Table] :, None, None]:
     """Fixture that provides a real servo with user memory table.
 
     Real servos have table functionality in hardware, but their XDF dictionaries
@@ -34,7 +35,7 @@ def real_servo_with_tables(servo) -> tuple[Servo, Table]:
     Raises:
         AssertionError: If the MEM_USR table is already defined in the XDF.
 
-    Returns:
+    Yields:
         Tuple[Servo, Table]: The real servo and the user memory table.
     """
     # Assert that the table is not already defined in the XDF
@@ -72,7 +73,11 @@ def real_servo_with_tables(servo) -> tuple[Servo, Table]:
     # Now get the table from the servo
     table = servo.get_table(uid="MEM_USR", axis=None)
 
-    return servo, table
+    yield servo, table
+
+    # Cleanup: Remove the injected table when connection is reused
+    if 0 in servo.dictionary._tables and "MEM_USR" in servo.dictionary._tables[0]:
+        del servo.dictionary._tables[0]["MEM_USR"]
 
 
 def test_servo_get_table(virtual_drive_custom_dict):
@@ -179,6 +184,8 @@ def test_table_set_all_values(servo_with_table):
         assert read_value == expected_value, (
             f"Address {address}: expected {expected_value}, got {read_value}"
         )
+
+
 def test_table_iteration(servo_with_table):
     """Test that Table supports iteration over all values."""
     _servo, table = servo_with_table

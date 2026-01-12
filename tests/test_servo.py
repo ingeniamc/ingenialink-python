@@ -80,8 +80,8 @@ class SDOReadTimeoutManager:
         self.__net._ecat_master.sdo_read_timeout = self.__initial_value
 
 
-@pytest.fixture()
-def create_monitoring(servo, net):
+@pytest.fixture
+def create_monitoring(servo):
     skip_if_monitoring_is_not_available(servo)
     servo.monitoring_disable()
     servo.monitoring_remove_all_mapped_registers()
@@ -92,12 +92,12 @@ def create_monitoring(servo, net):
     servo.write("MON_DIST_FREQ_DIV", divisor, subnode=0)
     servo.write("MON_CFG_SOC_TYPE", 0, subnode=0)
     servo.write("MON_CFG_WINDOW_SAMP", MONITORING_NUM_SAMPLES, subnode=0)
-    yield servo, net
+    yield servo
     servo.monitoring_disable()
 
 
 @pytest.fixture()
-def create_disturbance(servo, net):
+def create_disturbance(servo):
     skip_if_monitoring_is_not_available(servo)
     data = list(range(DISTURBANCE_NUM_SAMPLES))
     servo.disturbance_disable()
@@ -106,16 +106,14 @@ def create_disturbance(servo, net):
         channel=0, uid="CL_POS_SET_POINT_VALUE", size=DISTURBANCE_CH_DATA_SIZE
     )
     servo.disturbance_write_data(0, RegDtype.S32, data)
-    yield servo, net
+    yield servo
     servo.disturbance_disable()
 
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_save_configuration(servo, net):
-    assert servo is not None and net is not None
-
+def test_save_configuration(servo) -> None:
     filename = "temp_config"
 
     servo.save_configuration(filename)
@@ -194,8 +192,7 @@ def test_check_configuration(virtual_drive):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_load_configuration(servo, net):
-    assert servo is not None and net is not None
+def test_load_configuration(servo) -> None:
     filename = "temp_config"
     servo.save_configuration(filename)
     assert os.path.isfile(filename)
@@ -233,9 +230,7 @@ def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: 
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_load_configuration_file_not_found(servo, net):
-    assert servo is not None and net is not None
-
+def test_load_configuration_file_not_found(servo) -> None:
     filename = "can_config.xdf"
     with pytest.raises(FileNotFoundError):
         servo.load_configuration(filename)
@@ -245,9 +240,7 @@ def test_load_configuration_file_not_found(servo, net):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_load_configuration_invalid_subnode(setup_descriptor, servo, net, subnode):
-    assert servo is not None and net is not None
-
+def test_load_configuration_invalid_subnode(setup_descriptor, servo, subnode) -> None:
     filename = setup_descriptor.config_file
     with pytest.raises(ValueError):
         servo.load_configuration(filename, subnode=subnode)
@@ -256,9 +249,7 @@ def test_load_configuration_invalid_subnode(setup_descriptor, servo, net, subnod
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_load_configuration_to_subnode_zero(setup_descriptor, servo, net):
-    assert servo is not None and net is not None
-
+def test_load_configuration_to_subnode_zero(setup_descriptor, servo) -> None:
     path = setup_descriptor.config_file
     assert isinstance(path, Path)
     filename = path.as_posix()
@@ -378,9 +369,7 @@ def test_restore_safe_parameters(servo, environment: "Environment") -> None:
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_read(servo, net):
-    assert servo is not None and net is not None
-
+def test_read(servo) -> None:
     value = servo.read("DRV_STATE_STATUS")
     assert value is not None
 
@@ -388,9 +377,7 @@ def test_read(servo, net):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_write(servo, net):
-    assert servo is not None and net is not None
-
+def test_write(servo) -> None:
     reg = "CL_AUX_FBK_SENSOR"
     value = 4
 
@@ -418,7 +405,7 @@ def test_monitoring_enable_disable(servo):
 @pytest.mark.canopen
 @pytest.mark.ethercat
 def test_monitoring_remove_data(create_monitoring):
-    servo, _ = create_monitoring
+    servo = create_monitoring
     servo.monitoring_enable()
     servo.write("MON_CMD_FORCE_TRIGGER", 1, subnode=0)
     assert servo.read("MON_CFG_BYTES_VALUE", subnode=0) > 0
@@ -453,7 +440,7 @@ def test_monitoring_map_register(servo):
 @pytest.mark.canopen
 @pytest.mark.ethercat
 def test_monitoring_data_size(create_monitoring):
-    servo, _ = create_monitoring
+    servo = create_monitoring
     servo.monitoring_enable()
     servo.write("MON_CMD_FORCE_TRIGGER", 1, subnode=0)
     assert servo.monitoring_get_bytes_per_block() == MONITORING_CH_DATA_SIZE
@@ -466,7 +453,7 @@ def test_monitoring_data_size(create_monitoring):
 @pytest.mark.canopen
 @pytest.mark.ethercat
 def test_monitoring_read_data(create_monitoring):
-    servo, _ = create_monitoring
+    servo = create_monitoring
     servo.monitoring_enable()
     servo.write("MON_CMD_FORCE_TRIGGER", 1, subnode=0)
     time.sleep(1)
@@ -495,7 +482,7 @@ def test_disturbance_enable_disable(servo):
 @pytest.mark.canopen
 @pytest.mark.ethercat
 def test_disturbance_remove_data(create_disturbance):
-    servo, _ = create_disturbance
+    servo = create_disturbance
     servo.disturbance_enable()
     assert (
         servo.read("DIST_CFG_BYTES", subnode=0)
@@ -532,7 +519,7 @@ def test_disturbance_map_register(servo):
 @pytest.mark.canopen
 @pytest.mark.ethercat
 def test_disturbance_data_size(create_disturbance):
-    servo, _ = create_disturbance
+    servo = create_disturbance
     servo.disturbance_enable()
     assert servo.disturbance_data_size == DISTURBANCE_CH_DATA_SIZE * DISTURBANCE_NUM_SAMPLES
     servo.disturbance_remove_data()

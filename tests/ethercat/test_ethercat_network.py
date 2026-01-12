@@ -28,7 +28,10 @@ from ingenialink.network import NetDevEvt, NetState
 from ingenialink.pdo import PDOMap, RPDOMap, TPDOMap
 
 if TYPE_CHECKING:
+    from pytest import FixtureRequest
     from pytest_mock import MockerFixture
+    from summit_testing_framework.setup_fixtures import ConnectionWrapper
+    from summit_testing_framework.setups.descriptors import DriveEcatSetup
 
     from ingenialink.ethercat.servo import EthercatServo
 
@@ -84,7 +87,7 @@ def test_load_firmware_no_slave_detected_error(mocked_network_for_firmware_loadi
 
 
 @pytest.mark.ethercat
-def test_find_adapters(setup_descriptor):
+def test_find_adapters(setup_descriptor: "DriveEcatSetup") -> None:
     """Test that find_adapters returns a list of EtherCATNetwork instances."""
     adapter_found = False
     ifname = setup_descriptor.ifname
@@ -98,7 +101,9 @@ def test_find_adapters(setup_descriptor):
 
 
 @pytest.mark.pcap
-def test_load_firmware_boot_state_failure(mocker, mocked_network_for_firmware_loading):
+def test_load_firmware_boot_state_failure(
+    mocker: "MockerFixture", mocked_network_for_firmware_loading
+):
     net, _ = mocked_network_for_firmware_loading
     mocker.patch.object(net, "_switch_to_boot_state", side_effect=[True, False])
     mocker.patch.object(net, "_write_foe", return_value=-5)
@@ -112,7 +117,9 @@ def test_load_firmware_boot_state_failure(mocker, mocked_network_for_firmware_lo
 
 
 @pytest.mark.pcap
-def test_load_firmware_foe_write_failure(mocker, mocked_network_for_firmware_loading):
+def test_load_firmware_foe_write_failure(
+    mocker: "MockerFixture", mocked_network_for_firmware_loading
+):
     net, _ = mocked_network_for_firmware_loading
     mocker.patch("os.path.isfile", return_value=True)
     mocker.patch.object(net, "_switch_to_boot_state", return_value=True)
@@ -126,7 +133,9 @@ def test_load_firmware_foe_write_failure(mocker, mocked_network_for_firmware_loa
 
 
 @pytest.mark.pcap
-def test_load_firmware_success_after_retry(mocker, mocked_network_for_firmware_loading):
+def test_load_firmware_success_after_retry(
+    mocker: "MockerFixture", mocked_network_for_firmware_loading
+):
     net, slave = mocked_network_for_firmware_loading
     mocker.patch.object(net, "_switch_to_boot_state", side_effect=[False, True])
     mocker.patch.object(net, "_write_foe", return_value=1)
@@ -147,32 +156,46 @@ def test_wrong_interface_name_error():
 
 @pytest.mark.ethercat
 @pytest.mark.parametrize("slave_id", [-1, "one", None])
-def test_connect_to_slave_invalid_id(setup_descriptor, slave_id):
-    net = EthercatNetwork(setup_descriptor.ifname)
+def test_connect_to_slave_invalid_id(
+    net: "EthercatNetwork",
+    servo_with_reconnect: "ConnectionWrapper",
+    setup_descriptor: "DriveEcatSetup",
+    slave_id,
+) -> None:
+    servo_with_reconnect.disconnect()
     with pytest.raises(ValueError):
         net.connect_to_slave(slave_id, setup_descriptor.dictionary)
-    net.close_ecat_master()
 
 
 @pytest.mark.ethercat
-def test_connect_to_no_detected_slave(setup_descriptor):
-    net = EthercatNetwork(setup_descriptor.ifname)
+def test_connect_to_no_detected_slave(
+    net: "EthercatNetwork",
+    setup_descriptor: "DriveEcatSetup",
+    servo_with_reconnect: "ConnectionWrapper",
+) -> None:
+    servo_with_reconnect.disconnect()
+    assert servo_with_reconnect.is_connected() is False
+
     slaves = net.scan_slaves()
     slave_id = slaves[-1] + 1
 
     with pytest.raises(ILError):
         net.connect_to_slave(slave_id, setup_descriptor.dictionary)
-    net.close_ecat_master()
 
 
 @pytest.mark.ethercat
-def test_connect_to_slave_with_callback(setup_descriptor):
+def test_connect_to_slave_with_callback(
+    setup_descriptor: "DriveEcatSetup",
+    net: "EthercatNetwork",
+    servo_with_reconnect: "ConnectionWrapper",
+) -> None:
+    servo_with_reconnect.disconnect()
+
     disconnected_servos = []
 
     def dummy_callback(servo):
         disconnected_servos.append(servo.slave_id)
 
-    net = EthercatNetwork(setup_descriptor.ifname)
     servo = net.connect_to_slave(
         setup_descriptor.slave,
         setup_descriptor.dictionary,
@@ -189,7 +212,9 @@ def test_connect_to_slave_with_callback(setup_descriptor):
 
 
 @pytest.mark.ethercat
-def test_scan_slaves_raises_exception_if_drive_is_already_connected(servo, net):
+def test_scan_slaves_raises_exception_if_drive_is_already_connected(
+    servo: "EthercatServo", net: "EthercatNetwork"
+) -> None:
     net._ecat_master.read_state()
     assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
     with pytest.raises(ILError):
@@ -198,24 +223,26 @@ def test_scan_slaves_raises_exception_if_drive_is_already_connected(servo, net):
 
 
 @pytest.mark.ethercat
-def test_scan_slaves_info(setup_specifier, setup_descriptor, request):
-    if not isinstance(
-        setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)
-    ):
-        pytest.skip("Only available for rack specifiers.")
-    net = EthercatNetwork(setup_descriptor.ifname)
+def test_scan_slaves_info(
+    setup_specifier,
+    servo_with_reconnect: "ConnectionWrapper",
+    setup_descriptor: "DriveEcatSetup",
+    request: "FixtureRequest",
+) -> None:
+    servo_with_reconnect.disconnect()
+    net = servo_with_reconnect.get_net()
     slaves_info = net.scan_slaves_info()
-
-    drive = request.getfixturevalue("get_drive_configuration_from_rack_service")
 
     assert len(slaves_info) > 0
     assert setup_descriptor.slave in slaves_info
-    assert slaves_info[setup_descriptor.slave].product_code == drive.product_code
-    net.close_ecat_master()
+
+    if isinstance(setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)):
+        drive = request.getfixturevalue("get_drive_configuration_from_rack_service")
+        assert slaves_info[setup_descriptor.slave].product_code == drive.product_code
 
 
 @pytest.mark.ethercat
-def test_update_sdo_timeout(net):
+def test_update_sdo_timeout(net: "EthercatNetwork") -> None:
     read_timeout = 10
     write_timeout = 100
     net.update_sdo_timeout(read_timeout, write_timeout)
@@ -228,7 +255,7 @@ def test_update_sdo_timeout(net):
 
 
 @pytest.mark.ethercat
-def test_update_pysoem_timeouts(net):
+def test_update_pysoem_timeouts(net: "EthercatNetwork") -> None:
     old_ret = pysoem.settings.timeouts.ret
     old_safe = pysoem.settings.timeouts.safe
     old_eeprom = pysoem.settings.timeouts.eeprom
@@ -254,7 +281,7 @@ def test_update_pysoem_timeouts(net):
 
 
 @pytest.mark.ethercat
-def test_check_node_state(servo, net):
+def test_check_node_state(servo: "EthercatServo", net: "EthercatNetwork") -> None:
     # True when list is not empty
     assert net._check_node_state(servo, pysoem.PREOP_STATE)
     # False when list is not empty
@@ -472,7 +499,7 @@ def test_release_network_reference_raises_error_if_wrong_network():
 
 
 @pytest.mark.ethercat
-def test_master_reference_is_kept_while_network_is_alive(mocker):
+def test_master_reference_is_kept_while_network_is_alive(mocker) -> None:
     set_network_reference_spy = mocker.spy(ingenialink.ethercat.network, "set_network_reference")
     release_network_reference_spy = mocker.spy(
         ingenialink.ethercat.network, "release_network_reference"
@@ -513,7 +540,11 @@ def test_master_reference_is_kept_while_network_is_alive(mocker):
 
 
 @pytest.mark.ethercat
-def test_master_reference_is_kept_after_scan(setup_descriptor):
+def test_master_reference_is_kept_after_scan(
+    setup_descriptor: "DriveEcatSetup", servo_with_reconnect: "ConnectionWrapper"
+) -> None:
+    servo_with_reconnect.disconnect()
+
     previous_networks = ETHERCAT_NETWORK_REFERENCES.copy()
     net_1 = EthercatNetwork(setup_descriptor.ifname, gil_release_config=GilReleaseConfig.always())
     assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks) + 1
@@ -530,7 +561,11 @@ def test_master_reference_is_kept_after_scan(setup_descriptor):
 
 
 @pytest.mark.ethercat
-def test_network_reference_is_added_back_if_servo_connected_after_close(setup_descriptor):
+def test_network_reference_is_added_back_if_servo_connected_after_close(
+    setup_descriptor: "DriveEcatSetup", servo_with_reconnect: "ConnectionWrapper"
+) -> None:
+    servo_with_reconnect.disconnect()
+
     previous_networks = ETHERCAT_NETWORK_REFERENCES.copy()
     net = EthercatNetwork(setup_descriptor.ifname, gil_release_config=GilReleaseConfig.always())
     assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks) + 1
@@ -561,7 +596,9 @@ def test_network_reference_is_added_back_if_servo_connected_after_close(setup_de
 
 
 @pytest.mark.ethercat
-def test_network_is_not_released_if_gil_operation_ongoing(mocker, setup_descriptor):
+def test_network_is_not_released_if_gil_operation_ongoing(
+    mocker: "MockerFixture", setup_descriptor: "DriveEcatSetup"
+) -> None:
     blocking_time = 5
 
     def dummy_config_init(usetable=False, *, release_gil=None):  # noqa: ARG001
