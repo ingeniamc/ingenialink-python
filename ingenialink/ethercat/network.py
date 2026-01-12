@@ -232,10 +232,6 @@ class EthercatNetwork(Network):
         self.__last_init_nodes: list[int] = []
 
         self._lock = threading.Lock()
-        # Counter for active contexts using running() - ensures thread-safe cleanup
-        self.__running_contexts_count = 0
-        # Tracks if any context in the current session started the master
-        self.__context_started_master = False
         set_network_reference(network=self)
 
         # Create the PDO manager
@@ -962,26 +958,20 @@ class EthercatNetwork(Network):
         """Context manager for the EtherCAT network.
 
         Ensures the network reference is set and starts the master if it's not already running.
-        Uses a counting semaphore approach to handle concurrent/nested contexts safely.
-        The master is only closed when all active contexts have exited.
+        The context manager tracks whether it started the master (via local variable on the stack)
+        to decide whether to close it on exit.
 
-        This implementation is thread-safe and handles:
-        - Nested contexts (single thread calling running() within running())
-        - Concurrent contexts (multiple threads calling running() simultaneously)
+        This implementation uses @contextmanager decorator to naturally keep state on the stack,
+        avoiding issues with nested contexts that would occur with instance variables.
 
         Yields:
             The network instance.
         """
-        # Thread-safe: increment context counter and check if we need to start master
-        with self._lock:
-            should_start_master = self.__is_master_running is False
-            self.__running_contexts_count += 1
-            # Track if any context started the master during this session
-            if should_start_master:
-                self.__context_started_master = True
+        # Track if we need to start the master (local variable, naturally stack-based)
+        context_opened_master = self.__is_master_running is False
 
-        # Start the master if it's not already running (outside lock to avoid deadlock)
-        if should_start_master:
+        # Start the master if it's not already running
+        if context_opened_master:
             self._start_master()
 
         # Ensure network reference is set (might have been released previously)
@@ -990,29 +980,17 @@ class EthercatNetwork(Network):
         try:
             yield self
         finally:
-            # Thread-safe: decrement context counter and decide if we should close
-            with self._lock:
-                self.__running_contexts_count -= 1
-                # Close when we're the last context AND a context started the master
-                # BUT only if no servos are connected (they need the master to stay open)
-                should_close = (
-                    self.__running_contexts_count == 0  # No other contexts active
-                    and self.__context_started_master  # A context started the master
-                    and len(self.servos) == 0  # No servos are using the master
-                )
-                if should_close:
-                    self.__context_started_master = False  # Reset for next usage
+            # Only close and release if this context opened the master
+            if not context_opened_master:
+                return
 
-            # Only close if we're the last context out AND a context started the master
-            # AND no servos are connected
-            if should_close:
-                if self.__is_master_running:
-                    try:
-                        self.close_ecat_master(release_reference=True)
-                    except Exception as e:
-                        logger.error(f"Error cleaning up EtherCAT network in context manager: {e}")
-                elif self in ETHERCAT_NETWORK_REFERENCES:
-                    release_network_reference(network=self)
+            if self.__is_master_running:
+                try:
+                    self.close_ecat_master(release_reference=True)
+                except Exception as e:
+                    logger.error(f"Error cleaning up EtherCAT network in context manager: {e}")
+            elif self in ETHERCAT_NETWORK_REFERENCES:
+                release_network_reference(network=self)
 
     @property
     def protocol(self) -> NetProt:
