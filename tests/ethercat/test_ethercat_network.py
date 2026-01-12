@@ -1073,10 +1073,14 @@ class TestEthercatNetworkContextManager:
         assert net_mocker in ETHERCAT_NETWORK_REFERENCES
 
     @pytest.mark.ethercat
-    def test_context_manager_nested_contexts(self, net: "EthercatNetwork") -> None:
+    def test_context_manager_nested_contexts(
+        self, net: "EthercatNetwork", servo_with_reconnect: "ConnectionWrapper"
+    ) -> None:
         """Test that nested context managers work correctly."""
-        # Network reference should be set on creation
-        assert net in ETHERCAT_NETWORK_REFERENCES
+        servo_with_reconnect.disconnect()
+
+        # Network reference has been released with the disconnect, no master running
+        assert net not in ETHERCAT_NETWORK_REFERENCES
         assert net._EthercatNetwork__is_master_running is False
 
         n_networks = len(ETHERCAT_NETWORK_REFERENCES)
@@ -1085,18 +1089,20 @@ class TestEthercatNetworkContextManager:
         with net.running():
             assert net._EthercatNetwork__is_master_running is True
             assert net in ETHERCAT_NETWORK_REFERENCES
+            assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks + 1
 
             with net.running():
                 assert net._EthercatNetwork__is_master_running is True
                 assert net in ETHERCAT_NETWORK_REFERENCES
-                assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks
+                assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks + 1
 
             # Master should still be running after nested scan_slaves()
             # (because outer context started it, not the internal scan_slaves() context)
             assert net._EthercatNetwork__is_master_running is True
             assert net in ETHERCAT_NETWORK_REFERENCES
+            assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks + 1
 
         # After outer context exits, master should be closed and reference released
         assert net._EthercatNetwork__is_master_running is False
         assert net not in ETHERCAT_NETWORK_REFERENCES
-        assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks - 1
+        assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks
