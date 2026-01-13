@@ -172,6 +172,8 @@ class CanopenServo(Servo):
 
         # Temporarily change the SDO timeout
         try:
+            # Apply the temporary (smaller) timeout
+            self._change_sdo_timeout(value)
             yield
         finally:
             # Always roll back to the old timeout

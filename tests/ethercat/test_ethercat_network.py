@@ -1038,7 +1038,7 @@ class TestEthercatNetworkContextManager:
 
     @pytest.mark.pcap
     def test_context_manager_handles_exceptions(self, net_mocker: "EthercatNetwork") -> None:
-        """Test that context manager properly closes master even when exception occurs."""  # noqa: DOC501
+        """Test that context manager properly closes master even when exception occurs."""
         with pytest.raises(ValueError, match="test exception"), net_mocker.running():
             # Simulate master running
             net_mocker._EthercatNetwork__is_master_running = True
