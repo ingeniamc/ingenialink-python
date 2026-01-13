@@ -90,7 +90,7 @@ class CanopenServo(Servo):
             subnode: Subnode of the axis. `None` by default which stores all the parameters.
             sdo_timeout: Timeout value for each SDO response.
                 Drive takes longer to respond while storing parameters.
-                the value is temporarily set to this value and then rolled back to the original one.
+                The value is temporarily set to this value and then rolled back to the original one.
         """
         with self._minimum_sdo_timeout(sdo_timeout):
             super().store_parameters(subnode)
@@ -158,10 +158,15 @@ class CanopenServo(Servo):
 
     @contextlib.contextmanager
     def _minimum_sdo_timeout(self, value: float) -> Iterator[None]:
-        """Context manager to temporarily change the SDO timeout of the node.
+        """Context manager to ensure a minimum SDO timeout for the node.
+
+        This context manager will only increase the current SDO timeout; it will
+        never decrease it. If the existing timeout is already greater than the
+        requested ``value``, no change is made. When the context exits, the
+        original timeout is always restored.
 
         Args:
-            value: New SDO timeout value.
+            value: Minimum SDO timeout to enforce while inside the context.
         """
         old_timeout = self.__node.sdo.RESPONSE_TIMEOUT
 
@@ -172,7 +177,7 @@ class CanopenServo(Servo):
 
         # Temporarily change the SDO timeout
         try:
-            # Apply the temporary (smaller) timeout
+            # Apply the temporary timeout
             self._change_sdo_timeout(value)
             yield
         finally:
