@@ -14,6 +14,7 @@ from ingenialink.emcy import EmergencyMessage
 from ingenialink.exceptions import ILIOError
 from ingenialink.register import Register
 from ingenialink.servo import Servo
+from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -164,25 +165,61 @@ class CanopenServo(Servo):
         )
 
     def _adapt_configuration_file_storage_value(
-        self, configuration_file: ConfigurationFile, register: ConfigRegister
-    ) -> Union[int, float, str, bytes]:
-        target_register = self.dictionary.registers(register.subnode).get(register.uid)
+        self,
+        configuration_file: ConfigurationFile,
+        config_register: ConfigRegister,
+        target_register: Register,
+    ) -> bytes:
+        """Adapt storage value to the current servo.
+
+        If the register is node ID dependent, the value will be adjusted
+        according to the servo node ID.
+
+        If the XCF `Register` contains a `data` attribute it will be preferred
+        and returned as-is (bytes). Otherwise, the `storage` attribute will be
+        converted to bytes using the provided `target_register.dtype`
+
+        Args:
+            configuration_file: Configuration file instance.
+            config_register: Configuration file register instance.
+            target_register: Target register instance.
+
+        Raises:
+            ValueError: If the value is not compatible with the register dtype.
+
+        Returns:
+            Adapted storage value as bytes.
+        """
+        data = super()._adapt_configuration_file_storage_value(
+            configuration_file, config_register, target_register
+        )
+
+        reg_dtype = target_register.dtype
 
         if (
             configuration_file.device.node_id is not None
             and target_register is not None
             and isinstance(target_register, CanopenRegister)
-            and target_register.dtype != RegDtype.STR
+            and reg_dtype != RegDtype.STR
             and target_register.is_node_id_dependent
         ):
-            if not isinstance(register.storage, str):
-                return register.storage - configuration_file.device.node_id + int(self.target)
-            else:
+            # Convert bytes to value
+            value = convert_bytes_to_dtype(data, reg_dtype)
+            if not isinstance(value, (int, float)):
                 raise ValueError(
-                    f"Illegal value for register with ID {register.uid}"
-                    f" and dtype {target_register.dtype}: {register.storage} is an string"
+                    f"Illegal value for register with ID {config_register.uid}"
+                    f" and dtype {target_register.dtype}: {config_register.storage}"
                 )
-        return register.storage
+
+            # Adjust value according to node ID
+            value = value - configuration_file.device.node_id + int(self.target)
+            # Convert value back to bytes
+            data = convert_dtype_to_bytes(
+                value,
+                reg_dtype,
+            )
+
+        return data
 
     @property
     def node(self) -> canopen.RemoteNode:

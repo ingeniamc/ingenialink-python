@@ -7,6 +7,7 @@ with contextlib.suppress(ImportError):
 import random
 import threading
 import time
+from collections.abc import Generator
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
@@ -22,6 +23,7 @@ from ingenialink.ethercat.network import (
     EthercatNetwork,
     GilReleaseConfig,
     release_network_reference,
+    set_network_reference,
 )
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetState
@@ -47,8 +49,8 @@ def mocked_network_for_firmware_loading(mocker):
     mock_slave = mocker.Mock()
     net._ecat_master.slaves = [mock_slave]
     net._EthercatNetwork__last_init_nodes = {1}
-    yield net, mock_slave
-    net.close_ecat_master()
+    with net.running():
+        yield net, mock_slave
 
 
 @pytest.mark.no_pcap
@@ -540,24 +542,38 @@ def test_master_reference_is_kept_while_network_is_alive(mocker) -> None:
 
 
 @pytest.mark.ethercat
-def test_master_reference_is_kept_after_scan(
-    setup_descriptor: "DriveEcatSetup", servo_with_reconnect: "ConnectionWrapper"
+def test_master_reference_is_not_kept_after_scan(
+    setup_descriptor: "DriveEcatSetup",
+    servo_with_reconnect: "ConnectionWrapper",
+    mocker: "MockerFixture",
 ) -> None:
+    """Scan slaves should use the network context, so the reference is not kept after the call."""
     servo_with_reconnect.disconnect()
-
     previous_networks = ETHERCAT_NETWORK_REFERENCES.copy()
     net_1 = EthercatNetwork(setup_descriptor.ifname, gil_release_config=GilReleaseConfig.always())
     assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks) + 1
     assert net_1 in ETHERCAT_NETWORK_REFERENCES
 
-    net_1.scan_slaves()
+    # Spy on the actual methods that context manager calls to verify behavior
+    start_master_spy = mocker.spy(net_1, "_start_master")
+    close_master_spy = mocker.spy(net_1, "close_ecat_master")
 
-    assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks) + 1
-    assert net_1 in ETHERCAT_NETWORK_REFERENCES
+    slaves = net_1.scan_slaves()
 
-    net_1.close_ecat_master()
+    # Verify context manager behavior: master was started and then closed
+    assert start_master_spy.call_count == 1, (
+        "Context manager should start master during scan_slaves"
+    )
+    assert close_master_spy.call_count == 1, "Context manager should close master after scan_slaves"
 
+    # Verify we got the slave list before the context closed
+    assert len(slaves) > 0, "Should have detected slaves"
+
+    # Reference should NOT be present after scan - context started and stopped the master,
+    # so it released the reference on exit
     assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks)
+    assert net_1 not in ETHERCAT_NETWORK_REFERENCES
+    assert net_1._EthercatNetwork__is_master_running is False
 
 
 @pytest.mark.ethercat
@@ -934,3 +950,159 @@ def test_recover_from_disconnection(net: "EthercatNetwork", servo: "EthercatServ
         assert "CoE communication recovered." in caplog.text, "Should log recovery success message"
 
     assert servo.slave.state == pysoem.PREOP_STATE, "Servo should be in PREOP state after recovery"
+
+
+@pytest.mark.pcap
+def test_ensure_network_reference_method():
+    """Test the _ensure_network_reference helper method.
+
+    If the network is not in ETHERCAT_NETWORK_REFERENCES, calling this method
+    should add it back. If it is already present, calling the method should have no effect.
+    """
+    net = EthercatNetwork("fake_interface")
+
+    # Remove from references
+    if net in ETHERCAT_NETWORK_REFERENCES:
+        ETHERCAT_NETWORK_REFERENCES.remove(net)
+
+    assert net not in ETHERCAT_NETWORK_REFERENCES
+
+    # Call the method
+    net._EthercatNetwork__ensure_network_reference()
+
+    assert net in ETHERCAT_NETWORK_REFERENCES
+
+    # Call again - should not duplicate
+    previous_count = len(ETHERCAT_NETWORK_REFERENCES)
+    net._EthercatNetwork__ensure_network_reference()
+    assert net in ETHERCAT_NETWORK_REFERENCES
+    assert len(ETHERCAT_NETWORK_REFERENCES) == previous_count
+
+    # Cleanup
+    release_network_reference(net)
+
+
+class TestEthercatNetworkContextManager:
+    """Tests for the EthercatNetwork context manager functionality."""
+
+    @pytest.fixture
+    def net_mocker(self, mocker) -> Generator[EthercatNetwork, None, None]:
+        net = EthercatNetwork("fake_interface")
+        mocker.patch.object(net, "_start_master")
+        mocker.patch.object(net, "close_ecat_master")
+
+        yield net
+
+        if net in ETHERCAT_NETWORK_REFERENCES:
+            release_network_reference(network=net)
+
+    @pytest.mark.pcap
+    def test_context_manager_starts_and_stops_master(self, net_mocker: "EthercatNetwork") -> None:
+        """Test that context manager starts master if not running and closes it on exit."""
+        assert net_mocker._EthercatNetwork__is_master_running is False
+
+        with net_mocker.running():
+            net_mocker._start_master.assert_called_once()
+            # Simulate master running
+            net_mocker._EthercatNetwork__is_master_running = True
+
+        net_mocker.close_ecat_master.assert_called_once_with(release_reference=True)
+
+    @pytest.mark.pcap
+    def test_context_manager_does_not_close_already_running_master(
+        self, net_mocker: "EthercatNetwork"
+    ) -> None:
+        """Test that context manager doesn't close master that was already running."""
+
+        # Simulate master already running
+        net_mocker._EthercatNetwork__is_master_running = True
+
+        with net_mocker.running():
+            net_mocker._start_master.assert_not_called()
+
+        net_mocker.close_ecat_master.assert_not_called()
+
+    @pytest.mark.pcap
+    def test_context_manager_ensures_network_reference(self, net_mocker: "EthercatNetwork") -> None:
+        """Test that context manager ensures network reference is set."""
+        # Remove network from references (added when net is created)
+        assert net_mocker in ETHERCAT_NETWORK_REFERENCES
+        if net_mocker in ETHERCAT_NETWORK_REFERENCES:
+            release_network_reference(network=net_mocker)
+        assert net_mocker not in ETHERCAT_NETWORK_REFERENCES
+
+        with net_mocker.running():
+            assert net_mocker in ETHERCAT_NETWORK_REFERENCES
+
+        assert net_mocker not in ETHERCAT_NETWORK_REFERENCES
+
+    @pytest.mark.pcap
+    def test_context_manager_handles_exceptions(self, net_mocker: "EthercatNetwork") -> None:
+        """Test that context manager properly closes master even when exception occurs."""  # noqa: DOC501
+        with pytest.raises(ValueError, match="test exception"), net_mocker.running():
+            # Simulate master running
+            net_mocker._EthercatNetwork__is_master_running = True
+            raise ValueError("test exception")
+
+        # Master should still be closed despite exception
+        net_mocker.close_ecat_master.assert_called_once_with(release_reference=True)
+
+    @pytest.mark.pcap
+    def test_context_manager_reusable(self, net_mocker: "EthercatNetwork") -> None:
+        """Test that context manager can be used multiple times on same network."""
+        # Remove network from references (added when net is created)
+        assert net_mocker in ETHERCAT_NETWORK_REFERENCES
+        if net_mocker in ETHERCAT_NETWORK_REFERENCES:
+            release_network_reference(network=net_mocker)
+        assert net_mocker not in ETHERCAT_NETWORK_REFERENCES
+
+        # First usage should add the reference and release it
+        with net_mocker.running():
+            assert net_mocker in ETHERCAT_NETWORK_REFERENCES
+        assert net_mocker not in ETHERCAT_NETWORK_REFERENCES
+
+        # Manually add the reference (simulate master already running)
+        set_network_reference(network=net_mocker)
+        net_mocker._EthercatNetwork__is_master_running = True
+
+        # Second usage should not close the master since it was already running
+        # and the reference should remain after context
+        assert net_mocker in ETHERCAT_NETWORK_REFERENCES
+        with net_mocker.running():
+            assert net_mocker in ETHERCAT_NETWORK_REFERENCES
+        assert net_mocker in ETHERCAT_NETWORK_REFERENCES
+
+    @pytest.mark.ethercat
+    def test_context_manager_nested_contexts(
+        self, net: "EthercatNetwork", servo_with_reconnect: "ConnectionWrapper"
+    ) -> None:
+        """Test that nested context managers work correctly."""
+        servo_with_reconnect.disconnect()
+
+        # Network reference has been released with the disconnect, no master running
+        assert net not in ETHERCAT_NETWORK_REFERENCES
+        assert net._EthercatNetwork__is_master_running is False
+
+        n_networks = len(ETHERCAT_NETWORK_REFERENCES)
+
+        # Outer context starts the master
+        with net.running():
+            assert net._EthercatNetwork__is_master_running is True
+            assert net in ETHERCAT_NETWORK_REFERENCES
+            assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks + 1
+
+            with net.running():
+                assert net._EthercatNetwork__is_master_running is True
+                assert net in ETHERCAT_NETWORK_REFERENCES
+                assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks + 1
+
+            # Master should still be running after nested scan_slaves()
+            # (because outer context started it, not the internal scan_slaves() context)
+            assert net._EthercatNetwork__is_master_running is True
+            assert net in ETHERCAT_NETWORK_REFERENCES
+            assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks + 1
+
+        # After outer context exits, master should be closed and reference released
+        assert net._EthercatNetwork__is_master_running is False
+        assert net not in ETHERCAT_NETWORK_REFERENCES
+        assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks

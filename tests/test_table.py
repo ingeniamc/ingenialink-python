@@ -4,7 +4,9 @@ import pytest
 
 import tests.resources
 from ingenialink import Servo
+from ingenialink.configuration_file import ConfigurationFile
 from ingenialink.dictionary import DictionaryTable
+from ingenialink.exceptions import ILConfigurationError
 from ingenialink.table import Table
 
 
@@ -110,9 +112,9 @@ def test_servo_get_table(virtual_drive_custom_dict):
 
 @pytest.fixture(
     params=[
-        pytest.param("virtual_drive_with_tables", id="virtual"),
+        pytest.param(virtual_drive_with_tables.__name__, id="virtual"),
         pytest.param(
-            "real_servo_with_tables",
+            real_servo_with_tables.__name__,
             marks=[
                 pytest.mark.fsoe
             ],  # Fsoe is not related to tables, but is a modern firmware that does have user memory
@@ -267,3 +269,80 @@ def test_table_index_out_of_bounds(servo_with_table):
     # Try to write to an index that's out of bounds
     with pytest.raises(IndexError, match="out of range"):
         table[99999] = 123
+
+
+def test_save_and_load_xcf_with_tables(virtual_drive_with_tables, tmp_path):
+    """Save configuration to XCF from a virtual servo that has tables.
+
+    This test writes integer values to a table, saves the servo configuration to an XCF file,
+    verifies the XCF contains a table entry, changes the table values on the servo,
+    then calls `servo.load_configuration` to restore them from the XCF."""
+    servo, table = virtual_drive_with_tables
+
+    # Write integer values to two table entries
+    val0 = 11223344
+    val1 = 55667788
+    table.set_value(0, val0)
+    table.set_value(1, val1)
+
+    # Save configuration to XCF
+    xcf_path = tmp_path / "virt_tables.xcf"
+    servo.save_configuration(str(xcf_path))
+    assert xcf_path.exists()
+
+    # Load configuration file and verify a table was saved (contents are validated
+    # by restoring them into the virtual drive and reading back).
+    loaded_conf = ConfigurationFile.load_from_xcf(str(xcf_path))
+    tables = [t for t in loaded_conf.tables if t.uid == "MEM_USR"]
+    assert len(tables) == 1
+    cfg_table = tables[0]
+    assert cfg_table.subnode == 0
+    assert len(cfg_table.elements) >= 2
+    assert cfg_table.elements[0].address == 0
+
+    # Change values on the servo and restore from file
+    table.set_value(0, 0)
+    table.set_value(1, 0)
+
+    servo.load_configuration(str(xcf_path))
+
+    # Verify integer values were restored
+    assert table.get_value(0) == val0
+    assert table.get_value(1) == val1
+
+
+def test_check_configuration_with_tables(virtual_drive_with_tables, tmp_path):
+    """Verify `check_configuration` compares table contents and raises on mismatch.
+
+    Steps:
+    - Save current configuration (includes tables) to XCF
+    - check_configuration should pass
+    - Mutate a table entry on the servo
+    - check_configuration should raise ILConfigurationError referencing the table address
+    - Reload configuration from XCF and check_configuration should pass again
+    """
+    servo, table = virtual_drive_with_tables
+
+    filename = tmp_path / "table_check.xcf"
+    servo.save_configuration(str(filename))
+
+    # Initial check should pass
+    servo.check_configuration(str(filename))
+
+    # Mutate table value
+    mutated_val = 123456789
+    table.set_value(0, mutated_val)
+    assert table.get_value(0) == mutated_val
+
+    # Now the servo-level check should detect the mismatch and raise
+    with pytest.raises(ILConfigurationError) as ex:
+        servo.check_configuration(str(filename))
+
+    assert ex.value.args[0] == (
+        "Configuration check failed for the following registers:\n"
+        "Table MEM_USR address 0 --- Expected: 0 Found: 123456789\n"
+    )
+
+    # Restore configuration and verify check passes again
+    servo.load_configuration(str(filename))
+    servo.check_configuration(str(filename))

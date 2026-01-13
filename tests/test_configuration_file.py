@@ -5,7 +5,12 @@ import pytest
 
 import tests.resources
 from ingenialink import RegAccess, RegDtype
-from ingenialink.configuration_file import ConfigRegister, ConfigurationFile
+from ingenialink.configuration_file import (
+    ConfigRegister,
+    ConfigTable,
+    ConfigurationFile,
+    TableElement,
+)
 from ingenialink.dictionary import Interface
 from ingenialink.register import Register
 
@@ -72,9 +77,133 @@ def test_config_register_from_xcf_missing_attribute(missing_attr):
 
     error_msg = str(exc_info.value)
     if missing_attr == ConfigRegister._ConfigRegister__ID_ATTR:
-        assert error_msg == "Missing id attribute"
+        assert error_msg == "Missing id attribute in register"
     else:
-        assert (
-            error_msg == f"Missing {missing_attr} attribute for register "
-            f"{register_xcf_element.attrib.get('id')}."
-        )
+        expected = f"Missing {missing_attr} attribute in register"
+        if register_xcf_element.attrib.get("id"):
+            expected += f" for {register_xcf_element.attrib.get('id')}"
+        assert error_msg == expected
+
+
+def test_table_element_from_xcf():
+    """Test TableElement.from_xcf method."""
+    xml = '<Element address="5" data="deadbeef"/>'
+    element = ElementTree.fromstring(xml)
+    table_elem = TableElement.from_xcf(element)
+
+    assert table_elem.address == 5
+    assert table_elem.data == bytes.fromhex("deadbeef")
+
+
+def test_table_element_to_xcf():
+    """Test TableElement.to_xcf method."""
+    table_elem = TableElement(address=10, data=bytes.fromhex("1234abcd"))
+    xml_elem = table_elem.to_xcf()
+
+    assert xml_elem.attrib["address"] == "10"
+    assert xml_elem.attrib["data"] == "1234abcd"
+
+
+def test_config_table_from_xcf():
+    """Test ConfigTable.from_xcf method."""
+    xml = """<Table id="MEM_USR" subnode="0">
+        <Element address="0" data="1234"/>
+        <Element address="1" data="5678"/>
+        <Element address="2" data="abcd"/>
+    </Table>"""
+    element = ElementTree.fromstring(xml)
+    table = ConfigTable.from_xcf(element)
+
+    assert table.uid == "MEM_USR"
+    assert table.subnode == 0
+    assert len(table.elements) == 3
+    assert table.elements[0].address == 0
+    assert table.elements[0].data == bytes.fromhex("1234")
+    assert table.elements[2].address == 2
+    assert table.elements[2].data == bytes.fromhex("abcd")
+
+
+def test_config_table_to_xcf():
+    """Test ConfigTable.to_xcf method."""
+    table = ConfigTable(uid="TEST_TABLE", subnode=1)
+    table.elements.append(TableElement(0, bytes.fromhex("aa")))
+    table.elements.append(TableElement(1, bytes.fromhex("bb")))
+
+    xml_elem = table.to_xcf()
+
+    assert xml_elem.attrib["id"] == "TEST_TABLE"
+    assert xml_elem.attrib["subnode"] == "1"
+    elements = xml_elem.findall("Element")
+    assert len(elements) == 2
+    assert elements[0].attrib["address"] == "0"
+    assert elements[0].attrib["data"] == "aa"
+    assert elements[1].attrib["address"] == "1"
+    assert elements[1].attrib["data"] == "bb"
+
+
+def test_configuration_file_with_tables(tmp_path):
+    """Test saving and loading ConfigurationFile with ConfigTable entries."""
+    conf_file = ConfigurationFile.create_empty_configuration(
+        Interface.ETH, "TEST-PART", 123, 456, "1.0.0"
+    )
+
+    # Add a register
+    reg = Register(RegDtype.U32, RegAccess.RW, "TEST_REG", subnode=0)
+    conf_file.add_register(reg, 100)
+
+    # Add a table
+    table = ConfigTable(uid="MEM_USR", subnode=0)
+    table.elements.append(TableElement(0, bytes.fromhex("11223344")))
+    table.elements.append(TableElement(1, bytes.fromhex("55667788")))
+    conf_file.add_config_table(table)
+
+    # Save and reload
+    xcf_path = tmp_path / "test_with_tables.xcf"
+    conf_file.save_to_xcf(str(xcf_path))
+
+    loaded_conf = ConfigurationFile.load_from_xcf(str(xcf_path))
+
+    # Verify registers
+    assert len(loaded_conf.registers) == 1
+    assert loaded_conf.registers[0].uid == "TEST_REG"
+
+    # Verify tables
+    assert len(loaded_conf.tables) == 1
+    assert loaded_conf.tables[0].uid == "MEM_USR"
+    assert loaded_conf.tables[0].subnode == 0
+    assert len(loaded_conf.tables[0].elements) == 2
+    assert loaded_conf.tables[0].elements[0].address == 0
+    assert loaded_conf.tables[0].elements[0].data == bytes.fromhex("11223344")
+    assert loaded_conf.tables[0].elements[1].address == 1
+    assert loaded_conf.tables[0].elements[1].data == bytes.fromhex("55667788")
+
+
+def test_register_from_xcf_reads_data_attribute():
+    """Test ConfigRegister.from_xcf reads data attribute as bytes."""
+    xml = (
+        '<Register id="0x2000" subnode="0" dtype="u32" access="rw" storage="165" data="01020304" />'
+    )
+    element = ElementTree.fromstring(xml)
+    reg = ConfigRegister.from_xcf(element)
+
+    assert reg is not None
+    assert reg.storage == 165
+    assert reg.data == bytes.fromhex("01020304")
+
+
+def test_register_to_xcf_writes_data_as_hex():
+    """Test ConfigRegister.to_xcf writes data attribute as hex string."""
+    reg = ConfigRegister(
+        uid="0x2000",
+        subnode=0,
+        dtype=RegDtype.U32,
+        access=RegAccess.RW,
+        storage=1234,
+        data=bytes([0xAA, 0xBB, 0xCC]),
+    )
+
+    element = reg.to_xcf()
+    # storage should always be present
+    assert element.get("storage") == "1234"
+    # data must be hex string matching the bytes
+    assert element.get("data") == "aabbcc"

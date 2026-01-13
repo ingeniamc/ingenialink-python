@@ -1,17 +1,79 @@
 import os
 import re
 from abc import ABC
-from typing import Optional, Union
+from typing import Optional, Union, overload
 from xml.dom import minidom
 from xml.etree import ElementTree
 
 import ingenialogger
 import numpy as np
+from typing_extensions import Literal
 
 from ingenialink import RegAccess, RegDtype
 from ingenialink.dictionary import ACCESS_XDF_OPTIONS, DTYPE_XDF_OPTIONS, Interface, XMLBase
 from ingenialink.exceptions import ILConfigurationFileParseError
 from ingenialink.register import Register
+
+
+@overload
+def _get_attribute_from_element(
+    element: ElementTree.Element,
+    attribute: str,
+    *,
+    optional: Literal[False] = ...,
+    context: str = ...,
+    kind: str = ...,
+) -> str: ...
+
+
+@overload
+def _get_attribute_from_element(
+    element: ElementTree.Element,
+    attribute: str,
+    *,
+    optional: Literal[True],
+    context: str = ...,
+    kind: str = ...,
+) -> Optional[str]: ...
+
+
+def _get_attribute_from_element(
+    element: ElementTree.Element,
+    attribute: str,
+    *,
+    optional: bool = False,
+    context: str = "",
+    kind: str = "",
+) -> Optional[str]:
+    """Get attribute value from XML element.
+
+    Args:
+        element: XML element.
+        attribute: attribute name.
+        optional: If True, return None if attribute not found. Else, raise ValueError.
+        context: Context string for error messages (e.g., UID).
+            Only used for error messages.
+        kind: Kind of element (e.g., 'register', 'table', 'table element').
+            Only used for error messages.
+
+    Returns:
+        attribute value.
+
+    Raises:
+        ValueError: attribute not found in element.
+    """
+    attr_value = element.attrib.get(attribute)
+    if attr_value is not None:
+        return attr_value
+    if optional:
+        return None
+    error_msg = f"Missing {attribute} attribute"
+    if kind:
+        error_msg += f" in {kind}"
+    if context:
+        error_msg += f" for {context}"
+    raise ValueError(error_msg)
+
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -112,6 +174,7 @@ class ConfigRegister:
     __ID_ATTR = "id"
     __SUBNODE_ATTR = "subnode"
     __STORAGE_ATTR = "storage"
+    __DATA_ATTR = "data"
 
     def __init__(
         self,
@@ -120,12 +183,14 @@ class ConfigRegister:
         dtype: RegDtype,
         access: RegAccess,
         storage: Union[float, int, str, bool],
+        data: Optional[bytes] = None,
     ):
         self.uid = uid
         self.subnode = subnode
         self.dtype = dtype
         self.access = access
         self.storage = storage
+        self.data = data
 
         self.__access_value_to_str = {value: key for key, value in ACCESS_XDF_OPTIONS.items()}
         self.__dtype_value_to_str = {value: key for key, value in DTYPE_XDF_OPTIONS.items()}
@@ -137,14 +202,22 @@ class ConfigRegister:
         Returns:
             ConfigRegister filled with XML element data
         """
-        uid = cls.__get_attribute_from_element(element, cls.__ID_ATTR)
-        subnode_str = cls.__get_attribute_from_element(element, cls.__SUBNODE_ATTR)
+        uid = _get_attribute_from_element(element, cls.__ID_ATTR, kind="register")
+        subnode_str = _get_attribute_from_element(
+            element, cls.__SUBNODE_ATTR, context=uid, kind="register"
+        )
         subnode = int(subnode_str)
-        dtype_str = cls.__get_attribute_from_element(element, cls.__DTYPE_ATTR)
+        dtype_str = _get_attribute_from_element(
+            element, cls.__DTYPE_ATTR, context=uid, kind="register"
+        )
         dtype = DTYPE_XDF_OPTIONS[dtype_str]
-        access_str = cls.__get_attribute_from_element(element, cls.__ACCESS_ATTR)
+        access_str = _get_attribute_from_element(
+            element, cls.__ACCESS_ATTR, context=uid, kind="register"
+        )
         access = ACCESS_XDF_OPTIONS[access_str]
-        storage_str = cls.__get_attribute_from_element(element, cls.__STORAGE_ATTR)
+        storage_str = _get_attribute_from_element(
+            element, cls.__STORAGE_ATTR, context=uid, kind="register"
+        )
         storage: Union[float, int, str, bool]
         if dtype == RegDtype.FLOAT:
             storage = float(storage_str)
@@ -165,7 +238,13 @@ class ConfigRegister:
             storage = bool(storage_str)
         else:
             raise NotImplementedError(f"dtype {dtype} not implemented for register {uid}.")
-        return cls(uid, subnode, dtype, access, storage)
+
+        data_attr = _get_attribute_from_element(
+            element, cls.__DATA_ATTR, optional=True, context=uid, kind="register"
+        )
+        data: Optional[bytes] = bytes.fromhex(data_attr) if data_attr is not None else None
+
+        return cls(uid, subnode, dtype, access, storage, data=data)
 
     @classmethod
     def from_register(
@@ -198,35 +277,139 @@ class ConfigRegister:
             register_xml.set(self.__STORAGE_ATTR, str(np.float32(self.storage)))
         else:
             register_xml.set(self.__STORAGE_ATTR, str(self.storage))
+
+        # Serialize 'data' attribute (stored as bytes) if present
+        if self.data is not None:
+            register_xml.set(self.__DATA_ATTR, self.data.hex())
+
         return register_xml
 
-    @classmethod
-    def __get_attribute_from_element(
-        cls,
-        element: ElementTree.Element,
-        attribute: str,
-    ) -> str:
-        """Get attribute value from XML element.
+
+class TableElement:
+    """Table element for ConfigTable class.
+
+    Represents a single element value stored in a position of a table.
+    """
+
+    _ELEMENT_NAME = "Element"
+    __ADDRESS_ATTR = "address"
+    __DATA_ATTR = "data"
+
+    def __init__(self, address: int, data: bytes):
+        """Initialize a table element.
 
         Args:
-            element: XML element.
-            attribute: attribute name.
+            address: Element address/index.
+            data: Element data as bytes.
+        """
+        self.address = address
+        self.data = data
+
+    @classmethod
+    def from_xcf(cls, element: ElementTree.Element, table_uid: str = "") -> "TableElement":
+        """Creates a TableElement from XML element.
+
+        Args:
+            element: XML Element element.
+            table_uid: Parent table UID for error messages.
 
         Returns:
-            attribute value.
+            TableElement instance filled with XML element data.
 
         Raises:
-            ValueError: attribute not found in element.
-
+            ValueError: Missing required attribute.
         """
-        attr_value = element.attrib.get(attribute)
-        if attr_value is not None:
-            return attr_value
-        error_msg = f"Missing {attribute} attribute"
-        register_uid = element.attrib.get(cls.__ID_ATTR)
-        if register_uid is not None:
-            error_msg += f" for register {register_uid}."
-        raise ValueError(error_msg)
+        address_str = _get_attribute_from_element(
+            element, cls.__ADDRESS_ATTR, context=table_uid, kind="table element"
+        )
+        address = int(address_str)
+
+        data_str = _get_attribute_from_element(
+            element, cls.__DATA_ATTR, context=table_uid, kind="table element"
+        )
+        try:
+            data = bytes.fromhex(data_str)
+        except ValueError as exc:
+            context = f" in table '{table_uid}'" if table_uid else ""
+            raise ValueError(
+                f"Invalid hexadecimal data '{data_str}' for attribute '{cls.__DATA_ATTR}'{context}"
+            ) from exc
+
+        return cls(address, data)
+
+    def to_xcf(self) -> ElementTree.Element:
+        """Creates an XML element with class data.
+
+        Returns:
+            XML element filled with class data.
+        """
+        element_xml = ElementTree.Element(self._ELEMENT_NAME)
+        element_xml.set(self.__ADDRESS_ATTR, str(self.address))
+        element_xml.set(self.__DATA_ATTR, self.data.hex())
+        return element_xml
+
+
+class ConfigTable:
+    """Table class for ConfigurationFile (XCF) class."""
+
+    _ELEMENT_NAME = "Table"
+    __ID_ATTR = "id"
+    __SUBNODE_ATTR = "subnode"
+
+    def __init__(self, uid: str, subnode: int, elements: Optional[list[TableElement]] = None):
+        """Initialize a ConfigTable.
+
+        Args:
+            uid: Table unique identifier.
+            subnode: Subnode/axis number.
+            elements: List of table elements.
+        """
+        self.uid = uid
+        self.subnode = subnode
+        self.elements = elements if elements is not None else []
+
+    @classmethod
+    def from_xcf(cls, element: ElementTree.Element) -> "ConfigTable":
+        """Creates a ConfigTable from XML element.
+
+        Args:
+            element: XML Table element.
+
+        Returns:
+            ConfigTable instance filled with XML element data.
+
+        Raises:
+            ValueError: Missing required attribute.
+        """
+        uid = _get_attribute_from_element(element, cls.__ID_ATTR, kind="table")
+        subnode_str = _get_attribute_from_element(
+            element, cls.__SUBNODE_ATTR, context=uid, kind="table"
+        )
+        subnode = int(subnode_str)
+
+        elements: list[TableElement] = []
+        for elem in element.findall(TableElement._ELEMENT_NAME):
+            try:
+                elements.append(TableElement.from_xcf(elem, uid))
+            except ValueError as e:  # noqa: PERF203
+                logger.warning(f"Cannot load table element for table {uid}: {e}")
+
+        return cls(uid, subnode, elements)
+
+    def to_xcf(self) -> ElementTree.Element:
+        """Creates an XML element with class data.
+
+        Returns:
+            XML table element filled with class data.
+        """
+        table_xml = ElementTree.Element(self._ELEMENT_NAME)
+        table_xml.set(self.__ID_ATTR, self.uid)
+        table_xml.set(self.__SUBNODE_ATTR, str(self.subnode))
+
+        for element in self.elements:
+            table_xml.append(element.to_xcf())
+
+        return table_xml
 
 
 class ConfigurationFile(XMLBase, ABC):
@@ -245,13 +428,15 @@ class ConfigurationFile(XMLBase, ABC):
     __VERSION_ELEMENT = "Version"
     __BODY_ELEMENT = "Body"
     __REGISTERS_ELEMENT = "Registers"
+    __TABLES_ELEMENT = "Tables"
 
     _SUPPORTED_MAJOR_VERSION = 2
 
     def __init__(self, device: Device) -> None:
         self.major_version = self._SUPPORTED_MAJOR_VERSION
-        self.minor_version = 1
+        self.minor_version = 2
         self.__registers: list[ConfigRegister] = []
+        self.__tables: list[ConfigTable] = []
         self.__device: Device = device
         self.__subnodes: set[int] = set()
 
@@ -323,6 +508,17 @@ class ConfigurationFile(XMLBase, ABC):
                 xcf_instance.add_config_register(ConfigRegister.from_xcf(reg))
             except (ValueError, KeyError, NotImplementedError) as e:  # noqa: PERF203
                 logger.warning(f"Cannot load register. {e}")
+
+        # Load tables if present (optional element)
+        tables_element = device_element.find(cls.__TABLES_ELEMENT)
+        if tables_element is not None:
+            table_element_list = tables_element.findall(ConfigTable._ELEMENT_NAME)
+            for table_elem in table_element_list:
+                try:
+                    xcf_instance.add_config_table(ConfigTable.from_xcf(table_elem))
+                except (ValueError, KeyError) as e:  # noqa: PERF203
+                    logger.warning(f"Cannot load table. {e}")
+
         xcf_instance.major_version = major_version
         xcf_instance.minor_version = minor_version
         return xcf_instance
@@ -376,6 +572,15 @@ class ConfigurationFile(XMLBase, ABC):
         self.__registers.append(config_register)
         self.__subnodes.add(config_register.subnode)
 
+    def add_config_table(self, config_table: ConfigTable) -> None:
+        """Add ConfigTable to the XCF class.
+
+        Args:
+            config_table: table that will be added to the XCF
+        """
+        self.__tables.append(config_table)
+        self.__subnodes.add(config_table.subnode)
+
     def save_to_xcf(self, xcf_path: str) -> None:
         """Save a file with the config file in the target path.
 
@@ -397,6 +602,13 @@ class ConfigurationFile(XMLBase, ABC):
         registers_element = ElementTree.SubElement(device, self.__REGISTERS_ELEMENT)
         for register in self.registers:
             registers_element.append(register.to_xcf())
+
+        # Add tables if present
+        if self.tables:
+            tables_element = ElementTree.SubElement(device, self.__TABLES_ELEMENT)
+            for table in self.tables:
+                tables_element.append(table.to_xcf())
+
         body.append(device)
         dom = minidom.parseString(ElementTree.tostring(tree, encoding="utf-8"))
         with open(xcf_path, "wb") as f:
@@ -419,6 +631,11 @@ class ConfigurationFile(XMLBase, ABC):
     def registers(self) -> list[ConfigRegister]:
         """Configuration file registers."""
         return self.__registers
+
+    @property
+    def tables(self) -> list[ConfigTable]:
+        """Configuration file tables."""
+        return self.__tables
 
     def contains_node(self, subnode: int) -> bool:
         """Check of configuration file contains register of the target subnode.
