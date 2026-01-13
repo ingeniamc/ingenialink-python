@@ -3,6 +3,7 @@
 ## [Unreleased]
 ### Added
 - Add support for tables for XDF and XCF. XCF version has been updated to 2.2
+- Added context-like behaviour to EtherCAT network
 
 ## [7.5.2] - 2025-11-24
 ### Added
