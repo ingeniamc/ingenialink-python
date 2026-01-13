@@ -5,6 +5,9 @@
 - Add support for tables for XDF and XCF. XCF version has been updated to 2.2
 - Added context-like behaviour to EtherCAT network
 
+### Fixed
+- Fix sdo timeout rollback issue during store and firmware loading operations.
+
 ## [7.5.2] - 2025-11-24
 ### Added
 - Fix PDO item creation for 0 bits registers.
