@@ -1,6 +1,6 @@
 import os
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Optional, Union
+from typing import TYPE_CHECKING, Callable, Optional, Union, cast
 
 import ingenialogger
 from typing_extensions import override
@@ -437,6 +437,30 @@ class EthercatServo(PDOServo):
         """
         self.slave.set_watchdog(
             self.ETHERCAT_PDO_WATCHDOG, self.SECONDS_TO_MS_CONVERSION_FACTOR * timeout
+        )
+
+    def get_pdo_watchdog_time(self) -> float:
+        """Get the process data watchdog time.
+
+        Returns:
+            The watchdog time in seconds.
+
+        """
+        return cast(
+            "float",
+            self.slave.get_watchdog(self.ETHERCAT_PDO_WATCHDOG)
+            / self.SECONDS_TO_MS_CONVERSION_FACTOR,
+        )
+
+    def get_max_pdo_watchdog_time(self) -> float:
+        """Get the maximum process data watchdog time.
+
+        Returns:
+            The maximum watchdog time in seconds.
+
+        """
+        return (
+            cast("float", self.slave.get_max_watchdog_time()) / self.SECONDS_TO_MS_CONVERSION_FACTOR
         )
 
     def _read_esc_eeprom(
