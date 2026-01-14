@@ -286,13 +286,14 @@ class StoreRestoreManager:
         self.__read_register_evr_906_patch()
 
     def __recovery_by_polling_status(
-        self, status_reg: "Register", polling_rate: float = 0.1
+        self, status_regs: list["Register"], polling_rate: float = 0.1
     ) -> None:
         """Wait until the drive recovers from a store/restore operation."""
-        status = self.StoreStatus.IN_PROGRESS
-        while status != self.StoreStatus.IDLE:
-            status = self.StoreStatus(self._servo.read(status_reg))
-            time.sleep(polling_rate)
+        for status_reg in status_regs:
+            status = self.StoreStatus.IN_PROGRESS
+            while status != self.StoreStatus.IDLE:
+                status = self.StoreStatus(self._servo.read(status_reg))
+                time.sleep(polling_rate)
 
     def recover_after_restore(self) -> None:
         """Wait until the drive recovers from a restore operation."""
@@ -300,11 +301,17 @@ class StoreRestoreManager:
 
     def recover_after_store(self, subnode: Optional[int] = None) -> None:
         """Wait until the drive recovers from a store operation."""
-        status_reg = self.__status_subnode_map().get(subnode, None)
-        if status_reg is None:
+        if isinstance(subnode, int):
+            # Subnode was specified, use the status from the subnode
+            status_regs = [self.__status_subnode_map().get(subnode, None)]
+        else:
+            # Not subnode was specified, wait for all subnodes to come to idle
+            status_regs = self.__status_subnode_map().values()
+
+        if len(status_regs) == 0:
             self.__recovery_with_time(self.__DEFAULT_STORE_RECOVERY_TIMEOUT_S)
         else:
-            self.__recovery_by_polling_status(status_reg)
+            self.__recovery_by_polling_status(status_regs)
 
 
 class Servo:
@@ -427,6 +434,7 @@ class Servo:
             self.stop_status_listener()
         self._disconnect_callback: Optional[Callable[[Servo], None]] = disconnect_callback
 
+    @property
     @weak_lru()
     def __store_restore_manager(self) -> StoreRestoreManager:
         return StoreRestoreManager(self)
