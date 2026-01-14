@@ -303,10 +303,11 @@ class StoreRestoreManager:
         """Wait until the drive recovers from a store operation."""
         if isinstance(subnode, int):
             # Subnode was specified, use the status from the subnode
-            status_regs = [self.__status_subnode_map().get(subnode, None)]
+            status_reg = self.__status_subnode_map().get(subnode, None)
+            status_regs = [status_reg] if status_reg is not None else []
         else:
             # Not subnode was specified, wait for all subnodes to come to idle
-            status_regs = self.__status_subnode_map().values()
+            status_regs = list(self.__status_subnode_map().values())
 
         if len(status_regs) == 0:
             self.__recovery_with_time(self.__DEFAULT_STORE_RECOVERY_TIMEOUT_S)

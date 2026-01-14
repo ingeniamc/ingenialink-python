@@ -371,8 +371,10 @@ def test_check_configuration_with_tables(virtual_drive_with_tables, tmp_path):
     servo.check_configuration(str(filename))
 
 
-@pytest.mark.fsoe  # Fsoe is not related to tables, but is a modern firmware that does have user memory
-# Not run with servo_with_table fixture, since includes virtual drive, which is not ethercat and not support CSV export
+@pytest.mark.fsoe
+# Fsoe is not related to tables, but is a modern firmware that does have user memory
+# Not run with servo_with_table fixture, since includes virtual drive,
+# which is not ethercat and not support CSV export
 def test_save_configuration_csv_with_tables(real_servo_with_tables, tmp_path: Path):
     """Save configuration as CSV and verify table index/value sequence is present.
 
