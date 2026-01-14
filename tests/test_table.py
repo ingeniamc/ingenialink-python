@@ -66,8 +66,7 @@ def real_servo_with_tables(servo) -> Generator[tuple[Servo, Table] :, None, None
     servo.dictionary._tables[0]["MEM_USR"] = mem_usr_table
 
     index_register = servo.dictionary.get_register(uid="MEM_USR_ADDR", axis=None)
-    # The index register on this fw version does not have defined range yet
-    assert index_register._range == (-32768, 32767)
+    # The index register on old fw versions did not have a range set
     index_register._range = (-1, 255)
 
     # Now get the table from the servo
@@ -372,7 +371,8 @@ def test_check_configuration_with_tables(virtual_drive_with_tables, tmp_path):
     servo.check_configuration(str(filename))
 
 
-@pytest.mark.ethercat
+@pytest.mark.fsoe  # Fsoe is not related to tables, but is a modern firmware that does have user memory
+# Not run with servo_with_table fixture, since includes virtual drive, which is not ethercat and not support CSV export
 def test_save_configuration_csv_with_tables(real_servo_with_tables, tmp_path: Path):
     """Save configuration as CSV and verify table index/value sequence is present.
 
