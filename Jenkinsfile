@@ -336,7 +336,7 @@ pipeline {
                                     }
                                     steps {
                                         script {
-                                            withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_TOKEN')]) {
+                                            withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
                                                 def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
                                                 pythonVersions.each { version ->
                                                     /* Windows docker does not have npcap/winpcap installed so runs no_pcap tests */
@@ -428,7 +428,7 @@ pipeline {
                                     }
                                     steps {
                                         script {
-                                            withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_TOKEN')]) {
+                                            withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
                                                 def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
                                                   pythonVersions.each { version ->
                                                     /* Linux has libpcap installed so does not run no_pcap, but runs pcap tests */
