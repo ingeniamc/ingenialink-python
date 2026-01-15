@@ -58,6 +58,7 @@ from ingenialink.exceptions import (
 from ingenialink.register import Register
 from ingenialink.table import Table
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, weak_lru
+from ingenialink.utils.timeout import Timeout
 from ingenialink.virtual.dictionary import VirtualDictionaryV2, VirtualDictionaryV3
 
 logger = ingenialogger.get_logger(__name__)
@@ -286,18 +287,13 @@ class StoreRestoreManager:
         self.__read_register_evr_906_patch()
 
     def __recovery_by_polling_status(
-        self, status_regs: list["Register"], polling_rate: float = 0.1
+        self, status_regs: list["Register"], polling_rate: float = 0.1, timeout: float = 30.0
     ) -> None:
         """Wait until the drive recovers from a store/restore operation.
 
         This method actively polls the given store/restore status registers until
-        each of them reports :attr:`StoreStatus.IDLE`. Between polls it waits for
-        a configurable amount of time, allowing control over how frequently the
-        drive is queried during the recovery process.
-
-        The call blocks until all provided status registers indicate that the
-        operation is complete, or indefinitely if the registers never reach the
-        idle state.
+        each of them reports :attr:`StoreStatus.IDLE`.The call blocks until all
+        provided status registers indicate that the operation is complete.
 
         Args:
             status_regs: List of status registers to monitor. Each register is
@@ -305,15 +301,40 @@ class StoreRestoreManager:
                 (for example, :attr:`StoreStatus.IN_PROGRESS` or
                 :attr:`StoreStatus.IDLE`).
             polling_rate: Time in seconds to sleep between consecutive polls of
-                each status register. Smaller values increase polling frequency
-                (and bus load), while larger values reduce it at the cost of a
-                potentially longer perceived recovery time.
+                each status register.
+            timeout: Maximum time in seconds to wait for all status registers to
+                report :attr:`StoreStatus.IDLE`. If this time is exceeded, an
+                :class:`ILTimeoutError` is raised.
+
+        Raises:
+            ILTimeoutError: If the timeout is exceeded before all status
+                registers report :attr:`StoreStatus.IDLE`.
         """
-        for status_reg in status_regs:
-            status = self.StoreStatus.IN_PROGRESS
-            while status != self.StoreStatus.IDLE:
-                status = self.StoreStatus(self._servo.read(status_reg))
-                time.sleep(polling_rate)
+        with Timeout(timeout) as tim:
+            for status_reg in status_regs:
+                if tim.has_expired:
+                    break
+                status = self.StoreStatus.IN_PROGRESS
+                while status != self.StoreStatus.IDLE:
+                    if tim.has_expired:
+                        break
+                    try:
+                        status_raw = self._servo.read(status_reg)
+                    except ILError:
+                        logger.error("Could not read store/restore status register.")
+                        continue
+                    try:
+                        status = self.StoreStatus(status_raw)
+                    except ValueError:
+                        logger.error(
+                            "Invalid value read from store/restore status register: %s",
+                            status_raw,
+                        )
+                        continue
+                    time.sleep(polling_rate)
+
+            if tim.has_expired:
+                raise ILTimeoutError("Timeout waiting for store/restore operation to complete.")
 
     def recover_after_restore(self) -> None:
         """Wait until the drive recovers from a restore operation."""
