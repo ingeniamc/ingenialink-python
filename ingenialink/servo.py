@@ -269,7 +269,7 @@ class StoreRestoreManager:
         except ILError:
             logger.error(
                 "Error reading register after store/restore operation."
-                "EVR-906 bug is present and has been eluded."
+                " EVR-906 bug is present and has been eluded."
             )
 
     def __recovery_with_time(self, recovery_time: float) -> None:
@@ -288,7 +288,27 @@ class StoreRestoreManager:
     def __recovery_by_polling_status(
         self, status_regs: list["Register"], polling_rate: float = 0.1
     ) -> None:
-        """Wait until the drive recovers from a store/restore operation."""
+        """Wait until the drive recovers from a store/restore operation.
+
+        This method actively polls the given store/restore status registers until
+        each of them reports :attr:`StoreStatus.IDLE`. Between polls it waits for
+        a configurable amount of time, allowing control over how frequently the
+        drive is queried during the recovery process.
+
+        The call blocks until all provided status registers indicate that the
+        operation is complete, or indefinitely if the registers never reach the
+        idle state.
+
+        Args:
+            status_regs: List of status registers to monitor. Each register is
+                expected to return a value compatible with :class:`StoreStatus`
+                (for example, :attr:`StoreStatus.IN_PROGRESS` or
+                :attr:`StoreStatus.IDLE`).
+            polling_rate: Time in seconds to sleep between consecutive polls of
+                each status register. Smaller values increase polling frequency
+                (and bus load), while larger values reduce it at the cost of a
+                potentially longer perceived recovery time.
+        """
         for status_reg in status_regs:
             status = self.StoreStatus.IN_PROGRESS
             while status != self.StoreStatus.IDLE:
@@ -306,7 +326,7 @@ class StoreRestoreManager:
             status_reg = self.__status_subnode_map().get(subnode, None)
             status_regs = [status_reg] if status_reg is not None else []
         else:
-            # Not subnode was specified, wait for all subnodes to come to idle
+            # No subnode was specified, wait for all subnodes to come to idle
             status_regs = list(self.__status_subnode_map().values())
 
         if len(status_regs) == 0:
