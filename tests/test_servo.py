@@ -292,15 +292,14 @@ def test_store_parameters_timed_recovery(servo, environment: "Environment", mock
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
-    # Patch the manager private method; mocker returns the MagicMock for assertions
-    patched = mocker.patch.object(
+    recovery_with_time_spy = mocker.spy(
         servo._Servo__store_restore_manager, "_StoreRestoreManager__recovery_with_time"
     )
 
     servo.store_parameters()
 
     # Assert the time-based recovery was invoked once.
-    patched.assert_called_once()
+    recovery_with_time_spy.assert_called_once()
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
@@ -331,15 +330,14 @@ def test_store_parameters_polling_status(virtual_drive_custom_dict, att_client, 
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
-    # Patch the manager's polling method to a spy and verify it is used
-    patched = mocker.patch.object(
+    polling_status_spy = mocker.spy(
         servo._Servo__store_restore_manager, "_StoreRestoreManager__recovery_by_polling_status"
     )
 
     servo.store_parameters()
 
     # Assert the polling-based recovery path was invoked
-    patched.assert_called_once()
+    polling_status_spy.assert_called_once()
 
     # Virtual drive does not actually implement a power cycle or a real internal store,
     # but the rest of the test procedure is executed the same way
