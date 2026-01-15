@@ -20,7 +20,7 @@ from can.interfaces.pcan.pcan import PcanCanOperationError
 from typing_extensions import override
 
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
+from ingenialink.canopen.servo import CanopenServo
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
@@ -868,26 +868,25 @@ class CanopenNetwork(Network):
             callback_progress: Subscribed callback function for the live progress.
         """
         total_file_size = os.path.getsize(fw_file) / BOOTLOADER_MSG_SIZE
-        servo._change_sdo_timeout(CANOPEN_SEND_FW_SDO_RESPONSE_TIMEOUT)
-        logger.info("Downloading firmware")
-        if callback_status_msg:
-            callback_status_msg("Downloading firmware")
-        counter = 0
-        progress = 0
-        with open(fw_file, "rb") as image:
-            byte = image.read(BOOTLOADER_MSG_SIZE)
-            while byte:
-                servo.write(PROG_DL_1, byte, subnode=0)
-                counter += 1
-                new_progress = int(counter * 100 / total_file_size)
-                if progress != new_progress:
-                    progress = new_progress
-                    logger.info(f"Download firmware in progress: {progress}%")
-                    if callback_progress:
-                        callback_progress(progress)
+        with servo._minimum_sdo_timeout(CANOPEN_SEND_FW_SDO_RESPONSE_TIMEOUT):
+            logger.info("Downloading firmware")
+            if callback_status_msg:
+                callback_status_msg("Downloading firmware")
+            counter = 0
+            progress = 0
+            with open(fw_file, "rb") as image:
                 byte = image.read(BOOTLOADER_MSG_SIZE)
-        logger.info("Download Finished!")
-        servo._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
+                while byte:
+                    servo.write(PROG_DL_1, byte, subnode=0)
+                    counter += 1
+                    new_progress = int(counter * 100 / total_file_size)
+                    if progress != new_progress:
+                        progress = new_progress
+                        logger.info(f"Download firmware in progress: {progress}%")
+                        if callback_progress:
+                            callback_progress(progress)
+                    byte = image.read(BOOTLOADER_MSG_SIZE)
+            logger.info("Download Finished!")
 
     def change_baudrate(
         self,
