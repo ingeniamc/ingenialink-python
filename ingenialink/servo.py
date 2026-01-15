@@ -292,7 +292,7 @@ class StoreRestoreManager:
         """Wait until the drive recovers from a store/restore operation.
 
         This method actively polls the given store/restore status registers until
-        each of them reports :attr:`StoreStatus.IDLE`.The call blocks until all
+        each of them reports :attr:`StoreStatus.IDLE`. The call blocks until all
         provided status registers indicate that the operation is complete.
 
         Args:
