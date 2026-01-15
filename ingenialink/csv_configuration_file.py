@@ -3,6 +3,7 @@ import csv
 from dataclasses import dataclass
 
 from ingenialink.ethercat.register import EthercatRegister
+from ingenialink.table import Table
 from ingenialink.utils._utils import dtype_value
 
 
@@ -90,6 +91,25 @@ class CSVConfigurationFile:
         row = RegisterRow.from_register(register, storage)
         self.__calculate_crc(row)
         self.__data.append(row)
+
+    def add_table(self, table: Table) -> None:
+        """Add all registers from a table to the CSV configuration.
+
+        Args:
+            table: The table containing the registers to add.
+
+        Raises:
+            TypeError: If the table does not use EtherCAT registers.
+        """
+        index_reg = table.index_register
+        value_reg = table.value_register
+        if not isinstance(index_reg, EthercatRegister) or not isinstance(
+            value_reg, EthercatRegister
+        ):
+            raise TypeError("Only EtherCAT registers are supported in CSV files.")
+        for address, raw_value in table.items_raw():
+            self.add_register(index_reg, index_reg.value_to_bytes(address))
+            self.add_register(value_reg, raw_value)
 
     def write_to_file(self) -> None:
         """Generate the CSV configuration file."""
