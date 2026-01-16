@@ -260,7 +260,7 @@ def test_merge_dictionaries_tables():
     # Manually add tables to the dictionaries for testing
     # Add a table to coco_dict (subnode 0)
     dict_with_tables = DictionaryFactory.create_dictionary(
-        tests.resources.TEST_DICTIONARY_WITH_TABLES, Interface.ETH
+        tests.resources.TEST_DICTIONARY_WITH_TABLES_FOR_ALL_COM_TYPES, Interface.ETH
     )
     if 0 not in coco_dict._tables:
         coco_dict._tables[0] = {}
@@ -540,7 +540,7 @@ def test_canopen_object_writable_registers():
 def test_parse_tables(interface):
     """Test that the dictionary with tables is parsed correctly."""
 
-    dict_path = tests.resources.TEST_DICTIONARY_WITH_TABLES
+    dict_path = tests.resources.TEST_DICTIONARY_WITH_TABLES_FOR_ALL_COM_TYPES
     expected_tables = {
         0: {
             "MEM_USR_DATA": {
@@ -581,7 +581,7 @@ def test_parse_tables(interface):
 
 def test_get_table():
     """Test that get_table method works correctly."""
-    dict_path = tests.resources.TEST_DICTIONARY_WITH_TABLES
+    dict_path = tests.resources.TEST_DICTIONARY_WITH_TABLES_FOR_ALL_COM_TYPES
     dictionary = DictionaryFactory.create_dictionary(dict_path, Interface.ETH)
 
     # Specify a uid that does not exist

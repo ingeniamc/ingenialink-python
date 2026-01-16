@@ -3,7 +3,7 @@ import logging
 import struct
 import warnings
 import weakref
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, TypeVar, Union, cast
 from xml.etree import ElementTree
 
 import ingenialogger
@@ -80,7 +80,12 @@ def deprecated(
     return wrap
 
 
-def weak_lru(maxsize: int = 128, typed: bool = False) -> Callable[..., Any]:
+_T = TypeVar("_T")
+
+
+def weak_lru(
+    maxsize: int = 128, typed: bool = False
+) -> Callable[[Callable[..., _T]], Callable[..., _T]]:
     """Decorator that allows safe use of lru_cache in class methods.
 
     Args:
@@ -91,18 +96,18 @@ def weak_lru(maxsize: int = 128, typed: bool = False) -> Callable[..., Any]:
         wrapped method.
     """
 
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+    def decorator(func: Callable[..., _T]) -> Callable[..., _T]:
         ref = weakref.ref
 
         @functools.lru_cache(maxsize, typed)
-        def _func(_self: Any, /, *args: Any, **kwargs: Any) -> Any:
+        def _func(_self: Any, /, *args: Any, **kwargs: Any) -> _T:
             return func(_self(), *args, **kwargs)
 
         @functools.wraps(func)
-        def wrapper(self: Any, /, *args: Any, **kwargs: Any) -> Any:
+        def wrapper(self: Any, /, *args: Any, **kwargs: Any) -> _T:
             return _func(ref(self), *args, **kwargs)
 
-        return wrapper
+        return cast("Callable[..., _T]", wrapper)
 
     return decorator
 
@@ -213,7 +218,10 @@ def convert_int_to_ip(int_ip: int) -> str:
     return f"{drive_ip1}.{drive_ip2}.{drive_ip3}.{drive_ip4}"
 
 
-def convert_bytes_to_dtype(data: bytes, dtype: RegDtype) -> Union[float, int, str, bytes]:
+REG_VALUE = Union[float, int, str, bytes]
+
+
+def convert_bytes_to_dtype(data: bytes, dtype: RegDtype) -> REG_VALUE:
     """Convert data in bytes to corresponding dtype.
 
     Bytes have to be ordered in LSB.
@@ -253,7 +261,7 @@ def convert_bytes_to_dtype(data: bytes, dtype: RegDtype) -> Union[float, int, st
     return value
 
 
-def convert_dtype_to_bytes(data: Union[int, float, str, bytes], dtype: RegDtype) -> bytes:
+def convert_dtype_to_bytes(data: REG_VALUE, dtype: RegDtype) -> bytes:
     """Convert data in dtype to bytes.
 
     Bytes will be ordered in LSB.

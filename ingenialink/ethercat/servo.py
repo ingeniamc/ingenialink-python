@@ -1,6 +1,6 @@
 import os
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Optional, Union
+from typing import TYPE_CHECKING, Callable, Optional, Union, cast
 
 import ingenialogger
 from typing_extensions import override
@@ -10,6 +10,7 @@ from ingenialink.constants import PASSWORD_RESTORE_SAFETY_REGS, PASSWORD_STORE_S
 from ingenialink.csv_configuration_file import CSVConfigurationFile
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.ethercat.dictionary import EthercatDictionary
+from ingenialink.table import Table
 
 try:
     import pysoem
@@ -439,6 +440,30 @@ class EthercatServo(PDOServo):
             self.ETHERCAT_PDO_WATCHDOG, self.SECONDS_TO_MS_CONVERSION_FACTOR * timeout
         )
 
+    def get_pdo_watchdog_time(self) -> float:
+        """Get the process data watchdog time.
+
+        Returns:
+            The watchdog time in seconds.
+
+        """
+        return cast(
+            "float",
+            self.slave.get_watchdog(self.ETHERCAT_PDO_WATCHDOG)
+            / self.SECONDS_TO_MS_CONVERSION_FACTOR,
+        )
+
+    def get_max_pdo_watchdog_time(self) -> float:
+        """Get the maximum process data watchdog time.
+
+        Returns:
+            The maximum watchdog time in seconds.
+
+        """
+        return (
+            cast("float", self.slave.get_max_watchdog_time()) / self.SECONDS_TO_MS_CONVERSION_FACTOR
+        )
+
     def _read_esc_eeprom(
         self,
         address: int,
@@ -557,4 +582,12 @@ class EthercatServo(PDOServo):
                         str(configuration_register.identifier),
                         e,
                     )
+
+        for dict_table in self.dictionary.all_tables():
+            try:
+                table = Table(self, dict_table)
+                csv_configuration_file.add_table(table)
+            except Exception as e:  # noqa: PERF203
+                logger.error("Exception during save_configuration, table %s: %s", dict_table.id, e)
+
         csv_configuration_file.write_to_file()

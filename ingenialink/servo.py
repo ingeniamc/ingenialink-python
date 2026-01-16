@@ -12,7 +12,10 @@ import numpy as np
 from ingenialink.bitfield import BitField
 from ingenialink.canopen.dictionary import CanopenDictionaryV2, CanopenDictionaryV3
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.configuration_file import ConfigRegister, ConfigurationFile
+from ingenialink.configuration_file import (
+    ConfigRegister,
+    ConfigurationFile,
+)
 from ingenialink.constants import (
     DEFAULT_DRIVE_NAME,
     DEFAULT_PDS_TIMEOUT,
@@ -52,6 +55,7 @@ from ingenialink.exceptions import (
     ILValueError,
 )
 from ingenialink.register import Register
+from ingenialink.table import Table
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 from ingenialink.virtual.dictionary import VirtualDictionaryV2, VirtualDictionaryV3
 
@@ -389,29 +393,63 @@ class Servo:
         if subnode == 0 and not xcf_instance.contains_node(subnode):
             raise ValueError(f"Cannot check {config_file} at subnode {subnode}")
         registers_errored: list[str] = []
-        for register in xcf_instance.registers:
+        for config_reg in xcf_instance.registers:
             try:
-                stored_data = self.read(register.uid, register.subnode)
+                target_reg = self._get_reg(config_reg.uid, subnode=config_reg.subnode)
+                stored_data = self.read(target_reg, config_reg.subnode)
             except ILError as e:  # noqa: PERF203
-                il_error = f"{register.uid} -- {e}"
+                il_error = f"{config_reg.uid} -- {e}"
                 logger.error(
                     "Exception during check_configuration, register %s: %s",
-                    register.uid,
+                    config_reg.uid,
                     e,
                 )
                 registers_errored.append(il_error)
             else:
                 compare_conf: Union[int, float, str, bytes, bool, np.float32] = (
-                    self._adapt_configuration_file_storage_value(xcf_instance, register)
+                    convert_bytes_to_dtype(
+                        self._adapt_configuration_file_storage_value(
+                            xcf_instance, config_reg, target_reg
+                        ),
+                        target_reg.dtype,
+                    )
                 )
                 compare_drive: Union[int, float, str, bytes, bool, np.float32] = stored_data
                 if isinstance(stored_data, float):
                     compare_drive = np.float32(stored_data)
-                    compare_conf = np.float32(register.storage)
+                    compare_conf = np.float32(config_reg.storage)
                 if compare_conf != compare_drive:
                     registers_errored.append(
-                        f"{register.uid} --- Expected: {compare_conf} | Found: {compare_drive}\n"  # type: ignore[str-bytes-safe]
+                        f"{config_reg.uid} --- Expected: {compare_conf} | Found: {compare_drive}\n"  # type: ignore[str-bytes-safe]
                     )
+
+        # Check tables
+        for config_table in xcf_instance.tables:
+            try:
+                dict_table = self.dictionary.get_table(config_table.uid, axis=config_table.subnode)
+            except (KeyError, ValueError):
+                logger.error(
+                    "Exception during check_configuration, table %s: Table not found in dictionary",
+                    config_table.uid,
+                )
+                registers_errored.append(
+                    f"Table {config_table.uid} --- Table not found in dictionary"
+                )
+                continue
+
+            try:
+                table_helper = Table(self, dict_table)
+            except Exception as e:  # noqa: PERF203
+                logger.error(
+                    "Exception during check_configuration creating Table %s: %s",
+                    config_table.uid,
+                    e,
+                )
+                registers_errored.append(f"Table {config_table.uid} --- {e}")
+                continue
+
+            mismatches = table_helper.compare_with_config_table(config_table)
+            registers_errored.extend(mismatches)
 
         if registers_errored:
             error_message = "Configuration check failed for the following registers:\n"
@@ -422,21 +460,27 @@ class Servo:
     def _adapt_configuration_file_storage_value(
         self,
         configuration_file: ConfigurationFile,  # noqa: ARG002
-        register: ConfigRegister,
-    ) -> Union[int, float, str, bytes]:
+        config_register: ConfigRegister,
+        target_register: Register,
+    ) -> bytes:
         """Adapt storage value to the current servo.
 
-        This function performs no action unless the register is a CanOpen subitem
-        that depend on the Node ID, and the XCF file indicates it.
+        If the XCF `Register` contains a `data` attribute it will be preferred
+        and returned as-is (bytes). Otherwise, the `storage` attribute will be
+        converted to bytes using the provided `target_register.dtype`
 
         Args:
             configuration_file: target configuration file
-            register: target register
+            config_register: target register
+            target_register: register to write
 
         Returns:
-            Adapted storage value
+            Adapted storage value as bytes
         """
-        return register.storage
+        if config_register.data is not None:
+            return config_register.data
+        else:
+            return convert_dtype_to_bytes(config_register.storage, target_register.dtype)
 
     def load_configuration(
         self, config_file: str, subnode: Optional[int] = None, strict: bool = False
@@ -464,17 +508,43 @@ class Servo:
 
         if subnode == 0 and not xcf_instance.contains_node(subnode):
             raise ValueError(f"Cannot load {config_file} to subnode {subnode}")
-        for register in xcf_instance.registers:
+        for config_register in xcf_instance.registers:
             try:
-                storage = self._adapt_configuration_file_storage_value(xcf_instance, register)
-                self.write(
-                    register.uid,
-                    storage,
-                    subnode=register.subnode,
+                target_register = self._get_reg(
+                    config_register.uid, subnode=config_register.subnode
                 )
+                data = self._adapt_configuration_file_storage_value(
+                    xcf_instance, config_register, target_register
+                )
+                self._write_raw(target_register, data)
             except ILError as e:  # noqa: PERF203
                 exception_message = (
-                    f"Exception during load_configuration, register {register.uid}: {e}"
+                    f"Exception during load_configuration, register {config_register.uid}: {e}"
+                )
+                if strict:
+                    raise ILError(exception_message)
+                logger.error(exception_message)
+
+        for config_table in xcf_instance.tables:
+            # Get table from dictionary
+            try:
+                dict_table = self.dictionary.get_table(config_table.uid, axis=config_table.subnode)
+            except (KeyError, ValueError) as ex:
+                exception_message = (
+                    f"Exception during load_configuration, table {config_table.uid}: Table not"
+                    " found in dictionary"
+                )
+                if strict:
+                    raise ILError(exception_message) from ex
+                logger.error(exception_message)
+                continue
+
+            # Load values of the table
+            try:
+                Table(self, dict_table).load_from_config_table(config_table)
+            except ILError as e:  # noqa: PERF203
+                exception_message = (
+                    f"Exception during load_configuration, table {config_table.uid}: {e}"
                 )
                 if strict:
                     raise ILError(exception_message)
@@ -535,6 +605,14 @@ class Servo:
                         str(configuration_register.identifier),
                         e,
                     )
+
+        for dict_table in self.dictionary.all_tables():
+            try:
+                config_table = Table(self, dict_table).to_config_table()
+                xcf_instance.add_config_table(config_table)
+            except Exception as e:  # noqa: PERF203
+                logger.error(f"Exception during save_configuration, table {dict_table.id}: {e}")
+
         xcf_instance.save_to_xcf(config_file)
 
     def save_configuration_csv(self, config_file: str, subnode: Optional[int] = None) -> None:
@@ -1419,7 +1497,7 @@ class Servo:
             buffer_size: Size of the buffer to read.
 
         Raises:
-            ValueError: if buffer size is not specified or cannot be detected
+            ValueError: if buffer size is not specified or cannot be detected for EthercatRegister.
             TypeError: if the register is not a CanopenRegister or EthercatRegister.
 
         Returns:
@@ -1433,14 +1511,17 @@ class Servo:
             _reg = reg.registers[0]
             buffer_size = reg.byte_length
 
-        if buffer_size is None:
-            raise ValueError(
-                "Buffer size must be specified for complete access read."
-                "Alternatively, use a CanOpenObject to infer the size required "
-                "automatically."
-            )
+        if isinstance(_reg, EthercatRegister):
+            if buffer_size is None:
+                raise ValueError(
+                    "Buffer size must be specified for complete access read."
+                    "Alternatively, use a CanOpenObject to infer the size required "
+                    "automatically."
+                )
+            value = self._read_raw(reg=_reg, buffer_size=buffer_size, complete_access=True)
+        else:
+            value = self._read_raw(reg=_reg)
 
-        value = self._read_raw(_reg, buffer_size=buffer_size, complete_access=True)
         self._notify_register_update_complete_access(
             _reg, value, operation=RegisterAccessOperation.READ
         )
@@ -1764,6 +1845,25 @@ class Servo:
     def dictionary(self, dictionary: Dictionary) -> None:
         """Sets the dictionary object."""
         self._dictionary = dictionary
+
+    def get_table(self, uid: str, axis: Optional[int] = None) -> Table:
+        """Get a table from the dictionary.
+
+        Args:
+            uid: Table uid.
+            axis: Axis. Should be specified if multiaxis, None otherwise.
+
+        Returns:
+            Table: The requested table object.
+
+        Raises:
+            KeyError: If the specified axis does not exist.
+            KeyError: If the table is not present in the specified axis.
+            ValueError: If the table is not found in any axis, if axis is not provided.
+            ValueError: If the table is found in multiple axes, if axis is not provided.
+
+        """
+        return Table(self, self.dictionary.get_table(uid, axis=axis))
 
     @property
     def full_name(self) -> str:

@@ -28,10 +28,10 @@ dependencies = [
     "python-can==4.4.2",
     "ingenialogger>=0.2.1",
     "ping3==4.0.3",
-    "pysoem>=1.1.11, <1.2.0",
-    "numpy>=1.26.0",
+    "pysoem>=1.1.13, <1.2.0",
     "bitarray==2.9.2",
     "multiping==1.1.2",
+    "numpy>=1.26.0",
 ]
 
 [project.urls]
@@ -43,7 +43,7 @@ Source = "https://github.com/ingeniamc/ingenialink-python"
 version = "7.5.2"  # base version
 
 [project.optional-dependencies]
-virtual_drive = ["virtual_drive==0.0.0+gced50b1fe"]
+virtual_drive = ["virtual_drive==0.0.0+pr6b3"]
 
 [[tool.poetry.source]]
 name = "PyPI"
@@ -119,7 +119,7 @@ pytest-cov = "==2.12.1"
 pytest-mock = "==3.6.1"
 pytest-console-scripts = "==1.4.1"
 twisted = "==24.11.0"
-summit-testing-framework = {extras = ["ingeniamotion"], version = "==0.1.5+pr58b12"}
+summit-testing-framework = {extras = ["ingeniamotion"], version = "==0.1.5+gd079741ed"}
 
 # -----------------------------------------------------------------------
 #                                   TASKS
@@ -141,11 +141,11 @@ cmd = "python setup.py build_ext --inplace"
 # ----------------------------- Ruff format -----------------------------
 [tool.poe.tasks.ruff-format-check]
 help = "Format check with ruff"
-cmd = "ruff format --check ingenialink tests"
+cmd = "ruff format --check ingenialink tests examples"
 
 [tool.poe.tasks.ruff-check]
 help = "Check with ruff"
-cmd = "ruff check ingenialink tests"
+cmd = "ruff check ingenialink tests examples"
 
 [tool.poe.tasks.format]
 help     = "Check format"
@@ -154,11 +154,11 @@ sequence = ["ruff-format-check", "ruff-check"]
 # ----------------------------- Ruff reformat -----------------------------
 [tool.poe.tasks.ruff-format]
 help = "Format files with ruff"
-cmd = "ruff format ingenialink tests"
+cmd = "ruff format ingenialink tests examples"
 
 [tool.poe.tasks.ruff-check-fix]
 help = "Fix lint errors"
-cmd = "ruff check --fix ingenialink tests"
+cmd = "ruff check --fix ingenialink tests examples"
 
 [tool.poe.tasks.reformat]
 help     = "Reformat files and fix lint errors"

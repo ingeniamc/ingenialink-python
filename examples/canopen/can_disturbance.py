@@ -1,6 +1,6 @@
 import argparse
 import math
-from typing import List, Union, cast
+from typing import Union, cast
 
 from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 from ingenialink.enums.register import RegDtype
@@ -8,6 +8,11 @@ from ingenialink.exceptions import ILRegisterNotFoundError
 
 
 def disturbance_example(args: argparse.Namespace) -> None:
+    """Connects to a CANopen drive and performs disturbance signal loading.
+
+    Args:
+        args: Command line arguments.
+    """
     # Frequency divider to set disturbance frequency
     divider = 100
     # Calculate time between disturbance samples
@@ -19,11 +24,8 @@ def disturbance_example(args: argparse.Namespace) -> None:
     # Calculate number of samples to load a complete oscillation
     n_samples = int(1 / (signal_frequency * sample_period))
     # Generate a SHM with the formula x(t)=A*sin(t*w) where:
-    # A = signal_amplitude (Amplitude)
-    # t = sample_period*i (time)
-    # w = signal_frequency*2*math.pi (angular frequency)
     data_pos = cast(
-        "List[Union[int, float]]",
+        "list[Union[int, float]]",
         [
             int(
                 1000
@@ -48,7 +50,7 @@ def disturbance_example(args: argparse.Namespace) -> None:
         for i in range(n_samples)
     ]
     data_positioning_opt = cast(
-        "List[Union[int, float]]",
+        "list[Union[int, float]]",
         [
             int(
                 abs(
@@ -94,6 +96,11 @@ def disturbance_example(args: argparse.Namespace) -> None:
 
 
 def setup_command() -> argparse.Namespace:
+    """Sets up the command line argument parser.
+
+    Returns:
+        Parsed command line arguments.
+    """
     parser = argparse.ArgumentParser(description="Canopen example")
     parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)
     parser.add_argument("-n", "--node_id", default=32, type=int, help="Node ID")

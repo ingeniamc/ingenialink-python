@@ -8,6 +8,21 @@ from ingenialink.ethernet.register import EthernetRegister
 
 
 def monitoring_example(args: argparse.Namespace) -> list[NDArray[np.float64]]:
+    """Monitoring example.
+
+    Args:
+        args: Parsed command-line arguments.
+
+    Raises:
+        TypeError: if register is not EthernetRegister.
+        TypeError: if position_velocity_loop_rate is not numeric.
+        TypeError: if monitor_status is not int.
+        ValueError: if monitor_status indicates an error.
+        TypeError: if monit_nmb_blocks is not numeric.
+
+    Returns:
+        Monitored data.
+    """
     registers_key = [
         "DRV_PROT_TEMP_VALUE",
     ]
@@ -88,7 +103,7 @@ def monitoring_example(args: argparse.Namespace) -> list[NDArray[np.float64]]:
                 if data_obtained:
                     # Single-shot mode
                     read_process_finished = True
-        except Exception as e:
+        except Exception as e:  # noqa: PERF203
             print(f"Exception monitoring: {e}")
             break
     print("Finished")
@@ -98,6 +113,11 @@ def monitoring_example(args: argparse.Namespace) -> list[NDArray[np.float64]]:
 
 
 def setup_command() -> argparse.Namespace:
+    """Parse input arguments.
+
+    Returns:
+        parsed arguments.
+    """
     parser = argparse.ArgumentParser(description="Ethernet connection example")
     parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)
     parser.add_argument("-ip", "--ip_address", help="IP address", type=str, required=True)

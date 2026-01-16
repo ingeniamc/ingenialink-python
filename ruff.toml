@@ -54,4 +54,8 @@ ignore = [
 [lint.per-file-ignores]
 "tests/*" = [
     "D", # Docstring rules
+    "DOC501", # Missing documentation of raises. Conflicts with use of pytest.raises.
+]
+"examples/*" = [
+    "T20", # flake8 prints
 ]
