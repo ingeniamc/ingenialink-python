@@ -158,9 +158,9 @@ class VEnvManager {
             run: { cmd ->
                 def cdCmd = folder ? "cd ${folder}\n " : ""
                 if (this.isUnixWorkspace(folder)) {
-                    this.pipeline.sh """${cdCmd}${cmd}"""
+                    this.pipeline.sh "${cdCmd}${cmd}"
                 } else {
-                    this.pipeline.bat """${cdCmd}${cmd}"""
+                    this.pipeline.bat "${cdCmd}${cmd}"
                 }
             }
         ]
@@ -362,7 +362,7 @@ class PyTestManager {
                     pipeline.withEnv(["WIRESHARK_SCOPE=${wiresharkScope}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${clearSuccessfulWiresharkLogs}", "START_WIRESHARK_TIMEOUT_S=${startWiresharkTimeoutS}"]) {
                         try {
                             def setupArg = setup_name ? "--setup ${setup_name} " : ""
-                            venv.run("""poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-${venv.version}.xml --junit-prefix=${venv.version} -m \"${markers}\" ${setupArg} --job_name=\"${pipeline.env.JOB_NAME}-#${pipeline.env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}""")
+                            venv.run("poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-${venv.version}.xml --junit-prefix=${venv.version} -m \"${markers}\" ${setupArg} --job_name=\"${pipeline.env.JOB_NAME}-#${pipeline.env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}")
                         } catch (err) {
                             pipeline.unstable(message: "Tests failed")
                         } finally {
@@ -581,7 +581,7 @@ pipeline {
                                             def win_marker = markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
                                             venvManager.forPythons(env.WORKING_FOLDER, testManager.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
-                                                venv.run("""poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m "${win_marker}" -o log_cli=True""")
+                                                venv.run("poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m \"${win_marker}\" -o log_cli=True")
                                             }
                                         }
                                     }
@@ -672,7 +672,7 @@ pipeline {
                                             def lin_marker = markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
                                             venvManager.withPython(DEFAULT_PYTHON_VERSION, env.WORKING_FOLDER) { venv ->
                                                 venv.run("poetry run poe install-wheel")
-                                                venv.run("""poetry run poe tests --junitxml=pytest_reports/junit-tests-${venv.name}.xml --junit-prefix=${venv.name} -m '${lin_marker}' -o log_cli=True""")
+                                                venv.run("poetry run poe tests --junitxml=pytest_reports/junit-tests-${venv.name}.xml --junit-prefix=${venv.name} -m '${lin_marker}' -o log_cli=True")
                                             }
                                         }
                                     }
@@ -696,7 +696,7 @@ pipeline {
                                         script {
                                             venvManager.forPythons(env.WORKING_FOLDER, testManager.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
-                                                venv.run("""poetry run poe tests --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True""")
+                                                venv.run("poetry run poe tests --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True")
                                             }
                                         }
                                     }
