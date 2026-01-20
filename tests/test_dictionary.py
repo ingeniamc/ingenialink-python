@@ -387,6 +387,24 @@ def test_dictionary_no_product_code(xml_attribute, class_attribute):
     assert getattr(dictionary, class_attribute) is None
 
 
+def test_get_registers():
+    dict_path = tests.resources.canopen.TEST_DICT_CAN_AXIS
+    dictionary = DictionaryFactory.create_dictionary(dict_path, Interface.CAN)
+
+    # Get register only present on subnode 0
+    uid = "DRV_DIAG_ERROR_LAST_COM"
+    regs = list(dictionary.get_registers(uid=uid))
+    assert len(regs) == 1
+    assert regs[0].identifier == uid
+
+    # Get registers present on subnode 1 and 2
+    uid = "DRV_PROT_MAN_OVER_VOLT"
+    regs = list(dictionary.get_registers(uid=uid))
+    assert len(regs) == 2
+    for reg in regs:
+        assert reg.identifier == uid
+
+
 def test_get_register():
     dict_path = tests.resources.ethercat.TEST_DICT_ETHERCAT_AXIS
     dictionary = DictionaryFactory.create_dictionary(dict_path, Interface.ECAT)

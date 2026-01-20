@@ -336,16 +336,18 @@ pipeline {
                                     }
                                     steps {
                                         script {
-                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-                                            pythonVersions.each { version ->
-                                                /* Windows docker does not have npcap/winpcap installed so runs no_pcap tests */
-                                                def win_marker = markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
-                                                bat """
-                                                    cd ${WIN_DOCKER_TMP_PATH}
-                                                    call .venv${version}/Scripts/activate
-                                                    poetry run poe install-wheel
-                                                    poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "${win_marker}" -o log_cli=True
-                                                """
+                                            withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
+                                                def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+                                                pythonVersions.each { version ->
+                                                    /* Windows docker does not have npcap/winpcap installed so runs no_pcap tests */
+                                                    def win_marker = markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
+                                                    bat """
+                                                        cd ${WIN_DOCKER_TMP_PATH}
+                                                        call .venv${version}/Scripts/activate
+                                                        poetry run poe install-wheel
+                                                        poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "${win_marker}" -o log_cli=True
+                                                    """
+                                                }
                                             }
                                         }
                                     }
@@ -426,17 +428,19 @@ pipeline {
                                     }
                                     steps {
                                         script {
-                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-                                              pythonVersions.each { version ->
-                                                /* Linux has libpcap installed so does not run no_pcap, but runs pcap tests */
-                                                def lin_marker = markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
-                                                sh """
-                                                    cd ${LIN_DOCKER_TMP_PATH}
-                                                    . .venv${version}/bin/activate
-                                                    poetry run poe install-wheel
-                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "${lin_marker}" -o log_cli=True
-                                                    deactivate
-                                                """
+                                            withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
+                                                def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
+                                                  pythonVersions.each { version ->
+                                                    /* Linux has libpcap installed so does not run no_pcap, but runs pcap tests */
+                                                    def lin_marker = markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
+                                                    sh """
+                                                        cd ${LIN_DOCKER_TMP_PATH}
+                                                        . .venv${version}/bin/activate
+                                                        poetry run poe install-wheel
+                                                        poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "${lin_marker}" -o log_cli=True
+                                                        deactivate
+                                                    """
+                                                }
                                             }
                                         }
                                     }

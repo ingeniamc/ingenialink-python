@@ -5,6 +5,9 @@
 - Add support for tables for XDF and XCF and CSV export. XCF version has been updated to 2.2
 - Added context-like behaviour to EtherCAT network
 
+### Changed
+- Use store status register to wait for store operations to finish on drives that support it.
+
 ### Fixed
 - Fix sdo timeout rollback issue during store and firmware loading operations.
 

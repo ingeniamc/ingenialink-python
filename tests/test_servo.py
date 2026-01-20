@@ -9,6 +9,7 @@ from xml.etree import ElementTree
 import pytest
 from packaging import version
 from summit_testing_framework.product_constants import PartNumber
+from summit_testing_framework.setups.environment_control import VirtualDriveEnvironmentController
 from summit_testing_framework.setups.specifiers import (
     RackServiceConfigSpecifier,
 )
@@ -28,7 +29,7 @@ from ingenialink.exceptions import (
     ILValueError,
 )
 from ingenialink.register import RegAddressType
-from ingenialink.servo import Servo, ServoState
+from ingenialink.servo import Servo, ServoState, StoreRestoreManager
 from ingenialink.utils._utils import convert_bytes_to_dtype
 
 if TYPE_CHECKING:
@@ -276,8 +277,13 @@ def test_load_configuration_to_subnode_zero(setup_descriptor, servo) -> None:
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_store_parameters(servo, environment: "Environment") -> None:
+# Pending: Maximum firmware versions for comoco
+def test_store_parameters_timed_recovery(servo, environment: "Environment", mocker) -> None:
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
+
+    # This drive does not have any status register for store operation
+    assert len(list(servo.dictionary.get_registers(StoreRestoreManager.STORE_STATUS_MOCO))) == 0
+    assert len(list(servo.dictionary.get_registers(StoreRestoreManager.STORE_STATUS_COCO))) == 0
 
     initial_user_over_voltage_value = servo.read(user_over_voltage_register)
     new_user_over_voltage_value = initial_user_over_voltage_value + 5
@@ -286,7 +292,14 @@ def test_store_parameters(servo, environment: "Environment") -> None:
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
+    recovery_with_time_spy = mocker.spy(
+        servo._Servo__store_restore_manager, "_StoreRestoreManager__recovery_with_time"
+    )
+
     servo.store_parameters()
+
+    # Assert the time-based recovery was invoked once.
+    recovery_with_time_spy.assert_called_once()
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
@@ -297,7 +310,43 @@ def test_store_parameters(servo, environment: "Environment") -> None:
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
-    servo.write(user_over_voltage_register, initial_user_over_voltage_value)
+
+# Only run on virtual drive since rack drives tested fw version do not have these registers yet
+def test_store_parameters_polling_status(virtual_drive_custom_dict, att_client, mocker):
+    dict_with_status_reg = att_client.get_dictionary_xdf_v3_file("DEN-NET-E", "2.9.1")
+    server, _, servo = virtual_drive_custom_dict(dict_with_status_reg)
+    environment = VirtualDriveEnvironmentController(server.environment)
+
+    # Both registers exist in this dictionary
+    servo.dictionary.get_register("DRV_STORE_STATUS_MOCO")
+    servo.dictionary.get_register("DRV_STORE_STATUS_COCO")
+
+    user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
+
+    initial_user_over_voltage_value = servo.read(user_over_voltage_register)
+    new_user_over_voltage_value = initial_user_over_voltage_value + 5
+
+    servo.write(user_over_voltage_register, new_user_over_voltage_value)
+
+    assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
+
+    polling_status_spy = mocker.spy(
+        servo._Servo__store_restore_manager, "_StoreRestoreManager__recovery_by_polling_status"
+    )
+
+    servo.store_parameters()
+
+    # Assert the polling-based recovery path was invoked
+    polling_status_spy.assert_called_once()
+
+    # Virtual drive does not actually implement a power cycle or a real internal store,
+    # but the rest of the test procedure is executed the same way
+    drives_reconnected = environment.power_cycle(
+        wait_for_drives=False, reconnect_drives=True, reconnect_timeout=20
+    )
+    assert drives_reconnected is True, "The drive is unresponsive after the recovery timeout."
+
+    assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
 
 @pytest.mark.fsoe

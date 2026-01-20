@@ -2,6 +2,7 @@ import re
 import threading
 import time
 from abc import abstractmethod
+from collections.abc import Iterator
 from enum import Enum, auto
 from typing import Any, Callable, Optional, Union
 from xml.etree import ElementTree
@@ -56,7 +57,8 @@ from ingenialink.exceptions import (
 )
 from ingenialink.register import Register
 from ingenialink.table import Table
-from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
+from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, weak_lru
+from ingenialink.utils.timeout import Timeout
 from ingenialink.virtual.dictionary import VirtualDictionaryV2, VirtualDictionaryV3
 
 logger = ingenialogger.get_logger(__name__)
@@ -222,6 +224,138 @@ class ServoStatusListener(threading.Thread):
         self.__stop = True
 
 
+class StoreRestoreManager:
+    """Manages the store/restore operations of a servo."""
+
+    STORE_STATUS_MOCO = "DRV_STORE_STATUS_MOCO"
+    STORE_STATUS_COCO = "DRV_STORE_STATUS_COCO"
+
+    __DEFAULT_STORE_RECOVERY_TIMEOUT_S = 4
+    __DEFAULT_RESTORE_RECOVERY_TIMEOUT_S = 1.5
+
+    class StoreStatus(Enum):
+        """Store status, used by the store status registers."""
+
+        IDLE = 0
+        IN_PROGRESS = 1
+
+    def __init__(self, servo: "Servo"):
+        self._servo = servo
+
+    def __status_registers(self) -> Iterator["Register"]:
+        """Get all store status registers from communications core and all axis.
+
+        Yields:
+            Register: store status registers.
+        """
+        yield from self._servo._dictionary.get_registers(self.STORE_STATUS_COCO)
+        yield from self._servo._dictionary.get_registers(self.STORE_STATUS_MOCO)
+
+    @weak_lru()
+    def __status_subnode_map(self) -> dict[int, "Register"]:
+        """Get a map of store status registers by subnode.
+
+        Returns:
+            A dictionary mapping subnode to store status register.
+        """
+        return {reg.subnode: reg for reg in self.__status_registers()}
+
+    def __read_register_evr_906_patch(self) -> None:
+        """Read a register to avoid errors after store/restore operations.
+
+        Patch for issue EVR-906.
+        """
+        try:
+            self._servo.read(self._servo.STATUS_WORD_REGISTERS)
+        except ILError:
+            logger.error(
+                "Error reading register after store/restore operation."
+                " EVR-906 bug is present and has been eluded."
+            )
+
+    def __recovery_with_time(self, recovery_time: float) -> None:
+        """Wait until the drive recovers from a store/restore operation.
+
+        Implemented by waiting a fixed time measured experimentally.
+        Needed for drives that do not implement store/restore status registers.
+
+        Args:
+            recovery_time: how many seconds to wait for the drive.
+
+        """
+        time.sleep(recovery_time)
+        self.__read_register_evr_906_patch()
+
+    def __recovery_by_polling_status(
+        self, status_regs: list["Register"], polling_rate: float = 0.1, timeout: float = 30.0
+    ) -> None:
+        """Wait until the drive recovers from a store/restore operation.
+
+        This method actively polls the given store/restore status registers until
+        each of them reports :attr:`StoreStatus.IDLE`. The call blocks until all
+        provided status registers indicate that the operation is complete.
+
+        Args:
+            status_regs: List of status registers to monitor. Each register is
+                expected to return a value compatible with :class:`StoreStatus`
+                (for example, :attr:`StoreStatus.IN_PROGRESS` or
+                :attr:`StoreStatus.IDLE`).
+            polling_rate: Time in seconds to sleep between consecutive polls of
+                each status register.
+            timeout: Maximum time in seconds to wait for all status registers to
+                report :attr:`StoreStatus.IDLE`. If this time is exceeded, an
+                :class:`ILTimeoutError` is raised.
+
+        Raises:
+            ILTimeoutError: If the timeout is exceeded before all status
+                registers report :attr:`StoreStatus.IDLE`.
+        """
+        with Timeout(timeout) as tim:
+            for status_reg in status_regs:
+                if tim.has_expired:
+                    break
+                status = self.StoreStatus.IN_PROGRESS
+                while status != self.StoreStatus.IDLE:
+                    if tim.has_expired:
+                        break
+                    try:
+                        status_raw = self._servo.read(status_reg)
+                    except ILError:
+                        logger.error("Could not read store/restore status register.")
+                        continue
+                    try:
+                        status = self.StoreStatus(status_raw)
+                    except ValueError:
+                        logger.error(
+                            "Invalid value read from store/restore status register: %s",
+                            status_raw,
+                        )
+                        continue
+                    time.sleep(polling_rate)
+
+            if tim.has_expired:
+                raise ILTimeoutError("Timeout waiting for store/restore operation to complete.")
+
+    def recover_after_restore(self) -> None:
+        """Wait until the drive recovers from a restore operation."""
+        self.__recovery_with_time(self.__DEFAULT_RESTORE_RECOVERY_TIMEOUT_S)
+
+    def recover_after_store(self, subnode: Optional[int] = None) -> None:
+        """Wait until the drive recovers from a store operation."""
+        if isinstance(subnode, int):
+            # Subnode was specified, use the status from the subnode
+            status_reg = self.__status_subnode_map().get(subnode, None)
+            status_regs = [status_reg] if status_reg is not None else []
+        else:
+            # No subnode was specified, wait for all subnodes to come to idle
+            status_regs = list(self.__status_subnode_map().values())
+
+        if len(status_regs) == 0:
+            self.__recovery_with_time(self.__DEFAULT_STORE_RECOVERY_TIMEOUT_S)
+        else:
+            self.__recovery_by_polling_status(status_regs)
+
+
 class Servo:
     """Declaration of a general Servo object.
 
@@ -249,6 +383,7 @@ class Servo:
     RESTORE_MOCO_ALL_REGISTERS = "DRV_RESTORE_MOCO_ALL"
     STORE_COCO_ALL = "DRV_STORE_COCO_ALL"
     STORE_MOCO_ALL_REGISTERS = "DRV_STORE_MOCO_ALL"
+
     CONTROL_WORD_REGISTERS = "DRV_STATE_CONTROL"
     CONTROL_WORD_SWITCH_ON = "SWITCH_ON"
     CONTROL_WORD_VOLTAGE_ENABLE = "VOLTAGE_ENABLE"
@@ -285,9 +420,6 @@ class Servo:
 
     DICTIONARY_INTERFACE_ATTR_CAN = "CAN"
     DICTIONARY_INTERFACE_ATTR_ETH = "ETH"
-
-    __DEFAULT_STORE_RECOVERY_TIMEOUT_S = 4
-    __DEFAULT_RESTORE_RECOVERY_TIMEOUT_S = 1.5
 
     interface: Interface
 
@@ -343,6 +475,11 @@ class Servo:
         else:
             self.stop_status_listener()
         self._disconnect_callback: Optional[Callable[[Servo], None]] = disconnect_callback
+
+    @property
+    @weak_lru()
+    def __store_restore_manager(self) -> StoreRestoreManager:
+        return StoreRestoreManager(self)
 
     def start_status_listener(self) -> None:
         """Start listening for servo status events (ServoState)."""
@@ -698,7 +835,7 @@ class Servo:
                 f"The drive's configuration cannot be restored. The subnode value: {subnode} is"
                 " invalid."
             )
-        self._wait_for_drive_to_recover(self.__DEFAULT_RESTORE_RECOVERY_TIMEOUT_S)
+        self.__store_restore_manager.recover_after_restore()
 
     def store_parameters(self, subnode: Optional[int] = None) -> None:
         """Store all the current parameters of the target subnode.
@@ -741,20 +878,7 @@ class Servo:
                 f"The drive's configuration cannot be stored. The subnode value: {subnode} is"
                 " invalid."
             )
-        self._wait_for_drive_to_recover(self.__DEFAULT_STORE_RECOVERY_TIMEOUT_S)
-
-    def _wait_for_drive_to_recover(self, recovery_time: float) -> None:
-        """Wait until the drive recovers from a store/restore operation.
-
-        Args:
-            recovery_time: how many seconds to wait for the drive.
-
-        """
-        time.sleep(recovery_time)
-        # To avoid an error on the first read/write after the drive is
-        # recovered, we try to read the status word register.
-        # Check issue EVR-906.
-        self.is_alive()
+        self.__store_restore_manager.recover_after_store(subnode)
 
     def _get_drive_identification(
         self,
