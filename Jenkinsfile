@@ -149,11 +149,7 @@ class VEnvManager {
     *   workingDir: Directory/workspace path (optional, uses current pipeline isUnix if not provided)
     * Returns: true if Unix, false if Windows
     */
-    def isUnixWorkspace(String workingDir = null) {
-        if (!workingDir) {
-            return this.pipeline.isUnix()
-        }
-
+    def isUnixWorkspace(String workingDir) {
         if (!this.osCache.containsKey(workingDir)) {
             this.osCache[workingDir] = this.pipeline.isUnix()
         }
@@ -166,14 +162,16 @@ class VEnvManager {
     *   folder: Folder path to change to (optional)
     *   body: Closure to execute inside the folder
     */
-    def runInFolder(folder = null, body) {
+    def runInWorkDir(Closure body) {
+        def wd = this.getWorkingDir(null)
         def ctx = [
             run: { cmd ->
-                def cdCmd = folder ? "cd ${folder}\n " : ""
-                if (this.isUnixWorkspace(folder)) {
-                    this.pipeline.sh "${cdCmd}${cmd}"
+                // If working dir is already workspace, don't prepend cd
+                def fullCmd = (wd == this.pipeline.env.WORKSPACE) ? cmd : "cd ${wd}\n ${cmd}"
+                if (this.isUnixWorkspace(wd)) {
+                    this.pipeline.sh fullCmd
                 } else {
-                    this.pipeline.bat "${cdCmd}${cmd}"
+                    this.pipeline.bat fullCmd
                 }
             }
         ]
@@ -189,16 +187,17 @@ class VEnvManager {
     *   pythonVersion: Python version for this venv (optional, used to set venv.version)
     *   body: Closure to execute inside the venv
     */
-    def withVirtualEnv(String venvName, workingDir = null, String pythonVersion = null, body) {
+    def withVirtualEnv(String venvName, String pythonVersion = null, Closure body) {
+        def wd = this.getWorkingDir(null)
         def ctx = [
             run: { cmd ->
                 def activateCmd
-                if (this.isUnixWorkspace(workingDir)) {
+                if (this.isUnixWorkspace(wd)) {
                     activateCmd = ". ${venvName}/bin/activate\n "
                 } else {
                     activateCmd = "call ${venvName}\\Scripts\\activate\n "
                 }
-                this.runInFolder(workingDir) { folderCtx ->
+                this.runInWorkDir { folderCtx ->
                     folderCtx.run(activateCmd + cmd)
                 }
             },
@@ -225,9 +224,9 @@ class VEnvManager {
         def venvName = args.venvName ?: this.pythonVersionDefaultVenvName(pythonVersion)
 
         // Create the virtual environment using pipeline context
-        this.runInFolder(ws) { ctx ->
-          ctx.run("py -${pythonVersion} -m venv --without-pip ${venvName}")
-        }
+                this.runInWorkDir { ctx ->
+                    ctx.run("py -${pythonVersion} -m venv --without-pip ${venvName}")
+                }
 
         // Store the created venv path
         def venvPath = this.pipeline.joinPath(ws, venvName)
@@ -259,7 +258,7 @@ class VEnvManager {
     *   body: Closure to execute for each venv. Receives the venv context as argument
     * Note: Uses env.WORKING_FOLDER if set, otherwise env.WORKSPACE
     */
-    def forEachEnvironment(body) {
+    def forEachEnvironment(Closure body) {
         def workingDir = this.getWorkingDir(null)
         def venvMap = this.venvs.get(workingDir)
         if (!venvMap) {
@@ -269,7 +268,7 @@ class VEnvManager {
           throw new IllegalArgumentException("Virtual environments map is empty for workingDir: ${workingDir}")
         }
         venvMap.each { venvName, venvPath ->
-            this.withVirtualEnv(venvName, workingDir) { venv ->
+            this.withVirtualEnv(venvName) { venv ->
                 body(venv)
             }
         }
@@ -282,10 +281,9 @@ class VEnvManager {
     *   body: Closure to execute inside the venv
     * Note: Uses env.WORKING_FOLDER if set, otherwise env.WORKSPACE
     */
-    def withPython(String pythonVersion, body) {
-        def workingDir = this.getWorkingDir(null)
+    def withPython(String pythonVersion, Closure body) {
         def venvName = this.pythonVersionDefaultVenvName(pythonVersion)
-        this.withVirtualEnv(venvName, workingDir, pythonVersion, body)
+        this.withVirtualEnv(venvName, pythonVersion, body)
     }
 
 
@@ -297,7 +295,7 @@ class VEnvManager {
     * Note: Uses env.WORKING_FOLDER if set, otherwise env.WORKSPACE
     */
 
-    def forPythons(Iterable pythonVersions, body) {
+    def forPythons(Iterable pythonVersions, Closure body) {
         pythonVersions.each { version ->
             this.withPython(version) { venv ->
                 body(venv)
@@ -320,10 +318,9 @@ class VEnvManager {
         def venvName = this.pythonVersionDefaultVenvName(version)
         def installCmd = args.installCommand ?: this.poetry_default_install_command
         def additionalCmds = args.additionalCommands ?: []
-        def workingDir = this.getWorkingDir(null)
 
         this.createVirtualEnvironment([venvName: venvName, pythonVersion: version])
-        this.withVirtualEnv(venvName, workingDir) { venv ->
+        this.withVirtualEnv(venvName) { venv ->
             venv.run(installCmd)
             additionalCmds.each { cmd ->
                 venv.run(cmd)
