@@ -52,29 +52,6 @@ def clearCoverageFiles() {
     bat(script: 'del /f "*.coverage*"', returnStatus: true)
 }
 
-/*
- * Join path segments into a single path string
- * - Accepts varargs (strings or anything with toString()).
- * - Skips null/blank segments.
- * - Trims leading/trailing separators on each segment to avoid double slashes.
- * - Uses '/' on Linux, '\' on Windows.
- */
-def joinPath(Object... parts) {
-  // Normalize segments: toString, trim, remove leading/trailing separators
-  def cleaned = (parts as List)
-    .findAll { it != null }
-    .collect { it.toString().trim() }
-    .findAll { it } // drop empty strings
-    .collect { seg ->
-      // Remove leading/trailing both types of separators to be safe
-      seg.replaceAll('^[\\\\/]+', '').replaceAll('[\\\\/]+$', '')
-    }
-
-  // Join using POSIX separator, then normalize for Windows if needed
-  def joined = cleaned.join('/')
-  return isUnix() ? joined : joined.replace('/', '\\')
-}
-
 def archiveWiresharkLogs() {
     archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
 }
@@ -96,6 +73,7 @@ class VEnvManager {
     *   },
     */
     Map venvs = [:]
+    // TODO on the key also add node name to ensure uniqueness across nodes?
 
     /*
     * Cache for OS type per workspace.
@@ -126,80 +104,167 @@ class VEnvManager {
     *   pythonVersion: Python version string (e.g., "3.9", "3.10")
     * Returns: Default venv name following the convention
     */
-    def pythonVersionDefaultVenvName(String pythonVersion) {
+    private def pythonVersionDefaultVenvName(String pythonVersion) {
         return ".venv${pythonVersion}"
-    }
-
-    /*
-    * Get the working directory, either from parameter or from environment
-    * Arguments:
-    *   workingDir: Explicit working directory (optional)
-    * Returns: Working directory path (WORKING_FOLDER from env if set, otherwise WORKSPACE)
-    */
-    def getWorkingDir(String workingDir = null) {
-        if (workingDir) {
-            return workingDir
-        }
-        return this.pipeline.env.WORKING_FOLDER ?: this.pipeline.env.WORKSPACE
     }
 
     /*
     * Check if a workspace is running on Unix (cached)
     * Arguments:
-    *   workingDir: Directory/workspace path (optional, uses current pipeline isUnix if not provided)
+    *   workingFolder: Working folder path
     * Returns: true if Unix, false if Windows
     */
-    def isUnixWorkspace(String workingDir) {
-        if (!this.osCache.containsKey(workingDir)) {
-            this.osCache[workingDir] = this.pipeline.isUnix()
+    private def isUnixWorkspace(String workingFolder) {
+        if (!this.osCache.containsKey(workingFolder)) {
+            this.osCache[workingFolder] = this.pipeline.isUnix()
         }
-        return this.osCache[workingDir]
+        return this.osCache[workingFolder]
     }
 
     /*
-    * Execute code within a specific folder
+    * Join path segments into a single path string
     * Arguments:
-    *   folder: Folder path to change to (optional)
-    *   body: Closure to execute inside the folder
+    *   parts: Variable number of path segments (strings or objects with toString())
+    * Returns: Platform-specific path string ('/' on Linux, '\' on Windows)
     */
-    def runInWorkDir(Closure body) {
-        def wd = this.getWorkingDir(null)
-        def ctx = [
-            run: { cmd ->
-                // If working dir is already workspace, don't prepend cd
-                def fullCmd = (wd == this.pipeline.env.WORKSPACE) ? cmd : "cd ${wd}\n ${cmd}"
-                if (this.isUnixWorkspace(wd)) {
-                    this.pipeline.sh fullCmd
-                } else {
-                    this.pipeline.bat fullCmd
-                }
-            }
-        ]
+    private def joinPath(Object... parts) {
+        // Filter out nulls and empty strings
+        def partsList = (parts as List)
+            .findAll { it != null }
+            .collect { it.toString().trim() }
+            .findAll { it }
+        
+        if (partsList.isEmpty()) {
+            return ""
+        }
 
-        body(ctx)
+        // First segment: keep as-is (preserves /absolute/paths and C:\drive\paths), only strip trailing slashes
+        def first = partsList[0].replaceAll('[\\\\/]+$', '')
+        
+        // Remaining segments: strip leading and trailing slashes
+        def rest = partsList.size() > 1 
+            ? partsList[1..-1].collect { it.replaceAll('^[\\\\/]+', '').replaceAll('[\\\\/]+$', '') }
+            : []
+
+        // Join with / and convert to platform-specific separators
+        def joined = ([first] + rest).join('/')
+        def workingFolder = this.getWorkingFolder()
+        return this.isUnixWorkspace(workingFolder) ? joined : joined.replace('/', '\\')
+    }
+
+    /*
+    * Run a single command in the working folder
+    * Arguments:
+    *   cmd: Command to execute
+    */
+    private def run(String cmd) {
+        def workingFolder = this.getWorkingFolder()
+        def fullCmd = (workingFolder == this.pipeline.env.WORKSPACE) ? cmd : "cd ${workingFolder}\n ${cmd}"
+        if (this.isUnixWorkspace(workingFolder)) {
+            this.pipeline.sh fullCmd
+        } else {
+            this.pipeline.bat fullCmd
+        }
+    }
+
+    /*
+    * Copy workspace content to working directory
+    * Copies all files from WORKSPACE to VENV_WORKING_FOLDER
+    * 
+    * Jenkins runs steps in WORKSPACE by default, but some operations
+    * may require a separate working directory due to problems with docker mounts 
+    * and simbolic links or permissions.
+    */
+    def copyToWorkingFolder() {
+        def workingFolder = this.getWorkingFolder()
+        if (workingFolder == this.pipeline.env.WORKSPACE) {
+            throw new IllegalStateException("copyToWorkingFolder called but VENV_WORKING_FOLDER is not set or equals WORKSPACE. VENV_WORKING_FOLDER must be a separate working directory.")
+        }
+        if (this.isUnixWorkspace(workingFolder)) {
+            this.pipeline.sh "mkdir -p ${workingFolder}"
+            this.pipeline.sh "cp -r ${this.pipeline.env.WORKSPACE}/. ${workingFolder}"
+        } else {
+            this.pipeline.bat "XCOPY ${this.pipeline.env.WORKSPACE} ${workingFolder} /s /i /y /e /h"
+        }
+    }
+
+    /*
+    * Get the working folder from environment
+    * Returns: Working folder path. Prefers VENV_WORKING_FOLDER if set; falls back to WORKSPACE.
+    
+    */
+    private def getWorkingFolder() {
+        def v = this.pipeline.env.VENV_WORKING_FOLDER
+        if (v) {
+            return v
+        }
+        // Fallback to workspace when VENV_WORKING_FOLDER is not defined
+        return this.pipeline.env.WORKSPACE
+    }
+
+    /*
+    * Copy files/directories from working directory back to workspace
+    * Arguments:
+    *   source: Source path relative to VENV_WORKING_FOLDER (e.g., "dist/", "pytest_reports/")
+    *   dest: Destination path relative to WORKSPACE (optional, defaults to source)
+    *
+    * Convention: dest MUST end with '/' if it's a directory
+    *   - Directory: copyFromWorkingFolder("dist/") - trailing slash required
+    *   - File: copyFromWorkingFolder(".coverage", "coverage.xml") - no trailing slash
+    */
+    def copyFromWorkingFolder(String source, String dest = null) {
+        def workingFolder = this.getWorkingFolder()
+        if (workingFolder == this.pipeline.env.WORKSPACE) {
+            throw new IllegalStateException("copyFromWorkingFolder cannot be used when VENV_WORKING_FOLDER is not defined and working folder equals WORKSPACE. Set env.VENV_WORKING_FOLDER to a separate directory to use this method.")
+        }
+        if (dest == null) {
+            dest = source
+        }
+        def sourcePath = this.joinPath(workingFolder, source)
+        def destPath = this.joinPath(this.pipeline.env.WORKSPACE, dest)
+        
+        if (this.isUnixWorkspace(workingFolder)) {
+            if (dest.endsWith('/')) {
+                // Directory: create it
+                this.pipeline.sh "mkdir -p \"${destPath}\""
+                // Copy contents of source directory into destination, not the directory itself
+                this.pipeline.sh "cp -r ${sourcePath}/. ${destPath}"
+            } else {
+                // File: create parent directory and copy the file
+                this.pipeline.sh "mkdir -p \$(dirname \"${destPath}\")"
+                this.pipeline.sh "cp -r ${sourcePath} ${destPath}"
+            }
+        } else {
+            if (dest.endsWith('/')) {
+                // Directory: XCOPY requires source to end with \* to copy contents, not the folder itself
+                // If source already contains wildcard, don't add another one
+                def xcopySource = source.contains('*') ? sourcePath : "${sourcePath}\\*"
+                this.pipeline.bat "XCOPY \"${xcopySource}\" \"${destPath}\" /s /y /e /h /i"
+            } else {
+                // File: use simple COPY command
+                this.pipeline.bat "COPY /Y \"${sourcePath}\" \"${destPath}\""
+            }
+        }
     }
 
     /*
     * Execute code within a virtual environment
     * Arguments:
     *   venvName: Name of the virtual environment
-    *   workingDir: Working directory where the venv is located (optional)
     *   pythonVersion: Python version for this venv (optional, used to set venv.version)
     *   body: Closure to execute inside the venv
     */
     def withVirtualEnv(String venvName, String pythonVersion = null, Closure body) {
-        def wd = this.getWorkingDir(null)
+        def workingFolder = this.getWorkingFolder()
         def ctx = [
             run: { cmd ->
                 def activateCmd
-                if (this.isUnixWorkspace(wd)) {
+                if (this.isUnixWorkspace(workingFolder)) {
                     activateCmd = ". ${venvName}/bin/activate\n "
                 } else {
                     activateCmd = "call ${venvName}\\Scripts\\activate\n "
                 }
-                this.runInWorkDir { folderCtx ->
-                    folderCtx.run(activateCmd + cmd)
-                }
+                this.run(activateCmd + cmd)
             },
             name: venvName,
             version: pythonVersion,
@@ -214,26 +279,24 @@ class VEnvManager {
     *   venvName: Name of the virtual environment to create
     *   pythonVersion: Python version to use (e.g., "3.9"). If null, uses default_python_version
     * Returns: Path to the created virtual environment
-    * Note: Uses env.WORKING_FOLDER if set, otherwise env.WORKSPACE
+    * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
     */
     def createVirtualEnvironment(Map args = [venvName: null, pythonVersion: null]) {
-        def ws = this.getWorkingDir(null)
+        def workingFolder = this.getWorkingFolder()
         // Use default python version if not specified
         def pythonVersion = args.pythonVersion ?: this.default_python_version
         // Use default venv name if not specified
         def venvName = args.venvName ?: this.pythonVersionDefaultVenvName(pythonVersion)
 
         // Create the virtual environment using pipeline context
-                this.runInWorkDir { ctx ->
-                    ctx.run("py -${pythonVersion} -m venv --without-pip ${venvName}")
-                }
+        this.run("py -${pythonVersion} -m venv --without-pip ${venvName}")
 
         // Store the created venv path
-        def venvPath = this.pipeline.joinPath(ws, venvName)
-        if (!this.venvs.containsKey(ws)) {
-            this.venvs[ws] = [:]
+        def venvPath = this.joinPath(workingFolder, venvName)
+        if (!this.venvs.containsKey(workingFolder)) {
+            this.venvs[workingFolder] = [:]
         }
-        this.venvs[ws][venvName] = venvPath
+        this.venvs[workingFolder][venvName] = venvPath
         return venvPath
     }
 
@@ -241,7 +304,7 @@ class VEnvManager {
     * Create multiple virtual environments
     * Arguments:
     *   pythonVersions: Iterable of Python versions to create venvs for (List or Set)
-    * Note: Uses env.WORKING_FOLDER if set, otherwise env.WORKSPACE
+    * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
     */
     def createVirtualEnvironments(Map args = [pythonVersions: []]) {
         args.pythonVersions.each { version ->
@@ -256,16 +319,16 @@ class VEnvManager {
     * Iterate over virtual environments for a specific workspace/node
     * Arguments:
     *   body: Closure to execute for each venv. Receives the venv context as argument
-    * Note: Uses env.WORKING_FOLDER if set, otherwise env.WORKSPACE
+    * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
     */
     def forEachEnvironment(Closure body) {
-        def workingDir = this.getWorkingDir(null)
-        def venvMap = this.venvs.get(workingDir)
+        def workingFolder = this.getWorkingFolder()
+        def venvMap = this.venvs.get(workingFolder)
         if (!venvMap) {
-          throw new IllegalArgumentException("No virtual environments found for workingDir: ${workingDir}. Did you call createVirtualEnvironment or createPoetryEnvironments first?")
+          throw new IllegalArgumentException("No virtual environments found for workingFolder: ${workingFolder}. Did you call createVirtualEnvironment or createPoetryEnvironments first?")
         }
         if (venvMap.isEmpty()) {
-          throw new IllegalArgumentException("Virtual environments map is empty for workingDir: ${workingDir}")
+          throw new IllegalArgumentException("Virtual environments map is empty for workingFolder: ${workingFolder}")
         }
         venvMap.each { venvName, venvPath ->
             this.withVirtualEnv(venvName) { venv ->
@@ -279,7 +342,7 @@ class VEnvManager {
     * Arguments:
     *   pythonVersion: Python version to use (required)
     *   body: Closure to execute inside the venv
-    * Note: Uses env.WORKING_FOLDER if set, otherwise env.WORKSPACE
+    * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
     */
     def withPython(String pythonVersion, Closure body) {
         def venvName = this.pythonVersionDefaultVenvName(pythonVersion)
@@ -292,7 +355,7 @@ class VEnvManager {
     * Arguments:
     *   pythonVersions: Iterable of Python versions to iterate venvs for (List or Set)
     *   body: Closure to execute for each venv. Receives the venv context
-    * Note: Uses env.WORKING_FOLDER if set, otherwise env.WORKSPACE
+    * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
     */
 
     def forPythons(Iterable pythonVersions, Closure body) {
@@ -311,7 +374,7 @@ class VEnvManager {
     *  installCommand: Command to install dependencies with Poetry. If null, uses poetry_default_install_command
     *  additionalCommands: List of additional commands to run inside the venv after installation
     * Note: Virtual environment is created using default naming convention .venv{pythonVersion}
-    * Note: Uses env.WORKING_FOLDER if set, otherwise env.WORKSPACE
+    * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
     */
     def createPoetryEnvironment(Map args = [pythonVersion: null, installCommand: null, additionalCommands: []]) {
         def version = args.pythonVersion ?: this.default_python_version
@@ -334,7 +397,7 @@ class VEnvManager {
     *   pythonVersions: Iterable of Python versions to create venvs for (List or Set)
     *   installCommand: Command to install dependencies with Poetry. If null, uses poetry_default_install_command
     *   additionalCommands: List of additional commands to run inside each venv after installation
-    * Note: Uses env.WORKING_FOLDER if set, otherwise env.WORKSPACE
+    * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
     */
     def createPoetryEnvironments(Map args = [pythonVersions: [], installCommand: null, additionalCommands: []]) {
         args.pythonVersions.each { version ->
@@ -496,12 +559,14 @@ pipeline {
                                 }
                             }
                             environment {
-                                WORKING_FOLDER = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
+                                VENV_WORKING_FOLDER = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
                             }
                             stages {
                                 stage('Move workspace') {
                                     steps {
-                                        bat "XCOPY ${env.WORKSPACE} ${env.WORKING_FOLDER} /s /i /y /e /h"
+                                        script {
+                                            venvManager.copyToWorkingFolder()
+                                        }
                                     }
                                 }
                                 stage('Create virtual environments') {
@@ -523,8 +588,9 @@ pipeline {
                                                 venv.run("poetry run poe build-wheel")
                                                 venv.run("poetry run poe check-wheels")
                                             }
-                                            bat "COPY ${env.WORKING_FOLDER}\\ingenialink\\_version.py ${env.WORKSPACE}\\ingenialink\\_version.py"
-                                            bat "XCOPY ${env.WORKING_FOLDER}\\dist ${env.WORKSPACE}\\dist /s /i"
+                                            venvManager.copyFromWorkingFolder("ingenialink/_version.py")
+                                            venvManager.copyFromWorkingFolder("dist/")
+                                            bat "dir /s /b"
                                         }
                                     }
                                 }
@@ -567,11 +633,10 @@ pipeline {
                                     }
                                     post {
                                         success {
-                                            bat """
-                                                cd ${env.WORKING_FOLDER}
-                                                "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
-                                                XCOPY docs.zip ${env.WORKSPACE}
-                                            """
+                                            script {
+                                                venvManager.run('"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256')
+                                                venvManager.copyFromWorkingFolder("docs.zip")
+                                            }
                                             stash includes: 'docs.zip', name: 'docs'
                                         }
                                     }
@@ -594,11 +659,10 @@ pipeline {
                                     }
                                     post {
                                         always {
-                                            bat """
-                                                mkdir -p pytest_reports
-                                                XCOPY ${env.WORKING_FOLDER}\\pytest_reports\\* pytest_reports\\ /s /i /y /e /h
-                                                move ${env.WORKING_FOLDER}\\.coverage .coverage_docker
-                                            """
+                                            script {
+                                                venvManager.copyFromWorkingFolder("pytest_reports/")
+                                                venvManager.copyFromWorkingFolder(".coverage", ".coverage_docker")
+                                            }
                                             junit 'pytest_reports/*.xml'
                                             stash includes: '.coverage_docker', name: '.coverage_docker'
                                             script {
@@ -618,16 +682,13 @@ pipeline {
                                 }
                             }
                             environment {
-                                WORKING_FOLDER = "/tmp/ingenialink_python"
+                                VENV_WORKING_FOLDER = "/tmp/ingenialink_python"
                             }
                             stages {
                                 stage('Move workspace') {
                                     steps {
                                         script {
-                                            sh """
-                                                mkdir -p ${env.WORKING_FOLDER}
-                                                cp -r ${env.WORKSPACE}/. ${env.WORKING_FOLDER}
-                                            """
+                                            venvManager.copyToWorkingFolder()
                                         }
                                     }
                                 }
@@ -652,8 +713,7 @@ pipeline {
                                                 venv.run("poetry run poe build-wheel")
                                                 venv.run("poetry run poe check-wheels")
                                             }
-                                            sh "mkdir -p ${env.WORKSPACE}/dist"
-                                            sh "cp ${env.WORKING_FOLDER}/dist/* ${env.WORKSPACE}/dist/"
+                                            venvManager.copyFromWorkingFolder("dist/")
                                         }
                                     }
                                 }
@@ -684,10 +744,9 @@ pipeline {
                                     }
                                     post {
                                         always {
-                                            sh """
-                                                mkdir -p pytest_reports
-                                                cp ${env.WORKING_FOLDER}/pytest_reports/* pytest_reports/
-                                            """
+                                            script {
+                                                venvManager.copyFromWorkingFolder("pytest_reports/")
+                                            }
                                             junit 'pytest_reports/*.xml'
                                         }
                                     }
@@ -708,10 +767,9 @@ pipeline {
                                     }
                                     post {
                                         always {
-                                            sh """
-                                                mkdir -p pytest_reports
-                                                cp ${env.WORKING_FOLDER}/pytest_reports/* pytest_reports/
-                                            """
+                                            script {
+                                                venvManager.copyFromWorkingFolder("pytest_reports/")
+                                            }
                                             junit 'pytest_reports/*.xml'
                                         }
                                     }
@@ -1000,7 +1058,7 @@ pipeline {
                 }
             }
             environment {
-                WORKING_FOLDER = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
+                VENV_WORKING_FOLDER = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
             }
             steps {
                 script {
@@ -1012,7 +1070,7 @@ pipeline {
                     for (stash_name in wheel_stashes) {
                         unstash stash_name
                     }
-                    bat "XCOPY ${env.WORKSPACE} ${env.WORKING_FOLDER} /s /i /y /e /h"
+                    venvManager.copyToWorkingFolder()
                     venvManager.createPoetryEnvironment(
                       additionalCommands: ["poetry run poe install-wheel"]
                     )
@@ -1020,8 +1078,8 @@ pipeline {
                         venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
                             venv.run("poetry run poe cov-combine --${coverage_files}")
                             venv.run("poetry run poe cov-report")
-                            venv.run("XCOPY coverage.xml ${env.WORKSPACE}")
                         }
+                        venvManager.copyFromWorkingFolder("coverage.xml")
                     }
                     recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
                     archiveArtifacts artifacts: '*.xml'
