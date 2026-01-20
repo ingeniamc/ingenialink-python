@@ -8,7 +8,7 @@ from xml.etree import ElementTree
 
 import pytest
 from packaging import version
-from summit_testing_framework.rack_service_client import PartNumber
+from summit_testing_framework.product_constants import PartNumber
 from summit_testing_framework.setups.environment_control import VirtualDriveEnvironmentController
 from summit_testing_framework.setups.specifiers import (
     RackServiceConfigSpecifier,
