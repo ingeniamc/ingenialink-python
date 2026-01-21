@@ -28,6 +28,7 @@ from ingenialink.dictionary import (
     CanOpenObject,
     Dictionary,
     DictionaryDescriptor,
+    DictionaryDescriptors,
     DictionaryError,
     DictionaryV2,
     DictionaryV3,
@@ -147,6 +148,26 @@ class DictionaryFactory:
             return DictionaryV3.get_description(dictionary_path, interface)
         if major_version == 2:
             return DictionaryV2.get_description(dictionary_path, interface)
+        raise NotImplementedError(f"Dictionary version {major_version} is not supported")
+
+    @classmethod
+    def get_all_dictionary_descriptions(cls, dictionary_path: str) -> DictionaryDescriptors:
+        """Quick function to get all target dictionary descriptions.
+
+        Args:
+            dictionary_path: target dictionary path
+
+        Returns:
+            Target dictionary description
+
+        Raises:
+            NotImplementedError: Dictionary version is not supported.
+        """
+        major_version, _ = cls.__get_dictionary_version(dictionary_path)
+        if major_version == 3:
+            return DictionaryV3.get_description_for_all_interfaces(dictionary_path)
+        if major_version == 2:
+            return DictionaryV2.get_description_for_any_interface(dictionary_path)
         raise NotImplementedError(f"Dictionary version {major_version} is not supported")
 
     @classmethod
