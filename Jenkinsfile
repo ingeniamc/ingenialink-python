@@ -171,7 +171,7 @@ class VEnvManager {
     */
     private def run(String cmd) {
         def workingFolder = this.getWorkingFolder()
-        def fullCmd = (workingFolder == this.pipeline.env.WORKSPACE) ? cmd : "cd ${workingFolder}\n ${cmd}"
+        def fullCmd = (workingFolder == this.pipeline.env.WORKSPACE) ? cmd : "cd ${workingFolder}\n${cmd}"
         if (this.isUnixNode()) {
             this.pipeline.sh fullCmd
         } else {
@@ -185,7 +185,7 @@ class VEnvManager {
     * 
     * Jenkins runs steps in WORKSPACE by default, but some operations
     * may require a separate working directory due to problems with docker mounts 
-    * and simbolic links or permissions.
+    * and symbolic links or permissions.
     */
     def copyToWorkingFolder() {
         def workingFolder = this.getWorkingFolder()
@@ -203,7 +203,7 @@ class VEnvManager {
     /*
     * Get the working folder from environment
     * Returns: Working folder path. Prefers VENV_WORKING_FOLDER if set; falls back to WORKSPACE.
-    
+    *
     */
     private def getWorkingFolder() {
         def v = this.pipeline.env.VENV_WORKING_FOLDER
@@ -357,13 +357,13 @@ class VEnvManager {
         }
     }
 
-   /*
-    * Execute code within a Python virtual environment
-    * Arguments:
-    *   pythonVersion: Python version to use (required)
-    *   body: Closure to execute inside the venv
-    * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
-    */
+    /*
+     * Execute code within a Python virtual environment
+     * Arguments:
+     *   pythonVersion: Python version to use (required)
+     *   body: Closure to execute inside the venv
+     * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
+     */
     def withPython(String pythonVersion, Closure body) {
         def venvName = this.pythonVersionDefaultVenvName(pythonVersion)
         this.withVirtualEnv(venvName, pythonVersion, body)
@@ -473,6 +473,7 @@ class PyTestManager {
             }
         } finally {
             pipeline.archiveWiresharkLogs()
+            pipeline.clearWiresharkLogs()
             pipeline.clearCoverageFiles()
         }
     }
@@ -610,7 +611,7 @@ pipeline {
                                             }
                                             venvManager.copyFromWorkingFolder("ingenialink/_version.py")
                                             venvManager.copyFromWorkingFolder("dist/")
-                                            bat "dir /s /b"
+
                                         }
                                     }
                                 }
@@ -758,10 +759,10 @@ pipeline {
                                     steps {
                                         script {
                                             def lin_marker = markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
-                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                            venvManager.forPythons(testManager.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                                 withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
-                                                    venv.run("poetry run poe tests --junitxml=pytest_reports/junit-tests-${venv.name}.xml --junit-prefix=${venv.name} -m '${lin_marker}' -o log_cli=True")
+                                                    venv.run("poetry run poe tests --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m '${lin_marker}' -o log_cli=True")
                                                 }
                                             }
                                         }
@@ -1098,13 +1099,11 @@ pipeline {
                     venvManager.createPoetryEnvironment(
                       additionalCommands: ["poetry run poe install-wheel"]
                     )
-                    script {
-                        venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                            venv.run("poetry run poe cov-combine --${coverage_files}")
-                            venv.run("poetry run poe cov-report")
-                        }
-                        venvManager.copyFromWorkingFolder("coverage.xml")
+                    venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                        venv.run("poetry run poe cov-combine --${coverage_files}")
+                        venv.run("poetry run poe cov-report")
                     }
+                    venvManager.copyFromWorkingFolder("coverage.xml")
                     recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
                     archiveArtifacts artifacts: '*.xml'
                 }
