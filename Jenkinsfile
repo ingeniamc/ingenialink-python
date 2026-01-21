@@ -133,7 +133,7 @@ def runTestHW(markers, setup_name = "", extra_args = "") {
                         def venvName = ".venv${version}"
                         bat """
                             call ${venvName}/Scripts/activate
-                            poetry run poe tests --import-mode=importlib --cov=${venvName}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-${version}.xml --junit-prefix=${version} -m \"${markers}\" ${setupArg} --job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}"
+                            poetry run poe tests --import-mode=importlib --cov=${venvName}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-${version}.xml --junit-prefix=${version} -m \"${markers}\" ${setupArg} --job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args} --enable_firmware_version_check"
                             deactivate
                         """
                     } catch (err) {
@@ -345,7 +345,7 @@ pipeline {
                                                         cd ${WIN_DOCKER_TMP_PATH}
                                                         call .venv${version}/Scripts/activate
                                                         poetry run poe install-wheel
-                                                        poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "${win_marker}" -o log_cli=True
+                                                        poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "${win_marker}" -o log_cli=True --enable_firmware_version_check
                                                     """
                                                 }
                                             }
@@ -437,7 +437,7 @@ pipeline {
                                                         cd ${LIN_DOCKER_TMP_PATH}
                                                         . .venv${version}/bin/activate
                                                         poetry run poe install-wheel
-                                                        poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "${lin_marker}" -o log_cli=True
+                                                        poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m "${lin_marker}" -o log_cli=True --enable_firmware_version_check
                                                         deactivate
                                                     """
                                                 }
@@ -468,7 +468,7 @@ pipeline {
                                                     cd ${LIN_DOCKER_TMP_PATH}
                                                     . .venv${version}/bin/activate
                                                     poetry run poe install-wheel
-                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True
+                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True --enable_firmware_version_check
                                                     deactivate
                                                 """
                                             }
