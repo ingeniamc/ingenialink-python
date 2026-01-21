@@ -288,7 +288,7 @@ class DictionaryTable:
 
 @dataclass
 class DictionaryDescriptor:
-    """Class to store a dictionary error."""
+    """Class to store a dictionary descriptor."""
 
     firmware_version: Optional[str] = None
     """Firmware version declared in the dictionary."""
@@ -298,6 +298,20 @@ class DictionaryDescriptor:
     """Part number declared in the dictionary."""
     revision_number: Optional[int] = None
     """Revision number declared in the dictionary."""
+    interface: Optional[Interface] = None
+    """Interface declared in the dictionary."""
+
+
+@dataclass
+class DictionaryDescriptors:
+    """Class to store a dictionary descriptors."""
+
+    mayor_version: Optional[int] = None
+    """Mayor version declared in the dictionary."""
+    image: Optional[bytes] = None
+    """Drive's encoded image."""
+    interface_descriptor: Optional[list[DictionaryDescriptor]] = None
+    """List of interface descriptors declared in the dictionary."""
 
 
 class XMLBase(ABC):
@@ -963,6 +977,29 @@ class DictionaryV3(Dictionary):
         raise ILDictionaryParseError(f"{interface=} has no device element associated.")
 
     @staticmethod
+    def _device_element_to_interface(interface: str) -> Interface:
+        """Returns the interface associated to the device element.
+
+        Args:
+            interface: Interface element.
+
+        Raises:
+            ILDictionaryParseError: if the interface element doesn't have any interface associated.
+
+        Returns:
+            Ineterface element.
+        """
+        if interface == "CANDevice":
+            return Interface.CAN
+        if interface == "ETHDevice":
+            return Interface.ETH
+        if interface == "ECATDevice":
+            return Interface.ECAT
+        if interface == "EoEDevice":
+            return Interface.EoE
+        raise ILDictionaryParseError(f"{interface=} element has no interface associated.")
+
+    @staticmethod
     def _get_canopen_object_data_type_options(data_type: str) -> CanOpenObjectType:
         """Returns the `CanOpenObjectType` corresponding to a data type string.
 
@@ -1006,6 +1043,87 @@ class DictionaryV3(Dictionary):
         part_number = device.attrib[cls.__DEVICE_PART_NUMBER_ATTR]
         revision_number = int(device.attrib[cls.DEVICE_REVISION_NUMBER_ATTR])
         return DictionaryDescriptor(firmware_version, product_code, part_number, revision_number)
+
+    @classmethod
+    def get_description_for_all_interfaces(cls, dictionary_path: str) -> DictionaryDescriptors:
+        """Obtain the description for all interfaces in the dictionary.
+
+        Args:
+            dictionary_path: Path to the dictionary file.
+
+        Raises:
+            FileNotFoundError: If the dictionary file does not exist.
+            ILDictionaryParseError: Raised if the dictionary does not contain the searched interface.
+
+        Returns:
+            Descriptor of all interfaces in the dictionary.
+        """
+        interfaces_descriptors: list[DictionaryDescriptor] = []
+        for interface in cls.get_interfaces(dictionary_path):
+            try:
+                with open(dictionary_path, encoding="utf-8") as xdf_file:
+                    tree = ElementTree.parse(xdf_file)
+            except FileNotFoundError as e:
+                raise FileNotFoundError(
+                    f"There is not any xdf file in the path: {dictionary_path}"
+                ) from e
+            root = tree.getroot()
+            device_path = (
+                f"{cls.__BODY_ELEMENT}/{cls.__DEVICES_ELEMENT}/"
+                f"{DictionaryV3._interface_to_device_element(interface)}"
+            )
+            device = root.find(device_path)
+            if device is None:
+                raise ILDictionaryParseError(
+                    f"Dictionary does not contain communication type: {interface.name}"
+                )
+            firmware_version = device.attrib[cls.__DEVICE_FW_VERSION_ATTR]
+            product_code = int(device.attrib[cls.__DEVICE_PRODUCT_CODE_ATTR])
+            part_number = device.attrib[cls.__DEVICE_PART_NUMBER_ATTR]
+            revision_number = int(device.attrib[cls.DEVICE_REVISION_NUMBER_ATTR])
+
+            interfaces_descriptors.append(
+                DictionaryDescriptor(
+                    firmware_version, product_code, part_number, revision_number, interface
+                )
+            )
+        encoded_images = root.findall("DriveImage")
+        image = (encoded_images[0].text or "").strip() if encoded_images else None
+
+        return DictionaryDescriptors(3, image, interfaces_descriptors)
+
+    @classmethod
+    def get_interfaces(cls, dictionary_path: str) -> list[Interface]:
+        """Obtain all interfaces in the dictionary.
+
+        Args:
+            dictionary_path: Path to the dictionary file.
+
+        Raises:
+            FileNotFoundError: If the dictionary file does not exist.
+
+        Returns:
+            List of interfaces in the dictionary.
+
+        """
+        try:
+            with open(dictionary_path, encoding="utf-8") as xdf_file:
+                tree = ElementTree.parse(xdf_file)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(
+                f"There is not any xdf file in the path: {dictionary_path}"
+            ) from e
+        root = tree.getroot()
+        devices_element = cls._find_and_check(root, f"{cls.__BODY_ELEMENT}/{cls.__DEVICES_ELEMENT}")
+        interfaces = []
+        for device in devices_element:
+            try:
+                interface = cls._device_element_to_interface(device.tag)
+            except ILDictionaryParseError:
+                continue
+            interfaces.append(interface)
+
+        return list(set(interfaces))
 
     @override
     def read_dictionary(self) -> None:
@@ -1696,6 +1814,25 @@ class DictionaryV2(Dictionary):
             return "ETH"
         raise ILDictionaryParseError(f"{interface=} has no string associated.")
 
+    @staticmethod
+    def _device_element_to_interface(interface: str) -> Interface:
+        """Returns the interface associated to the device element.
+
+        Args:
+            interface: Interface name.
+
+        Raises:
+            ILDictionaryParseError: if the interface element doesn't have any interface associated.
+
+        Returns:
+            Ineterface element.
+        """
+        if interface == "CAN":
+            return Interface.CAN
+        if interface == "ETH":
+            return Interface.ETH
+        raise ILDictionaryParseError(f"{interface=} element has no interface associated.")
+
     @cached_property
     def __drv_state_status_known_bitfields(self) -> dict[str, BitField]:
         return {
@@ -1823,6 +1960,63 @@ class DictionaryV2(Dictionary):
         else:
             revision_number = None
         return DictionaryDescriptor(firmware_version, product_code, part_number, revision_number)
+
+    @override
+    @classmethod
+    def get_description_for_any_interface(cls, dictionary_path: str) -> DictionaryDescriptors:
+        """Obtain the description for the interface in the dictionary.
+
+        V2 Dictionaries only support one interface, so the returned
+        Descriptor will contain only one interface.
+
+        Args:
+            dictionary_path: Path to the dictionary file.
+
+        Raises:
+            FileNotFoundError: If the dictionary file does not exist.
+            ILDictionaryParseError: Raised if the dictionary is missing information.
+
+        Returns:
+            Descriptor of all interfaces in the dictionary.
+        """
+        try:
+            with open(dictionary_path, encoding="utf-8") as xdf_file:
+                tree = ElementTree.parse(xdf_file)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(
+                f"There is not any xdf file in the path: {dictionary_path}"
+            ) from e
+        root = tree.getroot()
+        device = root.find(cls.__DICT_ROOT_DEVICE)
+        if device is None:
+            raise ILDictionaryParseError(
+                f"Could not load the dictionary {dictionary_path}. Device information is missing"
+            )
+        interface = device.attrib.get("Interface")
+        firmware_version = device.attrib.get("firmwareVersion")
+        product_code = device.attrib.get("ProductCode")
+        if product_code is not None and product_code.isdecimal() or product_code == "-1":
+            product_code = int(product_code)
+        else:
+            product_code = None
+        part_number = device.attrib.get("PartNumber")
+        revision_number = device.attrib.get("RevisionNumber")
+        if revision_number is not None and revision_number.isdecimal():
+            revision_number = int(revision_number)
+        else:
+            revision_number = None
+
+        interface_descriptor = DictionaryDescriptor(
+            firmware_version,
+            product_code,
+            part_number,
+            revision_number,
+            DictionaryV2._device_element_to_interface(interface),
+        )
+        encoded_images = root.findall("DriveImage")
+        image = (encoded_images[0].text or "").strip() if encoded_images else None
+
+        return DictionaryDescriptors(2, image, [interface_descriptor])
 
     @override
     def read_dictionary(self) -> None:
