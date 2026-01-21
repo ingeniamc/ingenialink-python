@@ -1,3 +1,4 @@
+import base64
 import copy
 import enum
 import math
@@ -1053,7 +1054,8 @@ class DictionaryV3(Dictionary):
 
         Raises:
             FileNotFoundError: If the dictionary file does not exist.
-            ILDictionaryParseError: Raised if the dictionary does not contain the searched interface.
+            ILDictionaryParseError: Raised if the dictionary does not contain the searched
+                interface.
 
         Returns:
             Descriptor of all interfaces in the dictionary.
@@ -1087,10 +1089,16 @@ class DictionaryV3(Dictionary):
                     firmware_version, product_code, part_number, revision_number, interface
                 )
             )
-        encoded_images = root.findall("DriveImage")
-        image = (encoded_images[0].text or "").strip() if encoded_images else None
+        image = root.find(cls.__DRIVE_IMAGE_ELEMENT)
+        if image is not None and image.text is not None and image.text.strip():
+            image_txt = image.text
+            image_bytes = (
+                base64.b64decode(image_txt) if image_txt else b""
+            )  # Can be bytes or b"" if missing
+        else:
+            image_bytes = b""
 
-        return DictionaryDescriptors(3, image, interfaces_descriptors)
+        return DictionaryDescriptors(3, image_bytes, interfaces_descriptors)
 
     @classmethod
     def get_interfaces(cls, dictionary_path: str) -> list[Interface]:
@@ -1961,7 +1969,6 @@ class DictionaryV2(Dictionary):
             revision_number = None
         return DictionaryDescriptor(firmware_version, product_code, part_number, revision_number)
 
-    @override
     @classmethod
     def get_description_for_any_interface(cls, dictionary_path: str) -> DictionaryDescriptors:
         """Obtain the description for the interface in the dictionary.
@@ -1993,6 +2000,10 @@ class DictionaryV2(Dictionary):
                 f"Could not load the dictionary {dictionary_path}. Device information is missing"
             )
         interface = device.attrib.get("Interface")
+        if interface is None:
+            raise ILDictionaryParseError(
+                f"Could not load the dictionary {dictionary_path}. Device interface is missing"
+            )
         firmware_version = device.attrib.get("firmwareVersion")
         product_code = device.attrib.get("ProductCode")
         if product_code is not None and product_code.isdecimal() or product_code == "-1":
@@ -2013,10 +2024,16 @@ class DictionaryV2(Dictionary):
             revision_number,
             DictionaryV2._device_element_to_interface(interface),
         )
-        encoded_images = root.findall("DriveImage")
-        image = (encoded_images[0].text or "").strip() if encoded_images else None
+        image = root.find("DriveImage")
+        if image is not None and image.text is not None and image.text.strip():
+            image_txt = image.text
+            image_bytes = (
+                base64.b64decode(image_txt) if image_txt else b""
+            )  # Can be bytes or b"" if missing
+        else:
+            image_bytes = b""
 
-        return DictionaryDescriptors(2, image, [interface_descriptor])
+        return DictionaryDescriptors(2, image_bytes, [interface_descriptor])
 
     @override
     def read_dictionary(self) -> None:
