@@ -673,7 +673,9 @@ pipeline {
                                             def win_marker = markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
                                             venvManager.forPythons(testManager.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
-                                                venv.run("poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m \"${win_marker}\" -o log_cli=True")
+                                                withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
+                                                    venv.run("poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m \"${win_marker}\" -o log_cli=True")
+                                                }
                                             }
                                         }
                                     }
@@ -758,7 +760,9 @@ pipeline {
                                             def lin_marker = markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
                                             venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
                                                 venv.run("poetry run poe install-wheel")
-                                                venv.run("poetry run poe tests --junitxml=pytest_reports/junit-tests-${venv.name}.xml --junit-prefix=${venv.name} -m '${lin_marker}' -o log_cli=True")
+                                                withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
+                                                    venv.run("poetry run poe tests --junitxml=pytest_reports/junit-tests-${venv.name}.xml --junit-prefix=${venv.name} -m '${lin_marker}' -o log_cli=True")
+                                                }
                                             }
                                         }
                                     }

@@ -540,6 +540,20 @@ class Dictionary(XMLBase, ABC):
         for subnode in self.items.values():
             yield from subnode.values()
 
+    def get_registers(self, uid: str) -> Iterator[Register]:
+        """Gets all registers with the targeted uid.
+
+        Args:
+            uid: register uid.
+
+        Yields:
+            Registers with the targeted uid.
+        """
+        for axis in self.subnodes:
+            axis_registers = self.registers(axis)
+            if uid in axis_registers:
+                yield axis_registers[uid]
+
     @weak_lru()
     def get_register(self, uid: str, axis: Optional[int] = None) -> Register:
         """Gets the targeted register.
@@ -565,11 +579,7 @@ class Dictionary(XMLBase, ABC):
                 raise KeyError(f"Register {uid} not present in {axis=}")
             return registers[uid]
 
-        matching_registers: list[Register] = []
-        for axis in self.subnodes:
-            axis_registers = self.registers(axis)
-            if uid in axis_registers:
-                matching_registers.append(axis_registers[uid])
+        matching_registers = list(self.get_registers(uid))
 
         if len(matching_registers) == 0:
             raise ValueError(f"Register {uid} not found.")
