@@ -112,12 +112,12 @@ class VEnvManager {
     /*
     * Get the current node name from the environment
     * Returns: Node name string
-    * Throws: IllegalStateException if NODE_NAME is not set (not running on a node)
+    * Throws: Error if NODE_NAME is not set (not running on a node)
     */
     private def getNodeName() {
         def nodeName = this.pipeline.env.NODE_NAME
         if (!nodeName) {
-            throw new IllegalStateException("NODE_NAME environment variable is not set. Virtual environments must be created inside a Jenkins node.")
+            this.pipeline.error("NODE_NAME environment variable is not set. Virtual environments must be created inside a Jenkins node.")
         }
         return nodeName
     }
@@ -337,13 +337,18 @@ class VEnvManager {
     * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
     */
     def forEachEnvironment(Closure body) {
+        def nodeName = this.getNodeName()
         def workingFolder = this.getWorkingFolder()
-        def venvMap = this.venvs.get(workingFolder)
+        def nodeVenvs = this.venvs.get(nodeName)
+        if (!nodeVenvs) {
+            this.pipeline.error("No virtual environments found for node: ${nodeName}")
+        }
+        def venvMap = nodeVenvs.get(workingFolder)
         if (!venvMap) {
-          throw new IllegalArgumentException("No virtual environments found for workingFolder: ${workingFolder}. Did you call createVirtualEnvironment or createPoetryEnvironments first?")
+            this.pipeline.error("No virtual environments found for workingFolder: ${workingFolder} on node: ${nodeName}")
         }
         if (venvMap.isEmpty()) {
-          throw new IllegalArgumentException("Virtual environments map is empty for workingFolder: ${workingFolder}")
+            this.pipeline.error("Virtual environments map is empty for workingFolder: ${workingFolder} on node: ${nodeName}")
         }
         venvMap.each { venvName, venvPath ->
             this.withVirtualEnv(venvName) { venv ->
