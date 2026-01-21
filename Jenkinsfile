@@ -56,14 +56,27 @@ def archiveWiresharkLogs() {
     archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
 }
 
-
-
+/**
+ * VEnvManager - Manages Python virtual environments across Jenkins nodes
+ * 
+ * This class provides a centralized way to create, manage, and execute code within
+ * Python virtual environments in Jenkins pipelines. It handles platform differences
+ * (Windows/Linux), maintains per-node virtual environment registries, and supports
+ * both standard venv and Poetry-based environments.
+ * 
+ * Key features:
+ * - Creates and tracks virtual environments per node and workspace
+ * - Platform-agnostic path handling and command execution
+ * - Poetry integration for dependency management
+ * - Support for multiple Python versions in parallel
+ * - Workspace isolation with working folder support
+ */
 class VEnvManager {
     def pipeline
     String default_python_version
     String poetry_default_install_command
 
-    /*
+    /**
     * Map of node names to workspace paths to their virtual environments.
     * Structure: {
     *   nodeName1: {
@@ -76,7 +89,7 @@ class VEnvManager {
     */
     Map venvs = [:]
 
-    /*
+    /**
     * Cache for OS type per node.
     * Structure: {
     *   nodeName1: true/false (true = Unix, false = Windows),
@@ -85,7 +98,7 @@ class VEnvManager {
     */
     Map osCache = [:]
 
-    /*
+    /**
     * Constructor
     * Arguments:
     *   pipeline: The pipeline script context (this)
@@ -98,7 +111,7 @@ class VEnvManager {
         this.poetry_default_install_command = args.poetry_default_install_command
     }
 
-    /*
+    /**
     * Generate the default virtual environment name for a given Python version
     * Convention: .venv{pythonVersion} (e.g., ".venv3.9", ".venv3.10")
     * Arguments:
@@ -109,7 +122,7 @@ class VEnvManager {
         return ".venv${pythonVersion}"
     }
 
-    /*
+    /**
     * Get the current node name from the environment
     * Returns: Node name string
     * Throws: Error if NODE_NAME is not set (not running on a node)
@@ -122,7 +135,7 @@ class VEnvManager {
         return nodeName
     }
 
-    /*
+    /**
     * Check if the current node is running Unix (cached)
     * Returns: true if Unix, false if Windows
     */
@@ -134,17 +147,27 @@ class VEnvManager {
         return this.osCache[nodeName]
     }
 
-    /*
+    /**
     * Join path segments into a single path string
+    * 
+    * Intelligently combines path segments while preserving absolute paths and
+    * adapting to the platform (Unix vs Windows).
+    * 
     * Arguments:
-    *   parts: Variable number of path segments (strings or objects with toString())
+    *   parts: N number of path segments
+    * 
     * Returns: Platform-specific path string ('/' on Linux, '\' on Windows)
+    * 
+    * Examples:
+    *   joinPath("/tmp", "mydir", "file.txt") → "/tmp/mydir/file.txt" (Linux)
+    *   joinPath("C:\\Users", "admin", "file.txt") → "C:\\Users\\admin\\file.txt" (Windows)
+    *   joinPath("/base/", "/subdir/", "file") → "/base/subdir/file"
+    *   joinPath("workspace", "dist/") → "workspace/dist/" (trailing slash preserved)
     */
-    private def joinPath(Object... parts) {
-        // Filter out nulls and empty strings
+    private def joinPath(String... parts) {
+        // Filter out empty strings
         def partsList = (parts as List)
-            .findAll { it != null }
-            .collect { it.toString().trim() }
+            .collect { it.trim() }
             .findAll { it }
         
         if (partsList.isEmpty()) {
@@ -164,13 +187,14 @@ class VEnvManager {
         return this.isUnixNode() ? joined : joined.replace('/', '\\')
     }
 
-    /*
+    /**
     * Run a single command in the working folder
     * Arguments:
     *   cmd: Command to execute
     */
     private def run(String cmd) {
         def workingFolder = this.getWorkingFolder()
+        // Change directory. Avoid changing directory if working folder is workspace
         def fullCmd = (workingFolder == this.pipeline.env.WORKSPACE) ? cmd : "cd ${workingFolder}\n${cmd}"
         if (this.isUnixNode()) {
             this.pipeline.sh fullCmd
@@ -179,7 +203,7 @@ class VEnvManager {
         }
     }
 
-    /*
+    /**
     * Copy workspace content to working directory
     * Copies all files from WORKSPACE to VENV_WORKING_FOLDER
     * 
@@ -200,7 +224,7 @@ class VEnvManager {
         }
     }
 
-    /*
+    /**
     * Get the working folder from environment
     * Returns: Working folder path. Prefers VENV_WORKING_FOLDER if set; falls back to WORKSPACE.
     *
@@ -214,7 +238,7 @@ class VEnvManager {
         return this.pipeline.env.WORKSPACE
     }
 
-    /*
+    /**
     * Copy files/directories from working directory back to workspace
     * Arguments:
     *   source: Source path relative to VENV_WORKING_FOLDER (e.g., "dist/", "pytest_reports/")
@@ -259,7 +283,7 @@ class VEnvManager {
         }
     }
 
-    /*
+    /**
     * Execute code within a virtual environment
     * Arguments:
     *   venvName: Name of the virtual environment
@@ -284,7 +308,7 @@ class VEnvManager {
         body(ctx)
     }
 
-    /*
+    /**
     * Create a virtual environment
     * Arguments (as Map):
     *   venvName: Name of the virtual environment to create
@@ -315,7 +339,7 @@ class VEnvManager {
         return venvPath
     }
 
-    /*
+    /**
     * Create multiple virtual environments
     * Arguments:
     *   pythonVersions: Iterable of Python versions to create venvs for (List or Set)
@@ -330,7 +354,7 @@ class VEnvManager {
         }
     }
 
-    /*
+    /**
     * Iterate over virtual environments for a specific workspace/node
     * Arguments:
     *   body: Closure to execute for each venv. Receives the venv context as argument
@@ -357,7 +381,7 @@ class VEnvManager {
         }
     }
 
-    /*
+    /**
      * Execute code within a Python virtual environment
      * Arguments:
      *   pythonVersion: Python version to use (required)
@@ -387,7 +411,7 @@ class VEnvManager {
     }
 
 
-    /*
+    /**
     * Create a Poetry virtual environment and install dependencies
     * Arguments (as Map):
     *  pythonVersion: Python version to use (e.g., "3.9"). If null, uses default_python_version
@@ -411,7 +435,7 @@ class VEnvManager {
         }
     }
 
-    /*
+    /**
     * Create multiple Poetry virtual environments
     * Arguments: (as Map):
     *   pythonVersions: Iterable of Python versions to create venvs for (List or Set)
