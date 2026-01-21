@@ -64,21 +64,22 @@ class VEnvManager {
     String poetry_default_install_command
 
     /*
-    * Map of workspace paths to their virtual environments.
+    * Map of node names to workspace paths to their virtual environments.
     * Structure: {
-    *   workspacePath1: {
-    *     venvName1: venvPath1,
-    *     venvName2: venvPath2,
-    *     ...
+    *   nodeName1: {
+    *     workspacePath1: {
+    *       venvName1: venvPath1,
+    *       venvName2: venvPath2,
+    *       ...
+    *     },
     *   },
     */
     Map venvs = [:]
-    // TODO on the key also add node name to ensure uniqueness across nodes?
 
     /*
-    * Cache for OS type per workspace.
+    * Cache for OS type per node.
     * Structure: {
-    *   workspacePath1: true/false (true = Unix, false = Windows),
+    *   nodeName1: true/false (true = Unix, false = Windows),
     *   ...
     * }
     */
@@ -109,16 +110,28 @@ class VEnvManager {
     }
 
     /*
-    * Check if a workspace is running on Unix (cached)
-    * Arguments:
-    *   workingFolder: Working folder path
+    * Get the current node name from the environment
+    * Returns: Node name string
+    * Throws: IllegalStateException if NODE_NAME is not set (not running on a node)
+    */
+    private def getNodeName() {
+        def nodeName = this.pipeline.env.NODE_NAME
+        if (!nodeName) {
+            throw new IllegalStateException("NODE_NAME environment variable is not set. Virtual environments must be created inside a Jenkins node.")
+        }
+        return nodeName
+    }
+
+    /*
+    * Check if the current node is running Unix (cached)
     * Returns: true if Unix, false if Windows
     */
-    private def isUnixWorkspace(String workingFolder) {
-        if (!this.osCache.containsKey(workingFolder)) {
-            this.osCache[workingFolder] = this.pipeline.isUnix()
+    private def isUnixNode() {
+        def nodeName = this.getNodeName()
+        if (!this.osCache.containsKey(nodeName)) {
+            this.osCache[nodeName] = this.pipeline.isUnix()
         }
-        return this.osCache[workingFolder]
+        return this.osCache[nodeName]
     }
 
     /*
@@ -148,8 +161,7 @@ class VEnvManager {
 
         // Join with / and convert to platform-specific separators
         def joined = ([first] + rest).join('/')
-        def workingFolder = this.getWorkingFolder()
-        return this.isUnixWorkspace(workingFolder) ? joined : joined.replace('/', '\\')
+        return this.isUnixNode() ? joined : joined.replace('/', '\\')
     }
 
     /*
@@ -160,7 +172,7 @@ class VEnvManager {
     private def run(String cmd) {
         def workingFolder = this.getWorkingFolder()
         def fullCmd = (workingFolder == this.pipeline.env.WORKSPACE) ? cmd : "cd ${workingFolder}\n ${cmd}"
-        if (this.isUnixWorkspace(workingFolder)) {
+        if (this.isUnixNode()) {
             this.pipeline.sh fullCmd
         } else {
             this.pipeline.bat fullCmd
@@ -180,7 +192,7 @@ class VEnvManager {
         if (workingFolder == this.pipeline.env.WORKSPACE) {
             throw new IllegalStateException("copyToWorkingFolder called but VENV_WORKING_FOLDER is not set or equals WORKSPACE. VENV_WORKING_FOLDER must be a separate working directory.")
         }
-        if (this.isUnixWorkspace(workingFolder)) {
+        if (this.isUnixNode()) {
             this.pipeline.sh "mkdir -p ${workingFolder}"
             this.pipeline.sh "cp -r ${this.pipeline.env.WORKSPACE}/. ${workingFolder}"
         } else {
@@ -223,7 +235,7 @@ class VEnvManager {
         def sourcePath = this.joinPath(workingFolder, source)
         def destPath = this.joinPath(this.pipeline.env.WORKSPACE, dest)
         
-        if (this.isUnixWorkspace(workingFolder)) {
+        if (this.isUnixNode()) {
             if (dest.endsWith('/')) {
                 // Directory: create it
                 this.pipeline.sh "mkdir -p \"${destPath}\""
@@ -255,11 +267,10 @@ class VEnvManager {
     *   body: Closure to execute inside the venv
     */
     def withVirtualEnv(String venvName, String pythonVersion = null, Closure body) {
-        def workingFolder = this.getWorkingFolder()
         def ctx = [
             run: { cmd ->
                 def activateCmd
-                if (this.isUnixWorkspace(workingFolder)) {
+                if (this.isUnixNode()) {
                     activateCmd = ". ${venvName}/bin/activate\n "
                 } else {
                     activateCmd = "call ${venvName}\\Scripts\\activate\n "
@@ -293,10 +304,14 @@ class VEnvManager {
 
         // Store the created venv path
         def venvPath = this.joinPath(workingFolder, venvName)
-        if (!this.venvs.containsKey(workingFolder)) {
-            this.venvs[workingFolder] = [:]
+        def nodeName = this.getNodeName()
+        if (!this.venvs.containsKey(nodeName)) {
+            this.venvs[nodeName] = [:]
         }
-        this.venvs[workingFolder][venvName] = venvPath
+        if (!this.venvs[nodeName].containsKey(workingFolder)) {
+            this.venvs[nodeName][workingFolder] = [:]
+        }
+        this.venvs[nodeName][workingFolder][venvName] = venvPath
         return venvPath
     }
 
