@@ -77,6 +77,79 @@ def test_dictionary_description(
 
 
 @pytest.mark.parametrize(
+    "dict_path, interfaces, fw_version, product_code, "
+    "part_number, revision_number, mayor_version, image",
+    [
+        (
+            tests.resources.canopen.TEST_DICT_CAN_V3,
+            [Interface.CAN, Interface.ETH],
+            "2.4.1",
+            61939713,
+            "EVS-NET-C",
+            196617,
+            3,
+            b"",
+        ),
+        (
+            tests.resources.comkit.COM_KIT_DICT,
+            [Interface.ETH],
+            "1.4.7",
+            123456789,
+            None,
+            12345,
+            2,
+            b"",
+        ),
+        (
+            tests.resources.ethercat.TEST_DICT_ETHERCAT,
+            [Interface.ETH],  # ECAT and EoE are mapped to ETH upon reading
+            "2.0.1",
+            57745409,
+            "CAP-NET-E",
+            196635,
+            2,
+            b"",
+        ),
+        (
+            tests.resources.ethercat.TEST_DICT_ETHERCAT,
+            [Interface.ETH],
+            "2.0.1",
+            57745409,
+            "CAP-NET-E",
+            196635,
+            2,
+            b"",
+        ),
+    ],
+)
+def test_dictionary_all_descriptions(
+    dict_path,
+    interfaces,
+    fw_version,
+    product_code,
+    part_number,
+    revision_number,
+    mayor_version,
+    image,
+):
+    """Test getting all dictionary descriptions for all interfaces supported by the dictionary."""
+    dict_description = DictionaryFactory.get_all_dictionary_descriptions(dict_path)
+    # Assert version and image are correct for all interfaces
+    assert dict_description.mayor_version == mayor_version
+    assert dict_description.image == image
+    # Assert interface-specific attributes are correct
+    for interface in interfaces:
+        test_interface = DictionaryDescriptor(
+            firmware_version=fw_version,
+            product_code=product_code,
+            part_number=part_number,
+            revision_number=revision_number,
+            interface=interface,
+        )
+        assert test_interface in dict_description.interface_descriptor
+
+
+@pytest.mark.parametrize(
     "dict_path, register_uid, axis, dict_type",
     [
         (tests.resources.DEN_NET_E_2_8_0_xdf_v3, "DRV_AXIS_NUMBER", 0, DictionaryV3),
