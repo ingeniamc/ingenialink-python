@@ -20,8 +20,6 @@ def BRANCH_NAME_MASTER = "master"
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 def RACK_SPECIFIERS_PATH = "tests.setups.rack_specifiers"
 
-USE_WIRESHARK_LOGGING = ""
-WIRESHARK_DIR = "wireshark"
 
 wheel_stashes = []
 
@@ -445,6 +443,7 @@ class PyTestManager {
     def pipeline
     def runPythonVersions = [] as Set
     def wiresharkScope = ""
+    def wiresharkDir = "wireshark"
     def clearSuccessfulWiresharkLogs = true
     def startWiresharkTimeoutS = 10.0
     def coverageStashes = []
@@ -459,24 +458,32 @@ class PyTestManager {
     }
 
     def archiveWiresharkLogs() {
-        this.pipeline.archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
+        this.pipeline.archiveArtifacts artifacts: "${this.wiresharkDir}\\*.pcap", allowEmptyArchive: true
     }
 
     def clearWiresharkLogs() {
-        this.pipeline.bat(script: 'del /f "%WIRESHARK_DIR%\\*.pcap"', returnStatus: true)
+        this.pipeline.bat(script: "del /f \"${this.wiresharkDir}\\\\*.pcap\"", returnStatus: true)
     }
 
     def clearCoverageFiles() {
         this.pipeline.bat(script: 'del /f "*.coverage*"', returnStatus: true)
     }
 
-    def runTestHW(markers, setup_name = "", extra_args = "") {
+    def runTestHW(Map args = [markers: "pcap", setup_name: "DEFAULT_SETUP", use_wireshark_logging: false]) {
+        def markers = args.markers
+        def setup_name = args.setup_name
+        def use_wireshark_logging = args.use_wireshark_logging
+        def extra_args = use_wireshark_logging ? "--run_wireshark" : ""
         try {
             this.pipeline.timeout(time: 1, unit: 'HOURS') {
                 this.clearCoverageFiles()
                 def firstIteration = true
                 this.venvManager.forPythons(this.runPythonVersions) { venv ->
-                    this.pipeline.withEnv(["WIRESHARK_SCOPE=${this.wiresharkScope}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${this.clearSuccessfulWiresharkLogs}", "START_WIRESHARK_TIMEOUT_S=${this.startWiresharkTimeoutS}"]) {
+                    this.pipeline.withEnv([
+                        "WIRESHARK_SCOPE=${this.wiresharkScope}", 
+                        "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${this.clearSuccessfulWiresharkLogs}", 
+                        "START_WIRESHARK_TIMEOUT_S=${this.startWiresharkTimeoutS}"
+                    ]) {
                         try {
                             def setupArg = setup_name ? "--setup ${setup_name} " : ""
                             venv.run("poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-${venv.version}.xml --junit-prefix=${venv.version} -m \"${markers}\" ${setupArg} --job_name=\"${this.pipeline.env.JOB_NAME}-#${this.pipeline.env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}")
@@ -584,12 +591,6 @@ pipeline {
                     // Set wireshark properties on testManager
                     testManager.wiresharkScope = params.WIRESHARK_LOGGING_SCOPE
                     testManager.clearSuccessfulWiresharkLogs = params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS
-
-                    if (params.WIRESHARK_LOGGING) {
-                        USE_WIRESHARK_LOGGING = "--run_wireshark"
-                    } else {
-                        USE_WIRESHARK_LOGGING = ""
-                    }
                 }
             }
         }
@@ -944,8 +945,10 @@ pipeline {
                             steps {
                                 /* Windows docker did not have npcap/winpcap installed so tests that require pcap are
                                 run on ethercat machine */
-                                script {
-                                    testManager.runTestHW("pcap")
+                                    script {
+                                    testManager.runTestHW(
+                                        markers: "pcap"
+                                    )
                                 }
                             }
                         }
@@ -957,7 +960,11 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestHW(
+                                        markers: "ethercat",
+                                        setup_name: "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP",
+                                        use_wireshark_logging: params.WIRESHARK_LOGGING
+                                    )
                                 }
                             }
                         }
@@ -969,7 +976,11 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestHW(
+                                        markers: "ethercat",
+                                        setup_name: "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP",
+                                        use_wireshark_logging: params.WIRESHARK_LOGGING
+                                    )
                                 }
                             }
                         }
@@ -981,7 +992,11 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestHW(
+                                        markers: "multislave",
+                                        setup_name: "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP",
+                                        use_wireshark_logging: params.WIRESHARK_LOGGING
+                                    )
                                 }
                             }
                         }
@@ -993,7 +1008,11 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE1_SETUP", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestHW(
+                                        markers: "fsoe",
+                                        setup_name: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE1_SETUP",
+                                        use_wireshark_logging: params.WIRESHARK_LOGGING
+                                    )
                                 }
                             }
                         }
@@ -1005,7 +1024,11 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestHW(
+                                        markers: "fsoe",
+                                        setup_name: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP",
+                                        use_wireshark_logging: params.WIRESHARK_LOGGING
+                                    )
                                 }
                             }
                         }
@@ -1059,7 +1082,10 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP")
+                                    testManager.runTestHW(
+                                        markers: "canopen",
+                                        setup_name: "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP"
+                                    )
                                 }
                             }
                         }
@@ -1071,7 +1097,10 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP")
+                                    testManager.runTestHW(
+                                        markers: "canopen",
+                                        setup_name: "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP"
+                                    )
                                 }
                             }
                         }
@@ -1083,7 +1112,11 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestHW(
+                                        markers: "ethernet",
+                                        setup_name: "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP",
+                                        use_wireshark_logging: params.WIRESHARK_LOGGING
+                                    )
                                 }
                             }
                         }
@@ -1095,7 +1128,11 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestHW(
+                                        markers: "ethernet",
+                                        setup_name: "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP",
+                                        use_wireshark_logging: params.WIRESHARK_LOGGING
+                                    )
                                 }
                             }
                         }
