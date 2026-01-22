@@ -469,7 +469,7 @@ class PyTestManager {
         this.pipeline.bat(script: 'del /f "*.coverage*"', returnStatus: true)
     }
 
-    def runTestHW(Map args = [markers: "pcap", setup_name: "DEFAULT_SETUP", use_wireshark_logging: false]) {
+    def runTestSession(Map args = [markers: "", setup_name: "", use_wireshark_logging: false]) {
         def markers = args.markers
         def setup_name = args.setup_name
         def use_wireshark_logging = args.use_wireshark_logging
@@ -485,8 +485,23 @@ class PyTestManager {
                         "START_WIRESHARK_TIMEOUT_S=${this.startWiresharkTimeoutS}"
                     ]) {
                         try {
-                            def setupArg = setup_name ? "--setup ${setup_name} " : ""
-                            venv.run("poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-${venv.version}.xml --junit-prefix=${venv.version} -m \"${markers}\" ${setupArg} --job_name=\"${this.pipeline.env.JOB_NAME}-#${this.pipeline.env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}")
+                            def testArgs = [
+                                "--import-mode=importlib",
+                                "--cov=${venv.name}\\lib\\site-packages\\ingenialink",
+                                "--junitxml=pytest_reports/junit-${venv.version}.xml",
+                                "--junit-prefix=${venv.version}",
+                                "-m \"${markers}\"",
+                                "--job_name=\"${this.pipeline.env.JOB_NAME}-#${this.pipeline.env.BUILD_NUMBER}-${setup_name}\"",
+                                "-o log_cli=True"
+                            ]
+                            if (setup_name) {
+                                testArgs.add("--setup ${setup_name}")
+                            }
+                            if (extra_args) {
+                                testArgs.add(extra_args)
+                            }
+                            def testArgsStr = testArgs.join(' ')
+                            venv.run("poetry run poe tests ${testArgsStr}")
                         } catch (err) {
                             this.pipeline.unstable(message: "Tests failed")
                         } finally {
@@ -701,9 +716,9 @@ pipeline {
                                             def win_marker = PyTestManager.markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
                                             venvManager.forPythons(testManager.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
-                                                withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
-                                                    venv.run("poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m \"${win_marker}\" -o log_cli=True")
-                                                }
+                                            }
+                                            withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
+                                                testManager.runTestSession(markers: win_marker)
                                             }
                                         }
                                     }
@@ -788,9 +803,9 @@ pipeline {
                                             def lin_marker = PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
                                             venvManager.forPythons(testManager.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
-                                                withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
-                                                    venv.run("poetry run poe tests --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m '${lin_marker}' -o log_cli=True")
-                                                }
+                                            }
+                                            withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
+                                                testManager.runTestSession(markers: lin_marker)
                                             }
                                         }
                                     }
@@ -813,8 +828,8 @@ pipeline {
                                         script {
                                             venvManager.forPythons(testManager.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
-                                                venv.run("poetry run poe tests --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True")
                                             }
+                                            testManager.runTestSession(markers: 'virtual', setup_name: 'summit_testing_framework.setups.virtual_drive.TESTS_SETUP')
                                         }
                                     }
                                     post {
@@ -946,7 +961,7 @@ pipeline {
                                 /* Windows docker did not have npcap/winpcap installed so tests that require pcap are
                                 run on ethercat machine */
                                     script {
-                                    testManager.runTestHW(
+                                    testManager.runTestSession(
                                         markers: "pcap"
                                     )
                                 }
@@ -960,7 +975,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW(
+                                    testManager.runTestSession(
                                         markers: "ethercat",
                                         setup_name: "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP",
                                         use_wireshark_logging: params.WIRESHARK_LOGGING
@@ -976,7 +991,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW(
+                                    testManager.runTestSession(
                                         markers: "ethercat",
                                         setup_name: "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP",
                                         use_wireshark_logging: params.WIRESHARK_LOGGING
@@ -992,7 +1007,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW(
+                                    testManager.runTestSession(
                                         markers: "multislave",
                                         setup_name: "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP",
                                         use_wireshark_logging: params.WIRESHARK_LOGGING
@@ -1008,7 +1023,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW(
+                                    testManager.runTestSession(
                                         markers: "fsoe",
                                         setup_name: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE1_SETUP",
                                         use_wireshark_logging: params.WIRESHARK_LOGGING
@@ -1024,7 +1039,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW(
+                                    testManager.runTestSession(
                                         markers: "fsoe",
                                         setup_name: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP",
                                         use_wireshark_logging: params.WIRESHARK_LOGGING
@@ -1082,7 +1097,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW(
+                                    testManager.runTestSession(
                                         markers: "canopen",
                                         setup_name: "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP"
                                     )
@@ -1097,7 +1112,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW(
+                                    testManager.runTestSession(
                                         markers: "canopen",
                                         setup_name: "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP"
                                     )
@@ -1112,7 +1127,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW(
+                                    testManager.runTestSession(
                                         markers: "ethernet",
                                         setup_name: "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP",
                                         use_wireshark_logging: params.WIRESHARK_LOGGING
@@ -1128,7 +1143,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW(
+                                    testManager.runTestSession(
                                         markers: "ethernet",
                                         setup_name: "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP",
                                         use_wireshark_logging: params.WIRESHARK_LOGGING
