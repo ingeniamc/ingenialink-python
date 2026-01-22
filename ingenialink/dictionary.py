@@ -313,25 +313,7 @@ class DictionaryDescriptors:
     interface_descriptor: Optional[list[DictionaryDescriptor]] = None
     """List of interface descriptors declared in the dictionary."""
 
-    @property
-    def mayor_version(self) -> Optional[int]:
-        """Deprecated alias for ``major_version``."""
-        warnings.warn(
-            "DictionaryDescriptors.mayor_version is deprecated; use DictionaryDescriptors.major_version instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.major_version
 
-    @mayor_version.setter
-    def mayor_version(self, value: Optional[int]) -> None:
-        """Deprecated alias setter for ``major_version``."""
-        warnings.warn(
-            "DictionaryDescriptors.mayor_version is deprecated; use DictionaryDescriptors.major_version instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        self.major_version = value
 class XMLBase(ABC):
     """Base class to manipulate XML files."""
 
