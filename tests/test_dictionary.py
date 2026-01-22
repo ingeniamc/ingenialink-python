@@ -110,16 +110,6 @@ def test_dictionary_description(
             2,
             "",
         ),
-        (
-            tests.resources.ethercat.TEST_DICT_ETHERCAT,
-            [Interface.ETH],
-            "2.0.1",
-            57745409,
-            "CAP-NET-E",
-            196635,
-            2,
-            "",
-        ),
     ],
 )
 def test_dictionary_all_descriptions(

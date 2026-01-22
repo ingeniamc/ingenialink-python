@@ -304,16 +304,34 @@ class DictionaryDescriptor:
 
 @dataclass
 class DictionaryDescriptors:
-    """Class to store a dictionary descriptors."""
+    """Class to store dictionary descriptors for all interfaces."""
 
-    mayor_version: Optional[int] = None
-    """Mayor version declared in the dictionary."""
+    major_version: Optional[int] = None
+    """Major version declared in the dictionary."""
     image: Optional[str] = None
     """Drive's image as str."""
     interface_descriptor: Optional[list[DictionaryDescriptor]] = None
     """List of interface descriptors declared in the dictionary."""
 
+    @property
+    def mayor_version(self) -> Optional[int]:
+        """Deprecated alias for ``major_version``."""
+        warnings.warn(
+            "DictionaryDescriptors.mayor_version is deprecated; use DictionaryDescriptors.major_version instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.major_version
 
+    @mayor_version.setter
+    def mayor_version(self, value: Optional[int]) -> None:
+        """Deprecated alias setter for ``major_version``."""
+        warnings.warn(
+            "DictionaryDescriptors.mayor_version is deprecated; use DictionaryDescriptors.major_version instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self.major_version = value
 class XMLBase(ABC):
     """Base class to manipulate XML files."""
 
@@ -987,7 +1005,7 @@ class DictionaryV3(Dictionary):
             ILDictionaryParseError: if the interface element doesn't have any interface associated.
 
         Returns:
-            Ineterface element.
+            Interface element.
         """
         if interface == "CANDevice":
             return Interface.CAN
@@ -1059,16 +1077,17 @@ class DictionaryV3(Dictionary):
         Returns:
             Descriptor of all interfaces in the dictionary.
         """
+        try:
+            with open(dictionary_path, encoding="utf-8") as xdf_file:
+                tree = ElementTree.parse(xdf_file)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(
+                f"There is not any xdf file in the path: {dictionary_path}"
+            ) from e
+        root = tree.getroot()
+
         interfaces_descriptors: list[DictionaryDescriptor] = []
         for interface in cls.get_interfaces(dictionary_path):
-            try:
-                with open(dictionary_path, encoding="utf-8") as xdf_file:
-                    tree = ElementTree.parse(xdf_file)
-            except FileNotFoundError as e:
-                raise FileNotFoundError(
-                    f"There is not any xdf file in the path: {dictionary_path}"
-                ) from e
-            root = tree.getroot()
             device_path = (
                 f"{cls.__BODY_ELEMENT}/{cls.__DEVICES_ELEMENT}/"
                 f"{DictionaryV3._interface_to_device_element(interface)}"
@@ -1829,7 +1848,7 @@ class DictionaryV2(Dictionary):
             ILDictionaryParseError: if the interface element doesn't have any interface associated.
 
         Returns:
-            Ineterface element.
+            Interface element.
         """
         if interface == "CAN":
             return Interface.CAN
@@ -2002,7 +2021,7 @@ class DictionaryV2(Dictionary):
             )
         firmware_version = device.attrib.get("firmwareVersion")
         product_code = device.attrib.get("ProductCode")
-        if product_code is not None and product_code.isdecimal() or product_code == "-1":
+        if product_code is not None and (product_code.isdecimal() or product_code == "-1"):
             product_code = int(product_code)
         else:
             product_code = None
