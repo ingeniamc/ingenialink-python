@@ -88,7 +88,7 @@ def test_dictionary_description(
             "EVS-NET-C",
             196617,
             3,
-            b"",
+            "image-text",
         ),
         (
             tests.resources.comkit.COM_KIT_DICT,
@@ -98,7 +98,7 @@ def test_dictionary_description(
             None,
             12345,
             2,
-            b"",
+            "",
         ),
         (
             tests.resources.ethercat.TEST_DICT_ETHERCAT,
@@ -108,7 +108,7 @@ def test_dictionary_description(
             "CAP-NET-E",
             196635,
             2,
-            b"",
+            "",
         ),
         (
             tests.resources.ethercat.TEST_DICT_ETHERCAT,
@@ -118,7 +118,7 @@ def test_dictionary_description(
             "CAP-NET-E",
             196635,
             2,
-            b"",
+            "",
         ),
     ],
 )

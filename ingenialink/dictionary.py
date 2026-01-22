@@ -1,4 +1,3 @@
-import base64
 import copy
 import enum
 import math
@@ -309,8 +308,8 @@ class DictionaryDescriptors:
 
     mayor_version: Optional[int] = None
     """Mayor version declared in the dictionary."""
-    image: Optional[bytes] = None
-    """Drive's encoded image."""
+    image: Optional[str] = None
+    """Drive's image as str."""
     interface_descriptor: Optional[list[DictionaryDescriptor]] = None
     """List of interface descriptors declared in the dictionary."""
 
@@ -1091,14 +1090,11 @@ class DictionaryV3(Dictionary):
             )
         image = root.find(cls.__DRIVE_IMAGE_ELEMENT)
         if image is not None and image.text is not None and image.text.strip():
-            image_txt = image.text
-            image_bytes = (
-                base64.b64decode(image_txt) if image_txt else b""
-            )  # Can be bytes or b"" if missing
+            image_txt = image.text.strip()
         else:
-            image_bytes = b""
+            image_txt = ""
 
-        return DictionaryDescriptors(3, image_bytes, interfaces_descriptors)
+        return DictionaryDescriptors(3, image_txt, interfaces_descriptors)
 
     @classmethod
     def get_interfaces(cls, dictionary_path: str) -> list[Interface]:
@@ -2026,14 +2022,11 @@ class DictionaryV2(Dictionary):
         )
         image = root.find("DriveImage")
         if image is not None and image.text is not None and image.text.strip():
-            image_txt = image.text
-            image_bytes = (
-                base64.b64decode(image_txt) if image_txt else b""
-            )  # Can be bytes or b"" if missing
+            image_txt = image.text.strip()
         else:
-            image_bytes = b""
+            image_txt = ""
 
-        return DictionaryDescriptors(2, image_bytes, [interface_descriptor])
+        return DictionaryDescriptors(2, image_txt, [interface_descriptor])
 
     @override
     def read_dictionary(self) -> None:
