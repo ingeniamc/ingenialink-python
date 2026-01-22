@@ -457,23 +457,99 @@ class PyTestManager {
         return excludes.collect { "not ${it}" }.join(' and ')
     }
 
-    def archiveWiresharkLogs() {
+    private def archiveWiresharkLogs() {
         this.pipeline.archiveArtifacts artifacts: "${this.wiresharkDir}\\*.pcap", allowEmptyArchive: true
     }
 
-    def clearWiresharkLogs() {
-        this.pipeline.bat(script: "del /f \"${this.wiresharkDir}\\\\*.pcap\"", returnStatus: true)
+    private def clearWiresharkLogs() {
+        if (this.pipeline.isUnix()) {
+            this.pipeline.sh(script: "rm -f ${this.wiresharkDir}/*.pcap", returnStatus: true)
+        } else {
+            this.pipeline.bat(script: "del /f \"${this.wiresharkDir}\\\\*.pcap\"", returnStatus: true)
+        }
     }
 
-    def clearCoverageFiles() {
-        this.pipeline.bat(script: 'del /f "*.coverage*"', returnStatus: true)
+    private def clearCoverageFiles() {
+        if (this.pipeline.isUnix()) {
+            this.pipeline.sh(script: 'rm -f *.coverage*', returnStatus: true)
+        } else {
+            this.pipeline.bat(script: 'del /f "*.coverage*"', returnStatus: true)
+        }
     }
 
-    def runTestSession(Map args = [markers: "", setup_name: "", use_wireshark_logging: false]) {
-        def markers = args.markers
-        def setup_name = args.setup_name
-        def use_wireshark_logging = args.use_wireshark_logging
-        def extra_args = use_wireshark_logging ? "--run_wireshark" : ""
+    /**
+     * Stash coverage file for later merging.
+     * Moves the coverage file to a unique stash name to avoid collisions and stashes it.
+     * 
+     * @param setup The name of the setup (e.g. 'virtual', 'ethernet') used as suffix for the stash name.
+     */
+    private def stashCoverageFile(String setup) {
+        def workingFolder = this.venvManager.getWorkingFolder()
+        def base_stash_name = ".coverage_${setup}"
+        def coverage_stash = base_stash_name
+        
+        // Handle stash name collision by appending index
+        int index = 1
+        while (this.coverageStashes.contains(coverage_stash)) {
+            coverage_stash = "${base_stash_name}_${index}"
+            index++
+        }
+        
+        // Copy coverage file back from working folder if it differs from workspace
+        if (workingFolder != this.pipeline.env.WORKSPACE) {
+            this.venvManager.copyFromWorkingFolder(".coverage")
+        }
+        
+        // Rename coverage file to unique stash name
+        if (this.pipeline.isUnix()) {
+            this.pipeline.sh "mv .coverage ${coverage_stash}"
+        } else {
+            this.pipeline.bat "move .coverage ${coverage_stash}"
+        }
+        
+        // Stash coverage file and record it for later merging
+        this.pipeline.stash includes: coverage_stash, name: coverage_stash
+        this.coverageStashes.add(coverage_stash)
+    }
+
+    /**
+     * Publish JUnit reports and clean them up.
+     * Copies reports from working folder if necessary, publishes them, and then deletes them
+     * to prevent re-publishing in subsequent stages.
+     */
+    private def publishAndCleanupJunitReports() {
+        def workingFolder = this.venvManager.getWorkingFolder()
+        
+        // Copy junit reports back from working folder to workspace if they're separate
+        if (workingFolder != this.pipeline.env.WORKSPACE) {
+            this.venvManager.copyFromWorkingFolder("pytest_reports/")
+        }
+        
+        // Publish junit reports
+        this.pipeline.junit "pytest_reports/*.xml"
+        
+        // Delete the junit after publishing it so it not re-published on the next stage
+        if (this.pipeline.isUnix()) {
+            this.pipeline.sh "rm -f pytest_reports/*.xml"
+        } else {
+            this.pipeline.bat "del /S /Q pytest_reports\\*.xml"
+        }
+    }
+
+    /**
+     * Run a test session for the configured Python versions.
+     * 
+     * Executes pytest with the specified markers and setup configuration across all 
+     * configured Python versions. Handles environment setup, Wireshark logging (if enabled),
+     * coverage collection, and results publishing.
+     * 
+     * @param args Map containing:
+     *   - markers: Pytest markers to select tests (e.g. "ethernet and not slow")
+     *   - setup: Setup name passed to pytest --setup argument
+     *   - use_wireshark_logging: Boolean to enable Wireshark capture
+     */
+    def runTestSession(Map args = [markers: "", setup: "", use_wireshark_logging: false]) {
+        def setup = args.setup ?: ""
         try {
             this.pipeline.timeout(time: 1, unit: 'HOURS') {
                 this.clearCoverageFiles()
@@ -485,34 +561,37 @@ class PyTestManager {
                         "START_WIRESHARK_TIMEOUT_S=${this.startWiresharkTimeoutS}"
                     ]) {
                         try {
+                            // Calculate coverage path based on OS
+                            def covPath
+                            if (this.pipeline.isUnix()) {
+                                covPath = "${venv.name}/lib/python${venv.version}/site-packages/ingenialink"
+                            } else {
+                                covPath = "${venv.name}\\lib\\site-packages\\ingenialink"
+                            }
+
                             def testArgs = [
                                 "--import-mode=importlib",
-                                "--cov=${venv.name}\\lib\\site-packages\\ingenialink",
+                                "--cov=${covPath}",
                                 "--junitxml=pytest_reports/junit-${venv.version}.xml",
                                 "--junit-prefix=${venv.version}",
-                                "-m \"${markers}\"",
-                                "--job_name=\"${this.pipeline.env.JOB_NAME}-#${this.pipeline.env.BUILD_NUMBER}-${setup_name}\"",
+                                "-m \"${args.markers}\"",
+                                "--job_name=\"${this.pipeline.env.JOB_NAME}-#${this.pipeline.env.BUILD_NUMBER}-${setup}\"",
                                 "-o log_cli=True"
                             ]
-                            if (setup_name) {
-                                testArgs.add("--setup ${setup_name}")
+                            if (setup) {
+                                testArgs.add("--setup ${setup}")
                             }
-                            if (extra_args) {
-                                testArgs.add(extra_args)
+                            if (args.use_wireshark_logging) {
+                                testArgs.add("--run_wireshark")
                             }
                             def testArgsStr = testArgs.join(' ')
                             venv.run("poetry run poe tests ${testArgsStr}")
                         } catch (err) {
                             this.pipeline.unstable(message: "Tests failed")
                         } finally {
-                            this.pipeline.junit "pytest_reports\\*.xml"
-                            // Delete the junit after publishing it so it not re-published on the next stage
-                            this.pipeline.bat "del /S /Q pytest_reports\\*.xml"
+                            this.publishAndCleanupJunitReports()
                             if (firstIteration) {
-                                def coverage_stash = ".coverage_${setup_name}"
-                                this.pipeline.bat "move .coverage ${coverage_stash}"
-                                this.pipeline.stash includes: coverage_stash, name: coverage_stash
-                                this.coverageStashes.add(coverage_stash)
+                                this.stashCoverageFile(setup)
                                 firstIteration = false
                             }
                         }
@@ -829,7 +908,7 @@ pipeline {
                                             venvManager.forPythons(testManager.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            testManager.runTestSession(markers: 'virtual', setup_name: 'summit_testing_framework.setups.virtual_drive.TESTS_SETUP')
+                                            testManager.runTestSession(markers: 'virtual', setup: 'summit_testing_framework.setups.virtual_drive.TESTS_SETUP')
                                         }
                                     }
                                     post {
@@ -977,7 +1056,7 @@ pipeline {
                                 script {
                                     testManager.runTestSession(
                                         markers: "ethercat",
-                                        setup_name: "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP",
                                         use_wireshark_logging: params.WIRESHARK_LOGGING
                                     )
                                 }
@@ -993,7 +1072,7 @@ pipeline {
                                 script {
                                     testManager.runTestSession(
                                         markers: "ethercat",
-                                        setup_name: "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP",
                                         use_wireshark_logging: params.WIRESHARK_LOGGING
                                     )
                                 }
@@ -1009,7 +1088,7 @@ pipeline {
                                 script {
                                     testManager.runTestSession(
                                         markers: "multislave",
-                                        setup_name: "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP",
                                         use_wireshark_logging: params.WIRESHARK_LOGGING
                                     )
                                 }
@@ -1025,7 +1104,7 @@ pipeline {
                                 script {
                                     testManager.runTestSession(
                                         markers: "fsoe",
-                                        setup_name: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE1_SETUP",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE1_SETUP",
                                         use_wireshark_logging: params.WIRESHARK_LOGGING
                                     )
                                 }
@@ -1041,7 +1120,7 @@ pipeline {
                                 script {
                                     testManager.runTestSession(
                                         markers: "fsoe",
-                                        setup_name: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP",
                                         use_wireshark_logging: params.WIRESHARK_LOGGING
                                     )
                                 }
@@ -1099,7 +1178,7 @@ pipeline {
                                 script {
                                     testManager.runTestSession(
                                         markers: "canopen",
-                                        setup_name: "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP"
+                                        setup: "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP"
                                     )
                                 }
                             }
@@ -1114,7 +1193,7 @@ pipeline {
                                 script {
                                     testManager.runTestSession(
                                         markers: "canopen",
-                                        setup_name: "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP"
+                                        setup: "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP"
                                     )
                                 }
                             }
@@ -1129,7 +1208,7 @@ pipeline {
                                 script {
                                     testManager.runTestSession(
                                         markers: "ethernet",
-                                        setup_name: "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP",
                                         use_wireshark_logging: params.WIRESHARK_LOGGING
                                     )
                                 }
@@ -1145,7 +1224,7 @@ pipeline {
                                 script {
                                     testManager.runTestSession(
                                         markers: "ethernet",
-                                        setup_name: "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP",
                                         use_wireshark_logging: params.WIRESHARK_LOGGING
                                     )
                                 }
