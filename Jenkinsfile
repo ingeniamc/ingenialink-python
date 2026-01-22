@@ -24,7 +24,6 @@ USE_WIRESHARK_LOGGING = ""
 WIRESHARK_DIR = "wireshark"
 
 wheel_stashes = []
-coverage_stashes = []
 
 /* List of markers that require hardware */
 def HARDWARE_MARKERS = ["ethernet", "ethercat", "canopen", "multislave", "fsoe", "eoe"]
@@ -34,9 +33,7 @@ def HARDWARE_MARKERS = ["ethernet", "ethercat", "canopen", "multislave", "fsoe",
  * @param excludes List markers to exclude (list of strings)
  * @return A string with 'not <marker>' joined with ' and ' suitable for pytest
  */
-def markersExcludeString(excludes = []) {
-  return excludes.collect { "not ${it}" }.join(' and ')
-}
+
 
 def reassignFilePermissions() {
     if (isUnix()) {
@@ -44,17 +41,6 @@ def reassignFilePermissions() {
     }
 }
 
-def clearWiresharkLogs() {
-    bat(script: 'del /f "%WIRESHARK_DIR%\\*.pcap"', returnStatus: true)
-}
-
-def clearCoverageFiles() {
-    bat(script: 'del /f "*.coverage*"', returnStatus: true)
-}
-
-def archiveWiresharkLogs() {
-    archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
-}
 
 /**
  * VEnvManager - Manages Python virtual environments across Jenkins nodes
@@ -468,27 +454,43 @@ class PyTestManager {
         this.pipeline = args.pipeline
     }
 
+    static def markersExcludeString(excludes = []) {
+        return excludes.collect { "not ${it}" }.join(' and ')
+    }
+
+    def archiveWiresharkLogs() {
+        this.pipeline.archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
+    }
+
+    def clearWiresharkLogs() {
+        this.pipeline.bat(script: 'del /f "%WIRESHARK_DIR%\\*.pcap"', returnStatus: true)
+    }
+
+    def clearCoverageFiles() {
+        this.pipeline.bat(script: 'del /f "*.coverage*"', returnStatus: true)
+    }
+
     def runTestHW(markers, setup_name = "", extra_args = "") {
         try {
-            pipeline.timeout(time: 1, unit: 'HOURS') {
-                pipeline.clearCoverageFiles()
+            this.pipeline.timeout(time: 1, unit: 'HOURS') {
+                this.clearCoverageFiles()
                 def firstIteration = true
-                venvManager.forPythons(runPythonVersions) { venv ->
-                    pipeline.withEnv(["WIRESHARK_SCOPE=${wiresharkScope}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${clearSuccessfulWiresharkLogs}", "START_WIRESHARK_TIMEOUT_S=${startWiresharkTimeoutS}"]) {
+                this.venvManager.forPythons(this.runPythonVersions) { venv ->
+                    this.pipeline.withEnv(["WIRESHARK_SCOPE=${this.wiresharkScope}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${this.clearSuccessfulWiresharkLogs}", "START_WIRESHARK_TIMEOUT_S=${this.startWiresharkTimeoutS}"]) {
                         try {
                             def setupArg = setup_name ? "--setup ${setup_name} " : ""
-                            venv.run("poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-${venv.version}.xml --junit-prefix=${venv.version} -m \"${markers}\" ${setupArg} --job_name=\"${pipeline.env.JOB_NAME}-#${pipeline.env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}")
+                            venv.run("poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-${venv.version}.xml --junit-prefix=${venv.version} -m \"${markers}\" ${setupArg} --job_name=\"${this.pipeline.env.JOB_NAME}-#${this.pipeline.env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}")
                         } catch (err) {
-                            pipeline.unstable(message: "Tests failed")
+                            this.pipeline.unstable(message: "Tests failed")
                         } finally {
-                            pipeline.junit "pytest_reports\\*.xml"
+                            this.pipeline.junit "pytest_reports\\*.xml"
                             // Delete the junit after publishing it so it not re-published on the next stage
-                            pipeline.bat "del /S /Q pytest_reports\\*.xml"
+                            this.pipeline.bat "del /S /Q pytest_reports\\*.xml"
                             if (firstIteration) {
                                 def coverage_stash = ".coverage_${setup_name}"
-                                pipeline.bat "move .coverage ${coverage_stash}"
-                                pipeline.stash includes: coverage_stash, name: coverage_stash
-                                coverageStashes.add(coverage_stash)
+                                this.pipeline.bat "move .coverage ${coverage_stash}"
+                                this.pipeline.stash includes: coverage_stash, name: coverage_stash
+                                this.coverageStashes.add(coverage_stash)
                                 firstIteration = false
                             }
                         }
@@ -496,9 +498,9 @@ class PyTestManager {
                 }
             }
         } finally {
-            pipeline.archiveWiresharkLogs()
-            pipeline.clearWiresharkLogs()
-            pipeline.clearCoverageFiles()
+            this.archiveWiresharkLogs()
+            this.clearWiresharkLogs()
+            this.clearCoverageFiles()
         }
     }
 }
@@ -695,7 +697,7 @@ pipeline {
                                     steps {
                                         script {
                                             /* Windows docker does not have npcap/winpcap installed so runs no_pcap tests */
-                                            def win_marker = markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
+                                            def win_marker = PyTestManager.markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
                                             venvManager.forPythons(testManager.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                                 withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
@@ -782,7 +784,7 @@ pipeline {
                                     }
                                     steps {
                                         script {
-                                            def lin_marker = markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
+                                            def lin_marker = PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
                                             venvManager.forPythons(testManager.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                                 withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
@@ -908,7 +910,9 @@ pipeline {
                     stages {
                         stage ("Clear Wireshark logs") {
                             steps {
-                                clearWiresharkLogs()
+                                script {
+                                    testManager.clearWiresharkLogs()
+                                }
                             }
                         }
                         stage('Unstash')
