@@ -123,7 +123,7 @@ class VEnvManager {
     * Check if the current node is running Unix (cached)
     * Returns: true if Unix, false if Windows
     */
-    private def isUnixNode() {
+    def isUnixNode() {
         def nodeName = this.getNodeName()
         if (!this.osCache.containsKey(nodeName)) {
             this.osCache[nodeName] = this.pipeline.isUnix()
@@ -287,6 +287,7 @@ class VEnvManager {
             },
             name: venvName,
             version: pythonVersion,
+            isUnix: this.isUnixNode()
         ]
 
         body(ctx)
@@ -455,9 +456,8 @@ class TestSession implements Serializable {
         'startWiresharkTimeoutS',
         'importMode',
         'logCli',
-        'covPath',
-        'junitPrefix',
-        'jobName'
+        'jobName',
+        'covPackageName'
     ]
     
     String markers = null
@@ -470,9 +470,8 @@ class TestSession implements Serializable {
     BigDecimal startWiresharkTimeoutS = null
     String importMode = null
     Boolean logCli = null
-    String covPath = null
-    String junitPrefix = null
     String jobName = null
+    String covPackageName = "ingenialink"
 
     TestSession(Map args = [:]) {
         args.each { name, value ->
@@ -507,14 +506,22 @@ class TestSession implements Serializable {
     /**
      * Generate the list of arguments for the pytest command.
      * 
+     * @param venv The virtual environment context map
      * @return List of arguments as strings
      */
-    List<String> getTestArgs() {
+    List<String> getTestArgs(Map venv) {
+        def covPath
+        if (venv.isUnix) {
+            covPath = "${venv.name}/lib/python${venv.version}/site-packages/${this.covPackageName}"
+        } else {
+            covPath = "${venv.name}\\lib\\site-packages\\${this.covPackageName}"
+        }
+
          def args = [
             "--import-mode=${this.importMode}",
-            "--cov=${this.covPath}",
-            "--junitxml=pytest_reports/junit-${this.junitPrefix}.xml",
-            "--junit-prefix=${this.junitPrefix}",
+            "--cov=${covPath}",
+            "--junitxml=pytest_reports/junit-${venv.version}.xml",
+            "--junit-prefix=${venv.version}",
             "-m \"${this.markers}\"",
             "--job_name=\"${this.jobName}-${this.setup}\""
         ]
@@ -590,7 +597,7 @@ class PyTestManager {
     }
 
     private def clearWiresharkLogs(String wiresharkDir) {
-        if (this.pipeline.isUnix()) {
+        if (this.venvManager.isUnixNode()) {
             this.pipeline.sh(script: "rm -f ${wiresharkDir}/*.pcap", returnStatus: true)
         } else {
             this.pipeline.bat(script: "del /f \"${wiresharkDir}\\\\*.pcap\"", returnStatus: true)
@@ -598,7 +605,7 @@ class PyTestManager {
     }
 
     private def clearCoverageFiles() {
-        if (this.pipeline.isUnix()) {
+        if (this.venvManager.isUnixNode()) {
             this.pipeline.sh(script: 'rm -f *.coverage*', returnStatus: true)
         } else {
             this.pipeline.bat(script: 'del /f "*.coverage*"', returnStatus: true)
@@ -629,7 +636,7 @@ class PyTestManager {
         }
         
         // Rename coverage file to unique stash name
-        if (this.pipeline.isUnix()) {
+        if (this.venvManager.isUnixNode()) {
             this.pipeline.sh "mv .coverage ${coverage_stash}"
         } else {
             this.pipeline.bat "move .coverage ${coverage_stash}"
@@ -657,7 +664,7 @@ class PyTestManager {
         this.pipeline.junit "pytest_reports/*.xml"
         
         // Delete the junit after publishing it so it not re-published on the next stage
-        if (this.pipeline.isUnix()) {
+        if (this.venvManager.isUnixNode()) {
             this.pipeline.sh "rm -f pytest_reports/*.xml"
         } else {
             this.pipeline.bat "del /S /Q pytest_reports\\*.xml"
@@ -686,20 +693,7 @@ class PyTestManager {
                         "START_WIRESHARK_TIMEOUT_S=${session.startWiresharkTimeoutS}"
                     ]) {
                         try {
-                            // Calculate coverage path based on OS
-                            def covPath
-                            if (this.pipeline.isUnix()) {
-                                covPath = "${venv.name}/lib/python${venv.version}/site-packages/ingenialink"
-                            } else {
-                                covPath = "${venv.name}\\lib\\site-packages\\ingenialink"
-                            }
-
-                            def executionSession = session.override(
-                                covPath: covPath,
-                                junitPrefix: venv.version
-                            )
-
-                            def testArgs = executionSession.getTestArgs()
+                            def testArgs = session.getTestArgs(venv)
                             def testArgsStr = testArgs.join(' ')
                             venv.run("poetry run poe tests ${testArgsStr}")
                         } catch (err) {
