@@ -514,11 +514,23 @@ class PyTestManager {
     def wiresharkDir = "wireshark"
     def clearSuccessfulWiresharkLogs = true
     def startWiresharkTimeoutS = 10.0
-    def coverageStashes = []
+    private List coverageStashes = []
 
     PyTestManager(Map args = [pipeline: null, venvManager: null]) {
         this.venvManager = args.venvManager
         this.pipeline = args.pipeline
+    }
+
+    /**
+     * Unstashes all coverage files.
+     * 
+     * @return Set of coverage file stash names
+     */
+    def getCoverageFiles() {
+        this.coverageStashes.each { stash ->
+             this.pipeline.unstash stash
+        }
+        return this.coverageStashes as Set
     }
 
     static def markersExcludeString(excludes = []) {
@@ -872,19 +884,6 @@ pipeline {
                                             }
                                             withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
                                                 testManager.runTestSession(TEST_SESSIONS.override(markers: win_marker))
-                                            }
-                                        }
-                                    }
-                                    post {
-                                        always {
-                                            script {
-                                                venvManager.copyFromWorkingFolder("pytest_reports/")
-                                                venvManager.copyFromWorkingFolder(".coverage", ".coverage_docker")
-                                            }
-                                            junit 'pytest_reports/*.xml'
-                                            stash includes: '.coverage_docker', name: '.coverage_docker'
-                                            script {
-                                                testManager.coverageStashes.add(".coverage_docker")
                                             }
                                         }
                                     }
@@ -1313,11 +1312,7 @@ pipeline {
             }
             steps {
                 script {
-                    def coverage_files = ""
-                    for (coverage_stash in testManager.coverageStashes) {
-                        unstash coverage_stash
-                        coverage_files += " " + coverage_stash
-                    }
+                    def coverage_files = testManager.getCoverageFiles().join(" ")
                     for (stash_name in wheel_stashes) {
                         unstash stash_name
                     }
@@ -1326,7 +1321,7 @@ pipeline {
                       additionalCommands: ["poetry run poe install-wheel"]
                     )
                     venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                        venv.run("poetry run poe cov-combine --${coverage_files}")
+                        venv.run("poetry run poe cov-combine -- ${coverage_files}")
                         venv.run("poetry run poe cov-report")
                     }
                     venvManager.copyFromWorkingFolder("coverage.xml")
