@@ -452,18 +452,27 @@ class TestSession implements Serializable {
         'wiresharkScope',
         'wiresharkDir',
         'clearSuccessfulWiresharkLogs',
-        'startWiresharkTimeoutS'
+        'startWiresharkTimeoutS',
+        'importMode',
+        'logCli'
     ]
     
     String markers = null
     String setup = null
     Boolean useWiresharkLogging = null
     Set runPythonVersions = null
-    String wiresharkScope = ""
-    String wiresharkDir = "wireshark"
-    Boolean clearSuccessfulWiresharkLogs = true
-    BigDecimal startWiresharkTimeoutS = 10.0
+    String wiresharkScope = null
+    String wiresharkDir = null
+    Boolean clearSuccessfulWiresharkLogs = null
+    BigDecimal startWiresharkTimeoutS = null
+    String importMode = null
+    Boolean logCli = null
 
+    TestSession(Map args = [:]) {
+        args.each { name, value ->
+            this."$name" = value
+        }
+    }
 
     /**
      * Set attributes on this session and propagate the values to all descendants.
@@ -651,19 +660,21 @@ class PyTestManager {
                             }
 
                             def testArgs = [
-                                "--import-mode=importlib",
+                                "--import-mode=${session.importMode}",
                                 "--cov=${covPath}",
                                 "--junitxml=pytest_reports/junit-${venv.version}.xml",
                                 "--junit-prefix=${venv.version}",
                                 "-m \"${session.markers}\"",
-                                "--job_name=\"${this.pipeline.env.JOB_NAME}-#${this.pipeline.env.BUILD_NUMBER}-${session.setup}\"",
-                                "-o log_cli=True"
+                                "--job_name=\"${this.pipeline.env.JOB_NAME}-#${this.pipeline.env.BUILD_NUMBER}-${session.setup}\""
                             ]
                             if (session.setup) {
                                 testArgs.add("--setup ${session.setup}")
                             }
                             if (session.useWiresharkLogging) {
                                 testArgs.add("--run_wireshark")
+                            }
+                            if (session.logCli) {
+                                testArgs.add("-o log_cli=True")
                             }
                             def testArgsStr = testArgs.join(' ')
                             venv.run("poetry run poe tests ${testArgsStr}")
@@ -696,9 +707,19 @@ VEnvManager venvManager = new VEnvManager(
 PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvManager)
 
 /* Define default base test sessions to be used/overridden in stages */
-TestSession TEST_SESSIONS = new TestSession()
+TestSession TEST_SESSIONS = new TestSession(
+    wiresharkScope: "",
+    wiresharkDir: "wireshark",
+    clearSuccessfulWiresharkLogs: true,
+    startWiresharkTimeoutS: 10.0,
+    importMode: "importlib",
+    logCli: true
+)
 TestSession HW_TEST_SESSIONS = TEST_SESSIONS.override()
+TestSession CAN_TEST_SESSIONS = HW_TEST_SESSIONS.override()
+TestSession ETH_TEST_SESSIONS = HW_TEST_SESSIONS.override() // Wireshark logging is injected later based on parameter
 TestSession ECAT_TEST_SESSIONS = HW_TEST_SESSIONS.override() // Wireshark logging is injected later based on parameter
+
 
 /* Build develop everyday 3 times starting at 19:00 UTC (21:00 Barcelona Time), running all tests */
 CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * * % PYTHON_VERSIONS=All''' : ""
@@ -776,6 +797,9 @@ pipeline {
 
                     // Configure ECAT sessions with Wireshark settings from params
                     ECAT_TEST_SESSIONS.setAttributeInCascade(
+                        useWiresharkLogging: params.WIRESHARK_LOGGING
+                    )
+                    ETH_TEST_SESSIONS.setAttributeInCascade(
                         useWiresharkLogging: params.WIRESHARK_LOGGING
                     )
                 }
@@ -1120,7 +1144,7 @@ pipeline {
                                 /* Windows docker did not have npcap/winpcap installed so tests that require pcap are
                                 run on ethercat machine */
                                 script {
-                                    testManager.runTestSession(HW_TEST_SESSIONS.override(markers: "pcap"))
+                                    testManager.runTestSession(ETH_TEST_SESSIONS.override(markers: "pcap"))
                                 }
                             }
                         }
@@ -1249,7 +1273,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(HW_TEST_SESSIONS.override(
+                                    testManager.runTestSession(CAN_TEST_SESSIONS.override(
                                         markers: "canopen",
                                         setup: "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP"
                                     ))
@@ -1264,7 +1288,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(HW_TEST_SESSIONS.override(
+                                    testManager.runTestSession(CAN_TEST_SESSIONS.override(
                                         markers: "canopen",
                                         setup: "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP"
                                     ))
@@ -1279,10 +1303,9 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(HW_TEST_SESSIONS.override(
+                                    testManager.runTestSession(ETH_TEST_SESSIONS.override(
                                         markers: "ethernet",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP",
-                                        useWiresharkLogging: params.WIRESHARK_LOGGING
+                                        setup: "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP"
                                     ))
                                 }
                             }
@@ -1295,10 +1318,9 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(HW_TEST_SESSIONS.override(
+                                    testManager.runTestSession(ETH_TEST_SESSIONS.override(
                                         markers: "ethernet",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP",
-                                        useWiresharkLogging: params.WIRESHARK_LOGGING
+                                        setup: "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP"
                                     ))
                                 }
                             }
