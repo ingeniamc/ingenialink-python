@@ -448,13 +448,22 @@ class TestSession implements Serializable {
         'markers', 
         'setup', 
         'useWiresharkLogging', 
-        'runPythonVersions'
+        'runPythonVersions',
+        'wiresharkScope',
+        'wiresharkDir',
+        'clearSuccessfulWiresharkLogs',
+        'startWiresharkTimeoutS'
     ]
     
     String markers = null
     String setup = null
     Boolean useWiresharkLogging = null
     Set runPythonVersions = null
+    String wiresharkScope = ""
+    String wiresharkDir = "wireshark"
+    Boolean clearSuccessfulWiresharkLogs = true
+    BigDecimal startWiresharkTimeoutS = 10.0
+
 
     /**
      * Set attributes on this session and propagate the values to all descendants.
@@ -510,10 +519,6 @@ class TestSession implements Serializable {
 class PyTestManager {
     def venvManager
     def pipeline
-    def wiresharkScope = ""
-    def wiresharkDir = "wireshark"
-    def clearSuccessfulWiresharkLogs = true
-    def startWiresharkTimeoutS = 10.0
     private List coverageStashes = []
 
     PyTestManager(Map args = [pipeline: null, venvManager: null]) {
@@ -537,15 +542,15 @@ class PyTestManager {
         return excludes.collect { "not ${it}" }.join(' and ')
     }
 
-    private def archiveWiresharkLogs() {
-        this.pipeline.archiveArtifacts artifacts: "${this.wiresharkDir}\\*.pcap", allowEmptyArchive: true
+    private def archiveWiresharkLogs(String wiresharkDir) {
+        this.pipeline.archiveArtifacts artifacts: "${wiresharkDir}\\*.pcap", allowEmptyArchive: true
     }
 
-    private def clearWiresharkLogs() {
+    private def clearWiresharkLogs(String wiresharkDir) {
         if (this.pipeline.isUnix()) {
-            this.pipeline.sh(script: "rm -f ${this.wiresharkDir}/*.pcap", returnStatus: true)
+            this.pipeline.sh(script: "rm -f ${wiresharkDir}/*.pcap", returnStatus: true)
         } else {
-            this.pipeline.bat(script: "del /f \"${this.wiresharkDir}\\\\*.pcap\"", returnStatus: true)
+            this.pipeline.bat(script: "del /f \"${wiresharkDir}\\\\*.pcap\"", returnStatus: true)
         }
     }
 
@@ -632,9 +637,9 @@ class PyTestManager {
                 def firstIteration = true
                 this.venvManager.forPythons(session.runPythonVersions) { venv ->
                     this.pipeline.withEnv([
-                        "WIRESHARK_SCOPE=${this.wiresharkScope}", 
-                        "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${this.clearSuccessfulWiresharkLogs}", 
-                        "START_WIRESHARK_TIMEOUT_S=${this.startWiresharkTimeoutS}"
+                        "WIRESHARK_SCOPE=${session.wiresharkScope}", 
+                        "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${session.clearSuccessfulWiresharkLogs}", 
+                        "START_WIRESHARK_TIMEOUT_S=${session.startWiresharkTimeoutS}"
                     ]) {
                         try {
                             // Calculate coverage path based on OS
@@ -675,8 +680,8 @@ class PyTestManager {
                 }
             }
         } finally {
-            this.archiveWiresharkLogs()
-            this.clearWiresharkLogs()
+            this.archiveWiresharkLogs(session.wiresharkDir)
+            this.clearWiresharkLogs(session.wiresharkDir)
             this.clearCoverageFiles()
         }
     }
@@ -763,9 +768,11 @@ pipeline {
                         }
                     }
 
-                    // Set wireshark properties on testManager
-                    testManager.wiresharkScope = params.WIRESHARK_LOGGING_SCOPE
-                    testManager.clearSuccessfulWiresharkLogs = params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS
+                    // Set wireshark properties on TEST_SESSIONS
+                    TEST_SESSIONS.setAttributeInCascade(
+                        wiresharkScope: params.WIRESHARK_LOGGING_SCOPE,
+                        clearSuccessfulWiresharkLogs: params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS
+                    )
 
                     // Configure ECAT sessions with Wireshark settings from params
                     ECAT_TEST_SESSIONS.setAttributeInCascade(
