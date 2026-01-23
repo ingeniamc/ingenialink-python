@@ -438,6 +438,12 @@ class VEnvManager {
     }
 }
 
+class TestSession implements Serializable {
+    String markers = ""
+    String setup = ""
+    boolean useWiresharkLogging = false
+}
+
 class PyTestManager {
     def venvManager
     def pipeline
@@ -543,13 +549,12 @@ class PyTestManager {
      * configured Python versions. Handles environment setup, Wireshark logging (if enabled),
      * coverage collection, and results publishing.
      * 
-     * @param args Map containing:
+     * @param session TestSession configuration object containing:
      *   - markers: Pytest markers to select tests (e.g. "ethernet and not slow")
      *   - setup: Setup name passed to pytest --setup argument
-     *   - use_wireshark_logging: Boolean to enable Wireshark capture
+     *   - useWiresharkLogging: Boolean to enable Wireshark capture
      */
-    def runTestSession(Map args = [markers: "", setup: "", use_wireshark_logging: false]) {
-        def setup = args.setup ?: ""
+    def runTestSession(TestSession session) {
         try {
             this.pipeline.timeout(time: 1, unit: 'HOURS') {
                 this.clearCoverageFiles()
@@ -574,14 +579,14 @@ class PyTestManager {
                                 "--cov=${covPath}",
                                 "--junitxml=pytest_reports/junit-${venv.version}.xml",
                                 "--junit-prefix=${venv.version}",
-                                "-m \"${args.markers}\"",
-                                "--job_name=\"${this.pipeline.env.JOB_NAME}-#${this.pipeline.env.BUILD_NUMBER}-${setup}\"",
+                                "-m \"${session.markers}\"",
+                                "--job_name=\"${this.pipeline.env.JOB_NAME}-#${this.pipeline.env.BUILD_NUMBER}-${session.setup}\"",
                                 "-o log_cli=True"
                             ]
-                            if (setup) {
-                                testArgs.add("--setup ${setup}")
+                            if (session.setup) {
+                                testArgs.add("--setup ${session.setup}")
                             }
-                            if (args.use_wireshark_logging) {
+                            if (session.useWiresharkLogging) {
                                 testArgs.add("--run_wireshark")
                             }
                             def testArgsStr = testArgs.join(' ')
@@ -591,7 +596,7 @@ class PyTestManager {
                         } finally {
                             this.publishAndCleanupJunitReports()
                             if (firstIteration) {
-                                this.stashCoverageFile(setup)
+                                this.stashCoverageFile(session.setup)
                                 firstIteration = false
                             }
                         }
@@ -797,7 +802,7 @@ pipeline {
                                                 venv.run("poetry run poe install-wheel")
                                             }
                                             withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
-                                                testManager.runTestSession(markers: win_marker)
+                                                testManager.runTestSession(new TestSession(markers: win_marker))
                                             }
                                         }
                                     }
@@ -884,7 +889,7 @@ pipeline {
                                                 venv.run("poetry run poe install-wheel")
                                             }
                                             withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
-                                                testManager.runTestSession(markers: lin_marker)
+                                                testManager.runTestSession(new TestSession(markers: lin_marker))
                                             }
                                         }
                                     }
@@ -908,7 +913,7 @@ pipeline {
                                             venvManager.forPythons(testManager.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            testManager.runTestSession(markers: 'virtual', setup: 'summit_testing_framework.setups.virtual_drive.TESTS_SETUP')
+                                            testManager.runTestSession(new TestSession(markers: 'virtual', setup: 'summit_testing_framework.setups.virtual_drive.TESTS_SETUP'))
                                         }
                                     }
                                     post {
@@ -1040,9 +1045,8 @@ pipeline {
                                 /* Windows docker did not have npcap/winpcap installed so tests that require pcap are
                                 run on ethercat machine */
                                     script {
-                                    testManager.runTestSession(
-                                        markers: "pcap"
-                                    )
+                                    testManager.runTestSession(new TestSession(markers: "pcap"
+                                    ))
                                 }
                             }
                         }
@@ -1054,11 +1058,10 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(
-                                        markers: "ethercat",
+                                    testManager.runTestSession(new TestSession(markers: "ethercat",
                                         setup: "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP",
-                                        use_wireshark_logging: params.WIRESHARK_LOGGING
-                                    )
+                                        useWiresharkLogging: params.WIRESHARK_LOGGING
+                                    ))
                                 }
                             }
                         }
@@ -1070,11 +1073,10 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(
-                                        markers: "ethercat",
+                                    testManager.runTestSession(new TestSession(markers: "ethercat",
                                         setup: "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP",
-                                        use_wireshark_logging: params.WIRESHARK_LOGGING
-                                    )
+                                        useWiresharkLogging: params.WIRESHARK_LOGGING
+                                    ))
                                 }
                             }
                         }
@@ -1086,11 +1088,10 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(
-                                        markers: "multislave",
+                                    testManager.runTestSession(new TestSession(markers: "multislave",
                                         setup: "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP",
-                                        use_wireshark_logging: params.WIRESHARK_LOGGING
-                                    )
+                                        useWiresharkLogging: params.WIRESHARK_LOGGING
+                                    ))
                                 }
                             }
                         }
@@ -1102,11 +1103,10 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(
-                                        markers: "fsoe",
+                                    testManager.runTestSession(new TestSession(markers: "fsoe",
                                         setup: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE1_SETUP",
-                                        use_wireshark_logging: params.WIRESHARK_LOGGING
-                                    )
+                                        useWiresharkLogging: params.WIRESHARK_LOGGING
+                                    ))
                                 }
                             }
                         }
@@ -1118,11 +1118,10 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(
-                                        markers: "fsoe",
+                                    testManager.runTestSession(new TestSession(markers: "fsoe",
                                         setup: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP",
-                                        use_wireshark_logging: params.WIRESHARK_LOGGING
-                                    )
+                                        useWiresharkLogging: params.WIRESHARK_LOGGING
+                                    ))
                                 }
                             }
                         }
@@ -1176,10 +1175,9 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(
-                                        markers: "canopen",
+                                    testManager.runTestSession(new TestSession(markers: "canopen",
                                         setup: "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP"
-                                    )
+                                    ))
                                 }
                             }
                         }
@@ -1191,10 +1189,9 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(
-                                        markers: "canopen",
+                                    testManager.runTestSession(new TestSession(markers: "canopen",
                                         setup: "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP"
-                                    )
+                                    ))
                                 }
                             }
                         }
@@ -1206,11 +1203,10 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(
-                                        markers: "ethernet",
+                                    testManager.runTestSession(new TestSession(markers: "ethernet",
                                         setup: "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP",
-                                        use_wireshark_logging: params.WIRESHARK_LOGGING
-                                    )
+                                        useWiresharkLogging: params.WIRESHARK_LOGGING
+                                    ))
                                 }
                             }
                         }
@@ -1222,11 +1218,10 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(
-                                        markers: "ethernet",
+                                    testManager.runTestSession(new TestSession(markers: "ethernet",
                                         setup: "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP",
-                                        use_wireshark_logging: params.WIRESHARK_LOGGING
-                                    )
+                                        useWiresharkLogging: params.WIRESHARK_LOGGING
+                                    ))
                                 }
                             }
                         }
@@ -1270,3 +1265,5 @@ pipeline {
         }
     }
 }
+
+
