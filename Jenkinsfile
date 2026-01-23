@@ -478,6 +478,12 @@ class TestSession implements Serializable {
      * @return New child TestSession
      */
     TestSession override(Map args = [:]) {
+        // Validate arguments against whitelist
+        def invalidArgs = args.keySet().findAll { !CONFIG_ATTRS.contains(it) }
+        if (invalidArgs) {
+             throw new IllegalArgumentException("Invalid arguments passed to override(): ${invalidArgs}. Allowed properties: ${CONFIG_ATTRS}")
+        }
+
         TestSession child = new TestSession()
         child.parent = this
         this.children.add(child)
