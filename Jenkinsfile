@@ -457,9 +457,10 @@ class TestSession implements Serializable {
         'importMode',
         'logCli',
         'jobName',
-        'covPackageName'
+        'covPackageName',
+        'setAttApiToken'
     ]
-    
+
     String markers = null
     String setup = null
     Boolean useWiresharkLogging = null
@@ -472,6 +473,7 @@ class TestSession implements Serializable {
     Boolean logCli = null
     String jobName = null
     String covPackageName = "ingenialink"
+    Boolean setAttApiToken = false
 
     TestSession(Map args = [:]) {
         args.each { name, value ->
@@ -503,6 +505,39 @@ class TestSession implements Serializable {
         }
     }
 
+    /**
+     * Generate the list of environment variables for the test session.
+     * 
+     * @return List of environment variables in 'KEY=VALUE' format
+     */
+    List<String> getEnvVars() {
+        def envList = []
+        if (this.wiresharkScope != null) {
+            envList.add("WIRESHARK_SCOPE=${this.wiresharkScope}")
+        }
+        if (this.clearSuccessfulWiresharkLogs != null) {
+            envList.add("CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${this.clearSuccessfulWiresharkLogs}")
+        }
+        if (this.startWiresharkTimeoutS != null) {
+            envList.add("START_WIRESHARK_TIMEOUT_S=${this.startWiresharkTimeoutS}")
+        }
+        return envList
+    }
+
+    /**
+     * Generate the list of credentials specifications for the test session.
+     * 
+     * @param pipeline The pipeline object to use for creating credential bindings
+     * @return List of credential bindings suitable for withCredentials
+     */
+    List getCredentialsSpec(def pipeline) {
+        def credentials = []
+        if (this.setAttApiToken) {
+            credentials.add(pipeline.string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY'))
+        }
+        return credentials
+    }
+    
     /**
      * Generate the list of arguments for the pytest command.
      * 
@@ -687,15 +722,19 @@ class PyTestManager {
                 this.clearCoverageFiles()
                 def firstIteration = true
                 this.venvManager.forPythons(session.runPythonVersions) { venv ->
-                    this.pipeline.withEnv([
-                        "WIRESHARK_SCOPE=${session.wiresharkScope}", 
-                        "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${session.clearSuccessfulWiresharkLogs}", 
-                        "START_WIRESHARK_TIMEOUT_S=${session.startWiresharkTimeoutS}"
-                    ]) {
+                    this.pipeline.withEnv(session.getEnvVars()) {
                         try {
                             def testArgs = session.getTestArgs(venv)
                             def testArgsStr = testArgs.join(' ')
-                            venv.run("poetry run poe tests ${testArgsStr}")
+
+                            def credentials = session.getCredentialsSpec(this.pipeline)
+                            if (credentials) {
+                                this.pipeline.withCredentials(credentials) {
+                                    venv.run("poetry run poe tests ${testArgsStr}")
+                                }
+                            } else {
+                                venv.run("poetry run poe tests ${testArgsStr}")
+                            }
                         } catch (err) {
                             this.pipeline.unstable(message: "Tests failed")
                         } finally {
@@ -731,7 +770,8 @@ TestSession TEST_SESSIONS = new TestSession(
     clearSuccessfulWiresharkLogs: true,
     startWiresharkTimeoutS: 10.0,
     importMode: "importlib",
-    logCli: true
+    logCli: true,
+    setAttApiToken: true
 )
 TestSession HW_TEST_SESSIONS = TEST_SESSIONS.override()
 TestSession CAN_TEST_SESSIONS = HW_TEST_SESSIONS.override()
@@ -932,9 +972,7 @@ pipeline {
                                             venvManager.forPythons(TEST_SESSIONS.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
-                                                testManager.runTestSession(TEST_SESSIONS.override(markers: win_marker))
-                                            }
+                                            testManager.runTestSession(TEST_SESSIONS.override(markers: win_marker))
                                         }
                                     }
                                 }
@@ -1006,9 +1044,7 @@ pipeline {
                                             venvManager.forPythons(TEST_SESSIONS.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
-                                                testManager.runTestSession(TEST_SESSIONS.override(markers: lin_marker))
-                                            }
+                                            testManager.runTestSession(TEST_SESSIONS.override(markers: lin_marker))
                                         }
                                     }
                                     post {
