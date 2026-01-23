@@ -439,9 +439,56 @@ class VEnvManager {
 }
 
 class TestSession implements Serializable {
-    String markers = ""
-    String setup = ""
-    boolean useWiresharkLogging = false
+    TestSession parent = null
+    List<TestSession> children = []
+    
+    // Whitelist of properties to cascade/inherit.
+    // Explicit list avoids 'this.properties' reflection security warnings.
+    private static final List<String> CONFIG_ATTRS = [
+        'markers', 
+        'setup', 
+        'useWiresharkLogging', 
+        'runPythonVersions'
+    ]
+    
+    String markers = null
+    String setup = null
+    Boolean useWiresharkLogging = null
+    Set runPythonVersions = null
+
+    /**
+     * Set an attribute on this session and propagate the value to all descendants.
+     * This ensures that the value set here is cascaded to all children.
+     * 
+     * @param name Property name
+     * @param value Value to set
+     */
+    void setAttributeInCascade(String name, Object value) {
+        this."$name" = value
+        children.each { child ->
+            child.setAttributeInCascade(name, value)
+        }
+    }
+
+    /**
+     * Create a child session that inherits from this one.
+     * Properties specified in args override the parent's values.
+     * 
+     * @param args Map of properties to override
+     * @return New child TestSession
+     */
+    TestSession override(Map args = [:]) {
+        TestSession child = new TestSession()
+        child.parent = this
+        this.children.add(child)
+        
+        // Copy allowed properties from parent or args
+        CONFIG_ATTRS.each { name ->
+            child."$name" = args.containsKey(name) ? args[name] : this."$name"
+        }
+        
+        return child
+    }
 }
 
 class PyTestManager {
@@ -619,6 +666,11 @@ VEnvManager venvManager = new VEnvManager(
 
 PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvManager)
 
+/* Define default base test sessions to be used/overridden in stages */
+TestSession TEST_SESSION = new TestSession()
+TestSession HW_TEST_SESSION = TEST_SESSION.override()
+TestSession ECAT_TEST_SESSION = HW_TEST_SESSION.override() // Wireshark logging is injected later based on parameter
+
 /* Build develop everyday 3 times starting at 19:00 UTC (21:00 Barcelona Time), running all tests */
 CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * * % PYTHON_VERSIONS=All''' : ""
 
@@ -690,6 +742,11 @@ pipeline {
                     // Set wireshark properties on testManager
                     testManager.wiresharkScope = params.WIRESHARK_LOGGING_SCOPE
                     testManager.clearSuccessfulWiresharkLogs = params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS
+
+                    // Configure ECAT sessions with Wireshark settings from params
+                    ECAT_TEST_SESSION = HW_TEST_SESSION.override(
+                        useWiresharkLogging: params.WIRESHARK_LOGGING
+                    )
                 }
             }
         }
@@ -802,7 +859,7 @@ pipeline {
                                                 venv.run("poetry run poe install-wheel")
                                             }
                                             withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
-                                                testManager.runTestSession(new TestSession(markers: win_marker))
+                                                testManager.runTestSession(TEST_SESSION.override(markers: win_marker))
                                             }
                                         }
                                     }
@@ -889,7 +946,7 @@ pipeline {
                                                 venv.run("poetry run poe install-wheel")
                                             }
                                             withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
-                                                testManager.runTestSession(new TestSession(markers: lin_marker))
+                                                testManager.runTestSession(TEST_SESSION.override(markers: lin_marker))
                                             }
                                         }
                                     }
@@ -913,7 +970,7 @@ pipeline {
                                             venvManager.forPythons(testManager.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            testManager.runTestSession(new TestSession(markers: 'virtual', setup: 'summit_testing_framework.setups.virtual_drive.TESTS_SETUP'))
+                                            testManager.runTestSession(TEST_SESSION.override(markers: 'virtual', setup: 'summit_testing_framework.setups.virtual_drive.TESTS_SETUP'))
                                         }
                                     }
                                     post {
@@ -1044,9 +1101,8 @@ pipeline {
                             steps {
                                 /* Windows docker did not have npcap/winpcap installed so tests that require pcap are
                                 run on ethercat machine */
-                                    script {
-                                    testManager.runTestSession(new TestSession(markers: "pcap"
-                                    ))
+                                script {
+                                    testManager.runTestSession(HW_TEST_SESSION.override(markers: "pcap"))
                                 }
                             }
                         }
@@ -1058,9 +1114,9 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(new TestSession(markers: "ethercat",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP",
-                                        useWiresharkLogging: params.WIRESHARK_LOGGING
+                                    testManager.runTestSession(ECAT_TEST_SESSION.override(
+                                        markers: "ethercat",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP"
                                     ))
                                 }
                             }
@@ -1073,9 +1129,9 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(new TestSession(markers: "ethercat",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP",
-                                        useWiresharkLogging: params.WIRESHARK_LOGGING
+                                    testManager.runTestSession(ECAT_TEST_SESSION.override(
+                                        markers: "ethercat",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP"
                                     ))
                                 }
                             }
@@ -1088,9 +1144,9 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(new TestSession(markers: "multislave",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP",
-                                        useWiresharkLogging: params.WIRESHARK_LOGGING
+                                    testManager.runTestSession(ECAT_TEST_SESSION.override(
+                                        markers: "multislave",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP"
                                     ))
                                 }
                             }
@@ -1103,9 +1159,9 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(new TestSession(markers: "fsoe",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE1_SETUP",
-                                        useWiresharkLogging: params.WIRESHARK_LOGGING
+                                    testManager.runTestSession(ECAT_TEST_SESSION.override(
+                                        markers: "fsoe",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE1_SETUP"
                                     ))
                                 }
                             }
@@ -1118,9 +1174,9 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(new TestSession(markers: "fsoe",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP",
-                                        useWiresharkLogging: params.WIRESHARK_LOGGING
+                                    testManager.runTestSession(ECAT_TEST_SESSION.override(
+                                        markers: "fsoe",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP"
                                     ))
                                 }
                             }
@@ -1175,7 +1231,8 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(new TestSession(markers: "canopen",
+                                    testManager.runTestSession(HW_TEST_SESSION.override(
+                                        markers: "canopen",
                                         setup: "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP"
                                     ))
                                 }
@@ -1189,7 +1246,8 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(new TestSession(markers: "canopen",
+                                    testManager.runTestSession(HW_TEST_SESSION.override(
+                                        markers: "canopen",
                                         setup: "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP"
                                     ))
                                 }
@@ -1203,7 +1261,8 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(new TestSession(markers: "ethernet",
+                                    testManager.runTestSession(HW_TEST_SESSION.override(
+                                        markers: "ethernet",
                                         setup: "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP",
                                         useWiresharkLogging: params.WIRESHARK_LOGGING
                                     ))
@@ -1218,7 +1277,8 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestSession(new TestSession(markers: "ethernet",
+                                    testManager.runTestSession(HW_TEST_SESSION.override(
+                                        markers: "ethernet",
                                         setup: "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP",
                                         useWiresharkLogging: params.WIRESHARK_LOGGING
                                     ))
