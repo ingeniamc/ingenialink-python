@@ -454,7 +454,10 @@ class TestSession implements Serializable {
         'clearSuccessfulWiresharkLogs',
         'startWiresharkTimeoutS',
         'importMode',
-        'logCli'
+        'logCli',
+        'covPath',
+        'junitPrefix',
+        'jobName'
     ]
     
     String markers = null
@@ -467,6 +470,9 @@ class TestSession implements Serializable {
     BigDecimal startWiresharkTimeoutS = null
     String importMode = null
     Boolean logCli = null
+    String covPath = null
+    String junitPrefix = null
+    String jobName = null
 
     TestSession(Map args = [:]) {
         args.each { name, value ->
@@ -496,6 +502,34 @@ class TestSession implements Serializable {
         children.each { child ->
             child.setAttributeInCascade(attributes)
         }
+    }
+
+    /**
+     * Generate the list of arguments for the pytest command.
+     * 
+     * @return List of arguments as strings
+     */
+    List<String> getTestArgs() {
+         def args = [
+            "--import-mode=${this.importMode}",
+            "--cov=${this.covPath}",
+            "--junitxml=pytest_reports/junit-${this.junitPrefix}.xml",
+            "--junit-prefix=${this.junitPrefix}",
+            "-m \"${this.markers}\"",
+            "--job_name=\"${this.jobName}-${this.setup}\""
+        ]
+        
+        if (this.setup) {
+            args.add("--setup ${this.setup}")
+        }
+        if (this.useWiresharkLogging) {
+            args.add("--run_wireshark")
+        }
+        if (this.logCli) {
+            args.add("-o log_cli=True")
+        }
+        
+        return args
     }
 
     /**
@@ -659,23 +693,12 @@ class PyTestManager {
                                 covPath = "${venv.name}\\lib\\site-packages\\ingenialink"
                             }
 
-                            def testArgs = [
-                                "--import-mode=${session.importMode}",
-                                "--cov=${covPath}",
-                                "--junitxml=pytest_reports/junit-${venv.version}.xml",
-                                "--junit-prefix=${venv.version}",
-                                "-m \"${session.markers}\"",
-                                "--job_name=\"${this.pipeline.env.JOB_NAME}-#${this.pipeline.env.BUILD_NUMBER}-${session.setup}\""
-                            ]
-                            if (session.setup) {
-                                testArgs.add("--setup ${session.setup}")
-                            }
-                            if (session.useWiresharkLogging) {
-                                testArgs.add("--run_wireshark")
-                            }
-                            if (session.logCli) {
-                                testArgs.add("-o log_cli=True")
-                            }
+                            def executionSession = session.override(
+                                covPath: covPath,
+                                junitPrefix: venv.version
+                            )
+
+                            def testArgs = executionSession.getTestArgs()
                             def testArgsStr = testArgs.join(' ')
                             venv.run("poetry run poe tests ${testArgsStr}")
                         } catch (err) {
@@ -789,10 +812,11 @@ pipeline {
                         }
                     }
 
-                    // Set wireshark properties on TEST_SESSIONS
+                    // Set dynamic properties according to job and parameters
                     TEST_SESSIONS.setAttributeInCascade(
                         wiresharkScope: params.WIRESHARK_LOGGING_SCOPE,
-                        clearSuccessfulWiresharkLogs: params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS
+                        clearSuccessfulWiresharkLogs: params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS,
+                        jobName: "${env.JOB_NAME}-#${env.BUILD_NUMBER}"
                     )
 
                     // Configure ECAT sessions with Wireshark settings from params
