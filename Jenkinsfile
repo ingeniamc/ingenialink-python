@@ -676,6 +676,7 @@ class PyTestManager {
     def runTestSession(TestSession session) {
         try {
             this.pipeline.timeout(time: 1, unit: 'HOURS') {
+                this.clearWiresharkLogs(session.wiresharkDir)
                 this.clearCoverageFiles()
                 def firstIteration = true
                 this.venvManager.forPythons(session.runPythonVersions) { venv ->
@@ -1131,13 +1132,6 @@ pipeline {
                         label ECAT_NODE
                     }
                     stages {
-                        stage ("Clear Wireshark logs") {
-                            steps {
-                                script {
-                                    testManager.clearWiresharkLogs()
-                                }
-                            }
-                        }
                         stage('Unstash')
                         {
                             steps {
