@@ -867,7 +867,7 @@ pipeline {
                                         script {
                                             /* Windows docker does not have npcap/winpcap installed so runs no_pcap tests */
                                             def win_marker = PyTestManager.markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
-                                            venvManager.forPythons(testManager.runPythonVersions) { venv ->
+                                            venvManager.forPythons(TEST_SESSIONS.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
                                             withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
@@ -914,7 +914,7 @@ pipeline {
                                     steps {
                                         script {
                                             venvManager.createPoetryEnvironments(
-                                              pythonVersions: ([DEFAULT_PYTHON_VERSION] as Set) + testManager.runPythonVersions
+                                              pythonVersions: ([DEFAULT_PYTHON_VERSION] as Set) + TEST_SESSIONS.runPythonVersions
                                             )
                                         }
                                     }
@@ -954,7 +954,7 @@ pipeline {
                                     steps {
                                         script {
                                             def lin_marker = PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
-                                            venvManager.forPythons(testManager.runPythonVersions) { venv ->
+                                            venvManager.forPythons(TEST_SESSIONS.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
                                             withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
@@ -979,7 +979,7 @@ pipeline {
                                     }
                                     steps {
                                         script {
-                                            venvManager.forPythons(testManager.runPythonVersions) { venv ->
+                                            venvManager.forPythons(TEST_SESSIONS.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
                                             testManager.runTestSession(TEST_SESSIONS.override(markers: 'virtual', setup: 'summit_testing_framework.setups.virtual_drive.TESTS_SETUP'))
@@ -1098,7 +1098,7 @@ pipeline {
                             steps {
                                 script {
                                     venvManager.createPoetryEnvironments(
-                                        pythonVersions: testManager.runPythonVersions,
+                                        pythonVersions: ECAT_TEST_SESSIONS.runPythonVersions,
                                         additionalCommands: ["poetry run poe install-wheel"]
                                     )
                                 }
@@ -1229,7 +1229,7 @@ pipeline {
                             steps {
                                 script {
                                     venvManager.createPoetryEnvironments(
-                                        pythonVersions: testManager.runPythonVersions,
+                                        pythonVersions: HW_TEST_SESSIONS.runPythonVersions,
                                         additionalCommands: ["poetry run poe install-wheel"]
                                     )
                                 }
