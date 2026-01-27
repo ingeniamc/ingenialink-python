@@ -439,12 +439,24 @@ class VEnvManager {
     }
 }
 
+
+/**
+ * TestSession - Configuration for a test session
+ * 
+ * This class encapsulates the configuration options for a test session,
+ * including pytest markers, setup configurations, Wireshark logging options,
+ * Python versions to test against, and coverage settings.
+ * 
+ * It supports cascading/inheriting properties to child sessions, allowing
+ * for hierarchical test session definitions.
+ */
 class TestSession implements Serializable {
     TestSession parent = null
     List<TestSession> children = []
     
-    // Whitelist of properties to cascade/inherit.
-    // Explicit list avoids 'this.properties' reflection security warnings.
+    /**
+     * List of configuration attributes that can be set and cascaded to children.
+     */
     private static final List<String> CONFIG_ATTRS = [
         'markers', 
         'setup', 
@@ -461,18 +473,80 @@ class TestSession implements Serializable {
         'setAttApiToken'
     ]
 
-    String markers = null
-    String setup = null
-    Boolean useWiresharkLogging = null
+    /**
+     * Python versions to run tests against.
+     * Default: null
+     * Example: ["3.9", "3.10"] as Set
+     */
     Set runPythonVersions = null
-    String wiresharkScope = null
-    String wiresharkDir = null
-    Boolean clearSuccessfulWiresharkLogs = null
-    BigDecimal startWiresharkTimeoutS = null
+
+    /**
+     * Pytest import mode passed as `--import-mode`.
+     * Default: null (commonly set to 'importlib')
+     */
     String importMode = null
-    Boolean logCli = null
+
+    /**
+     * Pytest marker expression used to select tests.
+     * Default: null
+     * Example: "ethercat and canopen"
+     */
+    String markers = null
+
+    /**
+     * Enables pytest's `log_cli` option to stream logs to the console.
+     * Default: false
+     */
+    Boolean logCli = false
+
+    /**
+     * Coverage-related options
+     * `useCoverage`: whether to collect coverage for this session
+     * Default: true
+     */
+    Boolean useCoverage = true
+
+    /**
+     * Package name to measure coverage for. Used to build the `--cov` path.
+     * Default: null
+     * Example: "my_library"
+     */
+    String covPackageName = null
+
+    
+    ///// Summit Testing Framework options /////
+
+    /**
+     * Fully-qualified name of the test setup to use.
+     * Default: null
+     * Example: "tests.setups.rack_specifiers.ECAT_EVE_SETUP"
+     */
+    String setup = null
+
+    /**
+     * Wireshark capture options
+     * `useWiresharkLogging`: enable capture during tests
+     * `wiresharkScope`: 'function' | 'module' | 'session'
+     * `wiresharkDir`: directory where pcaps are written (relative to workspace)
+     * `clearSuccessfulWiresharkLogs`: if true, remove pcaps on success
+     * `startWiresharkTimeoutS`: seconds to wait for Wireshark to start
+     */
+    Boolean useWiresharkLogging = false
+    String wiresharkScope = "session"
+    String wiresharkDir = "wireshark"
+    Boolean clearSuccessfulWiresharkLogs = true
+    BigDecimal startWiresharkTimeoutS = 10.0
+
+    /**
+     * Job name. Used to identify the job in test reports, infrastructure, logs...
+     * Example: "my-project@my_branch#2",
+     */
     String jobName = null
-    String covPackageName = "ingenialink"
+
+    /**
+     * Whether to set ATT_API_KEY from Jenkins credentials.
+     * Default: false
+     */
     Boolean setAttApiToken = false
 
     TestSession(Map args = [:]) {
@@ -545,21 +619,23 @@ class TestSession implements Serializable {
      * @return List of arguments as strings
      */
     List<String> getTestArgs(Map venv) {
-        def covPath
-        if (venv.isUnix) {
-            covPath = "${venv.name}/lib/python${venv.version}/site-packages/${this.covPackageName}"
-        } else {
-            covPath = "${venv.name}\\lib\\site-packages\\${this.covPackageName}"
+        def args = []
+
+        if (this.useCoverage) {
+            def covPath
+            if (venv.isUnix) {
+                covPath = "${venv.name}/lib/python${venv.version}/site-packages/${this.covPackageName}"
+            } else {
+                covPath = "${venv.name}\\lib\\site-packages\\${this.covPackageName}"
+            }
+            args.add("--cov=${covPath}")
         }
 
-         def args = [
-            "--import-mode=${this.importMode}",
-            "--cov=${covPath}",
-            "--junitxml=pytest_reports/junit-${venv.version}.xml",
-            "--junit-prefix=${venv.version}",
-            "-m \"${this.markers}\"",
-            "--job_name=\"${this.jobName}-${this.setup}\""
-        ]
+        args.add("--import-mode=${this.importMode}")
+        args.add("--junitxml=pytest_reports/junit-${venv.version}.xml")
+        args.add("--junit-prefix=${venv.version}")
+        args.add("-m \"${this.markers}\"")
+        args.add("--job_name=\"${this.jobName}-${this.setup}\"")
         
         if (this.setup) {
             args.add("--setup ${this.setup}")
@@ -602,8 +678,8 @@ class TestSession implements Serializable {
 }
 
 class PyTestManager {
-    def venvManager
-    def pipeline
+    private def venvManager
+    private def pipeline
     private List coverageStashes = []
 
     PyTestManager(Map args = [pipeline: null, venvManager: null]) {
@@ -765,6 +841,7 @@ PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvM
 
 /* Define default base test sessions to be used/overridden in stages */
 TestSession TEST_SESSIONS = new TestSession(
+    covPackageName: "ingenialink",
     wiresharkScope: "",
     wiresharkDir: "wireshark",
     clearSuccessfulWiresharkLogs: true,
