@@ -890,7 +890,6 @@ TestSession TEST_SESSIONS = new TestSession(
     covPackageName: "ingenialink",
     wiresharkScope: "",
     wiresharkDir: "wireshark",
-    clearSuccessfulWiresharkLogs: true,
     startWiresharkTimeoutS: 10.0,
     importMode: "importlib",
     logCli: true,
