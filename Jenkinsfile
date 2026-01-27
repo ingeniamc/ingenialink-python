@@ -461,6 +461,7 @@ class TestSession implements Serializable {
         'markers', 
         'setup', 
         'useWiresharkLogging', 
+        'testTimeoutMinutes',
         'runPythonVersions',
         'wiresharkScope',
         'wiresharkDir',
@@ -542,6 +543,13 @@ class TestSession implements Serializable {
      * Example: "my-project@my_branch#2",
      */
     String jobName = null
+
+    /**
+     * Timeout for a test session in minutes.
+     * Default: 60
+     * Can be set via the Jenkins parameter `TEST_TIMEOUT_MINUTES`.
+     */
+    Integer testTimeoutMinutes = 60
 
     /**
      * Whether to set ATT_API_KEY from Jenkins credentials.
@@ -793,7 +801,7 @@ class PyTestManager {
      */
     def runTestSession(TestSession session) {
         try {
-            this.pipeline.timeout(time: 1, unit: 'HOURS') {
+            this.pipeline.timeout(time: session.timeoutMinutes, unit: 'MINUTES') {
                 this.clearWiresharkLogs(session.wiresharkDir)
                 this.clearCoverageFiles()
                 def firstIteration = true
