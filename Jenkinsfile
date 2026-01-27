@@ -801,9 +801,13 @@ class PyTestManager {
      */
     def runTestSession(TestSession session) {
         try {
-            this.pipeline.timeout(time: session.timeoutMinutes, unit: 'MINUTES') {
-                this.clearWiresharkLogs(session.wiresharkDir)
-                this.clearCoverageFiles()
+            this.pipeline.timeout(time: timeoutMinutes, unit: 'MINUTES') {
+                if (session.useWiresharkLogging) {
+                    this.clearWiresharkLogs(session.wiresharkDir)
+                }
+                if (session.useCoverage) {
+                    this.clearCoverageFiles()
+                }
                 def firstIteration = true
                 this.venvManager.forPythons(session.runPythonVersions) { venv ->
                     this.pipeline.withEnv(session.getEnvVars()) {
@@ -823,7 +827,7 @@ class PyTestManager {
                             this.pipeline.unstable(message: "Tests failed")
                         } finally {
                             this.publishAndCleanupJunitReports()
-                            if (firstIteration) {
+                            if (firstIteration && session.useCoverage) {
                                 this.stashCoverageFile(session.setup)
                                 firstIteration = false
                             }
@@ -832,9 +836,13 @@ class PyTestManager {
                 }
             }
         } finally {
-            this.archiveWiresharkLogs(session.wiresharkDir)
-            this.clearWiresharkLogs(session.wiresharkDir)
-            this.clearCoverageFiles()
+            if (session.useWiresharkLogging) {
+                this.archiveWiresharkLogs(session.wiresharkDir)
+                this.clearWiresharkLogs(session.wiresharkDir)
+            }
+            if (session.useCoverage) {
+                this.clearCoverageFiles()
+            }
         }
     }
 }
