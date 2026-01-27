@@ -471,6 +471,7 @@ class TestSession implements Serializable {
         'logCli',
         'jobName',
         'covPackageName',
+        'runTestBaseCommand',
         'setAttApiToken'
     ]
 
@@ -482,17 +483,31 @@ class TestSession implements Serializable {
     Set runPythonVersions = null
 
     /**
-     * Pytest import mode passed as `--import-mode`.
-     * Default: null (commonly set to 'importlib')
-     */
-    String importMode = null
-
-    /**
      * Pytest marker expression used to select tests.
      * Default: null
      * Example: "ethercat and canopen"
      */
     String markers = null
+
+    /**
+     * Timeout for a test session in minutes.
+     * Default: 60
+     * Can be set via the Jenkins parameter `TEST_TIMEOUT_MINUTES`.
+     */
+    Integer testTimeoutMinutes = 60
+
+    /**
+     * Base command used to run tests inside the virtualenv. The test arguments
+     * from `getTestArgs` are appended to this base command.
+     * Default: 'poetry run poe tests'
+     */
+    String runTestBaseCommand = 'poetry run poe tests'
+
+    /**
+     * Pytest import mode passed as `--import-mode`.
+     * Default: null (commonly set to 'importlib')
+     */
+    String importMode = null
 
     /**
      * Enables pytest's `log_cli` option to stream logs to the console.
@@ -543,13 +558,6 @@ class TestSession implements Serializable {
      * Example: "my-project@my_branch#2",
      */
     String jobName = null
-
-    /**
-     * Timeout for a test session in minutes.
-     * Default: 60
-     * Can be set via the Jenkins parameter `TEST_TIMEOUT_MINUTES`.
-     */
-    Integer testTimeoutMinutes = 60
 
     /**
      * Whether to set ATT_API_KEY from Jenkins credentials.
@@ -801,7 +809,7 @@ class PyTestManager {
      */
     def runTestSession(TestSession session) {
         try {
-            this.pipeline.timeout(time: timeoutMinutes, unit: 'MINUTES') {
+            this.pipeline.timeout(time: session.testTimeoutMinutes, unit: 'MINUTES') {
                 if (session.useWiresharkLogging) {
                     this.clearWiresharkLogs(session.wiresharkDir)
                 }
@@ -818,10 +826,10 @@ class PyTestManager {
                             def credentials = session.getCredentialsSpec(this.pipeline)
                             if (credentials) {
                                 this.pipeline.withCredentials(credentials) {
-                                    venv.run("poetry run poe tests ${testArgsStr}")
+                                    venv.run("${session.runTestBaseCommand} ${testArgsStr}")
                                 }
                             } else {
-                                venv.run("poetry run poe tests ${testArgsStr}")
+                                venv.run("${session.runTestBaseCommand} ${testArgsStr}")
                             }
                         } catch (err) {
                             this.pipeline.unstable(message: "Tests failed")
