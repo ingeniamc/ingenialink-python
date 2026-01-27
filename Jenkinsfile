@@ -458,20 +458,21 @@ class TestSession implements Serializable {
      * List of configuration attributes that can be set and cascaded to children.
      */
     private static final List<String> CONFIG_ATTRS = [
-        'markers', 
-        'setup', 
-        'useWiresharkLogging', 
-        'testTimeoutMinutes',
         'runPythonVersions',
+        'markers',
+        'testTimeoutMinutes',
+        'runTestBaseCommand',
+        'importMode',
+        'logCli',
+        'useCoverage',
+        'covPackageName',
+        'setup',
+        'useWiresharkLogging',
         'wiresharkScope',
         'wiresharkDir',
         'clearSuccessfulWiresharkLogs',
         'startWiresharkTimeoutS',
-        'importMode',
-        'logCli',
         'jobName',
-        'covPackageName',
-        'runTestBaseCommand',
         'setAttApiToken'
     ]
 
@@ -691,6 +692,26 @@ class TestSession implements Serializable {
         
         return child
     }
+
+    /**
+     * Return a map with the current configuration attributes and their values.
+     * Useful for debugging and printing session configuration in pipeline logs.
+     */
+    Map getConfigMap() {
+        def m = [:]
+        CONFIG_ATTRS.each { name ->
+            m[name] = this."$name"
+        }
+        return m
+    }
+
+    /**
+     * Summary of session configuration.
+     */
+    String configSummary() {
+        // Preserve CONFIG_ATTRS ordering and emit one key=value per line
+        return CONFIG_ATTRS.collect { name -> "${name}=${this."$name"}" }.join('\n')
+    }
 }
 
 class PyTestManager {
@@ -809,6 +830,7 @@ class PyTestManager {
      */
     def runTestSession(TestSession session) {
         try {
+            this.pipeline.echo("Starting test session with config:\n${session.configSummary()}")
             this.pipeline.timeout(time: session.testTimeoutMinutes, unit: 'MINUTES') {
                 if (session.useWiresharkLogging) {
                     this.clearWiresharkLogs(session.wiresharkDir)
@@ -962,6 +984,8 @@ pipeline {
                     ETH_TEST_SESSIONS.setAttributeInCascade(
                         useWiresharkLogging: params.WIRESHARK_LOGGING
                     )
+
+                    echo("Test sessions have been configured to run with the following base configuration:\n${TEST_SESSIONS.configSummary()}")
                 }
             }
         }
