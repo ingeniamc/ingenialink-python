@@ -889,7 +889,7 @@ class PyTestManager {
         // Publish junit reports
         this.pipeline.junit "pytest_reports/*.xml"
         
-        // Delete the junit after publishing it so it not re-published on the next stage
+        // Delete the junit after publishing it so it is not re-published on the next stage
         if (this.venvManager.isUnixNode()) {
             this.pipeline.sh "rm -f pytest_reports/*.xml"
         } else {
@@ -907,6 +907,11 @@ class PyTestManager {
      * @param session TestSession configuration object
      */
     def runTestSession(TestSession session) {
+        // Validate that uid is set
+        if (!session.uid) {
+            throw new IllegalArgumentException("TestSession uid must be set before running tests")
+        }
+        
         try {
             this.pipeline.echo("Starting test session with config:\n${session.configSummary()}")
             this.pipeline.timeout(time: session.testTimeoutMinutes, unit: 'MINUTES') {
@@ -1180,7 +1185,7 @@ pipeline {
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            testManager.runTestSession(TEST_SESSIONS.override(markers: win_marker))
+                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "no_pcap", markers: win_marker))
                                         }
                                     }
                                 }
@@ -1252,7 +1257,7 @@ pipeline {
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            testManager.runTestSession(TEST_SESSIONS.override(markers: lin_marker))
+                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "pcap", markers: lin_marker))
                                         }
                                     }
                                     post {
@@ -1275,7 +1280,7 @@ pipeline {
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            testManager.runTestSession(TEST_SESSIONS.override(markers: 'virtual', setup: 'summit_testing_framework.setups.virtual_drive.TESTS_SETUP'))
+                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "virtual_drive", markers: 'virtual', setup: 'summit_testing_framework.setups.virtual_drive.TESTS_SETUP'))
                                         }
                                     }
                                     post {
