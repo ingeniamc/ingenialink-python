@@ -107,7 +107,7 @@ class VEnvManager {
     }
 
     /**
-    * Convert a single Python version to its corresponding virtual environment name.
+    * Convert multiple Python versions to their corresponding virtual environment names.
     * Uses the convention: .venv{pythonVersion} (e.g., ".venv3.9")
     * 
     * Arguments:
@@ -794,7 +794,7 @@ class PyTestManager {
         return this.coverageStashes as Set
     }
 
-    static def markersExcludeString(excludes = []) {
+    static def markersExcludeString(excludes) {
         return excludes.collect { "not ${it}" }.join(' and ')
     }
 
