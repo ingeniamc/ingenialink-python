@@ -1021,37 +1021,40 @@ pipeline {
         stage("Set env") {
             steps {
                 script {
+                    // Determine which Python versions to run tests against based on branch and parameters
+                    Set pythonVersions
                     if (env.BRANCH_NAME == 'master') {
-                        TEST_SESSIONS.setAttributeInCascade(runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames(ALL_PYTHON_VERSIONS))
+                        pythonVersions = ALL_PYTHON_VERSIONS
                     } else if (env.BRANCH_NAME.startsWith('release/')) {
-                        TEST_SESSIONS.setAttributeInCascade(runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames(ALL_PYTHON_VERSIONS))
+                        pythonVersions = ALL_PYTHON_VERSIONS
                     } else {
                         if (env.PYTHON_VERSIONS == "MIN_MAX") {
-                            TEST_SESSIONS.setAttributeInCascade(runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames([PYTHON_VERSION_MIN, PYTHON_VERSION_MAX] as Set))
+                            pythonVersions = [PYTHON_VERSION_MIN, PYTHON_VERSION_MAX] as Set
                         } else if (env.PYTHON_VERSIONS == "MIN") {
-                            TEST_SESSIONS.setAttributeInCascade(runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames([PYTHON_VERSION_MIN] as Set))
+                            pythonVersions = [PYTHON_VERSION_MIN] as Set
                         } else if (env.PYTHON_VERSIONS == "MAX") {
-                            TEST_SESSIONS.setAttributeInCascade(runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames([PYTHON_VERSION_MAX] as Set))
+                            pythonVersions = [PYTHON_VERSION_MAX] as Set
                         } else if (env.PYTHON_VERSIONS == "All") {
-                            TEST_SESSIONS.setAttributeInCascade(runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames(ALL_PYTHON_VERSIONS))
+                            pythonVersions = ALL_PYTHON_VERSIONS
                         } else { // Branch-indexing
-                            TEST_SESSIONS.setAttributeInCascade(runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames([PYTHON_VERSION_MIN] as Set))
+                            pythonVersions = [PYTHON_VERSION_MIN] as Set
                         }
                     }
 
                     // Set dynamic properties according to job and parameters
                     TEST_SESSIONS.setAttributeInCascade(
+                        runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames(pythonVersions),
+                        jobName: "${env.JOB_NAME}-#${env.BUILD_NUMBER}",
                         wiresharkScope: params.WIRESHARK_LOGGING_SCOPE,
                         clearSuccessfulWiresharkLogs: params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS,
-                        jobName: "${env.JOB_NAME}-#${env.BUILD_NUMBER}"
                     )
 
-                    // Configure ECAT sessions with Wireshark settings from params
+                    // Configure if ECAT and ETH sessions use Wireshark logging based on parameter
                     ECAT_TEST_SESSIONS.setAttributeInCascade(
-                        useWiresharkLogging: params.WIRESHARK_LOGGING
+                        useWiresharkLogging: params.WIRESHARK_LOGGING,
                     )
                     ETH_TEST_SESSIONS.setAttributeInCascade(
-                        useWiresharkLogging: params.WIRESHARK_LOGGING
+                        useWiresharkLogging: params.WIRESHARK_LOGGING,
                     )
 
                     echo("Test sessions have been configured to run with the following base configuration:\n${TEST_SESSIONS.configSummary()}")
