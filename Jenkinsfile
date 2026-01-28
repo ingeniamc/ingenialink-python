@@ -501,6 +501,7 @@ class TestSession implements Serializable {
      * List of configuration attributes that can be set and cascaded to children.
      */
     private static final List<String> CONFIG_ATTRS = [
+        'uid',
         'runInVirtualEnvs',
         'markers',
         'testTimeoutMinutes',
@@ -518,6 +519,13 @@ class TestSession implements Serializable {
         'jobName',
         'setAttApiToken'
     ]
+
+    /**
+     * Unique identifier for this test session.
+     * Used for identifying stashes, logs, and reports (e.g., "ethercat_everest", "ethernet_pcap")
+     * Default: null
+     */
+    String uid = null
 
     /**
      * Virtual environment names to run tests against.
@@ -832,27 +840,21 @@ class PyTestManager {
      * Stash coverage file for later merging.
      * Moves the coverage file to a unique stash name to avoid collisions and stashes it.
      * 
-     * @param setup The name of the setup (e.g. 'virtual', 'ethernet') used as suffix for the stash name.
+     * @param uid Unique identifier of the test session
+     * @param venvName Name of the virtual environment (e.g., '.venv3.9')
      */
-    private def stashCoverageFile(String setup) {
+    private def stashCoverageFile(String uid, String venvName) {
         def workingFolder = this.venvManager.getWorkingFolder()
         // Copy coverage file back from working folder if it differs from workspace
         if (workingFolder != this.pipeline.env.WORKSPACE) {
             this.venvManager.copyFromWorkingFolder(".coverage")
         }
 
-        // Decide the stash name
-        def base_stash_name
-        if (setup != null) {
-            base_stash_name = ".coverage_${setup}"
-        } else {
-            // No setup specified, use generic name and fix name collision below
-            base_stash_name = ".coverage"
-        }
+        // Build stash name with uid and venv name to ensure uniqueness
+        def base_stash_name = ".coverage_${uid}_${venvName}"
         
+        // Handle stash name collision by appending index as fallback
         def coverage_stash = base_stash_name
-        
-        // Handle stash name collision by appending index
         int index = 1
         while (this.coverageStashes.contains(coverage_stash)) {
             coverage_stash = "${base_stash_name}_${index}"
@@ -937,7 +939,7 @@ class PyTestManager {
                         } finally {
                             this.publishAndCleanupJunitReports()
                             if (firstIteration && session.useCoverage) {
-                                this.stashCoverageFile(session.setup)
+                                this.stashCoverageFile(session.uid, venv.name)
                                 firstIteration = false
                             }
                         }
@@ -1398,7 +1400,7 @@ pipeline {
                                 /* Windows docker did not have npcap/winpcap installed so tests that require pcap are
                                 run on ethercat machine */
                                 script {
-                                    testManager.runTestSession(ETH_TEST_SESSIONS.override(markers: "pcap"))
+                                    testManager.runTestSession(ETH_TEST_SESSIONS.override(uid: "pcap", markers: "pcap"))
                                 }
                             }
                         }
@@ -1411,6 +1413,7 @@ pipeline {
                             steps {
                                 script {
                                     testManager.runTestSession(ECAT_TEST_SESSIONS.override(
+                                        uid: "ethercat_everest",
                                         markers: "ethercat",
                                         setup: "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP"
                                     ))
@@ -1426,6 +1429,7 @@ pipeline {
                             steps {
                                 script {
                                     testManager.runTestSession(ECAT_TEST_SESSIONS.override(
+                                        uid: "ethercat_capitan",
                                         markers: "ethercat",
                                         setup: "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP"
                                     ))
@@ -1441,6 +1445,7 @@ pipeline {
                             steps {
                                 script {
                                     testManager.runTestSession(ECAT_TEST_SESSIONS.override(
+                                        uid: "ethercat_multislave",
                                         markers: "multislave",
                                         setup: "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP"
                                     ))
@@ -1456,6 +1461,7 @@ pipeline {
                             steps {
                                 script {
                                     testManager.runTestSession(ECAT_TEST_SESSIONS.override(
+                                        uid: "fsoe_phase1",
                                         markers: "fsoe",
                                         setup: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE1_SETUP"
                                     ))
@@ -1471,6 +1477,7 @@ pipeline {
                             steps {
                                 script {
                                     testManager.runTestSession(ECAT_TEST_SESSIONS.override(
+                                        uid: "fsoe_phase2",
                                         markers: "fsoe",
                                         setup: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP"
                                     ))
@@ -1528,6 +1535,7 @@ pipeline {
                             steps {
                                 script {
                                     testManager.runTestSession(CAN_TEST_SESSIONS.override(
+                                        uid: "canopen_everest",
                                         markers: "canopen",
                                         setup: "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP"
                                     ))
@@ -1543,6 +1551,7 @@ pipeline {
                             steps {
                                 script {
                                     testManager.runTestSession(CAN_TEST_SESSIONS.override(
+                                        uid: "canopen_capitan",
                                         markers: "canopen",
                                         setup: "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP"
                                     ))
@@ -1558,6 +1567,7 @@ pipeline {
                             steps {
                                 script {
                                     testManager.runTestSession(ETH_TEST_SESSIONS.override(
+                                        uid: "ethernet_everest",
                                         markers: "ethernet",
                                         setup: "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP"
                                     ))
@@ -1573,6 +1583,7 @@ pipeline {
                             steps {
                                 script {
                                     testManager.runTestSession(ETH_TEST_SESSIONS.override(
+                                        uid: "ethernet_capitan",
                                         markers: "ethernet",
                                         setup: "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP"
                                     ))
