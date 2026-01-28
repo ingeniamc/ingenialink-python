@@ -485,10 +485,12 @@ class PyTestManager {
                             // Delete the junit after publishing it so it not re-published on the next stage
                             pipeline.bat "del /S /Q pytest_reports\\*.xml"
                             if (firstIteration) {
-                                def coverage_stash = ".coverage_${setup_name}"
-                                pipeline.bat "move .coverage ${coverage_stash}"
-                                pipeline.stash includes: coverage_stash, name: coverage_stash
-                                coverageStashes.add(coverage_stash)
+                                // Sanitize setup_name to create valid filename and stash name
+                                def sanitized_name = setup_name.replaceAll('[.@]', '_')
+                                def coverage_file = ".coverage_${sanitized_name}"
+                                pipeline.bat "move .coverage ${coverage_file}"
+                                pipeline.stash includes: coverage_file, name: coverage_file
+                                coverageStashes.add(coverage_file)
                                 firstIteration = false
                             }
                         }
