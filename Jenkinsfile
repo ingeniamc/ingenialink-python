@@ -603,14 +603,16 @@ class TestSession implements Serializable {
      */
     List<String> getEnvVars() {
         def envList = []
-        if (this.wiresharkScope != null) {
-            envList.add("WIRESHARK_SCOPE=${this.wiresharkScope}")
-        }
-        if (this.clearSuccessfulWiresharkLogs != null) {
-            envList.add("CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${this.clearSuccessfulWiresharkLogs}")
-        }
-        if (this.startWiresharkTimeoutS != null) {
-            envList.add("START_WIRESHARK_TIMEOUT_S=${this.startWiresharkTimeoutS}")
+        if (this.useWiresharkLogging) {
+            if (this.wiresharkScope) {
+                envList.add("WIRESHARK_SCOPE=${this.wiresharkScope}")
+            }
+            if (this.clearSuccessfulWiresharkLogs) {
+                envList.add("CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${this.clearSuccessfulWiresharkLogs}")
+            }
+            if (this.startWiresharkTimeoutS) {
+                envList.add("START_WIRESHARK_TIMEOUT_S=${this.startWiresharkTimeoutS}")
+            }
         }
         return envList
     }
@@ -639,6 +641,9 @@ class TestSession implements Serializable {
         def args = []
 
         if (this.useCoverage) {
+            if (!this.covPackageName) {
+                throw new IllegalStateException("covPackageName must be set when useCoverage is true")
+            }
             def covPath
             if (venv.isUnix) {
                 covPath = "${venv.name}/lib/python${venv.version}/site-packages/${this.covPackageName}"
@@ -656,10 +661,16 @@ class TestSession implements Serializable {
         if (this.markers) {
             args.add("-m \"${this.markers}\"")
         }
-        args.add("--job_name=\"${this.jobName}-${this.setup}\"")
+        if (this.jobName) {
+            if (this.setup) {
+                args.add("--job_name=\"${this.jobName}-${this.setup}-${venv.version}\"")
+            } else {
+                args.add("--job_name=\"${this.jobName}-${venv.version}\"")
+            }
+        }
         
         if (this.setup) {
-            args.add("--setup ${this.setup}")
+            args.add("--setup=${this.setup}")
         }
         if (this.useWiresharkLogging) {
             args.add("--run_wireshark")
@@ -776,7 +787,20 @@ class PyTestManager {
      */
     private def stashCoverageFile(String setup) {
         def workingFolder = this.venvManager.getWorkingFolder()
-        def base_stash_name = ".coverage_${setup}"
+        // Copy coverage file back from working folder if it differs from workspace
+        if (workingFolder != this.pipeline.env.WORKSPACE) {
+            this.venvManager.copyFromWorkingFolder(".coverage")
+        }
+
+        // Decide the stash name
+        def base_stash_name
+        if (setup != null) {
+            base_stash_name = ".coverage_${setup}"
+        } else {
+            // No setup specified, use generic name and fix name collision below
+            base_stash_name = ".coverage"
+        }
+        
         def coverage_stash = base_stash_name
         
         // Handle stash name collision by appending index
@@ -784,11 +808,6 @@ class PyTestManager {
         while (this.coverageStashes.contains(coverage_stash)) {
             coverage_stash = "${base_stash_name}_${index}"
             index++
-        }
-        
-        // Copy coverage file back from working folder if it differs from workspace
-        if (workingFolder != this.pipeline.env.WORKSPACE) {
-            this.venvManager.copyFromWorkingFolder(".coverage")
         }
         
         // Rename coverage file to unique stash name
