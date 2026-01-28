@@ -989,7 +989,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_SAFETY_SETUP@DEN-S-NET-PHASE1", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_NET_E_SETUP@PHASE1", USE_WIRESHARK_LOGGING)
                                 }
                             }
                         }
@@ -1001,7 +1001,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_SAFETY_SETUP@DEN-S-NET-PHASE2", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_NET_E_SETUP@PHASE2", USE_WIRESHARK_LOGGING)
                                 }
                             }
                         }
