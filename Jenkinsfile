@@ -953,7 +953,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_SETUP@EVE-XCR-E", USE_WIRESHARK_LOGGING)
                                 }
                             }
                         }
@@ -965,7 +965,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_SETUP@CAP-XCR-E", USE_WIRESHARK_LOGGING)
                                 }
                             }
                         }
@@ -989,7 +989,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE1_SETUP", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_SAFETY_SETUP@DEN-S-NET-PHASE1", USE_WIRESHARK_LOGGING)
                                 }
                             }
                         }
@@ -1001,7 +1001,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_SAFETY_SETUP@DEN-S-NET-PHASE2", USE_WIRESHARK_LOGGING)
                                 }
                             }
                         }
@@ -1055,7 +1055,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP")
+                                    testManager.runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_SETUP@EVE-XCR-C")
                                 }
                             }
                         }
@@ -1067,7 +1067,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP")
+                                    testManager.runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_SETUP@CAP-XCR-C")
                                 }
                             }
                         }
@@ -1079,7 +1079,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_SETUP@EVE-XCR-C", USE_WIRESHARK_LOGGING)
                                 }
                             }
                         }
@@ -1091,7 +1091,7 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_SETUP@CAP-XCR-C", USE_WIRESHARK_LOGGING)
                                 }
                             }
                         }
