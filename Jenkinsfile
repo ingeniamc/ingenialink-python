@@ -107,6 +107,35 @@ class VEnvManager {
     }
 
     /**
+    * Convert a single Python version to its corresponding virtual environment name.
+    * Uses the convention: .venv{pythonVersion} (e.g., ".venv3.9")
+    * 
+    * Arguments:
+    *   pythonVersions: Iterable of Python version strings (e.g., ["3.9", "3.10"])
+    * Returns: Set of virtual environment names (e.g., [".venv3.9", ".venv3.10"])
+    */
+    def pythonVersionsToDefaultVenvNames(Iterable pythonVersions) {
+        return pythonVersions.collect { version ->
+            this.pythonVersionDefaultVenvName(version)
+        } as Set
+    }
+
+    /**
+    * Convert a set of virtual environment names back to their Python versions.
+    * Reverses the convention: .venv{pythonVersion} → pythonVersion
+    * 
+    * This is useful when you need to extract Python versions from venv names
+    * for operations like createPoetryEnvironments that require version strings.
+    * 
+    * Arguments:
+    *   venvNames: Iterable of virtual environment names (e.g., [".venv3.9", ".venv3.10"])
+    * Returns: Set of Python version strings (e.g., ["3.9", "3.10"])
+    */
+    def defaultVenvNamesToVersion(Iterable venvNames) {
+        return venvNames.collect { it.replaceAll('^.venv', '') } as Set
+    }
+
+    /**
     * Get the current node name from the environment
     * Returns: Node name string
     * Throws: Error if NODE_NAME is not set (not running on a node)
@@ -395,6 +424,20 @@ class VEnvManager {
         }
     }
 
+    /**
+    * Iterate over specific virtual environments by their venv names
+    * Arguments:
+    *   venvNames: Iterable of virtual environment names (List or Set)
+    *   body: Closure to execute for each venv. Receives the venv context
+    * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
+    */
+    def forVirtualEnvs(Iterable venvNames, Closure body) {
+        venvNames.each { venvName ->
+            this.withVirtualEnv(venvName) { venv ->
+                body(venv)
+            }
+        }
+    }
 
     /**
     * Create a Poetry virtual environment and install dependencies
@@ -458,7 +501,7 @@ class TestSession implements Serializable {
      * List of configuration attributes that can be set and cascaded to children.
      */
     private static final List<String> CONFIG_ATTRS = [
-        'runPythonVersions',
+        'runInVirtualEnvs',
         'markers',
         'testTimeoutMinutes',
         'runTestBaseCommand',
@@ -477,11 +520,11 @@ class TestSession implements Serializable {
     ]
 
     /**
-     * Python versions to run tests against.
+     * Virtual environment names to run tests against.
      * Default: null
-     * Example: ["3.9", "3.10"] as Set
+     * Example: [".venv3.9", ".venv3.10"] as Set
      */
-    Set runPythonVersions = null
+    Set runInVirtualEnvs = null
 
     /**
      * Pytest marker expression used to select tests.
@@ -866,7 +909,7 @@ class PyTestManager {
                     this.clearCoverageFiles()
                 }
                 def firstIteration = true
-                this.venvManager.forPythons(session.runPythonVersions) { venv ->
+                this.venvManager.forVirtualEnvs(session.runInVirtualEnvs) { venv ->
                     this.pipeline.withEnv(session.getEnvVars()) {
                         try {
                             def testArgs = session.getTestArgs(venv)
@@ -979,20 +1022,20 @@ pipeline {
             steps {
                 script {
                     if (env.BRANCH_NAME == 'master') {
-                        TEST_SESSIONS.setAttributeInCascade(runPythonVersions: ALL_PYTHON_VERSIONS)
+                        TEST_SESSIONS.setAttributeInCascade(runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames(ALL_PYTHON_VERSIONS))
                     } else if (env.BRANCH_NAME.startsWith('release/')) {
-                        TEST_SESSIONS.setAttributeInCascade(runPythonVersions: ALL_PYTHON_VERSIONS)
+                        TEST_SESSIONS.setAttributeInCascade(runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames(ALL_PYTHON_VERSIONS))
                     } else {
                         if (env.PYTHON_VERSIONS == "MIN_MAX") {
-                            TEST_SESSIONS.setAttributeInCascade(runPythonVersions: [PYTHON_VERSION_MIN, PYTHON_VERSION_MAX] as Set)
+                            TEST_SESSIONS.setAttributeInCascade(runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames([PYTHON_VERSION_MIN, PYTHON_VERSION_MAX] as Set))
                         } else if (env.PYTHON_VERSIONS == "MIN") {
-                            TEST_SESSIONS.setAttributeInCascade(runPythonVersions: [PYTHON_VERSION_MIN] as Set)
+                            TEST_SESSIONS.setAttributeInCascade(runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames([PYTHON_VERSION_MIN] as Set))
                         } else if (env.PYTHON_VERSIONS == "MAX") {
-                            TEST_SESSIONS.setAttributeInCascade(runPythonVersions: [PYTHON_VERSION_MAX] as Set)
+                            TEST_SESSIONS.setAttributeInCascade(runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames([PYTHON_VERSION_MAX] as Set))
                         } else if (env.PYTHON_VERSIONS == "All") {
-                            TEST_SESSIONS.setAttributeInCascade(runPythonVersions: ALL_PYTHON_VERSIONS)
+                            TEST_SESSIONS.setAttributeInCascade(runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames(ALL_PYTHON_VERSIONS))
                         } else { // Branch-indexing
-                            TEST_SESSIONS.setAttributeInCascade(runPythonVersions: [PYTHON_VERSION_MIN] as Set)
+                            TEST_SESSIONS.setAttributeInCascade(runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames([PYTHON_VERSION_MIN] as Set))
                         }
                     }
 
@@ -1120,7 +1163,7 @@ pipeline {
                                         script {
                                             /* Windows docker does not have npcap/winpcap installed so runs no_pcap tests */
                                             def win_marker = PyTestManager.markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
-                                            venvManager.forPythons(TEST_SESSIONS.runPythonVersions) { venv ->
+                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
                                             testManager.runTestSession(TEST_SESSIONS.override(markers: win_marker))
@@ -1152,7 +1195,7 @@ pipeline {
                                     steps {
                                         script {
                                             venvManager.createPoetryEnvironments(
-                                              pythonVersions: ([DEFAULT_PYTHON_VERSION] as Set) + TEST_SESSIONS.runPythonVersions
+                                              pythonVersions: ([DEFAULT_PYTHON_VERSION] as Set) + venvManager.defaultVenvNamesToVersion(TEST_SESSIONS.runInVirtualEnvs)
                                             )
                                         }
                                     }
@@ -1192,7 +1235,7 @@ pipeline {
                                     steps {
                                         script {
                                             def lin_marker = PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
-                                            venvManager.forPythons(TEST_SESSIONS.runPythonVersions) { venv ->
+                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
                                             testManager.runTestSession(TEST_SESSIONS.override(markers: lin_marker))
@@ -1215,7 +1258,7 @@ pipeline {
                                     }
                                     steps {
                                         script {
-                                            venvManager.forPythons(TEST_SESSIONS.runPythonVersions) { venv ->
+                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
                                             testManager.runTestSession(TEST_SESSIONS.override(markers: 'virtual', setup: 'summit_testing_framework.setups.virtual_drive.TESTS_SETUP'))
@@ -1327,7 +1370,7 @@ pipeline {
                             steps {
                                 script {
                                     venvManager.createPoetryEnvironments(
-                                        pythonVersions: ECAT_TEST_SESSIONS.runPythonVersions,
+                                        pythonVersions: venvManager.defaultVenvNamesToVersion(ECAT_TEST_SESSIONS.runInVirtualEnvs),
                                         additionalCommands: ["poetry run poe install-wheel"]
                                     )
                                 }
@@ -1458,7 +1501,7 @@ pipeline {
                             steps {
                                 script {
                                     venvManager.createPoetryEnvironments(
-                                        pythonVersions: HW_TEST_SESSIONS.runPythonVersions,
+                                        pythonVersions: venvManager.defaultVenvNamesToVersion(HW_TEST_SESSIONS.runInVirtualEnvs),
                                         additionalCommands: ["poetry run poe install-wheel"]
                                     )
                                 }
