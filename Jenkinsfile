@@ -610,6 +610,12 @@ class TestSession implements Serializable {
     Boolean setAttApiToken = false
 
     TestSession(Map args = [:]) {
+        // Validate arguments against whitelist
+        def invalidArgs = args.keySet().findAll { !CONFIG_ATTRS.contains(it) }
+        if (invalidArgs) {
+            throw new IllegalArgumentException("Invalid arguments passed to TestSession constructor: ${invalidArgs}. Allowed properties: ${CONFIG_ATTRS}")
+        }
+
         args.each { name, value ->
             this."$name" = value
         }
@@ -909,6 +915,9 @@ class PyTestManager {
                     this.clearCoverageFiles()
                 }
                 def firstIteration = true
+                if (session.runInVirtualEnvs == null) {
+                    throw new IllegalArgumentException("runInVirtualEnvs must be set in the TestSession to specify which virtual environments to run tests against.")
+                }
                 this.venvManager.forVirtualEnvs(session.runInVirtualEnvs) { venv ->
                     this.pipeline.withEnv(session.getEnvVars()) {
                         try {
@@ -958,7 +967,7 @@ PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvM
 /* Define default base test sessions to be used/overridden in stages */
 TestSession TEST_SESSIONS = new TestSession(
     covPackageName: "ingenialink",
-    wiresharkScope: "",
+    wiresharkScope: null, // Set later based on parameter
     wiresharkDir: "wireshark",
     startWiresharkTimeoutS: 10.0,
     importMode: "importlib",
