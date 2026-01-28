@@ -582,7 +582,7 @@ class TestSession implements Serializable {
         // Validate arguments against whitelist
         def invalidArgs = attributes.keySet().findAll { !CONFIG_ATTRS.contains(it) }
         if (invalidArgs) {
-             throw new IllegalArgumentException("Invalid arguments passed to setAttributeInCascade(): ${invalidArgs}. Allowed properties: ${CONFIG_ATTRS}")
+            throw new IllegalArgumentException("Invalid arguments passed to setAttributeInCascade(): ${invalidArgs}. Allowed properties: ${CONFIG_ATTRS}")
         }
 
         // Set attributes on this session
@@ -648,10 +648,14 @@ class TestSession implements Serializable {
             args.add("--cov=${covPath}")
         }
 
-        args.add("--import-mode=${this.importMode}")
+        if (this.importMode) {
+            args.add("--import-mode=${this.importMode}")
+        }
         args.add("--junitxml=pytest_reports/junit-${venv.version}.xml")
         args.add("--junit-prefix=${venv.version}")
-        args.add("-m \"${this.markers}\"")
+        if (this.markers) {
+            args.add("-m \"${this.markers}\"")
+        }
         args.add("--job_name=\"${this.jobName}-${this.setup}\"")
         
         if (this.setup) {
@@ -678,7 +682,7 @@ class TestSession implements Serializable {
         // Validate arguments against whitelist
         def invalidArgs = args.keySet().findAll { !CONFIG_ATTRS.contains(it) }
         if (invalidArgs) {
-             throw new IllegalArgumentException("Invalid arguments passed to override(): ${invalidArgs}. Allowed properties: ${CONFIG_ATTRS}")
+            throw new IllegalArgumentException("Invalid arguments passed to override(): ${invalidArgs}. Allowed properties: ${CONFIG_ATTRS}")
         }
 
         TestSession child = new TestSession()
@@ -741,7 +745,11 @@ class PyTestManager {
     }
 
     private def archiveWiresharkLogs(String wiresharkDir) {
-        this.pipeline.archiveArtifacts artifacts: "${wiresharkDir}\\*.pcap", allowEmptyArchive: true
+        if (this.venvManager.isUnixNode()) {
+            this.pipeline.archiveArtifacts artifacts: "${wiresharkDir}/*.pcap", allowEmptyArchive: true
+        } else {
+            this.pipeline.archiveArtifacts artifacts: "${wiresharkDir}\\*.pcap", allowEmptyArchive: true
+        }
     }
 
     private def clearWiresharkLogs(String wiresharkDir) {
@@ -1533,5 +1541,4 @@ pipeline {
         }
     }
 }
-
 
