@@ -808,6 +808,15 @@ class PyTestManager {
         return this.coverageStashes as Set
     }
 
+    /**
+     * Checks if there are any coverage files available.
+     * 
+     * @return true if coverage files have been stashed, false otherwise
+     */
+    def hasCoverageFiles() {
+        return !this.coverageStashes.isEmpty()
+    }
+
     static def markersExcludeString(excludes) {
         return excludes.collect { "not ${it}" }.join(' and ')
     }
@@ -1605,6 +1614,9 @@ pipeline {
                     label SW_NODE
                     image WIN_DOCKER_IMAGE
                 }
+            }
+            when {
+                expression { testManager.hasCoverageFiles() }
             }
             environment {
                 VENV_WORKING_FOLDER = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
