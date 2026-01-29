@@ -239,12 +239,10 @@ def test_load_configuration_invalid_subnode(setup_descriptor, servo, subnode) ->
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_load_configuration_to_subnode_zero(setup_descriptor, servo) -> None:
+def test_load_configuration_to_subnode_zero(setup_descriptor, servo, tmp_path) -> None:
     path = setup_descriptor.config_file
     assert isinstance(path, Path)
-    filename = path.as_posix()
-    file = filename.split("/")[-1]
-    modified_path = Path(filename.replace(file, "config_0_test.xdf"))
+    modified_path = tmp_path / "config_0_test.xdf"
     shutil.copy(path, modified_path)
     with open(modified_path, encoding="utf-8") as xml_file:
         tree = ElementTree.parse(xml_file)
