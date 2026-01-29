@@ -1,4 +1,3 @@
-import os
 import socket
 import time
 from ftplib import error_temp
