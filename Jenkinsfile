@@ -817,10 +817,23 @@ class PyTestManager {
         return !this.coverageStashes.isEmpty()
     }
 
+    /**
+     * Build an exclusion string for pytest markers.
+     * Converts a list of marker names into a pytest-compatible exclusion string.
+     * 
+     * @param excludes List of marker names to exclude
+     * @return A string like 'not marker1 and not marker2' suitable for pytest -m option
+     */
     static def markersExcludeString(excludes) {
         return excludes.collect { "not ${it}" }.join(' and ')
     }
 
+    /**
+     * Archive Wireshark log files as Jenkins artifacts.
+     * Archives all .pcap files from the specified directory.
+     * 
+     * @param wiresharkDir Directory containing Wireshark log files
+     */
     private def archiveWiresharkLogs(String wiresharkDir) {
         if (this.venvManager.isUnixNode()) {
             this.pipeline.archiveArtifacts artifacts: "${wiresharkDir}/*.pcap", allowEmptyArchive: true
@@ -829,6 +842,12 @@ class PyTestManager {
         }
     }
 
+    /**
+     * Clear Wireshark log files from the specified directory.
+     * Removes all .pcap files to prepare for new test runs.
+     * 
+     * @param wiresharkDir Directory containing Wireshark log files to clear
+     */
     private def clearWiresharkLogs(String wiresharkDir) {
         if (this.venvManager.isUnixNode()) {
             this.pipeline.sh(script: "rm -f ${wiresharkDir}/*.pcap", returnStatus: true)
@@ -837,6 +856,10 @@ class PyTestManager {
         }
     }
 
+    /**
+     * Clear coverage files from the current directory.
+     * Removes all .coverage* files to prepare for new test runs.
+     */
     private def clearCoverageFiles() {
         if (this.venvManager.isUnixNode()) {
             this.pipeline.sh(script: 'rm -f *.coverage*', returnStatus: true)
