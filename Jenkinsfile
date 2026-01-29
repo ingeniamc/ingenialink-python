@@ -977,8 +977,8 @@ class PyTestManager {
                             this.publishAndCleanupJunitReports()
                             if (firstIteration && session.useCoverage) {
                                 this.stashCoverageFile(session.uid, venv.name)
-                                firstIteration = false
                             }
+                            firstIteration = false
                         }
                     }
                 }
