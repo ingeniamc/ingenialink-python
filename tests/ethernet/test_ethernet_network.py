@@ -177,21 +177,18 @@ def test_load_firmware_file_not_found():
         virtual_net.load_firmware("no_file")
 
 
-def test_load_firmware_no_connection():
-    fw_file = "temp_file.lfu"
-    with open(fw_file, "w"):
-        pass
+def test_load_firmware_no_connection(tmp_path):
+    fw_file = tmp_path / "temp_file.lfu"
+    fw_file.touch()
     virtual_net = EthernetNetwork()
     with pytest.raises(ILFirmwareLoadError):
-        virtual_net.load_firmware(fw_file, target="127.0.0.1", ftp_user="", ftp_pwd="")
-    os.remove(fw_file)
+        virtual_net.load_firmware(str(fw_file), target="127.0.0.1", ftp_user="", ftp_pwd="")
 
 
-def test_load_firmware_wrong_user_pwd(ftp_server_manager):
+def test_load_firmware_wrong_user_pwd(ftp_server_manager, tmp_path):
     """Testing failed ftp firmware load with fake FTP server."""
-    fw_file = "temp_file.lfu"
-    with open(fw_file, "w"):
-        pass
+    fw_file = tmp_path / "temp_file.lfu"
+    fw_file.touch()
     _, _ = ftp_server_manager
     # Wrong user and password
     fake_user = "mamma"
@@ -200,20 +197,18 @@ def test_load_firmware_wrong_user_pwd(ftp_server_manager):
     net = EthernetNetwork()
     with pytest.raises(ILFirmwareLoadError) as excinfo:
         net.load_firmware(
-            fw_file,
+            str(fw_file),
             target="localhost",
             ftp_user=fake_user,
             ftp_pwd=fake_password,
         )
     assert str(excinfo.value) == "Unable to login the FTP session"
-    os.remove(fw_file)
 
 
-def test_load_firmware_error_during_loading(mocker, ftp_server_manager):
+def test_load_firmware_error_during_loading(mocker, ftp_server_manager, tmp_path):
     """Testing failed ftp firmware load with fake FTP server."""
-    fw_file = "temp_file.lfu"
-    with open(fw_file, "w"):
-        pass
+    fw_file = tmp_path / "temp_file.lfu"
+    fw_file.touch()
     ftp_user, ftp_password = ftp_server_manager
     net = EthernetNetwork()
     # Mock ftp error for ftp.stobinary call
@@ -222,10 +217,9 @@ def test_load_firmware_error_during_loading(mocker, ftp_server_manager):
         side_effect=error_temp("Failed to establish connection."),
     )
     with pytest.raises(ILFirmwareLoadError) as excinfo:
-        net.load_firmware(fw_file, target="localhost", ftp_user=ftp_user, ftp_pwd=ftp_password)
+        net.load_firmware(str(fw_file), target="localhost", ftp_user=ftp_user, ftp_pwd=ftp_password)
     assert str(excinfo.value) == "Unable to load the FW file through FTP."
     assert isinstance(excinfo.value.__cause__, error_temp)
-    os.remove(fw_file)
 
 
 def test_net_status_listener(virtual_drive, mocker):
