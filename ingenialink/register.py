@@ -312,7 +312,17 @@ class Register(ABC):
 
         Returns:
             int: bit length of the register.
+
+        Raises:
+            ValueError: If the data type is STR and the default value is not available.
         """
+        if self.dtype == RegDtype.STR:
+            # For STR type, extract length from default value
+            if self._default is not None:
+                return len(self._default) * 8
+            raise ValueError(
+                f"Cannot determine bit_length for STR register '{self.identifier}' without a default value"
+            )
         return dtype_length_bits[self.dtype]
 
     def __repr__(self) -> str:

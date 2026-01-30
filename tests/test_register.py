@@ -182,3 +182,68 @@ def test_bit_register_write_invalid_value(connect_virtual_drive_with_bool_regist
         str(exc_info.value)
         == f"Invalid value. Expected values: [0, 1, True, False], got {write_value}"
     )
+
+
+@pytest.mark.parametrize(
+    "dtype, expected_bit_length",
+    [
+        (RegDtype.U8, 8),
+        (RegDtype.S8, 8),
+        (RegDtype.U16, 16),
+        (RegDtype.S16, 16),
+        (RegDtype.U32, 32),
+        (RegDtype.S32, 32),
+        (RegDtype.U64, 64),
+        (RegDtype.S64, 64),
+        (RegDtype.FLOAT, 32),
+        (RegDtype.BOOL, 1),
+        (RegDtype.BYTE_ARRAY_512, 512 * 8),
+    ],
+)
+def test_bit_length_for_numeric_types(dtype, expected_bit_length):
+    """Test that bit_length returns correct values for all numeric and fixed-size types."""
+    register = Register(dtype, RegAccess.RW, identifier=f"TEST_{dtype.name}")
+    assert register.bit_length == expected_bit_length
+
+
+def test_bit_length_for_str_with_default():
+    """Test that bit_length works for STR type when default value is provided."""
+    # Default value is "2.8.0" encoded as hex: 322e382e30
+    default_value = b"2.8.0"
+    register = Register(
+        RegDtype.STR,
+        RegAccess.RO,
+        identifier="TEST_STR",
+        default=default_value,
+    )
+    assert register.bit_length == len(default_value) * 8
+    assert register.bit_length == 40  # 5 bytes * 8
+
+
+def test_bit_length_for_str_with_longer_default():
+    """Test that bit_length works for STR type with a longer default value."""
+    # Default value is "1.0.0.000" encoded
+    default_value = b"1.0.0.000"
+    register = Register(
+        RegDtype.STR,
+        RegAccess.RO,
+        identifier="TEST_STR_LONG",
+        default=default_value,
+    )
+    assert register.bit_length == len(default_value) * 8
+    assert register.bit_length == 72  # 9 bytes * 8
+
+
+def test_bit_length_for_str_without_default_raises_error():
+    """Test that bit_length raises ValueError for STR type without default value."""
+    register = Register(
+        RegDtype.STR,
+        RegAccess.RO,
+        identifier="TEST_STR_NO_DEFAULT",
+    )
+    with pytest.raises(ValueError) as exc_info:
+        _ = register.bit_length
+    assert "Cannot determine bit_length for STR register 'TEST_STR_NO_DEFAULT'" in str(
+        exc_info.value
+    )
+    assert "without a default value" in str(exc_info.value)
