@@ -321,7 +321,8 @@ class Register(ABC):
             if self._default is not None:
                 return len(self._default) * 8
             raise ValueError(
-                f"Cannot determine bit_length for STR register '{self.identifier}' without a default value"
+                f"Cannot determine bit_length for STR register '{self.identifier}' "
+                "without a default value"
             )
         return dtype_length_bits[self.dtype]
 
