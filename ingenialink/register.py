@@ -314,15 +314,15 @@ class Register(ABC):
             int: bit length of the register.
 
         Raises:
-            ValueError: If the data type is STR and the default value is not available.
+            ValueError: If the data type is STR and requirements are not met.
         """
         if self.dtype == RegDtype.STR:
-            # For STR type, extract length from default value
-            if self._default is not None:
+            # For STR type, extract length from default value (only for read-only registers)
+            if self.access == RegAccess.RO and self._default is not None:
                 return len(self._default) * 8
             raise ValueError(
-                f"Cannot determine bit_length for STR register '{self.identifier}' "
-                "without a default value"
+                f"Cannot determine bit_length for STR register '{self.identifier}': "
+                "STR registers must be read-only and have a default value"
             )
         return dtype_length_bits[self.dtype]
 

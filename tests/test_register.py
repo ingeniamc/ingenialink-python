@@ -1,9 +1,9 @@
 import pytest
-from virtual_drive import resources as virtual_drive_resources
 
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.exceptions import ILAccessError, ILValueError
 from ingenialink.register import RegAccess, RegDtype, Register, RegPhy
+from virtual_drive import resources as virtual_drive_resources
 
 
 @pytest.fixture
@@ -246,4 +246,34 @@ def test_bit_length_for_str_without_default_raises_error():
     assert "Cannot determine bit_length for STR register 'TEST_STR_NO_DEFAULT'" in str(
         exc_info.value
     )
-    assert "without a default value" in str(exc_info.value)
+    assert "must be read-only and have a default value" in str(exc_info.value)
+
+
+def test_bit_length_for_str_with_rw_access_raises_error():
+    """Test that bit_length raises ValueError for STR type with RW access."""
+    default_value = b"2.8.0"
+    register = Register(
+        RegDtype.STR,
+        RegAccess.RW,
+        identifier="TEST_STR_RW",
+        default=default_value,
+    )
+    with pytest.raises(ValueError) as exc_info:
+        _ = register.bit_length
+    assert "Cannot determine bit_length for STR register 'TEST_STR_RW'" in str(exc_info.value)
+    assert "must be read-only and have a default value" in str(exc_info.value)
+
+
+def test_bit_length_for_str_with_wo_access_raises_error():
+    """Test that bit_length raises ValueError for STR type with WO access."""
+    default_value = b"test"
+    register = Register(
+        RegDtype.STR,
+        RegAccess.WO,
+        identifier="TEST_STR_WO",
+        default=default_value,
+    )
+    with pytest.raises(ValueError) as exc_info:
+        _ = register.bit_length
+    assert "Cannot determine bit_length for STR register 'TEST_STR_WO'" in str(exc_info.value)
+    assert "must be read-only and have a default value" in str(exc_info.value)
