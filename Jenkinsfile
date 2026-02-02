@@ -477,7 +477,7 @@ class PyTestManager {
                     pipeline.withEnv(["WIRESHARK_SCOPE=${wiresharkScope}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${clearSuccessfulWiresharkLogs}", "START_WIRESHARK_TIMEOUT_S=${startWiresharkTimeoutS}"]) {
                         try {
                             def setupArg = setup_name ? "--setup ${setup_name} " : ""
-                            venv.run("poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-${venv.version}.xml --junit-prefix=${venv.version} -m \"${markers}\" ${setupArg} --job_name=\"${pipeline.env.JOB_NAME}-#${pipeline.env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}")
+                            venv.run("poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-${venv.version}.xml --junit-prefix=${venv.version} -m \"${markers}\" ${setupArg} --job_name=\"${pipeline.env.JOB_NAME}-#${pipeline.env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args} --enable_firmware_version_check")
                         } catch (err) {
                             pipeline.unstable(message: "Tests failed")
                         } finally {
@@ -699,7 +699,7 @@ pipeline {
                                             venvManager.forPythons(testManager.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                                 withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
-                                                    venv.run("poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m \"${win_marker}\" -o log_cli=True")
+                                                    venv.run("poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m \"${win_marker}\" -o log_cli=True --enable_firmware_version_check")
                                                 }
                                             }
                                         }
@@ -786,7 +786,7 @@ pipeline {
                                             venvManager.forPythons(testManager.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                                 withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
-                                                    venv.run("poetry run poe tests --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m '${lin_marker}' -o log_cli=True")
+                                                    venv.run("poetry run poe tests --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m '${lin_marker}' -o log_cli=True --enable_firmware_version_check")
                                                 }
                                             }
                                         }
@@ -810,7 +810,7 @@ pipeline {
                                         script {
                                             venvManager.forPythons(testManager.runPythonVersions) { venv ->
                                                 venv.run("poetry run poe install-wheel")
-                                                venv.run("poetry run poe tests --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True")
+                                                venv.run("poetry run poe tests --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True --enable_firmware_version_check")
                                             }
                                         }
                                     }
