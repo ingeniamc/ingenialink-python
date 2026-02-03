@@ -556,7 +556,6 @@ class TestSession implements Serializable {
     /**
      * Timeout for a test session in minutes.
      * Default: 60
-     * Can be set via the Jenkins parameter `TEST_TIMEOUT_MINUTES`.
      */
     Integer testTimeoutMinutes = 60
 
@@ -599,7 +598,9 @@ class TestSession implements Serializable {
     /**
      * Fully-qualified name of the test setup to use.
      * Default: null
-     * Example: "tests.setups.rack_specifiers.ECAT_EVE_SETUP"
+     * Examples: 
+        "tests.setups.rack_specifiers.ECAT_EVE_SETUP"
+        "tests.setups.rack_specifiers.ECAT_SETUP@EVE_NET@2.0.0"
      */
     String setup = null
 
