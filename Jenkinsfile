@@ -20,11 +20,8 @@ def BRANCH_NAME_MASTER = "master"
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 def RACK_SPECIFIERS_PATH = "tests.setups.rack_specifiers"
 
-USE_WIRESHARK_LOGGING = ""
-WIRESHARK_DIR = "wireshark"
 
 wheel_stashes = []
-coverage_stashes = []
 
 /* List of markers that require hardware */
 def HARDWARE_MARKERS = ["ethernet", "ethercat", "canopen", "multislave", "fsoe", "eoe"]
@@ -34,9 +31,7 @@ def HARDWARE_MARKERS = ["ethernet", "ethercat", "canopen", "multislave", "fsoe",
  * @param excludes List markers to exclude (list of strings)
  * @return A string with 'not <marker>' joined with ' and ' suitable for pytest
  */
-def markersExcludeString(excludes = []) {
-  return excludes.collect { "not ${it}" }.join(' and ')
-}
+
 
 def reassignFilePermissions() {
     if (isUnix()) {
@@ -44,17 +39,6 @@ def reassignFilePermissions() {
     }
 }
 
-def clearWiresharkLogs() {
-    bat(script: 'del /f "%WIRESHARK_DIR%\\*.pcap"', returnStatus: true)
-}
-
-def clearCoverageFiles() {
-    bat(script: 'del /f "*.coverage*"', returnStatus: true)
-}
-
-def archiveWiresharkLogs() {
-    archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
-}
 
 /**
  * VEnvManager - Manages Python virtual environments across Jenkins nodes
@@ -123,6 +107,35 @@ class VEnvManager {
     }
 
     /**
+    * Convert multiple Python versions to their corresponding virtual environment names.
+    * Uses the convention: .venv{pythonVersion} (e.g., ".venv3.9")
+    * 
+    * Arguments:
+    *   pythonVersions: Iterable of Python version strings (e.g., ["3.9", "3.10"])
+    * Returns: Set of virtual environment names (e.g., [".venv3.9", ".venv3.10"])
+    */
+    def pythonVersionsToDefaultVenvNames(Iterable pythonVersions) {
+        return pythonVersions.collect { version ->
+            this.pythonVersionDefaultVenvName(version)
+        } as Set
+    }
+
+    /**
+    * Convert a set of virtual environment names back to their Python versions.
+    * Reverses the convention: .venv{pythonVersion} → pythonVersion
+    * 
+    * This is useful when you need to extract Python versions from venv names
+    * for operations like createPoetryEnvironments that require version strings.
+    * 
+    * Arguments:
+    *   venvNames: Iterable of virtual environment names (e.g., [".venv3.9", ".venv3.10"])
+    * Returns: Set of Python version strings (e.g., ["3.9", "3.10"])
+    */
+    def defaultVenvNamesToVersion(Iterable venvNames) {
+        return venvNames.collect { it.replaceAll('^.venv', '') } as Set
+    }
+
+    /**
     * Get the current node name from the environment
     * Returns: Node name string
     * Throws: Error if NODE_NAME is not set (not running on a node)
@@ -139,7 +152,7 @@ class VEnvManager {
     * Check if the current node is running Unix (cached)
     * Returns: true if Unix, false if Windows
     */
-    private def isUnixNode() {
+    def isUnixNode() {
         def nodeName = this.getNodeName()
         if (!this.osCache.containsKey(nodeName)) {
             this.osCache[nodeName] = this.pipeline.isUnix()
@@ -303,6 +316,7 @@ class VEnvManager {
             },
             name: venvName,
             version: pythonVersion,
+            isUnix: this.isUnixNode()
         ]
 
         body(ctx)
@@ -410,6 +424,20 @@ class VEnvManager {
         }
     }
 
+    /**
+    * Iterate over specific virtual environments by their venv names
+    * Arguments:
+    *   venvNames: Iterable of virtual environment names (List or Set)
+    *   body: Closure to execute for each venv. Receives the venv context
+    * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
+    */
+    def forVirtualEnvs(Iterable venvNames, Closure body) {
+        venvNames.each { venvName ->
+            this.withVirtualEnv(venvName) { venv ->
+                body(venv)
+            }
+        }
+    }
 
     /**
     * Create a Poetry virtual environment and install dependencies
@@ -454,53 +482,540 @@ class VEnvManager {
     }
 }
 
+
+/**
+ * TestSession - Configuration for a test session
+ * 
+ * This class encapsulates the configuration options for a test session,
+ * including pytest markers, setup configurations, Wireshark logging options,
+ * Python versions to test against, and coverage settings.
+ * 
+ * It supports cascading/inheriting properties to child sessions, allowing
+ * for hierarchical test session definitions.
+ */
+class TestSession implements Serializable {
+
+    /**
+    * Parent session (if any)
+    * Ancestor from which the session was created via override()
+    */
+    TestSession parent = null
+
+    /**
+     * Child sessions
+     * Offspring sessions created via override()
+     * Used to propagate configuration changes via setAttributeInCascade()
+     */
+    List<TestSession> children = []
+    
+    /**
+     * List of configuration attributes that can be set and cascaded to children.
+     */
+    private static final List<String> CONFIG_ATTRS = [
+        'uid',
+        'runInVirtualEnvs',
+        'markers',
+        'testTimeoutMinutes',
+        'runTestBaseCommand',
+        'importMode',
+        'logCli',
+        'useCoverage',
+        'covPackageName',
+        'setup',
+        'useWiresharkLogging',
+        'wiresharkScope',
+        'wiresharkDir',
+        'clearSuccessfulWiresharkLogs',
+        'startWiresharkTimeoutS',
+        'jobName',
+        'setAttApiToken',
+        'enableFirmwareVersionCheck'
+    ]
+
+    /**
+     * Unique identifier for this test session.
+     * Used for identifying stashes, logs, and reports (e.g., "ethercat_everest", "ethernet_pcap")
+     * Default: null
+     */
+    String uid = null
+
+    /**
+     * Virtual environment names to run tests against.
+     * Default: null
+     * Example: [".venv3.9", ".venv3.10"] as Set
+     */
+    Set runInVirtualEnvs = null
+
+    /**
+     * Pytest marker expression used to select tests.
+     * Default: null
+     * Example: "ethercat and canopen"
+     */
+    String markers = null
+
+    /**
+     * Timeout for a test session in minutes.
+     * Default: 60
+     */
+    Integer testTimeoutMinutes = 60
+
+    /**
+     * Base command used to run tests inside the virtualenv. The test arguments
+     * from `getTestArgs` are appended to this base command.
+     * Default: 'poetry run poe tests'
+     */
+    String runTestBaseCommand = 'poetry run poe tests'
+
+    /**
+     * Pytest import mode passed as `--import-mode`.
+     * Default: null (commonly set to 'importlib')
+     */
+    String importMode = null
+
+    /**
+     * Enables pytest's `log_cli` option to stream logs to the console.
+     * Default: false
+     */
+    Boolean logCli = false
+
+    /**
+     * Coverage-related options
+     * `useCoverage`: whether to collect coverage for this session
+     * Default: true
+     */
+    Boolean useCoverage = true
+
+    /**
+     * Package name to measure coverage for. Used to build the `--cov` path.
+     * Default: null
+     * Example: "my_library"
+     */
+    String covPackageName = null
+
+    
+    ///// Summit Testing Framework options /////
+
+    /**
+     * Fully-qualified name of the test setup to use.
+     * Default: null
+     * Examples: 
+        "tests.setups.rack_specifiers.ECAT_EVE_SETUP"
+        "tests.setups.rack_specifiers.ECAT_SETUP@EVE_NET@2.0.0"
+     */
+    String setup = null
+
+    /**
+     * Wireshark capture options
+     * `useWiresharkLogging`: enable capture during tests
+     * `wiresharkScope`: 'function' | 'module' | 'session'
+     * `wiresharkDir`: directory where pcaps are written (relative to workspace)
+     * `clearSuccessfulWiresharkLogs`: if true, remove pcaps on success
+     * `startWiresharkTimeoutS`: seconds to wait for Wireshark to start
+     */
+    Boolean useWiresharkLogging = false
+    String wiresharkScope = "session"
+    String wiresharkDir = "wireshark"
+    Boolean clearSuccessfulWiresharkLogs = true
+    BigDecimal startWiresharkTimeoutS = 10.0
+
+    /**
+     * Job name. Used to identify the job in test reports, infrastructure, logs...
+     * Example: "my-project@my_branch#2",
+     */
+    String jobName = null
+
+    /**
+     * Whether to set ATT_API_KEY from Jenkins credentials.
+     * Default: false
+     */
+    Boolean setAttApiToken = false
+
+
+    /**
+     * Firmware version check option
+     * `enableFirmwareVersionCheck`: if true, enables firmware version check during tests
+     * Filters test selection according to firmware version markers
+     * Default: true
+     */
+    Boolean enableFirmwareVersionCheck = true
+
+    TestSession(Map args = [:]) {
+        // Validate arguments against whitelist
+        def invalidArgs = args.keySet().findAll { !CONFIG_ATTRS.contains(it) }
+        if (invalidArgs) {
+            throw new IllegalArgumentException("Invalid arguments passed to TestSession constructor: ${invalidArgs}. Allowed properties: ${CONFIG_ATTRS}")
+        }
+
+        args.each { name, value ->
+            this."$name" = value
+        }
+    }
+
+    /**
+     * Set attributes on this session and propagate the values to all descendants.
+     * This ensures that the values set here are cascaded to all children.
+     * 
+     * @param attributes Map of property names and values to set
+     */
+    void setAttributeInCascade(Map attributes) {
+        // Validate arguments against whitelist
+        def invalidArgs = attributes.keySet().findAll { !CONFIG_ATTRS.contains(it) }
+        if (invalidArgs) {
+            throw new IllegalArgumentException("Invalid arguments passed to setAttributeInCascade(): ${invalidArgs}. Allowed properties: ${CONFIG_ATTRS}")
+        }
+
+        // Set attributes on this session
+        attributes.each { name, value ->
+            this."$name" = value
+        }
+        
+        // Propagate to children
+        children.each { child ->
+            child.setAttributeInCascade(attributes)
+        }
+    }
+
+    /**
+     * Generate the list of environment variables for the test session.
+     * 
+     * @return List of environment variables in 'KEY=VALUE' format
+     */
+    List<String> getEnvVars() {
+        def envList = []
+        if (this.useWiresharkLogging) {
+            if (this.wiresharkScope) {
+                envList.add("WIRESHARK_SCOPE=${this.wiresharkScope}")
+            }
+            if (this.clearSuccessfulWiresharkLogs) {
+                envList.add("CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${this.clearSuccessfulWiresharkLogs}")
+            }
+            if (this.startWiresharkTimeoutS) {
+                envList.add("START_WIRESHARK_TIMEOUT_S=${this.startWiresharkTimeoutS}")
+            }
+        }
+        return envList
+    }
+
+    /**
+     * Generate the list of credentials specifications for the test session.
+     * 
+     * @param pipeline The pipeline object to use for creating credential bindings
+     * @return List of credential bindings suitable for withCredentials
+     */
+    List getCredentialsSpec(def pipeline) {
+        def credentials = []
+        if (this.setAttApiToken) {
+            credentials.add(pipeline.string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY'))
+        }
+        return credentials
+    }
+    
+    /**
+     * Generate the list of arguments for the pytest command.
+     * 
+     * @param venv The virtual environment context map
+     * @return List of arguments as strings
+     */
+    List<String> getTestArgs(Map venv) {
+        def args = []
+
+        if (this.useCoverage) {
+            if (!this.covPackageName) {
+                throw new IllegalStateException("covPackageName must be set when useCoverage is true")
+            }
+            def covPath
+            if (venv.isUnix) {
+                covPath = "${venv.name}/lib/python${venv.version}/site-packages/${this.covPackageName}"
+            } else {
+                covPath = "${venv.name}\\lib\\site-packages\\${this.covPackageName}"
+            }
+            args.add("--cov=${covPath}")
+        }
+
+        if (this.importMode) {
+            args.add("--import-mode=${this.importMode}")
+        }
+        args.add("--junitxml=pytest_reports/junit-${venv.version}.xml")
+        args.add("--junit-prefix=${venv.version}")
+        if (this.markers) {
+            args.add("-m \"${this.markers}\"")
+        }
+        if (this.jobName) {
+            if (this.setup) {
+                args.add("--job_name=\"${this.jobName}-${this.setup}-${venv.version}\"")
+            } else {
+                args.add("--job_name=\"${this.jobName}-${venv.version}\"")
+            }
+        }
+        
+        if (this.setup) {
+            args.add("--setup=${this.setup}")
+        }
+        if (this.useWiresharkLogging) {
+            args.add("--run_wireshark")
+        }
+        if (this.logCli) {
+            args.add("-o log_cli=True")
+        }
+        if (this.enableFirmwareVersionCheck) {
+            args.add("--enable_firmware_version_check")
+        }
+        
+        return args
+    }
+
+    /**
+     * Create a child session that inherits from this one.
+     * Properties specified in args override the parent's values.
+     * 
+     * @param args Map of properties to override
+     * @return New child TestSession
+     */
+    TestSession override(Map args = [:]) {
+        // Validate arguments against whitelist
+        def invalidArgs = args.keySet().findAll { !CONFIG_ATTRS.contains(it) }
+        if (invalidArgs) {
+            throw new IllegalArgumentException("Invalid arguments passed to override(): ${invalidArgs}. Allowed properties: ${CONFIG_ATTRS}")
+        }
+
+        TestSession child = new TestSession()
+        child.parent = this
+        this.children.add(child)
+        
+        // Copy allowed properties from parent or args
+        CONFIG_ATTRS.each { name ->
+            child."$name" = args.containsKey(name) ? args[name] : this."$name"
+        }
+        
+        return child
+    }
+
+    /**
+     * Return a map with the current configuration attributes and their values.
+     * Useful for debugging and printing session configuration in pipeline logs.
+     */
+    Map getConfigMap() {
+        def m = [:]
+        CONFIG_ATTRS.each { name ->
+            m[name] = this."$name"
+        }
+        return m
+    }
+
+    /**
+     * Summary of session configuration.
+     */
+    String configSummary() {
+        // Preserve CONFIG_ATTRS ordering and emit one key=value per line
+        return CONFIG_ATTRS.collect { name -> "${name}=${this."$name"}" }.join('\n')
+    }
+}
+
 class PyTestManager {
-    def venvManager
-    def pipeline
-    def runPythonVersions = [] as Set
-    def wiresharkScope = ""
-    def clearSuccessfulWiresharkLogs = true
-    def startWiresharkTimeoutS = 10.0
-    def coverageStashes = []
+    private def venvManager
+    private def pipeline
+    private List coverageStashes = []
 
     PyTestManager(Map args = [pipeline: null, venvManager: null]) {
         this.venvManager = args.venvManager
         this.pipeline = args.pipeline
     }
 
-    def runTestHW(markers, setup_name = "", extra_args = "") {
+    /**
+     * Unstashes all coverage files.
+     * 
+     * @return Set of coverage file stash names
+     */
+    def getCoverageFiles() {
+        this.coverageStashes.each { stash ->
+             this.pipeline.unstash stash
+        }
+        return this.coverageStashes as Set
+    }
+
+    /**
+     * Checks if there are any coverage files available.
+     * 
+     * @return true if coverage files have been stashed, false otherwise
+     */
+    def hasCoverageFiles() {
+        return !this.coverageStashes.isEmpty()
+    }
+
+    /**
+     * Build an exclusion string for pytest markers.
+     * Converts a list of marker names into a pytest-compatible exclusion string.
+     * 
+     * @param excludes List of marker names to exclude
+     * @return A string like 'not marker1 and not marker2' suitable for pytest -m option
+     */
+    static def markersExcludeString(excludes) {
+        return excludes.collect { "not ${it}" }.join(' and ')
+    }
+
+    /**
+     * Archive Wireshark log files as Jenkins artifacts.
+     * Archives all .pcap files from the specified directory.
+     * 
+     * @param wiresharkDir Directory containing Wireshark log files
+     */
+    private def archiveWiresharkLogs(String wiresharkDir) {
+        if (this.venvManager.isUnixNode()) {
+            this.pipeline.archiveArtifacts artifacts: "${wiresharkDir}/*.pcap", allowEmptyArchive: true
+        } else {
+            this.pipeline.archiveArtifacts artifacts: "${wiresharkDir}\\*.pcap", allowEmptyArchive: true
+        }
+    }
+
+    /**
+     * Clear Wireshark log files from the specified directory.
+     * Removes all .pcap files to prepare for new test runs.
+     * 
+     * @param wiresharkDir Directory containing Wireshark log files to clear
+     */
+    private def clearWiresharkLogs(String wiresharkDir) {
+        if (this.venvManager.isUnixNode()) {
+            this.pipeline.sh(script: "rm -f ${wiresharkDir}/*.pcap", returnStatus: true)
+        } else {
+            this.pipeline.bat(script: "del /f \"${wiresharkDir}\\\\*.pcap\"", returnStatus: true)
+        }
+    }
+
+    /**
+     * Clear coverage files from the current directory.
+     * Removes all .coverage* files to prepare for new test runs.
+     */
+    private def clearCoverageFiles() {
+        if (this.venvManager.isUnixNode()) {
+            this.pipeline.sh(script: 'rm -f *.coverage*', returnStatus: true)
+        } else {
+            this.pipeline.bat(script: 'del /f "*.coverage*"', returnStatus: true)
+        }
+    }
+
+    /**
+     * Stash coverage file for later merging.
+     * Moves the coverage file to a unique stash name to avoid collisions and stashes it.
+     * 
+     * @param uid Unique identifier of the test session
+     * @param venvName Name of the virtual environment (e.g., '.venv3.9')
+     */
+    private def stashCoverageFile(String uid, String venvName) {
+        def workingFolder = this.venvManager.getWorkingFolder()
+        // Copy coverage file back from working folder if it differs from workspace
+        if (workingFolder != this.pipeline.env.WORKSPACE) {
+            this.venvManager.copyFromWorkingFolder(".coverage")
+        }
+
+        // Build stash name with uid and venv name to ensure uniqueness
+        def base_stash_name = ".coverage_${uid}_${venvName}"
+        
+        // Handle stash name collision by appending index as fallback
+        def coverage_stash = base_stash_name
+        int index = 1
+        while (this.coverageStashes.contains(coverage_stash)) {
+            coverage_stash = "${base_stash_name}_${index}"
+            index++
+        }
+        
+        // Rename coverage file to unique stash name
+        if (this.venvManager.isUnixNode()) {
+            this.pipeline.sh "mv .coverage ${coverage_stash}"
+        } else {
+            this.pipeline.bat "move .coverage ${coverage_stash}"
+        }
+        
+        // Stash coverage file and record it for later merging
+        this.pipeline.stash includes: coverage_stash, name: coverage_stash
+        this.coverageStashes.add(coverage_stash)
+    }
+
+    /**
+     * Publish JUnit reports and clean them up.
+     * Copies reports from working folder if necessary, publishes them, and then deletes them
+     * to prevent re-publishing in subsequent stages.
+     */
+    private def publishAndCleanupJunitReports() {
+        def workingFolder = this.venvManager.getWorkingFolder()
+        
+        // Copy junit reports back from working folder to workspace if they're separate
+        if (workingFolder != this.pipeline.env.WORKSPACE) {
+            this.venvManager.copyFromWorkingFolder("pytest_reports/")
+        }
+        
+        // Publish junit reports
+        this.pipeline.junit "pytest_reports/*.xml"
+        
+        // Delete the junit after publishing it so it is not re-published on the next stage
+        if (this.venvManager.isUnixNode()) {
+            this.pipeline.sh "rm -f pytest_reports/*.xml"
+        } else {
+            this.pipeline.bat "del /S /Q pytest_reports\\*.xml"
+        }
+    }
+
+    /**
+     * Run a test session for the configured Python versions.
+     * 
+     * Executes pytest with the specified markers and setup configuration across all 
+     * configured Python versions. Handles environment setup, Wireshark logging (if enabled),
+     * coverage collection, and results publishing.
+     * 
+     * @param session TestSession configuration object
+     */
+    def runTestSession(TestSession session) {
+        // Validate that uid is set
+        if (!session.uid) {
+            throw new IllegalArgumentException("TestSession uid must be set before running tests")
+        }
+        
         try {
-            pipeline.timeout(time: 1, unit: 'HOURS') {
-                pipeline.clearCoverageFiles()
+            this.pipeline.echo("Starting test session with config:\n${session.configSummary()}")
+            this.pipeline.timeout(time: session.testTimeoutMinutes, unit: 'MINUTES') {
+                if (session.useWiresharkLogging) {
+                    this.clearWiresharkLogs(session.wiresharkDir)
+                }
+                if (session.useCoverage) {
+                    this.clearCoverageFiles()
+                }
                 def firstIteration = true
-                venvManager.forPythons(runPythonVersions) { venv ->
-                    pipeline.withEnv(["WIRESHARK_SCOPE=${wiresharkScope}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${clearSuccessfulWiresharkLogs}", "START_WIRESHARK_TIMEOUT_S=${startWiresharkTimeoutS}"]) {
+                if (session.runInVirtualEnvs == null) {
+                    throw new IllegalArgumentException("runInVirtualEnvs must be set in the TestSession to specify which virtual environments to run tests against.")
+                }
+                this.venvManager.forVirtualEnvs(session.runInVirtualEnvs) { venv ->
+                    this.pipeline.withEnv(session.getEnvVars()) {
                         try {
-                            def setupArg = setup_name ? "--setup ${setup_name} " : ""
-                            venv.run("poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-${venv.version}.xml --junit-prefix=${venv.version} -m \"${markers}\" ${setupArg} --job_name=\"${pipeline.env.JOB_NAME}-#${pipeline.env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args} --enable_firmware_version_check")
-                        } catch (err) {
-                            pipeline.unstable(message: "Tests failed")
-                        } finally {
-                            pipeline.junit "pytest_reports\\*.xml"
-                            // Delete the junit after publishing it so it not re-published on the next stage
-                            pipeline.bat "del /S /Q pytest_reports\\*.xml"
-                            if (firstIteration) {
-                                // Sanitize setup_name to create valid filename and stash name
-                                def sanitized_name = setup_name.replaceAll('[.@]', '_')
-                                def coverage_file = ".coverage_${sanitized_name}"
-                                pipeline.bat "move .coverage ${coverage_file}"
-                                pipeline.stash includes: coverage_file, name: coverage_file
-                                coverageStashes.add(coverage_file)
-                                firstIteration = false
+                            def testArgs = session.getTestArgs(venv)
+                            def testArgsStr = testArgs.join(' ')
+
+                            def credentials = session.getCredentialsSpec(this.pipeline)
+                            if (credentials) {
+                                this.pipeline.withCredentials(credentials) {
+                                    venv.run("${session.runTestBaseCommand} ${testArgsStr}")
+                                }
+                            } else {
+                                venv.run("${session.runTestBaseCommand} ${testArgsStr}")
                             }
+                        } catch (err) {
+                            this.pipeline.unstable(message: "Tests failed")
+                        } finally {
+                            this.publishAndCleanupJunitReports()
+                            if (firstIteration && session.useCoverage) {
+                                this.stashCoverageFile(session.uid, venv.name)
+                            }
+                            firstIteration = false
                         }
                     }
                 }
             }
         } finally {
-            pipeline.archiveWiresharkLogs()
-            pipeline.clearWiresharkLogs()
-            pipeline.clearCoverageFiles()
+            if (session.useWiresharkLogging) {
+                this.archiveWiresharkLogs(session.wiresharkDir)
+                this.clearWiresharkLogs(session.wiresharkDir)
+            }
+            if (session.useCoverage) {
+                this.clearCoverageFiles()
+            }
         }
     }
 }
@@ -512,6 +1027,22 @@ VEnvManager venvManager = new VEnvManager(
 )
 
 PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvManager)
+
+/* Define default base test sessions to be used/overridden in stages */
+TestSession TEST_SESSIONS = new TestSession(
+    covPackageName: "ingenialink",
+    wiresharkScope: null, // Set later based on parameter
+    wiresharkDir: "wireshark",
+    startWiresharkTimeoutS: 10.0,
+    importMode: "importlib",
+    logCli: true,
+    setAttApiToken: true
+)
+TestSession HW_TEST_SESSIONS = TEST_SESSIONS.override()
+TestSession CAN_TEST_SESSIONS = HW_TEST_SESSIONS.override()
+TestSession ETH_TEST_SESSIONS = HW_TEST_SESSIONS.override() // Wireshark logging is injected later based on parameter
+TestSession ECAT_TEST_SESSIONS = HW_TEST_SESSIONS.override() // Wireshark logging is injected later based on parameter
+
 
 /* Build develop everyday 3 times starting at 19:00 UTC (21:00 Barcelona Time), running all tests */
 CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * * % PYTHON_VERSIONS=All''' : ""
@@ -563,33 +1094,43 @@ pipeline {
         stage("Set env") {
             steps {
                 script {
+                    // Determine which Python versions to run tests against based on branch and parameters
+                    Set pythonVersions
                     if (env.BRANCH_NAME == 'master') {
-                        testManager.runPythonVersions = ALL_PYTHON_VERSIONS
+                        pythonVersions = ALL_PYTHON_VERSIONS
                     } else if (env.BRANCH_NAME.startsWith('release/')) {
-                        testManager.runPythonVersions = ALL_PYTHON_VERSIONS
+                        pythonVersions = ALL_PYTHON_VERSIONS
                     } else {
                         if (env.PYTHON_VERSIONS == "MIN_MAX") {
-                            testManager.runPythonVersions = [PYTHON_VERSION_MIN, PYTHON_VERSION_MAX] as Set
+                            pythonVersions = [PYTHON_VERSION_MIN, PYTHON_VERSION_MAX] as Set
                         } else if (env.PYTHON_VERSIONS == "MIN") {
-                            testManager.runPythonVersions = [PYTHON_VERSION_MIN] as Set
+                            pythonVersions = [PYTHON_VERSION_MIN] as Set
                         } else if (env.PYTHON_VERSIONS == "MAX") {
-                            testManager.runPythonVersions = [PYTHON_VERSION_MAX] as Set
+                            pythonVersions = [PYTHON_VERSION_MAX] as Set
                         } else if (env.PYTHON_VERSIONS == "All") {
-                            testManager.runPythonVersions = ALL_PYTHON_VERSIONS
+                            pythonVersions = ALL_PYTHON_VERSIONS
                         } else { // Branch-indexing
-                            testManager.runPythonVersions = [PYTHON_VERSION_MIN] as Set
+                            pythonVersions = [PYTHON_VERSION_MIN] as Set
                         }
                     }
 
-                    // Set wireshark properties on testManager
-                    testManager.wiresharkScope = params.WIRESHARK_LOGGING_SCOPE
-                    testManager.clearSuccessfulWiresharkLogs = params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS
+                    // Set dynamic properties according to job and parameters
+                    TEST_SESSIONS.setAttributeInCascade(
+                        runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames(pythonVersions),
+                        jobName: "${env.JOB_NAME}-#${env.BUILD_NUMBER}",
+                        wiresharkScope: params.WIRESHARK_LOGGING_SCOPE,
+                        clearSuccessfulWiresharkLogs: params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS,
+                    )
 
-                    if (params.WIRESHARK_LOGGING) {
-                        USE_WIRESHARK_LOGGING = "--run_wireshark"
-                    } else {
-                        USE_WIRESHARK_LOGGING = ""
-                    }
+                    // Configure if ECAT and ETH sessions use Wireshark logging based on parameter
+                    ECAT_TEST_SESSIONS.setAttributeInCascade(
+                        useWiresharkLogging: params.WIRESHARK_LOGGING,
+                    )
+                    ETH_TEST_SESSIONS.setAttributeInCascade(
+                        useWiresharkLogging: params.WIRESHARK_LOGGING,
+                    )
+
+                    echo("Test sessions have been configured to run with the following base configuration:\n${TEST_SESSIONS.configSummary()}")
                 }
             }
         }
@@ -697,26 +1238,11 @@ pipeline {
                                     steps {
                                         script {
                                             /* Windows docker does not have npcap/winpcap installed so runs no_pcap tests */
-                                            def win_marker = markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
-                                            venvManager.forPythons(testManager.runPythonVersions) { venv ->
+                                            def win_marker = PyTestManager.markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
+                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
-                                                withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
-                                                    venv.run("poetry run poe tests --import-mode=importlib --cov=${venv.name}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m \"${win_marker}\" -o log_cli=True --enable_firmware_version_check")
-                                                }
                                             }
-                                        }
-                                    }
-                                    post {
-                                        always {
-                                            script {
-                                                venvManager.copyFromWorkingFolder("pytest_reports/")
-                                                venvManager.copyFromWorkingFolder(".coverage", ".coverage_docker")
-                                            }
-                                            junit 'pytest_reports/*.xml'
-                                            stash includes: '.coverage_docker', name: '.coverage_docker'
-                                            script {
-                                                testManager.coverageStashes.add(".coverage_docker")
-                                            }
+                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "no_pcap", markers: win_marker))
                                         }
                                     }
                                 }
@@ -745,7 +1271,7 @@ pipeline {
                                     steps {
                                         script {
                                             venvManager.createPoetryEnvironments(
-                                              pythonVersions: ([DEFAULT_PYTHON_VERSION] as Set) + testManager.runPythonVersions
+                                              pythonVersions: ([DEFAULT_PYTHON_VERSION] as Set) + venvManager.defaultVenvNamesToVersion(TEST_SESSIONS.runInVirtualEnvs)
                                             )
                                         }
                                     }
@@ -784,13 +1310,11 @@ pipeline {
                                     }
                                     steps {
                                         script {
-                                            def lin_marker = markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
-                                            venvManager.forPythons(testManager.runPythonVersions) { venv ->
+                                            def lin_marker = PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
+                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
-                                                withCredentials([string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY')]) {
-                                                    venv.run("poetry run poe tests --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m '${lin_marker}' -o log_cli=True --enable_firmware_version_check")
-                                                }
                                             }
+                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "pcap", markers: lin_marker))
                                         }
                                     }
                                     post {
@@ -810,10 +1334,10 @@ pipeline {
                                     }
                                     steps {
                                         script {
-                                            venvManager.forPythons(testManager.runPythonVersions) { venv ->
+                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
-                                                venv.run("poetry run poe tests --junitxml=pytest_reports/junit-tests-${venv.version}.xml --junit-prefix=${venv.version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True --enable_firmware_version_check")
                                             }
+                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "virtual_drive", markers: 'virtual', setup: 'summit_testing_framework.setups.virtual_drive.TESTS_SETUP'))
                                         }
                                     }
                                     post {
@@ -908,11 +1432,6 @@ pipeline {
                         label ECAT_NODE
                     }
                     stages {
-                        stage ("Clear Wireshark logs") {
-                            steps {
-                                clearWiresharkLogs()
-                            }
-                        }
                         stage('Unstash')
                         {
                             steps {
@@ -927,7 +1446,7 @@ pipeline {
                             steps {
                                 script {
                                     venvManager.createPoetryEnvironments(
-                                        pythonVersions: testManager.runPythonVersions,
+                                        pythonVersions: venvManager.defaultVenvNamesToVersion(ECAT_TEST_SESSIONS.runInVirtualEnvs),
                                         additionalCommands: ["poetry run poe install-wheel"]
                                     )
                                 }
@@ -943,7 +1462,7 @@ pipeline {
                                 /* Windows docker did not have npcap/winpcap installed so tests that require pcap are
                                 run on ethercat machine */
                                 script {
-                                    testManager.runTestHW("pcap")
+                                    testManager.runTestSession(ETH_TEST_SESSIONS.override(uid: "pcap", markers: "pcap"))
                                 }
                             }
                         }
@@ -955,7 +1474,11 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_SETUP@EVE-XCR-E", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestSession(ECAT_TEST_SESSIONS.override(
+                                        uid: "ethercat_everest",
+                                        markers: "ethercat",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_SETUP@EVE-XCR-E"
+                                    ))
                                 }
                             }
                         }
@@ -967,7 +1490,11 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_SETUP@CAP-XCR-E", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestSession(ECAT_TEST_SESSIONS.override(
+                                        uid: "ethercat_capitan",
+                                        markers: "ethercat",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_SETUP@CAP-XCR-E"
+                                    ))
                                 }
                             }
                         }
@@ -979,7 +1506,11 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestSession(ECAT_TEST_SESSIONS.override(
+                                        uid: "ethercat_multislave",
+                                        markers: "multislave",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP"
+                                    ))
                                 }
                             }
                         }
@@ -991,7 +1522,11 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_NET_E_SETUP@PHASE1", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestSession(ECAT_TEST_SESSIONS.override(
+                                        uid: "fsoe_phase1",
+                                        markers: "fsoe",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_NET_E_SETUP@PHASE1"
+                                    ))
                                 }
                             }
                         }
@@ -1003,7 +1538,11 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_NET_E_SETUP@PHASE2", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestSession(ECAT_TEST_SESSIONS.override(
+                                        uid: "fsoe_phase2",
+                                        markers: "fsoe",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_NET_E_SETUP@PHASE2"
+                                    ))
                                 }
                             }
                         }
@@ -1043,7 +1582,7 @@ pipeline {
                             steps {
                                 script {
                                     venvManager.createPoetryEnvironments(
-                                        pythonVersions: testManager.runPythonVersions,
+                                        pythonVersions: venvManager.defaultVenvNamesToVersion(HW_TEST_SESSIONS.runInVirtualEnvs),
                                         additionalCommands: ["poetry run poe install-wheel"]
                                     )
                                 }
@@ -1057,7 +1596,11 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_SETUP@EVE-XCR-C")
+                                    testManager.runTestSession(CAN_TEST_SESSIONS.override(
+                                        uid: "canopen_everest",
+                                        markers: "canopen",
+                                        setup: "${RACK_SPECIFIERS_PATH}.CAN_SETUP@EVE-XCR-C"
+                                    ))
                                 }
                             }
                         }
@@ -1069,7 +1612,11 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_SETUP@CAP-XCR-C")
+                                    testManager.runTestSession(CAN_TEST_SESSIONS.override(
+                                        uid: "canopen_capitan",
+                                        markers: "canopen",
+                                        setup: "${RACK_SPECIFIERS_PATH}.CAN_SETUP@CAP-XCR-C"
+                                    ))
                                 }
                             }
                         }
@@ -1081,7 +1628,11 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_SETUP@EVE-XCR-C", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestSession(ETH_TEST_SESSIONS.override(
+                                        uid: "ethernet_everest",
+                                        markers: "ethernet",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ETH_SETUP@EVE-XCR-C"
+                                    ))
                                 }
                             }
                         }
@@ -1093,7 +1644,11 @@ pipeline {
                             }
                             steps {
                                 script {
-                                    testManager.runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_SETUP@CAP-XCR-C", USE_WIRESHARK_LOGGING)
+                                    testManager.runTestSession(ETH_TEST_SESSIONS.override(
+                                        uid: "ethernet_capitan",
+                                        markers: "ethernet",
+                                        setup: "${RACK_SPECIFIERS_PATH}.ETH_SETUP@CAP-XCR-C"
+                                    ))
                                 }
                             }
                         }
@@ -1108,16 +1663,15 @@ pipeline {
                     image WIN_DOCKER_IMAGE
                 }
             }
+            when {
+                expression { testManager.hasCoverageFiles() }
+            }
             environment {
                 VENV_WORKING_FOLDER = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
             }
             steps {
                 script {
-                    def coverage_files = ""
-                    for (coverage_stash in testManager.coverageStashes) {
-                        unstash coverage_stash
-                        coverage_files += " " + coverage_stash
-                    }
+                    def coverage_files = testManager.getCoverageFiles().join(" ")
                     for (stash_name in wheel_stashes) {
                         unstash stash_name
                     }
@@ -1126,7 +1680,7 @@ pipeline {
                       additionalCommands: ["poetry run poe install-wheel"]
                     )
                     venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                        venv.run("poetry run poe cov-combine --${coverage_files}")
+                        venv.run("poetry run poe cov-combine -- ${coverage_files}")
                         venv.run("poetry run poe cov-report")
                     }
                     venvManager.copyFromWorkingFolder("coverage.xml")
@@ -1137,3 +1691,4 @@ pipeline {
         }
     }
 }
+
