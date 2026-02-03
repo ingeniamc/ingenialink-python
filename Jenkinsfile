@@ -617,6 +617,15 @@ class TestSession implements Serializable {
      */
     Boolean setAttApiToken = false
 
+
+    /**
+     * Firmware version check option
+     * `enableFirmwareVersionCheck`: if true, enables firmware version check during tests
+     * Filters test selection according to firmware version markers
+     * Default: true
+     */
+    Boolean enableFirmwareVersionCheck = true
+
     TestSession(Map args = [:]) {
         // Validate arguments against whitelist
         def invalidArgs = args.keySet().findAll { !CONFIG_ATTRS.contains(it) }
@@ -734,6 +743,9 @@ class TestSession implements Serializable {
         }
         if (this.logCli) {
             args.add("-o log_cli=True")
+        }
+        if (this.enableFirmwareVersionCheck) {
+            args.add("--enable_firmware_version_check")
         }
         
         return args
