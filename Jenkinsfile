@@ -494,7 +494,18 @@ class VEnvManager {
  * for hierarchical test session definitions.
  */
 class TestSession implements Serializable {
+
+    /**
+    * Parent session (if any)
+    * Ancestor from which the session was created via override()
+    */
     TestSession parent = null
+
+    /**
+     * Child sessions
+     * Offspring sessions created via override()
+     * Used to propagate configuration changes via setAttributeInCascade()
+     */
     List<TestSession> children = []
     
     /**
@@ -517,7 +528,8 @@ class TestSession implements Serializable {
         'clearSuccessfulWiresharkLogs',
         'startWiresharkTimeoutS',
         'jobName',
-        'setAttApiToken'
+        'setAttApiToken',
+        'enableFirmwareVersionCheck'
     ]
 
     /**
