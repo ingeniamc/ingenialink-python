@@ -1477,7 +1477,7 @@ pipeline {
                                     testManager.runTestSession(ECAT_TEST_SESSIONS.override(
                                         uid: "ethercat_everest",
                                         markers: "ethercat",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP"
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_SETUP@EVE-XCR-E"
                                     ))
                                 }
                             }
@@ -1493,7 +1493,7 @@ pipeline {
                                     testManager.runTestSession(ECAT_TEST_SESSIONS.override(
                                         uid: "ethercat_capitan",
                                         markers: "ethercat",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP"
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_SETUP@CAP-XCR-E"
                                     ))
                                 }
                             }
@@ -1525,7 +1525,7 @@ pipeline {
                                     testManager.runTestSession(ECAT_TEST_SESSIONS.override(
                                         uid: "fsoe_phase1",
                                         markers: "fsoe",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE1_SETUP"
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_NET_E_SETUP@PHASE1"
                                     ))
                                 }
                             }
@@ -1541,7 +1541,7 @@ pipeline {
                                     testManager.runTestSession(ECAT_TEST_SESSIONS.override(
                                         uid: "fsoe_phase2",
                                         markers: "fsoe",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP"
+                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_NET_E_SETUP@PHASE2"
                                     ))
                                 }
                             }
@@ -1599,7 +1599,7 @@ pipeline {
                                     testManager.runTestSession(CAN_TEST_SESSIONS.override(
                                         uid: "canopen_everest",
                                         markers: "canopen",
-                                        setup: "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP"
+                                        setup: "${RACK_SPECIFIERS_PATH}.CAN_SETUP@EVE-XCR-C"
                                     ))
                                 }
                             }
@@ -1615,7 +1615,7 @@ pipeline {
                                     testManager.runTestSession(CAN_TEST_SESSIONS.override(
                                         uid: "canopen_capitan",
                                         markers: "canopen",
-                                        setup: "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP"
+                                        setup: "${RACK_SPECIFIERS_PATH}.CAN_SETUP@CAP-XCR-C"
                                     ))
                                 }
                             }
@@ -1631,7 +1631,7 @@ pipeline {
                                     testManager.runTestSession(ETH_TEST_SESSIONS.override(
                                         uid: "ethernet_everest",
                                         markers: "ethernet",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP"
+                                        setup: "${RACK_SPECIFIERS_PATH}.ETH_SETUP@EVE-XCR-C"
                                     ))
                                 }
                             }
@@ -1647,7 +1647,7 @@ pipeline {
                                     testManager.runTestSession(ETH_TEST_SESSIONS.override(
                                         uid: "ethernet_capitan",
                                         markers: "ethernet",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP"
+                                        setup: "${RACK_SPECIFIERS_PATH}.ETH_SETUP@CAP-XCR-C"
                                     ))
                                 }
                             }
