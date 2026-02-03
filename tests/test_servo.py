@@ -1,4 +1,3 @@
-import os
 import re
 import shutil
 import time
@@ -55,11 +54,6 @@ class RegisterUpdateTest:
         self.call_count += 1
 
 
-def _clean(filename):
-    if os.path.isfile(filename):
-        os.remove(filename)
-
-
 def skip_if_monitoring_is_not_available(servo):
     try:
         servo.read("MON_DIST_STATUS")
@@ -114,14 +108,14 @@ def create_disturbance(servo):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_save_configuration(servo) -> None:
-    filename = "temp_config"
+def test_save_configuration(servo, tmp_path) -> None:
+    filename = tmp_path / "temp_config"
 
-    servo.save_configuration(filename)
+    servo.save_configuration(str(filename))
 
-    assert os.path.isfile(filename)
+    assert filename.is_file()
 
-    config_file = ConfigurationFile.load_from_xcf(filename)
+    config_file = ConfigurationFile.load_from_xcf(str(filename))
 
     prod_code, rev_number = servo._get_drive_identification()
     assert config_file.device.product_code == prod_code
@@ -150,19 +144,17 @@ def test_save_configuration(servo) -> None:
         assert saved_register.access == RegAccess.RW
         assert registers[reg_id].address_type != RegAddressType.NVM_NONE
 
-    _clean(filename)
 
-
-def test_check_configuration(virtual_drive):
+def test_check_configuration(virtual_drive, tmp_path):
     server, servo = virtual_drive
 
     assert servo is not None and server is not None
 
-    filename = "temp_config"
+    filename = tmp_path / "temp_config"
 
     # Load the configuration, the subsequent check should not raise an error.
-    servo.save_configuration(filename)
-    servo.check_configuration(filename)
+    servo.save_configuration(str(filename))
+    servo.check_configuration(str(filename))
 
     # Change a random register
     register = "DRV_PROT_USER_OVER_VOLT"
@@ -180,25 +172,23 @@ def test_check_configuration(virtual_drive):
         + r" --- Expected: \d*\.\d+ | Found: "
         + str(new_value),
     ):
-        servo.check_configuration(filename)
+        servo.check_configuration(str(filename))
 
     # Load the configuration again to reset the changes we just made
     # The subsequent check should no longer raise an error.
-    servo.load_configuration(filename)
-    servo.check_configuration(filename)
-
-    _clean(filename)
+    servo.load_configuration(str(filename))
+    servo.check_configuration(str(filename))
 
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_load_configuration(servo) -> None:
-    filename = "temp_config"
-    servo.save_configuration(filename)
-    assert os.path.isfile(filename)
-    servo.load_configuration(filename)
-    config_file = ConfigurationFile.load_from_xcf(filename)
+def test_load_configuration(servo, tmp_path) -> None:
+    filename = tmp_path / "temp_config"
+    servo.save_configuration(str(filename))
+    assert filename.is_file()
+    servo.load_configuration(str(filename))
+    config_file = ConfigurationFile.load_from_xcf(str(filename))
 
     for register in config_file.registers:
         # Check if the register exists in the drive
@@ -210,7 +200,6 @@ def test_load_configuration(servo) -> None:
             assert value == pytest.approx(register.storage, 0.0001)
         else:
             assert value == register.storage
-    _clean(filename)
 
 
 def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: F811
@@ -250,12 +239,10 @@ def test_load_configuration_invalid_subnode(setup_descriptor, servo, subnode) ->
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_load_configuration_to_subnode_zero(setup_descriptor, servo) -> None:
+def test_load_configuration_to_subnode_zero(setup_descriptor, servo, tmp_path) -> None:
     path = setup_descriptor.config_file
     assert isinstance(path, Path)
-    filename = path.as_posix()
-    file = filename.split("/")[-1]
-    modified_path = Path(filename.replace(file, "config_0_test.xdf"))
+    modified_path = tmp_path / "config_0_test.xdf"
     shutil.copy(path, modified_path)
     with open(modified_path, encoding="utf-8") as xml_file:
         tree = ElementTree.parse(xml_file)
