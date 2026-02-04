@@ -993,7 +993,7 @@ class TestSession implements Serializable {
      * Examples:
      *   "tests.setups.rack_specifiers.ECAT_SETUP@EVE-XCR-E" -> [name: "EVE-XCR-E", version: "latest"]
      *   "tests.setups.rack_specifiers.ECAT_SETUP@CAP-XCR-E@2.0.0" -> [name: "CAP-XCR-E", version: "2.0.0"]
-     *   "summit_testing_framework.setups.virtual_drive.TESTS_SETUP" -> [name: "summit_testing_framework.setups.virtual_drive.TESTS_SETUP", version: "latest"]
+     *   "tests.setups.virtual_drive.VIRTUAL_DRIVE_SETUP" -> [name: "tests.setups.virtual_drive.VIRTUAL_DRIVE_SETUP", version: "latest"]
      * 
      * @param setupString The setup string to parse
      * @return Map with 'name' and 'version' keys, or null if setup is not defined
@@ -1107,11 +1107,11 @@ class TestSession implements Serializable {
         
         // Copy from working folder to workspace if they're different
         if (workingFolder != pipeline.env.WORKSPACE) {
-            venvManager.copyFromWorkingFolder("tests/setups/specifiers_json/*.json")
+            venvManager.copyFromWorkingFolder("tests/setups/specifiers_json/${outputFileName}")
         }
         
         // Archive the artifact from workspace
-        pipeline.archiveArtifacts artifacts: 'tests/setups/specifiers_json/*.json', allowEmptyArchive: true
+        pipeline.archiveArtifacts artifacts: "tests/setups/specifiers_json/${outputFileName}", allowEmptyArchive: true
 
         this.specifiersJsonPath = "${pipeline.env.WORKSPACE}/tests/setups/specifiers_json/${outputFileName}"
         pipeline.echo "Specifiers exported to: ${this.specifiersJsonPath}"
@@ -1446,15 +1446,16 @@ pipeline {
         }
 
         stage('Build and publish') {
-            
-            // TODO:Remove
-            when{
-                expression { false }
-            }
             stages {
                 stage('Build') {
                     parallel {
                         stage('Build Windows') {
+                            //TODO:remove
+                            when {
+                                expression {
+                                    return false
+                                }
+                            }
                             agent {
                                 docker {
                                     label SW_NODE
@@ -1617,18 +1618,36 @@ pipeline {
                                         }
                                     }
                                 }
+                                stage('Export Specifiers to JSON') {
+                                    steps {
+                                        script {
+                                            // Install wheel first (needed for summit_testing_framework to import ingenialink)
+                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
+                                                venv.run("poetry run poe install-wheel")
+                                            }
+                                            
+                                            // Export specifiers and get the path
+                                            def jsonPath = TEST_SESSIONS.exportSpecifiers(
+                                                this,
+                                                venvManager,
+                                                "virtual_specifiers.json",
+                                                ["tests.setups.virtual_drive.VIRTUAL_DRIVE_SETUP"],
+                                                true
+                                            )
+                                        }
+                                    }
+                                }
                                 stage('Run unit tests on linux docker') {
                                     when{
                                         expression {
-                                            "pcap" ==~ params.run_test_stages
+                                            def shouldRun = "pcap" ==~ params.run_test_stages &&
+                                                TEST_SESSIONS.shouldRun(this, "tests.setups.virtual_drive.VIRTUAL_DRIVE_SETUP")
+                                            return shouldRun
                                         }
                                     }
                                     steps {
                                         script {
                                             def lin_marker = PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
-                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
-                                                venv.run("poetry run poe install-wheel")
-                                            }
                                             testManager.runTestSession(TEST_SESSIONS.override(uid: "pcap", markers: lin_marker))
                                         }
                                     }
@@ -1644,7 +1663,7 @@ pipeline {
                                 stage('Run virtual drive tests on docker') {
                                     when {
                                         expression {
-                                            "virtual_drive_tests" ==~ params.run_test_stages
+                                            "virtual_drive_tests" ==~ params.run_test_stages 
                                         }
                                     }
                                     steps {
@@ -1652,7 +1671,7 @@ pipeline {
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "virtual_drive", markers: 'virtual', setup: 'summit_testing_framework.setups.virtual_drive.TESTS_SETUP'))
+                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "virtual_drive", markers: 'virtual', setup: 'tests.setups.virtual_drive.VIRTUAL_DRIVE_SETUP'))
                                         }
                                     }
                                     post {
@@ -1775,9 +1794,15 @@ pipeline {
                                         this,
                                         venvManager,
                                         "ecat_specifiers.json",
-                                        "${RACK_SPECIFIERS_PATH}.ECAT_SETUP",
+                                        ["${RACK_SPECIFIERS_PATH}.ECAT_SETUP"],
                                         true
                                     )
+                                    
+                                    // Set the path on ECAT_TEST_SESSIONS
+                                    if (jsonPath) {
+                                        ECAT_TEST_SESSIONS.setAttributeInCascade([specifiersJsonPath: jsonPath])
+                                        echo "Specifiers exported to: ${jsonPath}"
+                                    }
                                 }
                             }
                         }
