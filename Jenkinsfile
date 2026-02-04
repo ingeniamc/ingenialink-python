@@ -1446,6 +1446,11 @@ pipeline {
         }
 
         stage('Build and publish') {
+            
+            // TODO:Remove
+            when{
+                false
+            }
             stages {
                 stage('Build') {
                     parallel {
