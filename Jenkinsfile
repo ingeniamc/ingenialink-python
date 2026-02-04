@@ -813,7 +813,7 @@ class TestSession implements Serializable {
 
     /**
      * Path to the JSON file containing exported specifiers with execution policies.
-     * Default: null (will use "${env.WORKSPACE}/generated/exported_specifiers.json" if not set)
+     * Default: null (will use "${env.WORKSPACE}/tests/setups/specifiers_json/exported_specifiers.json" if not set)
      */
     String specifiersJsonPath = null
 
@@ -1077,7 +1077,7 @@ class TestSession implements Serializable {
      * 
      * This method exports the specifier(s) from this session's setup to a JSON file
      * using the summit_testing_framework.export_specifiers module.
-     * The file is always created in the 'generated/' subdirectory of the working folder.
+     * The file is always created in the 'tests/setups/specifiers_json/' subdirectory of the working folder.
      * 
      * @param pipeline The pipeline object (for accessing env, echo, etc.)
      * @param venvManager The VEnvManager instance to use for running the export command
@@ -1087,9 +1087,9 @@ class TestSession implements Serializable {
      * @return The full path to the exported JSON file in the workspace, or null if no setups provided
      */
     String exportSpecifiers(def pipeline, def venvManager, String outputFileName = "exported_specifiers.json", List setups = [], boolean override = true) {
-        // Always save in generated/ subdirectory of working folder
+        // Always save in tests/setups/specifiers_json/ subdirectory of working folder
         def workingFolder = venvManager.getWorkingFolder()
-        def workingOutputFile = venvManager.joinPath(workingFolder, "generated", outputFileName)
+        def workingOutputFile = venvManager.joinPath(workingFolder, "tests", "setups", "specifiers_json", outputFileName)
         
         if (!setups) {
             pipeline.echo "No setups provided. Skipping specifier export."
@@ -1107,17 +1107,17 @@ class TestSession implements Serializable {
         
         // Copy from working folder to workspace if they're different
         if (workingFolder != pipeline.env.WORKSPACE) {
-            venvManager.copyFromWorkingFolder("generated/*.json")
+            venvManager.copyFromWorkingFolder("tests/setups/specifiers_json/*.json")
         }
         
         // Archive the artifact from workspace
-        pipeline.archiveArtifacts artifacts: 'generated/*.json', allowEmptyArchive: true
+        pipeline.archiveArtifacts artifacts: 'tests/setups/specifiers_json/*.json', allowEmptyArchive: true
 
-        this.specifiersJsonPath = "${pipeline.env.WORKSPACE}/generated/${outputFileName}"
+        this.specifiersJsonPath = "${pipeline.env.WORKSPACE}/tests/setups/specifiers_json/${outputFileName}"
         pipeline.echo "Specifiers exported to: ${this.specifiersJsonPath}"
         
         // Return the workspace path to the JSON file
-        return "${pipeline.env.WORKSPACE}/generated/${outputFileName}"
+        return "${pipeline.env.WORKSPACE}/tests/setups/specifiers_json/${outputFileName}"
     }
 }
 
