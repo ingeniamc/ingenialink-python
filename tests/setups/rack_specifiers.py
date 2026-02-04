@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from summit_testing_framework.execution_policies import ExecutionPolicies
 from summit_testing_framework.setups.specifier_container import SpecifierContainer
 from summit_testing_framework.setups.specifiers import (
     DictionaryType,
@@ -18,6 +19,7 @@ ECAT_SETUP = SpecifierContainer({
         config_file=Path("//azr-srv-ingfs1/dist/setups/setup_eve_ecat/1.2.0/config.xml"),
         version="2.6.0",
         dictionary_type=DictionaryType.XDF_V2,
+        execution_policy=ExecutionPolicies.ALWAYS,
     ),
     PartNumber.CAP_XCR_E: RackServiceConfigSpecifier.from_firmware(
         part_number=PartNumber.CAP_XCR_E,
@@ -25,6 +27,7 @@ ECAT_SETUP = SpecifierContainer({
         config_file=Path("//azr-srv-ingfs1/dist/setups/setup_cap_ecat/1.1.0/config.xml"),
         version="2.6.0",
         dictionary_type=DictionaryType.XDF_V2,
+        execution_policy=ExecutionPolicies.ALWAYS,
     ),
 })
 
@@ -35,6 +38,7 @@ ETH_SETUP = SpecifierContainer({
         config_file=Path("//azr-srv-ingfs1/dist/setups/setup_eve_can/1.2.0/config.xml"),
         version="2.4.0",
         dictionary_type=DictionaryType.XDF_V2,
+        execution_policy=ExecutionPolicies.ALWAYS,
     ),
     PartNumber.CAP_XCR_C: RackServiceConfigSpecifier.from_firmware(
         part_number=PartNumber.CAP_XCR_C,
@@ -42,6 +46,7 @@ ETH_SETUP = SpecifierContainer({
         config_file=Path("//azr-srv-ingfs1/dist/setups/setup_cap_can/1.1.0/config.xml"),
         version="2.4.0",
         dictionary_type=DictionaryType.XDF_V2,
+        execution_policy=ExecutionPolicies.ALWAYS,
     ),
 })
 
@@ -52,6 +57,7 @@ CAN_SETUP = SpecifierContainer({
         config_file=Path("//azr-srv-ingfs1/dist/setups/setup_eve_can/1.2.0/config.xml"),
         version="2.4.0",
         dictionary_type=DictionaryType.XDF_V2,
+        execution_policy=ExecutionPolicies.ALWAYS,
     ),
     PartNumber.CAP_XCR_C: RackServiceConfigSpecifier.from_firmware(
         part_number=PartNumber.CAP_XCR_C,
@@ -59,6 +65,7 @@ CAN_SETUP = SpecifierContainer({
         config_file=Path("//azr-srv-ingfs1/dist/setups/setup_cap_can/1.1.0/config.xml"),
         version="2.4.0",
         dictionary_type=DictionaryType.XDF_V2,
+        execution_policy=ExecutionPolicies.ALWAYS,
     ),
 })
 
@@ -71,6 +78,7 @@ ECAT_DEN_S_NET_E_SETUP = RackServiceConfigSpecifier.from_version_configs(
             version="2.7.4",
             config_file=None,
             dictionary_type=DictionaryType.XDF_V2,
+            execution_policy=ExecutionPolicies.ALWAYS,
         ),
         "PHASE2": VersionConfig.from_files(
             version="2.9.0.16",
@@ -81,13 +89,15 @@ ECAT_DEN_S_NET_E_SETUP = RackServiceConfigSpecifier.from_version_configs(
             dictionary=Path(
                 "//azr-srv-ingfs1/dist/products/i050_summit/i056_den-s-net-e/release_candidate/2.9.0.8/den-s-net-e_2.9.0.008_v3.xdf"
             ),
+            execution_policy=ExecutionPolicies.ALWAYS,
         ),
     },
 )
 
-ECAT_MULTISLAVE_SETUP = MultiRackServiceConfigSpecifier(
+ECAT_MULTISLAVE_SETUP = MultiRackServiceConfigSpecifier.create(
     specifiers=[
         ECAT_SETUP.get_specifier_by_identifier(PartNumber.EVE_XCR_E),
         ECAT_SETUP.get_specifier_by_identifier(PartNumber.CAP_XCR_E),
     ],
+    execution_policy=ExecutionPolicies.ALWAYS,
 )
