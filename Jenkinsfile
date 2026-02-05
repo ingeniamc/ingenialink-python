@@ -1635,7 +1635,7 @@ pipeline {
                                     when{
                                         expression {
                                             def shouldRun = "pcap" ==~ params.run_test_stages &&
-                                                TEST_SESSIONS.shouldRun(this, "tests.setups.virtual_drive.VIRTUAL_DRIVE_SETUP")
+                                                TEST_SESSIONS.shouldRun(this, "virtual_drive")
                                             return shouldRun
                                         }
                                     }
@@ -1658,7 +1658,7 @@ pipeline {
                                     when {
                                         expression {
                                             def shouldRun = "virtual_drive_tests" ==~ params.run_test_stages  &&
-                                                TEST_SESSIONS.shouldRun(this, "tests.setups.virtual_drive.VIRTUAL_DRIVE_SETUP")
+                                                TEST_SESSIONS.shouldRun(this, "virtual_drive")
                                             return shouldRun
                                         }
                                     }
