@@ -1069,7 +1069,7 @@ class TestSession implements Serializable {
         }
         
         pipeline.echo "Checking execution policy '${executionPolicy}' for specifier '${specifierName}@${specifierVersion}'"
-        return schedulePolicy.shouldRun(executionPolicy)
+        return pipeline.shouldRunBasedOnPolicy(executionPolicy)
     }
 
     /**
