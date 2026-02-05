@@ -120,9 +120,10 @@ class TestSchedulePolicy implements Serializable {
     /**
      * Main method to check if tests should run based on the given policy.
      * @param policy Policy name to evaluate
+     * @param pipeline Pipeline context for logging (optional)
      * @return true if tests should run, false otherwise
      */
-    boolean shouldRun(String policy) {
+    boolean shouldRun(String policy, def pipeline = null) {
         if (!policy || policy == this.alwaysPolicy) {
             return true
         }
@@ -135,11 +136,11 @@ class TestSchedulePolicy implements Serializable {
         // Use default policy methods
         switch(policy) {
             case this.weekendPolicy:
-                return isWeekend()
+                return isWeekend(pipeline)
             case this.weekdayPolicy:
-                return isWeekday()
+                return isWeekday(pipeline)
             case this.nightlyPolicy:
-                return isNighttime()
+                return isNighttime(pipeline)
             default:
                 throw new IllegalArgumentException("Unknown policy: ${policy}")
         }
@@ -148,16 +149,19 @@ class TestSchedulePolicy implements Serializable {
     /**
      * Check if current day is a weekend (Saturday or Sunday).
      * Can be overridden in subclasses for custom weekend logic.
+     * @param pipeline Pipeline context for logging (optional)
      */
-    protected boolean isWeekend() {
+    protected boolean isWeekend(def pipeline = null) {
         def calendar = Calendar.getInstance()
         def dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
         def isWeekend = dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY
-        if (!isWeekend) {
-            echo "Today is not weekend (dayOfWeek=${dayOfWeek}), skipping tests."
-        }
-        else {
-            echo "Today is weekend (dayOfWeek=${dayOfWeek}), running tests."
+        if (pipeline) {
+            if (!isWeekend) {
+                pipeline.echo "Today is not weekend (dayOfWeek=${dayOfWeek}), skipping tests."
+            }
+            else {
+                pipeline.echo "Today is weekend (dayOfWeek=${dayOfWeek}), running tests."
+            }
         }
         return isWeekend
     }
@@ -165,16 +169,19 @@ class TestSchedulePolicy implements Serializable {
     /**
      * Check if current day is a weekday (Monday to Friday).
      * Can be overridden in subclasses for custom weekday logic.
+     * @param pipeline Pipeline context for logging (optional)
      */
-    protected boolean isWeekday() {
+    protected boolean isWeekday(def pipeline = null) {
         def calendar = Calendar.getInstance()
         def dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
         def isWeekday = dayOfWeek >= Calendar.MONDAY && dayOfWeek <= Calendar.FRIDAY
-        if (!isWeekday) {
-            echo "Today is not weekday (dayOfWeek=${dayOfWeek}), skipping tests."
-        }
-        else {
-            echo "Today is weekday (dayOfWeek=${dayOfWeek}), running tests."
+        if (pipeline) {
+            if (!isWeekday) {
+                pipeline.echo "Today is not weekday (dayOfWeek=${dayOfWeek}), skipping tests."
+            }
+            else {
+                pipeline.echo "Today is weekday (dayOfWeek=${dayOfWeek}), running tests."
+            }
         }
         return isWeekday
     }
@@ -182,16 +189,19 @@ class TestSchedulePolicy implements Serializable {
     /**
      * Check if current time is nighttime based on configured hours.
      * Can be overridden in subclasses for custom nighttime logic.
+     * @param pipeline Pipeline context for logging (optional)
      */
-    protected boolean isNighttime() {
+    protected boolean isNighttime(def pipeline = null) {
         def calendar = Calendar.getInstance()
         def hourOfDay = calendar.get(Calendar.HOUR_OF_DAY)
         def isNighttime = hourOfDay >= nighttimeStartHour || hourOfDay < nighttimeEndHour
-        if (!isNighttime) {
-            echo "Current time is not nighttime (hourOfDay=${hourOfDay}), skipping tests."
-        }
-        else {
-            echo "Current time is nighttime (hourOfDay=${hourOfDay}), running tests."
+        if (pipeline) {
+            if (!isNighttime) {
+                pipeline.echo "Current time is not nighttime (hourOfDay=${hourOfDay}), skipping tests."
+            }
+            else {
+                pipeline.echo "Current time is nighttime (hourOfDay=${hourOfDay}), running tests."
+            }
         }
         return isNighttime
     }
@@ -206,7 +216,7 @@ TestSchedulePolicy schedulePolicy = new TestSchedulePolicy()
  * Delegates to the global schedulePolicy instance.
  */
 def shouldRunBasedOnPolicy(policy) {
-    return schedulePolicy.shouldRun(policy)
+    return schedulePolicy.shouldRun(policy, this)
 }
 
 
