@@ -1102,7 +1102,7 @@ class TestSession implements Serializable {
         def specifiersArg = setups.join(" ")
         def overrideFlag = override ? "--override" : ""
         venvManager.withPython(venvManager.default_python_version) { venv ->
-            venv.run("poetry run poe export_specifiers -- --specifiers_path ${specifiersArg} --output_file ${workingOutputFile} ${overrideFlag}")
+            venv.run("poetry run poe export_specifiers -- --specifiers_path ${specifiersArg} --output_file ${workingOutputFile} --root_dir ${workingFolder} ${overrideFlag}")
         }
         
         // Copy from working folder to workspace if they're different
@@ -1450,12 +1450,6 @@ pipeline {
                 stage('Build') {
                     parallel {
                         stage('Build Windows') {
-                            //TODO:remove
-                            when {
-                                expression {
-                                    return false
-                                }
-                            }
                             agent {
                                 docker {
                                     label SW_NODE
@@ -1627,7 +1621,7 @@ pipeline {
                                             }
                                             
                                             // Export specifiers and get the path
-                                            def jsonPath = TEST_SESSIONS.exportSpecifiers(
+                                            TEST_SESSIONS.exportSpecifiers(
                                                 this,
                                                 venvManager,
                                                 "virtual_specifiers.json",
@@ -1663,7 +1657,9 @@ pipeline {
                                 stage('Run virtual drive tests on docker') {
                                     when {
                                         expression {
-                                            "virtual_drive_tests" ==~ params.run_test_stages 
+                                            def shouldRun = "virtual_drive_tests" ==~ params.run_test_stages  &&
+                                                TEST_SESSIONS.shouldRun(this, "tests.setups.virtual_drive.VIRTUAL_DRIVE_SETUP")
+                                            return shouldRun
                                         }
                                     }
                                     steps {
@@ -1790,19 +1786,14 @@ pipeline {
                             steps {
                                 script {
                                     // Export specifiers and get the path
-                                    def jsonPath = ECAT_TEST_SESSIONS.exportSpecifiers(
+                                    ECAT_TEST_SESSIONS.exportSpecifiers(
                                         this,
                                         venvManager,
                                         "ecat_specifiers.json",
-                                        ["${RACK_SPECIFIERS_PATH}.ECAT_SETUP"],
+                                        ["${RACK_SPECIFIERS_PATH}.ECAT_SETUP", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP",
+                                         "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_NET_E_SETUP"],
                                         true
                                     )
-                                    
-                                    // Set the path on ECAT_TEST_SESSIONS
-                                    if (jsonPath) {
-                                        ECAT_TEST_SESSIONS.setAttributeInCascade([specifiersJsonPath: jsonPath])
-                                        echo "Specifiers exported to: ${jsonPath}"
-                                    }
                                 }
                             }
                         }
@@ -1859,7 +1850,9 @@ pipeline {
                         stage('EtherCAT Multislave') {
                             when {
                                 expression {
-                                    "ethercat_multislave" ==~ params.run_test_stages
+                                    def shouldRun = "ethercat_multislave" ==~ params.run_test_stages &&
+                                        ECAT_TEST_SESSIONS.shouldRun(this, "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP")
+                                    return shouldRun
                                 }
                             }
                             steps {
@@ -1875,7 +1868,9 @@ pipeline {
                         stage("Safety Denali Phase I") {
                             when {
                                 expression {
-                                    "fsoe_phase1" ==~ params.run_test_stages
+                                    def shouldRun = "fsoe_phase1" ==~ params.run_test_stages &&
+                                        ECAT_TEST_SESSIONS.shouldRun(this, "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_NET_E_SETUP@PHASE1")
+                                    return shouldRun
                                 }
                             }
                             steps {
@@ -1891,7 +1886,9 @@ pipeline {
                         stage("Safety Denali Phase II") {
                             when {
                                 expression {
-                                    "fsoe_phase2" ==~ params.run_test_stages
+                                    def shouldRun = "fsoe_phase2" ==~ params.run_test_stages && 
+                                        ECAT_TEST_SESSIONS.shouldRun(this, "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_NET_E_SETUP@PHASE2")
+                                    return shouldRun
                                 }
                             }
                             steps {
@@ -1942,6 +1939,20 @@ pipeline {
                                     venvManager.createPoetryEnvironments(
                                         pythonVersions: venvManager.defaultVenvNamesToVersion(HW_TEST_SESSIONS.runInVirtualEnvs),
                                         additionalCommands: ["poetry run poe install-wheel"]
+                                    )
+                                }
+                            }
+                        }
+                        stage('Export Specifiers to JSON') {
+                            steps {
+                                script {
+                                    // Export specifiers and get the path
+                                    CAN_TEST_SESSIONS.exportSpecifiers(
+                                        this,
+                                        venvManager,
+                                        "can_eth_specifiers.json",
+                                        ["${RACK_SPECIFIERS_PATH}.CAN_SETUP", "${RACK_SPECIFIERS_PATH}.ETH_SETUP"],
+                                        true
                                     )
                                 }
                             }
