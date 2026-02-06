@@ -1068,17 +1068,25 @@ class TestSession implements Serializable {
         
         def specifier = specifiers[specifierName]
         def versionData = specifier?.get(specifierVersion)
+        def executionPolicy = null
+        
         if (!versionData) {
-            throw new Exception("Version '${specifierVersion}' for specifier '${specifierName}' not found in specifiers JSON.")
+            // Try non-versioned structure: check if execution_policy is directly in specifier - ONLY MULTIDRIVE
+            executionPolicy = specifier?.extra_data?.execution_policy
+            if (!executionPolicy) {
+                throw new Exception("Version '${specifierVersion}' for specifier '${specifierName}' not found in specifiers JSON, and no execution policy found at specifier level.")
+            }
+            pipeline.echo "Using non-versioned execution policy '${executionPolicy}' for specifier '${specifierName}'"
+        } else {
+            // Versioned structure exists
+            executionPolicy = versionData?.extra_data?.execution_policy
+            if (!executionPolicy) {
+                pipeline.echo "No execution policy found for specifier '${specifierName}@${specifierVersion}'. Defaulting to run tests."
+                return true
+            }
+            pipeline.echo "Checking execution policy '${executionPolicy}' for specifier '${specifierName}@${specifierVersion}'"
         }
         
-        def executionPolicy = versionData?.extra_data?.execution_policy
-        if (!executionPolicy) {
-            pipeline.echo "No execution policy found for specifier '${specifierName}@${specifierVersion}'. Defaulting to run tests."
-            return true
-        }
-        
-        pipeline.echo "Checking execution policy '${executionPolicy}' for specifier '${specifierName}@${specifierVersion}'"
         return pipeline.shouldRunBasedOnPolicy(executionPolicy)
     }
 
