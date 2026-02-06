@@ -26,11 +26,33 @@ wheel_stashes = []
 /* List of markers that require hardware */
 def HARDWARE_MARKERS = ["ethernet", "ethercat", "canopen", "multislave", "fsoe", "eoe"]
 
-/**
- * Build an exclusion string like: 'not develop and not virtual and not ethernet ...'
- * @param excludes List markers to exclude (list of strings)
- * @return A string with 'not <marker>' joined with ' and ' suitable for pytest
- */
+def generateQualityStages(Map config) {
+    def stages = [:]
+    config.stages.each { stageName, stageData ->
+        stages[stageName] = {
+            stage(stageName) {
+                stages {
+                    stages(generateTaskSubStages(stageData.tasks))
+                }
+            }
+        }
+    }
+    return stages
+}
+
+def generateTaskSubStages(List tasks) {
+    def subStages = [:]
+    tasks.each { task ->
+        subStages[task.name] = {
+            stage(task.name) {
+                steps {
+                    sh task.command
+                }
+            }
+        }
+    }
+    return subStages
+}
 
 
 def reassignFilePermissions() {
@@ -1593,6 +1615,33 @@ pipeline {
                                             venvManager.createPoetryEnvironments(
                                               pythonVersions: ([DEFAULT_PYTHON_VERSION] as Set) + venvManager.defaultVenvNamesToVersion(TEST_SESSIONS.runInVirtualEnvs)
                                             )
+                                        }
+                                    }
+                                }
+                                stage('Automatic Generation Stage'){
+                                    stages {
+                                        stage('Generate Stages JSON') {
+                                            steps {
+                                                script {
+                                                    sh 'python tests/generate_quality_stages.py tests/quality_stages.json'
+                                                }
+                                            }
+                                        }
+                                        stage('Load Config') {
+                                            steps {
+                                                script {
+                                                    def configText = readFile('tests/quality_stages.json')
+                                                    QUALITY_STAGES_CONFIG = readJSON(text: configText)
+                                                }
+                                            }
+                                        }
+                                        stage('Quality Checks') {
+                                            steps {
+                                                script {
+                                                    def qualityStages = generateQualityStages(QUALITY_STAGES_CONFIG)
+                                                    parallel qualityStages  // or use stages() for sequential
+                                                }
+                                            }
                                         }
                                     }
                                 }
