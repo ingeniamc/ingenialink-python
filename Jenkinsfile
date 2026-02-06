@@ -1003,7 +1003,7 @@ class TestSession implements Serializable {
      * Examples:
      *   "tests.setups.rack_specifiers.ECAT_SETUP@EVE-XCR-E" -> [name: "EVE-XCR-E", version: "latest"]
      *   "tests.setups.rack_specifiers.ECAT_SETUP@CAP-XCR-E@2.0.0" -> [name: "CAP-XCR-E", version: "2.0.0"]
-     *   "tests.setups.virtual_drive.VIRTUAL_DRIVE_SETUP" -> [name: "tests.setups.virtual_drive.VIRTUAL_DRIVE_SETUP", version: "latest"]
+     *   "tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_SETUP" -> [name: "tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_SETUP", version: "latest"]
      * 
      * @param setupString The setup string to parse
      * @return Map with 'name' and 'version' keys, or null if setup is not defined
@@ -1635,7 +1635,7 @@ pipeline {
                                                 this,
                                                 venvManager,
                                                 "virtual_specifiers.json",
-                                                ["tests.setups.virtual_drive.VIRTUAL_DRIVE_SETUP"],
+                                                ["tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_SETUP"],
                                                 true
                                             )
                                         }
@@ -1677,7 +1677,7 @@ pipeline {
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "virtual_drive", markers: 'virtual', setup: 'tests.setups.virtual_drive.VIRTUAL_DRIVE_SETUP'))
+                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "virtual_drive", markers: 'virtual', setup: 'tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_SETUP'))
                                         }
                                     }
                                     post {
@@ -1861,7 +1861,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "ethercat_multislave" ==~ params.run_test_stages &&
-                                        ECAT_TEST_SESSIONS.shouldRun(this, "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP")
+                                        ECAT_TEST_SESSIONS.shouldRun(this, "ECAT_MULTISLAVE")
                                     return shouldRun
                                 }
                             }
