@@ -95,6 +95,7 @@ ECAT_DEN_S_NET_E_SETUP = RackServiceConfigSpecifier.from_version_configs(
 )
 
 ECAT_MULTISLAVE_SETUP = MultiRackServiceConfigSpecifier.create(
+    identifier="ECAT_MULTISLAVE",
     specifiers=[
         ECAT_SETUP.get_specifier_by_identifier(PartNumber.EVE_XCR_E),
         ECAT_SETUP.get_specifier_by_identifier(PartNumber.CAP_XCR_E),
