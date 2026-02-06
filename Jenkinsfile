@@ -26,32 +26,28 @@ wheel_stashes = []
 /* List of markers that require hardware */
 def HARDWARE_MARKERS = ["ethernet", "ethercat", "canopen", "multislave", "fsoe", "eoe"]
 
-def generateQualityStages(Map config) {
+def generateQualityStages(def pipeline, Map config, def venvMgr, String pythonVersion) {
     def stages = [:]
     config.stages.each { stageName, stageData ->
-        stages[stageName] = {
-            stage(stageName) {
-                stages {
-                    stages(generateTaskSubStages(stageData.tasks))
+        stageData.tasks.each { task ->
+            // Create one parallel stage per task
+            // Use task name as unique key (or prefix with stage name if needed)
+            def stageLabelIdentifier = "${stageName} - ${task.name}"
+            // Capture variables in local scope for closure
+            def taskCmd = task.command
+            def taskDesc = task.description
+            def pyVer = pythonVersion
+            stages[stageLabelIdentifier] = {
+                pipeline.stage(stageLabelIdentifier) {
+                    pipeline.echo "Running: ${taskDesc}"
+                    venvMgr.withPython(pyVer) { venv ->
+                        venv.run(taskCmd)
+                    }
                 }
             }
         }
     }
     return stages
-}
-
-def generateTaskSubStages(List tasks) {
-    def subStages = [:]
-    tasks.each { task ->
-        subStages[task.name] = {
-            stage(task.name) {
-                steps {
-                    sh task.command
-                }
-            }
-        }
-    }
-    return subStages
 }
 
 
@@ -1623,7 +1619,10 @@ pipeline {
                                         stage('Generate Stages JSON') {
                                             steps {
                                                 script {
-                                                    sh 'python tests/generate_quality_stages.py tests/quality_stages.json'
+                                                    venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                        venv.run('python tests/generate_quality_stages.py --output_file tests/quality_stages.json')
+                                                    }
+                                                    venvManager.copyFromWorkingFolder('tests/quality_stages.json')
                                                 }
                                             }
                                         }
@@ -1638,7 +1637,7 @@ pipeline {
                                         stage('Quality Checks') {
                                             steps {
                                                 script {
-                                                    def qualityStages = generateQualityStages(QUALITY_STAGES_CONFIG)
+                                                    def qualityStages = generateQualityStages(this, QUALITY_STAGES_CONFIG, venvManager, DEFAULT_PYTHON_VERSION)
                                                     parallel qualityStages  // or use stages() for sequential
                                                 }
                                             }
