@@ -1968,8 +1968,15 @@ pipeline {
                                     CAN_TEST_SESSIONS.exportSpecifiers(
                                         this,
                                         venvManager,
-                                        "can_eth_specifiers.json",
-                                        ["${RACK_SPECIFIERS_PATH}.CAN_SETUP", "${RACK_SPECIFIERS_PATH}.ETH_SETUP"],
+                                        "can_specifiers.json",
+                                        ["${RACK_SPECIFIERS_PATH}.CAN_SETUP"],
+                                        true
+                                    )
+                                    ETH_TEST_SESSIONS.exportSpecifiers(
+                                        this,
+                                        venvManager,
+                                        "eth_specifiers.json",
+                                        ["${RACK_SPECIFIERS_PATH}.ETH_SETUP"],
                                         true
                                     )
                                 }
