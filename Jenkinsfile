@@ -1887,7 +1887,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "fsoe_phase1" ==~ params.run_test_stages &&
-                                        ECAT_TEST_SESSIONS.shouldRun(this, "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_NET_E_SETUP@PHASE1")
+                                        ECAT_TEST_SESSIONS.shouldRun(this, "DEN-S-NET-E@PHASE1")
                                     return shouldRun
                                 }
                             }
@@ -1905,7 +1905,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "fsoe_phase2" ==~ params.run_test_stages && 
-                                        ECAT_TEST_SESSIONS.shouldRun(this, "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_NET_E_SETUP@PHASE2")
+                                        ECAT_TEST_SESSIONS.shouldRun(this, "DEN-S-NET-E@PHASE2")
                                     return shouldRun
                                 }
                             }
