@@ -1003,6 +1003,7 @@ class TestSession implements Serializable {
      * Examples:
      *   "tests.setups.rack_specifiers.ECAT_SETUP@EVE-XCR-E" -> [name: "EVE-XCR-E", version: "latest"]
      *   "tests.setups.rack_specifiers.ECAT_SETUP@CAP-XCR-E@2.0.0" -> [name: "CAP-XCR-E", version: "2.0.0"]
+     *   "DEN-S-NET-E@PHASE1" -> [name: "DEN-S-NET-E", version: "PHASE1"]
      *   "tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_SETUP" -> [name: "tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_SETUP", version: "latest"]
      * 
      * @param setupString The setup string to parse
@@ -1021,12 +1022,22 @@ class TestSession implements Serializable {
             ]
         }
         
-        // Split by @ to get: [path, specifier_name, version?]
+        // Split by @ to get parts
         def parts = setupString.split('@')
         if (parts.size() < 2) {
             return null
         }
         
+        // Check if parts[0] contains a dot - if not, it's a direct specifier name
+        if (!parts[0].contains('.')) {
+            // Direct specifier format: "DEN-S-NET-E@PHASE1"
+            return [
+                name: parts[0],
+                version: parts[1]
+            ]
+        }
+        
+        // Setup path format: "tests.setups.rack_specifiers.ECAT_SETUP@EVE-XCR-E"
         return [
             name: parts[1],
             version: parts.size() > 2 ? parts[2] : "latest"
