@@ -47,10 +47,10 @@ def reassignFilePermissions() {
  * - An evaluator closure that determines if tests should run
  * 
  * Usage:
- *    def policy = new TestSchedulePolicy("business_hours") { pipeline ->
+ *    def policy = new TestSchedulePolicy("business_hours", { pipeline ->
  *        def hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
  *        return hour >= 9 && hour < 17
- *    }
+ *    })
  */
 class TestSchedulePolicy implements Serializable {
     String key
@@ -90,10 +90,10 @@ class TestSchedulePolicy implements Serializable {
  *    manager.setNightlyHours(20, 7)  // 8 PM to 7 AM
  * 
  * 3. Register custom policy:
- *    manager.registerPolicy(new TestSchedulePolicy("business_hours") { pipeline ->
+ *    manager.registerPolicy(new TestSchedulePolicy("business_hours", { pipeline ->
  *        def hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
  *        return hour >= 9 && hour < 17
- *    })
+ *    }))
  */
 class TestSchedulePolicyManager implements Serializable {
     // Registry of policies by key
@@ -114,12 +114,12 @@ class TestSchedulePolicyManager implements Serializable {
      */
     private void registerBuiltInPolicies() {
         // Always policy - always returns true
-        registerPolicy(new TestSchedulePolicy("always") { pipeline ->
+        registerPolicy(new TestSchedulePolicy("always", { pipeline ->
             return true
-        })
+        }))
         
         // Weekend policy - runs on Saturday and Sunday
-        registerPolicy(new TestSchedulePolicy("weekends") { pipeline ->
+        registerPolicy(new TestSchedulePolicy("weekends", { pipeline ->
             def calendar = Calendar.getInstance()
             def dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
             def isWeekend = dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY
@@ -131,10 +131,10 @@ class TestSchedulePolicyManager implements Serializable {
                 }
             }
             return isWeekend
-        })
+        }))
         
         // Weekday policy - runs Monday through Friday
-        registerPolicy(new TestSchedulePolicy("weekdays") { pipeline ->
+        registerPolicy(new TestSchedulePolicy("weekdays", { pipeline ->
             def calendar = Calendar.getInstance()
             def dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
             def isWeekday = dayOfWeek >= Calendar.MONDAY && dayOfWeek <= Calendar.FRIDAY
@@ -146,10 +146,10 @@ class TestSchedulePolicyManager implements Serializable {
                 }
             }
             return isWeekday
-        })
+        }))
         
         // Nightly policy - runs during configured night hours
-        registerPolicy(new TestSchedulePolicy("nightly") { pipeline ->
+        registerPolicy(new TestSchedulePolicy("nightly", { pipeline ->
             def calendar = Calendar.getInstance()
             def hourOfDay = calendar.get(Calendar.HOUR_OF_DAY)
             def isNightTime = hourOfDay >= this.nightTimeStartHour || hourOfDay < this.nightTimeEndHour
@@ -161,7 +161,7 @@ class TestSchedulePolicyManager implements Serializable {
                 }
             }
             return isNightTime
-        })
+        }))
     }
     
     /**
