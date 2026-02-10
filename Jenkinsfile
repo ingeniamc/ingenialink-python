@@ -103,9 +103,24 @@ class TestSchedulePolicyManager implements Serializable {
     int nightTimeStartHour = 19  // 7 PM
     int nightTimeEndHour = 6     // 6 AM
     
+    // Track if built-in policies have been registered
+    private boolean builtInPoliciesRegistered = false
+    
     TestSchedulePolicyManager() {
-        // Register built-in policies
+        // Don't register built-in policies in constructor to avoid CPS transformation issues
+        // They will be registered lazily on first use
+    }
+    
+    /**
+     * Ensure built-in policies are registered (lazy initialization).
+     * Safe to call multiple times - only registers once.
+     */
+    private void ensureBuiltInPoliciesRegistered() {
+        if (this.builtInPoliciesRegistered) {
+            return
+        }
         registerBuiltInPolicies()
+        this.builtInPoliciesRegistered = true
     }
     
     /**
@@ -180,7 +195,9 @@ class TestSchedulePolicyManager implements Serializable {
         this.nightTimeStartHour = startHour
         this.nightTimeEndHour = endHour
         // Re-register built-in policies with new configuration
+        this.builtInPoliciesRegistered = false
         registerBuiltInPolicies()
+        this.builtInPoliciesRegistered = true
     }
     
     /**
@@ -199,6 +216,9 @@ class TestSchedulePolicyManager implements Serializable {
      * @throws IllegalArgumentException if policy key is unknown
      */
     boolean shouldRun(String policyKey, def pipeline = null) {
+        // Ensure built-in policies are registered
+        ensureBuiltInPoliciesRegistered()
+        
         if (!policyKey || policyKey == "always") {
             return true
         }
