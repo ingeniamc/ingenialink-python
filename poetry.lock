@@ -341,18 +341,21 @@ redis = ["redis (>=2.10.5)"]
 
 [[package]]
 name = "canopen"
-version = "2.2.0"
+version = "2.4.1"
 description = "CANopen stack implementation"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "canopen-2.2.0-py3-none-any.whl", hash = "sha256:8dcb1c1f4a9f4182cc110c21317570b921b8bf30957b35e6970e224a5dd331ce"},
-    {file = "canopen-2.2.0.tar.gz", hash = "sha256:5f18651b9df6e4769b9882e969f934ae773ef24a45aabc3334b586982048d08c"},
+    {file = "canopen-2.4.1-py3-none-any.whl", hash = "sha256:651dfb189978fb9083f491128e9fb8cb0e85dc8ccb82b12dd7139236d0080b77"},
+    {file = "canopen-2.4.1.tar.gz", hash = "sha256:20a84bc498b34dadd79cece467d3bbe19591c1c02a8f39331bcc6065c4d8b2eb"},
 ]
 
 [package.dependencies]
 python-can = ">=3.0.0"
+
+[package.extras]
+db-export = ["canmatrix (>=1.0,<2.0)"]
 
 [[package]]
 name = "certifi"
@@ -4360,4 +4363,4 @@ virtual-drive = ["virtual_drive"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "eab33d1fe0f4e0e2ff9999043fdf72b6565be910f282eb18e41a1f02223f31c9"
+content-hash = "984fa26993c7cf9166f6d027611108cb58c7901fc5f2c0966c7470fa5d08131e"
