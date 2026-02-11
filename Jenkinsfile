@@ -205,6 +205,10 @@ class TestSchedulePolicyManager implements Serializable {
      * @param policy TestSchedulePolicy instance to register
      */
     void registerPolicy(TestSchedulePolicy policy) {
+        // Check for collision with existing policy keys
+        if (this.policies.containsKey(policy.key)) {
+            throw new IllegalArgumentException("Policy with key '${policy.key}' is already registered.")
+        }
         this.policies[policy.key] = policy
     }
     
@@ -218,11 +222,7 @@ class TestSchedulePolicyManager implements Serializable {
     boolean shouldRun(String policyKey, def pipeline = null) {
         // Ensure built-in policies are registered
         ensureBuiltInPoliciesRegistered()
-        
-        if (!policyKey || policyKey == "always") {
-            return true
-        }
-        
+
         def policy = this.policies[policyKey]
         if (!policy) {
             throw new IllegalArgumentException("Unknown policy: ${policyKey}")
@@ -1015,9 +1015,6 @@ class PyTestManager {
     private def venvManager
     private def pipeline
     private List coverageStashes = []
-    
-    // Cache for loaded specifiers JSON files (key: jsonPath, value: parsed specifiers map)
-    private Map specifiersCache = [:]
 
     PyTestManager(Map args = [pipeline: null, venvManager: null]) {
         this.venvManager = args.venvManager
@@ -1030,13 +1027,12 @@ class PyTestManager {
      * This method exports specifier(s) to a JSON file using the summit_testing_framework.export_specifiers module.
      * The file is always created in the 'tests/setups/specifiers_json/' subdirectory of the working folder.
      * 
-     * @param testSession The TestSession object (used only for context, not modified)
      * @param outputFileName Name of the output JSON file (default: "exported_specifiers.json")
      * @param setups List of setup strings to export (default: empty list)
      * @param override Whether to override existing output file (default: true)
-     * @return The full path to the exported JSON file in the workspace, or null if no setups provided
+     * @return Map of parsed specifiers, or null if no setups provided
      */
-    String exportSpecifiers(TestSession testSession, String outputFileName = "exported_specifiers.json", List setups = [], boolean override = true) {
+    Map exportSpecifiers(String outputFileName = "exported_specifiers.json", List setups = [], boolean override = true) {
         // Always save in tests/setups/specifiers_json/ subdirectory of working folder
         def workingFolder = this.venvManager.getWorkingFolder()
         def workingOutputFile = this.venvManager.joinPath(workingFolder, "tests", "setups", "specifiers_json", outputFileName)
@@ -1066,25 +1062,17 @@ class PyTestManager {
         def jsonPath = "${this.pipeline.env.WORKSPACE}/tests/setups/specifiers_json/${outputFileName}"
         this.pipeline.echo "Specifiers exported to: ${jsonPath}"
         
-        // Load and cache the specifiers
-        this.loadSpecifiers(jsonPath)
-        
-        // Return the workspace path to the JSON file
-        return jsonPath
+        // Load and return the parsed specifiers
+        return this.loadSpecifiers(jsonPath)
     }
     
     /**
-     * Load and cache specifiers from a JSON file.
-     * If already loaded, returns the cached data.
+     * Load specifiers from a JSON file.
      * 
      * @param jsonPath Path to the specifiers JSON file
      * @return Map of parsed specifiers
      */
     private Map loadSpecifiers(String jsonPath) {
-        if (this.specifiersCache.containsKey(jsonPath)) {
-            return this.specifiersCache[jsonPath]
-        }
-        
         if (!this.pipeline.fileExists(jsonPath)) {
             throw new Exception("Specifiers JSON file not found at ${jsonPath}. Cannot load specifiers.")
         }
@@ -1092,19 +1080,17 @@ class PyTestManager {
         this.pipeline.echo "Loading specifiers from: ${jsonPath}"
         def jsonText = this.pipeline.readFile(file: jsonPath)
         def specifiers = this.pipeline.readJSON(text: jsonText)
-        this.specifiersCache[jsonPath] = specifiers
         return specifiers
     }
     
     /**
      * Check if tests should run for a specific specifier based on its execution policy.
-     * Uses cached specifiers data to avoid repeated file reads.
      * 
      * @param specifierSetup The specifier setup string (e.g., "tests.setups.rack_specifiers.ECAT_SETUP@EVE-XCR-E")
-     * @param jsonPath Path to the exported specifiers JSON file
+     * @param specifiers Map of parsed specifiers data
      * @return true if tests should run, false otherwise
      */
-    boolean shouldRunForSpecifier(String specifierSetup, String jsonPath) {
+    boolean shouldRunForSpecifier(String specifierSetup, Map specifiers) {
         def specifierInfo = this.extractSpecifierInfo(specifierSetup)
         if (!specifierInfo) {
             this.pipeline.echo "No specifier found in setup '${specifierSetup}'. Defaulting to run tests."
@@ -1113,13 +1099,6 @@ class PyTestManager {
         
         def specifierName = specifierInfo.name
         def specifierVersion = specifierInfo.version
-        
-        if (!jsonPath) {
-            throw new Exception("jsonPath parameter is required. Cannot check execution policy for specifier '${specifierName}@${specifierVersion}'.")
-        }
-        
-        // Load specifiers (uses cache if already loaded)
-        def specifiers = this.loadSpecifiers(jsonPath)
         
         if (!specifiers.containsKey(specifierName)) {
             throw new Exception("Specifier '${specifierName}' not found in specifiers JSON.")
@@ -1402,11 +1381,11 @@ VEnvManager venvManager = new VEnvManager(
 
 PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvManager)
 
-/* Variables to store paths to exported specifier JSON files (populated during export stages) */
-String virtualSpecifiersJsonPath = null
-String ecatSpecifiersJsonPath = null
-String canSpecifiersJsonPath = null
-String ethSpecifiersJsonPath = null
+/* Variables to store parsed specifier data (populated during export stages) */
+Map virtualSpecifiers = null
+Map ecatSpecifiers = null
+Map canSpecifiers = null
+Map ethSpecifiers = null
 
 /* Define default base test sessions to be used/overridden in stages */
 TestSession TEST_SESSIONS = new TestSession(
@@ -1690,9 +1669,8 @@ pipeline {
                                                 venv.run("poetry run poe install-wheel")
                                             }
                                             
-                                            // Export specifiers and get the path
-                                            virtualSpecifiersJsonPath = testManager.exportSpecifiers(
-                                                TEST_SESSIONS,
+                                            // Export specifiers and get the parsed data
+                                            virtualSpecifiers = testManager.exportSpecifiers(
                                                 "virtual_specifiers.json",
                                                 ["tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_SETUP"],
                                                 true
@@ -1704,7 +1682,7 @@ pipeline {
                                     when{
                                         expression {
                                             def shouldRun = "pcap" ==~ params.run_test_stages &&
-                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiersJsonPath)
+                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers)
                                             return shouldRun
                                         }
                                     }
@@ -1727,7 +1705,7 @@ pipeline {
                                     when {
                                         expression {
                                             def shouldRun = "virtual_drive_tests" ==~ params.run_test_stages  &&
-                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiersJsonPath)
+                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers)
                                             return shouldRun
                                         }
                                     }
@@ -1854,9 +1832,8 @@ pipeline {
                         stage('Export Specifiers to JSON') {
                             steps {
                                 script {
-                                    // Export specifiers and get the path
-                                    ecatSpecifiersJsonPath = testManager.exportSpecifiers(
-                                        ECAT_TEST_SESSIONS,
+                                    // Export specifiers and get the parsed data
+                                    ecatSpecifiers = testManager.exportSpecifiers(
                                         "ecat_specifiers.json",
                                         ["${RACK_SPECIFIERS_PATH}.ECAT_SETUP", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP",
                                          "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_NET_E_SETUP"],
@@ -1883,7 +1860,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "ethercat_everest" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ECAT_SETUP@EVE-XCR-E", ecatSpecifiersJsonPath)
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ECAT_SETUP@EVE-XCR-E", ecatSpecifiers)
                                     return shouldRun
                                 }
                             }
@@ -1901,7 +1878,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "ethercat_capitan" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ECAT_SETUP@CAP-XCR-E", ecatSpecifiersJsonPath)
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ECAT_SETUP@CAP-XCR-E", ecatSpecifiers)
                                     return shouldRun
                                 }
                             }
@@ -1919,7 +1896,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "ethercat_multislave" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("ECAT_MULTISLAVE", ecatSpecifiersJsonPath)
+                                        testManager.shouldRunForSpecifier("ECAT_MULTISLAVE", ecatSpecifiers)
                                     return shouldRun
                                 }
                             }
@@ -1937,7 +1914,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "fsoe_phase1" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("DEN-S-NET-E@PHASE1", ecatSpecifiersJsonPath)
+                                        testManager.shouldRunForSpecifier("DEN-S-NET-E@PHASE1", ecatSpecifiers)
                                     return shouldRun
                                 }
                             }
@@ -1955,7 +1932,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "fsoe_phase2" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("DEN-S-NET-E@PHASE2", ecatSpecifiersJsonPath)
+                                        testManager.shouldRunForSpecifier("DEN-S-NET-E@PHASE2", ecatSpecifiers)
                                     return shouldRun
                                 }
                             }
@@ -2014,15 +1991,13 @@ pipeline {
                         stage('Export Specifiers to JSON') {
                             steps {
                                 script {
-                                    // Export specifiers and get the path
-                                    canSpecifiersJsonPath = testManager.exportSpecifiers(
-                                        CAN_TEST_SESSIONS,
+                                    // Export specifiers and get the parsed data
+                                    canSpecifiers = testManager.exportSpecifiers(
                                         "can_specifiers.json",
                                         ["${RACK_SPECIFIERS_PATH}.CAN_SETUP"],
                                         true
                                     )
-                                    ethSpecifiersJsonPath = testManager.exportSpecifiers(
-                                        ETH_TEST_SESSIONS,
+                                    ethSpecifiers = testManager.exportSpecifiers(
                                         "eth_specifiers.json",
                                         ["${RACK_SPECIFIERS_PATH}.ETH_SETUP"],
                                         true
@@ -2034,7 +2009,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "canopen_everest" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.CAN_SETUP@EVE-XCR-C", canSpecifiersJsonPath)
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.CAN_SETUP@EVE-XCR-C", canSpecifiers)
                                     return shouldRun
                                 }
                             }
@@ -2052,7 +2027,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "canopen_capitan" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.CAN_SETUP@CAP-XCR-C", canSpecifiersJsonPath)
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.CAN_SETUP@CAP-XCR-C", canSpecifiers)
                                     return shouldRun
                                 }
                             }
@@ -2070,7 +2045,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "ethernet_everest" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ETH_SETUP@EVE-XCR-C", ethSpecifiersJsonPath)
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ETH_SETUP@EVE-XCR-C", ethSpecifiers)
                                     return shouldRun
                                 }
                             }
@@ -2088,7 +2063,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "ethernet_capitan" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ETH_SETUP@CAP-XCR-C", ethSpecifiersJsonPath)
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ETH_SETUP@CAP-XCR-C", ethSpecifiers)
                                     return shouldRun
                                 }
                             }
