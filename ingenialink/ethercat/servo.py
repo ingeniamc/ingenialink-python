@@ -409,6 +409,7 @@ class EthercatServo(PDOServo):
         if pdo_map.map_register_index is not None:
             # Extract the map object from the dictionary using the index
             pdo_map.map_object = self.dictionary.get_object_by_index(pdo_map.map_register_index)
+            assert pdo_map.map_object is not None
             return pdo_map.map_object
 
         # If map or index is not provided, use the default map
@@ -419,6 +420,7 @@ class EthercatServo(PDOServo):
         else:
             raise NotImplementedError
 
+        assert pdo_map.map_object is not None
         return pdo_map.map_object
 
     @override
