@@ -119,7 +119,7 @@ pytest-cov = "==2.12.1"
 pytest-mock = "==3.6.1"
 pytest-console-scripts = "==1.4.1"
 twisted = "==24.11.0"
-summit-testing-framework = {extras = ["ingeniamotion"], version = "==0.2.0+pr72b8"}
+summit-testing-framework = {extras = ["ingeniamotion"], version = "==0.2.0+pr74b14"}
 
 # -----------------------------------------------------------------------
 #                                   TASKS
@@ -189,3 +189,8 @@ cmd = "python -I -m coverage combine"
 # ----------------------------- Coverage report -----------------------------
 [tool.poe.tasks.cov-report]
 cmd = "python -I -m coverage xml"
+
+# ----------------------------- Export tests specifiers -----------------------------
+[tool.poe.tasks.export_specifiers]
+help="Export an specifier to JSON file"
+cmd = "python -I -m summit_testing_framework.helpers.export_specifier"

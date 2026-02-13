@@ -39,6 +39,204 @@ def reassignFilePermissions() {
     }
 }
 
+/**
+ * TestSchedulePolicy - Represents a single scheduling policy
+ * 
+ * A policy consists of:
+ * - A unique key/name
+ * - An evaluator closure that determines if tests should run
+ * 
+ * Usage:
+ *    def policy = new TestSchedulePolicy("business_hours", { pipeline ->
+ *        def hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+ *        return hour >= 9 && hour < 17
+ *    })
+ */
+class TestSchedulePolicy implements Serializable {
+    String key
+    Closure evaluator  // (pipeline) -> boolean
+    
+    TestSchedulePolicy(String key, Closure evaluator) {
+        this.key = key
+        this.evaluator = evaluator
+    }
+    
+    boolean evaluate(def pipeline) {
+        return this.evaluator.call(pipeline)
+    }
+}
+
+/**
+ * TestSchedulePolicyManager - Registry and manager for scheduling policies
+ * 
+ * This class manages multiple scheduling policies and provides policy evaluation.
+ * 
+ * Built-in policies:
+ * - "always": Always run tests (use for tests that should run on every pipeline trigger)
+ * - "weekends": Run only on Saturdays and Sundays
+ * - "weekdays": Run only on weekdays (Monday to Friday)
+ * - "nightly": Run only during nightTime hours (configurable, default: 7 PM to 6 AM)
+ * 
+ * Note: For scheduling tests to run once per day, use Jenkins cron triggers (e.g., '0 2 * * *')
+ * rather than a policy. Policies determine IF tests should run when triggered, not WHEN to trigger.
+ * 
+ * Usage examples:
+ * 
+ * 1. Basic usage with default settings:
+ *    def manager = new TestSchedulePolicyManager()
+ *    manager.shouldRun("nightly", pipeline)
+ * 
+ * 2. Configure nightly hours:
+ *    manager.setNightlyHours(20, 7)  // 8 PM to 7 AM
+ * 
+ * 3. Register custom policy:
+ *    manager.registerPolicy(new TestSchedulePolicy("business_hours", { pipeline ->
+ *        def hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+ *        return hour >= 9 && hour < 17
+ *    }))
+ */
+class TestSchedulePolicyManager implements Serializable {
+    // Registry of policies by key
+    private Map<String, TestSchedulePolicy> policies = [:]
+    
+    // Configuration for built-in policies
+    int nightTimeStartHour = 19  // 7 PM
+    int nightTimeEndHour = 6     // 6 AM
+    
+    // Track if built-in policies have been registered
+    private boolean builtInPoliciesRegistered = false
+    
+    TestSchedulePolicyManager() {
+        // Don't register built-in policies in constructor to avoid CPS transformation issues
+        // They will be registered lazily on first use
+    }
+    
+    /**
+     * Ensure built-in policies are registered (lazy initialization).
+     * Safe to call multiple times - only registers once.
+     */
+    private void ensureBuiltInPoliciesRegistered() {
+        if (this.builtInPoliciesRegistered) {
+            return
+        }
+        registerBuiltInPolicies()
+        this.builtInPoliciesRegistered = true
+    }
+    
+    /**
+     * Register all built-in policies.
+     * Separated into a method for clarity and to allow re-registration when configuration changes.
+     */
+    private void registerBuiltInPolicies() {
+        // Always policy - always returns true
+        registerPolicy(new TestSchedulePolicy("always", { pipeline ->
+            return true
+        }))
+        
+        // Weekend policy - runs on Saturday and Sunday
+        registerPolicy(new TestSchedulePolicy("weekends", { pipeline ->
+            def calendar = Calendar.getInstance()
+            def dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+            def isWeekend = dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY
+            if (pipeline) {
+                if (!isWeekend) {
+                    pipeline.echo "Today is not weekend (dayOfWeek=${dayOfWeek}), skipping tests."
+                } else {
+                    pipeline.echo "Today is weekend (dayOfWeek=${dayOfWeek}), running tests."
+                }
+            }
+            return isWeekend
+        }))
+        
+        // Weekday policy - runs Monday through Friday
+        registerPolicy(new TestSchedulePolicy("weekdays", { pipeline ->
+            def calendar = Calendar.getInstance()
+            def dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
+            def isWeekday = dayOfWeek >= Calendar.MONDAY && dayOfWeek <= Calendar.FRIDAY
+            if (pipeline) {
+                if (!isWeekday) {
+                    pipeline.echo "Today is not weekday (dayOfWeek=${dayOfWeek}), skipping tests."
+                } else {
+                    pipeline.echo "Today is weekday (dayOfWeek=${dayOfWeek}), running tests."
+                }
+            }
+            return isWeekday
+        }))
+        
+        // Nightly policy - runs during configured night hours
+        registerPolicy(new TestSchedulePolicy("nightly", { pipeline ->
+            def calendar = Calendar.getInstance()
+            def hourOfDay = calendar.get(Calendar.HOUR_OF_DAY)
+            def isNightTime = hourOfDay >= this.nightTimeStartHour || hourOfDay < this.nightTimeEndHour
+            if (pipeline) {
+                if (!isNightTime) {
+                    pipeline.echo "Current time is not nightTime (hourOfDay=${hourOfDay}), skipping tests."
+                } else {
+                    pipeline.echo "Current time is nightTime (hourOfDay=${hourOfDay}), running tests."
+                }
+            }
+            return isNightTime
+        }))
+    }
+    
+    /**
+     * Configure the hours that define "nightTime" for the nightly policy.
+     * @param startHour Hour when nightTime begins (0-23)
+     * @param endHour Hour when nightTime ends (0-23)
+     * @throws IllegalArgumentException if hours are outside valid range
+     */
+    void setNightlyHours(int startHour, int endHour) {
+        if (startHour < 0 || startHour > 23) {
+            throw new IllegalArgumentException("startHour must be between 0 and 23, got: ${startHour}")
+        }
+        if (endHour < 0 || endHour > 23) {
+            throw new IllegalArgumentException("endHour must be between 0 and 23, got: ${endHour}")
+        }
+        this.nightTimeStartHour = startHour
+        this.nightTimeEndHour = endHour
+        // Re-register built-in policies with new configuration
+        this.builtInPoliciesRegistered = false
+        registerBuiltInPolicies()
+        this.builtInPoliciesRegistered = true
+    }
+    
+    /**
+     * Register a policy in the manager.
+     * @param policy TestSchedulePolicy instance to register
+     */
+    void registerPolicy(TestSchedulePolicy policy) {
+        // Check for collision with existing policy keys
+        if (this.policies.containsKey(policy.key)) {
+            throw new IllegalArgumentException("Policy with key '${policy.key}' is already registered.")
+        }
+        this.policies[policy.key] = policy
+    }
+    
+    /**
+     * Check if tests should run based on the given policy key.
+     * @param policyKey Policy key to evaluate
+     * @param pipeline Pipeline context for logging (optional)
+     * @return true if tests should run, false otherwise
+     * @throws IllegalArgumentException if policy key is unknown
+     */
+    boolean shouldRun(String policyKey, def pipeline = null) {
+        // Ensure built-in policies are registered
+        ensureBuiltInPoliciesRegistered()
+
+        def policy = this.policies[policyKey]
+        if (!policy) {
+            throw new IllegalArgumentException("Unknown policy: ${policyKey}")
+        }
+        
+        return policy.evaluate(pipeline)
+    }
+}
+
+// Global policy manager instance - can be customized at pipeline start
+@groovy.transform.Field
+TestSchedulePolicyManager schedulePolicyManager = new TestSchedulePolicyManager()
+
+
 
 /**
  * VEnvManager - Manages Python virtual environments across Jenkins nodes
@@ -809,6 +1007,8 @@ class TestSession implements Serializable {
         // Preserve CONFIG_ATTRS ordering and emit one key=value per line
         return CONFIG_ATTRS.collect { name -> "${name}=${this."$name"}" }.join('\n')
     }
+
+
 }
 
 class PyTestManager {
@@ -819,6 +1019,159 @@ class PyTestManager {
     PyTestManager(Map args = [pipeline: null, venvManager: null]) {
         this.venvManager = args.venvManager
         this.pipeline = args.pipeline
+    }
+
+    /**
+     * Export specifiers to JSON file.
+     * 
+     * This method exports specifier(s) to a JSON file using the summit_testing_framework.export_specifiers module.
+     * The file is always created in the 'tests/setups/specifiers_json/' subdirectory of the working folder.
+     * 
+     * @param outputFileName Name of the output JSON file (default: "exported_specifiers.json")
+     * @param setups List of setup strings to export (default: empty list)
+     * @param override Whether to override existing output file (default: true)
+     * @return Map of parsed specifiers, or null if no setups provided
+     */
+    Map exportSpecifiers(String outputFileName = "exported_specifiers.json", List setups = [], boolean override = true) {
+        // Always save in tests/setups/specifiers_json/ subdirectory of working folder
+        def workingFolder = this.venvManager.getWorkingFolder()
+        def workingOutputFile = this.venvManager.joinPath(workingFolder, "tests", "setups", "specifiers_json", outputFileName)
+        
+        if (!setups) {
+            this.pipeline.echo "No setups provided. Skipping specifier export."
+            return null
+        }
+        this.pipeline.echo "Exporting specifiers: ${setups}"
+        this.pipeline.echo "Output file: ${workingOutputFile}"
+        
+        // Export specifiers
+        def specifiersArg = setups.join(" ")
+        def overrideFlag = override ? "--override" : ""
+        this.venvManager.withPython(this.venvManager.default_python_version) { venv ->
+            venv.run("poetry run poe export_specifiers -- --specifiers_path ${specifiersArg} --output_file ${workingOutputFile} --root_dir ${workingFolder} ${overrideFlag}")
+        }
+        
+        // Copy from working folder to workspace if they're different
+        if (workingFolder != this.pipeline.env.WORKSPACE) {
+            this.venvManager.copyFromWorkingFolder("tests/setups/specifiers_json/${outputFileName}")
+        }
+        
+        // Archive the artifact from workspace
+        this.pipeline.archiveArtifacts artifacts: "tests/setups/specifiers_json/${outputFileName}", allowEmptyArchive: true
+
+        def jsonPath = "${this.pipeline.env.WORKSPACE}/tests/setups/specifiers_json/${outputFileName}"
+        this.pipeline.echo "Specifiers exported to: ${jsonPath}"
+        
+        // Load and return the parsed specifiers
+        return this.loadSpecifiers(jsonPath)
+    }
+    
+    /**
+     * Load specifiers from a JSON file.
+     * 
+     * @param jsonPath Path to the specifiers JSON file
+     * @return Map of parsed specifiers
+     */
+    private Map loadSpecifiers(String jsonPath) {
+        if (!this.pipeline.fileExists(jsonPath)) {
+            throw new Exception("Specifiers JSON file not found at ${jsonPath}. Cannot load specifiers.")
+        }
+        
+        this.pipeline.echo "Loading specifiers from: ${jsonPath}"
+        def jsonText = this.pipeline.readFile(file: jsonPath)
+        def specifiers = this.pipeline.readJSON(text: jsonText)
+        return specifiers
+    }
+    
+    /**
+     * Check if tests should run for a specific specifier based on its execution policy.
+     * 
+     * @param specifierSetup The specifier setup string (e.g., "tests.setups.rack_specifiers.ECAT_SETUP@EVE-XCR-E")
+     * @param specifiers Map of parsed specifiers data
+     * @return true if tests should run, false otherwise
+     */
+    boolean shouldRunForSpecifier(String specifierSetup, Map specifiers) {
+        def specifierInfo = this.extractSpecifierInfo(specifierSetup)
+        if (!specifierInfo) {
+            this.pipeline.echo "No specifier found in setup '${specifierSetup}'. Defaulting to run tests."
+            return true
+        }
+        
+        def specifierName = specifierInfo.name
+        def specifierVersion = specifierInfo.version
+        
+        if (!specifiers.containsKey(specifierName)) {
+            throw new Exception("Specifier '${specifierName}' not found in specifiers JSON.")
+        }
+        
+        def specifier = specifiers[specifierName]
+        def versionData = specifier?.get(specifierVersion)
+        def executionPolicy = null
+        
+        if (!versionData) {
+            // Try non-versioned structure: check if execution_policy is directly in specifier - ONLY MULTIDRIVE
+            executionPolicy = specifier?.extra_data?.execution_policy
+            if (!executionPolicy) {
+                throw new Exception("Version '${specifierVersion}' for specifier '${specifierName}' not found in specifiers JSON, and no execution policy found at specifier level.")
+            }
+            this.pipeline.echo "Using non-versioned execution policy '${executionPolicy}' for specifier '${specifierName}'"
+        } else {
+            // Versioned structure exists
+            executionPolicy = versionData?.extra_data?.execution_policy
+            if (!executionPolicy) {
+                this.pipeline.echo "No execution policy found for specifier '${specifierName}@${specifierVersion}'. Defaulting to run tests."
+                return true
+            }
+            this.pipeline.echo "Checking execution policy '${executionPolicy}' for specifier '${specifierName}@${specifierVersion}'"
+        }
+        
+        return this.pipeline.schedulePolicyManager.shouldRun(executionPolicy, this.pipeline)
+    }
+    
+    /**
+     * Extract the specifier name and version from a setup string.
+     * Examples:
+     *   "tests.setups.rack_specifiers.ECAT_SETUP@EVE-XCR-E" -> [name: "EVE-XCR-E", version: "latest"]
+     *   "tests.setups.rack_specifiers.ECAT_SETUP@CAP-XCR-E@2.0.0" -> [name: "CAP-XCR-E", version: "2.0.0"]
+     *   "DEN-S-NET-E@PHASE1" -> [name: "DEN-S-NET-E", version: "PHASE1"]
+     *   "tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_SETUP" -> [name: "tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_SETUP", version: "latest"]
+     * 
+     * @param setupString The setup string to parse
+     * @return Map with 'name' and 'version' keys, or null if setup is not defined
+     */
+    private Map extractSpecifierInfo(String setupString) {
+        if (!setupString) {
+            return null
+        }
+        
+        // If no @ symbol, use the entire string as the name
+        if (!setupString.contains('@')) {
+            return [
+                name: setupString,
+                version: "latest"
+            ]
+        }
+        
+        // Split by @ to get parts
+        def parts = setupString.split('@')
+        if (parts.size() < 2) {
+            return null
+        }
+        
+        // Check if parts[0] contains a dot - if not, it's a direct specifier name
+        if (!parts[0].contains('.')) {
+            // Direct specifier format: "DEN-S-NET-E@PHASE1"
+            return [
+                name: parts[0],
+                version: parts[1]
+            ]
+        }
+        
+        // Setup path format: "tests.setups.rack_specifiers.ECAT_SETUP@EVE-XCR-E"
+        return [
+            name: parts[1],
+            version: parts.size() > 2 ? parts[2] : "latest"
+        ]
     }
 
     /**
@@ -1027,6 +1380,12 @@ VEnvManager venvManager = new VEnvManager(
 )
 
 PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvManager)
+
+/* Variables to store parsed specifier data (populated during export stages) */
+Map virtualSpecifiers = null
+Map ecatSpecifiers = null
+Map canSpecifiers = null
+Map ethSpecifiers = null
 
 /* Define default base test sessions to be used/overridden in stages */
 TestSession TEST_SESSIONS = new TestSession(
@@ -1302,18 +1661,34 @@ pipeline {
                                         }
                                     }
                                 }
+                                stage('Export Specifiers to JSON') {
+                                    steps {
+                                        script {
+                                            // Install wheel first (needed for summit_testing_framework to import ingenialink)
+                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
+                                                venv.run("poetry run poe install-wheel")
+                                            }
+                                            
+                                            // Export specifiers and get the parsed data
+                                            virtualSpecifiers = testManager.exportSpecifiers(
+                                                "virtual_specifiers.json",
+                                                ["tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_SETUP"],
+                                                true
+                                            )
+                                        }
+                                    }
+                                }
                                 stage('Run unit tests on linux docker') {
                                     when{
                                         expression {
-                                            "pcap" ==~ params.run_test_stages
+                                            def shouldRun = "pcap" ==~ params.run_test_stages &&
+                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers)
+                                            return shouldRun
                                         }
                                     }
                                     steps {
                                         script {
                                             def lin_marker = PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
-                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
-                                                venv.run("poetry run poe install-wheel")
-                                            }
                                             testManager.runTestSession(TEST_SESSIONS.override(uid: "pcap", markers: lin_marker))
                                         }
                                     }
@@ -1329,7 +1704,9 @@ pipeline {
                                 stage('Run virtual drive tests on docker') {
                                     when {
                                         expression {
-                                            "virtual_drive_tests" ==~ params.run_test_stages
+                                            def shouldRun = "virtual_drive_tests" ==~ params.run_test_stages  &&
+                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers)
+                                            return shouldRun
                                         }
                                     }
                                     steps {
@@ -1337,7 +1714,7 @@ pipeline {
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "virtual_drive", markers: 'virtual', setup: 'summit_testing_framework.setups.virtual_drive.TESTS_SETUP'))
+                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "virtual_drive", markers: 'virtual', setup: 'tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_SETUP'))
                                         }
                                     }
                                     post {
@@ -1452,6 +1829,19 @@ pipeline {
                                 }
                             }
                         }
+                        stage('Export Specifiers to JSON') {
+                            steps {
+                                script {
+                                    // Export specifiers and get the parsed data
+                                    ecatSpecifiers = testManager.exportSpecifiers(
+                                        "ecat_specifiers.json",
+                                        ["${RACK_SPECIFIERS_PATH}.ECAT_SETUP", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP",
+                                         "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_NET_E_SETUP"],
+                                        true
+                                    )
+                                }
+                            }
+                        }
                         stage('Pcap Tests') {
                             when {
                                 expression {
@@ -1469,7 +1859,9 @@ pipeline {
                         stage('EtherCAT Everest') {
                             when {
                                 expression {
-                                    "ethercat_everest" ==~ params.run_test_stages
+                                    def shouldRun = "ethercat_everest" ==~ params.run_test_stages &&
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ECAT_SETUP@EVE-XCR-E", ecatSpecifiers)
+                                    return shouldRun
                                 }
                             }
                             steps {
@@ -1485,7 +1877,9 @@ pipeline {
                         stage('EtherCAT Capitan') {
                             when {
                                 expression {
-                                    "ethercat_capitan" ==~ params.run_test_stages
+                                    def shouldRun = "ethercat_capitan" ==~ params.run_test_stages &&
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ECAT_SETUP@CAP-XCR-E", ecatSpecifiers)
+                                    return shouldRun
                                 }
                             }
                             steps {
@@ -1501,7 +1895,9 @@ pipeline {
                         stage('EtherCAT Multislave') {
                             when {
                                 expression {
-                                    "ethercat_multislave" ==~ params.run_test_stages
+                                    def shouldRun = "ethercat_multislave" ==~ params.run_test_stages &&
+                                        testManager.shouldRunForSpecifier("ECAT_MULTISLAVE", ecatSpecifiers)
+                                    return shouldRun
                                 }
                             }
                             steps {
@@ -1517,7 +1913,9 @@ pipeline {
                         stage("Safety Denali Phase I") {
                             when {
                                 expression {
-                                    "fsoe_phase1" ==~ params.run_test_stages
+                                    def shouldRun = "fsoe_phase1" ==~ params.run_test_stages &&
+                                        testManager.shouldRunForSpecifier("DEN-S-NET-E@PHASE1", ecatSpecifiers)
+                                    return shouldRun
                                 }
                             }
                             steps {
@@ -1533,7 +1931,9 @@ pipeline {
                         stage("Safety Denali Phase II") {
                             when {
                                 expression {
-                                    "fsoe_phase2" ==~ params.run_test_stages
+                                    def shouldRun = "fsoe_phase2" ==~ params.run_test_stages &&
+                                        testManager.shouldRunForSpecifier("DEN-S-NET-E@PHASE2", ecatSpecifiers)
+                                    return shouldRun
                                 }
                             }
                             steps {
@@ -1588,10 +1988,29 @@ pipeline {
                                 }
                             }
                         }
+                        stage('Export Specifiers to JSON') {
+                            steps {
+                                script {
+                                    // Export specifiers and get the parsed data
+                                    canSpecifiers = testManager.exportSpecifiers(
+                                        "can_specifiers.json",
+                                        ["${RACK_SPECIFIERS_PATH}.CAN_SETUP"],
+                                        true
+                                    )
+                                    ethSpecifiers = testManager.exportSpecifiers(
+                                        "eth_specifiers.json",
+                                        ["${RACK_SPECIFIERS_PATH}.ETH_SETUP"],
+                                        true
+                                    )
+                                }
+                            }
+                        }
                         stage('CANopen Everest') {
                             when {
                                 expression {
-                                    "canopen_everest" ==~ params.run_test_stages
+                                    def shouldRun = "canopen_everest" ==~ params.run_test_stages &&
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.CAN_SETUP@EVE-XCR-C", canSpecifiers)
+                                    return shouldRun
                                 }
                             }
                             steps {
@@ -1607,7 +2026,9 @@ pipeline {
                         stage('CANopen Capitan') {
                             when {
                                 expression {
-                                    "canopen_capitan" ==~ params.run_test_stages
+                                    def shouldRun = "canopen_capitan" ==~ params.run_test_stages &&
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.CAN_SETUP@CAP-XCR-C", canSpecifiers)
+                                    return shouldRun
                                 }
                             }
                             steps {
@@ -1623,7 +2044,9 @@ pipeline {
                         stage('Ethernet Everest') {
                             when {
                                 expression {
-                                    "ethernet_everest" ==~ params.run_test_stages
+                                    def shouldRun = "ethernet_everest" ==~ params.run_test_stages &&
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ETH_SETUP@EVE-XCR-C", ethSpecifiers)
+                                    return shouldRun
                                 }
                             }
                             steps {
@@ -1639,7 +2062,9 @@ pipeline {
                         stage('Ethernet Capitan') {
                             when {
                                 expression {
-                                    "ethernet_capitan" ==~ params.run_test_stages
+                                    def shouldRun = "ethernet_capitan" ==~ params.run_test_stages &&
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ETH_SETUP@CAP-XCR-C", ethSpecifiers)
+                                    return shouldRun
                                 }
                             }
                             steps {

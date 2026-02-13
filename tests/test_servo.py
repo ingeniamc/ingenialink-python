@@ -302,7 +302,7 @@ def test_store_parameters_timed_recovery(servo, environment: "Environment", mock
 def test_store_parameters_polling_status(virtual_drive_custom_dict, att_client, mocker):
     dict_with_status_reg = att_client.get_dictionary_xdf_v3_file("DEN-NET-E", "2.9.1")
     server, _, servo = virtual_drive_custom_dict(dict_with_status_reg)
-    environment = VirtualDriveEnvironmentController(server.environment)
+    environment = VirtualDriveEnvironmentController(server.environment, aliases="default")
 
     # Both registers exist in this dictionary
     servo.dictionary.get_register("DRV_STORE_STATUS_MOCO")

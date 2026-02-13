@@ -68,6 +68,9 @@ class DriveContextManager:
             # Mac address should not be restored, in certain FW versions the reading of MAC
             # address provides different values each time
             "COMMS_ETH_MAC",
+            # Total number of error register should not be restored, only a 0 can be written
+            "ETG_ERROR_FIELD",
+            "CIA301_COMMS_ERROR_FIELD",
         ])
 
         # Set the objects that should be read using complete access

@@ -102,7 +102,7 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(
     net, _, _ = setup_manager
     servo = net.servos[0]
     context = DriveContextManager(servo)
-    assert len(context._do_not_restore_registers) == 5
+    assert len(context._do_not_restore_registers) == 7
 
     # If not additional ignored registers are added,
     # the default ones are the ones that are troublesome
@@ -113,6 +113,8 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(
         servo.RESTORE_COCO_ALL,
         servo.RESTORE_MOCO_ALL_REGISTERS,
         "COMMS_ETH_MAC",
+        "ETG_ERROR_FIELD",
+        "CIA301_COMMS_ERROR_FIELD",
     }
 
 
@@ -127,7 +129,7 @@ def test_drive_context_manager_with_do_not_restore_registers(
     servo = net.servos[0]
     context = DriveContextManager(servo, do_not_restore_registers=[_USER_OVER_VOLTAGE_UID])
     assert (
-        len(context._do_not_restore_registers) == 6
+        len(context._do_not_restore_registers) == 8
     )  # COCO-MOCO store/restore registers + _USER_OVER_VOLTAGE_UID
 
     new_reg_value = 100.0

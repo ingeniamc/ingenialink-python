@@ -41,8 +41,9 @@ out.txt
 /ingenialink/cython_files/*.cpp
 temp/*
 
-# tests setups
+# tests setups and JSON export files
 /tests/setups/tests_setup.py
+/tests/setups/specifiers_json/*
 
 # ATT downloaded files
 /resources/
