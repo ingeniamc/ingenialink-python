@@ -96,7 +96,7 @@ ruff = "==0.9.2"
 [tool.poetry.group.type]
 optional = true
 [tool.poetry.group.type.dependencies]
-mypy = "==1.10.0"
+mypy = "==1.19.1"
 
 # Dependencies for docs task
 [tool.poetry.group.docs]
