@@ -3906,14 +3906,14 @@ zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "virtual-drive"
-version = "0.0+gda0635337"
+version = "0.0.0+pr22b3"
 description = "Emulates a Summit drive for development and testing purposes."
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "extra == \"virtual-drive\""
 files = [
-    {file = "virtual_drive-0.0+gda0635337-py3-none-any.whl", hash = "sha256:b7f70309ea00b0a5ba4ea8758789217b8533f8d948034af37f145dd71c836c90"},
+    {file = "virtual_drive-0.0.0+pr22b3-py3-none-any.whl", hash = "sha256:bf6be67a72f38c9b5ab624d43f6e839234afa4ab46a95bf783cf9c91e45f1be2"},
 ]
 
 [package.dependencies]
@@ -4334,4 +4334,4 @@ virtual-drive = ["virtual_drive"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "c71f502bd631381f9df69730749c2bb8683d7dcb9d2b0dfcfe14ca3cd0487ae7"
+content-hash = "fac6bbe3a314a69a72921942462c735b748ef4e07cdd06711c22da5d7a838881"
