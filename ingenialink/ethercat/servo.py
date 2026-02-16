@@ -408,20 +408,18 @@ class EthercatServo(PDOServo):
 
         if pdo_map.map_register_index is not None:
             # Extract the map object from the dictionary using the index
-            pdo_map.map_object = self.dictionary.get_object_by_index(pdo_map.map_register_index)
-            assert pdo_map.map_object is not None, "PDO map object not found for the given index"
-            return pdo_map.map_object
+            map_object = self.dictionary.get_object_by_index(pdo_map.map_register_index)
 
         # If map or index is not provided, use the default map
         if isinstance(pdo_map, RPDOMap):
-            pdo_map.map_object = self.dictionary.get_object(self.DEFAULT_RPDO_MAP)
+            map_object = self.dictionary.get_object(self.DEFAULT_RPDO_MAP)
         elif isinstance(pdo_map, TPDOMap):
-            pdo_map.map_object = self.dictionary.get_object(self.DEFAULT_TPDO_MAP)
+            map_object = self.dictionary.get_object(self.DEFAULT_TPDO_MAP)
         else:
             raise NotImplementedError
 
-        assert pdo_map.map_object is not None, "PDO map object is required but was not set"
-        return pdo_map.map_object
+        pdo_map.map_object = map_object
+        return map_object
 
     @override
     def process_pdo_inputs(self) -> None:

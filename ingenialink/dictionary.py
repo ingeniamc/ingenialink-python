@@ -2012,7 +2012,9 @@ class DictionaryV2(Dictionary):
         firmware_version = device.attrib.get("firmwareVersion")
         product_code_str = device.attrib.get("ProductCode")
         product_code: Optional[int] = None
-        if product_code_str is not None and (product_code_str.isdecimal() or product_code_str == "-1"):
+        if product_code_str is not None and (
+            product_code_str.isdecimal() or product_code_str == "-1"
+        ):
             product_code = int(product_code_str)
         part_number = device.attrib.get("PartNumber")
         revision_number_str = device.attrib.get("RevisionNumber")
