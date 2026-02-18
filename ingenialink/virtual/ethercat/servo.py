@@ -13,7 +13,7 @@ from ingenialink.virtual.servo import VirtualServoBase
 class VirtualEthercatServo(EthercatServoBase):
     """Virtual EtherCAT servo implementation using serialized object frames."""
 
-    interface = Interface.VIRTUAL
+    interface = Interface.ECAT
 
     def __init__(
         self,
@@ -42,7 +42,6 @@ class VirtualEthercatServo(EthercatServoBase):
             "command": "read",
             "index": reg.idx,
             "subindex": reg.subidx,
-            "subnode": reg.subnode,
         }
         return self._virtual_base.exchange_serialized_frame(
             frame_data, self._deserialize_read_response
@@ -61,7 +60,6 @@ class VirtualEthercatServo(EthercatServoBase):
             "command": "write",
             "index": reg.idx,
             "subindex": reg.subidx,
-            "subnode": reg.subnode,
             "data": data,
         }
         self._virtual_base.exchange_serialized_frame(frame_data, self._deserialize_write_response)
