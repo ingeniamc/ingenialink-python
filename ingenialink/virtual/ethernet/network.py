@@ -6,8 +6,8 @@ from ingenialink.ethernet.network import EthernetNetworkBase
 from ingenialink.exceptions import ILError
 from ingenialink.network import NetState
 from ingenialink.servo import Servo
-from ingenialink.virtual.base_network import VirtualNetworkBase
 from ingenialink.virtual.ethernet.servo import VirtualEthernetServo
+from ingenialink.virtual.network import VirtualNetworkBase
 
 
 class VirtualEthernetNetwork(EthernetNetworkBase):
