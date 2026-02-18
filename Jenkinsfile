@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.16') _
+@Library('cicd-lib@0.20') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -1619,6 +1619,13 @@ pipeline {
                                 VENV_WORKING_FOLDER = "/tmp/ingenialink_python"
                             }
                             stages {
+                                stage('Check Dependencies') {
+                                    steps {
+                                        script {
+                                            checkDependencies()
+                                        }
+                                    }
+                                }
                                 stage('Move workspace') {
                                     steps {
                                         script {
