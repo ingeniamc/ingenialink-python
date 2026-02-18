@@ -7,11 +7,6 @@ from xml.etree import ElementTree
 
 import pytest
 from packaging import version
-from summit_testing_framework.product_constants import PartNumber
-from summit_testing_framework.setups.environment_control import VirtualDriveEnvironmentController
-from summit_testing_framework.setups.specifiers import (
-    RackServiceConfigSpecifier,
-)
 from virtual_drive import resources as virtual_drive_resources
 
 import tests.resources
@@ -30,6 +25,11 @@ from ingenialink.exceptions import (
 from ingenialink.register import RegAddressType
 from ingenialink.servo import Servo, ServoState, StoreRestoreManager
 from ingenialink.utils._utils import convert_bytes_to_dtype
+from summit_testing_framework.product_constants import PartNumber
+from summit_testing_framework.setups.environment_control import VirtualDriveEnvironmentController
+from summit_testing_framework.setups.specifiers import (
+    RackServiceConfigSpecifier,
+)
 
 if TYPE_CHECKING:
     from summit_testing_framework.environment import Environment
@@ -207,7 +207,8 @@ def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: 
     _, _, servo = virtual_drive_custom_dict(dictionary)
     test_file = tests.resources.TEST_CONFIG_FILE
     mocker.patch(
-        "ingenialink.ethernet.servo.EthernetServoBase._write_raw", side_effect=ILError("Error writing")
+        "ingenialink.ethernet.servo.EthernetServoBase._write_raw",
+        side_effect=ILError("Error writing"),
     )
     with pytest.raises(ILError) as exc_info:
         servo.load_configuration(test_file, strict=True)
