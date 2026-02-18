@@ -35,7 +35,7 @@ class VirtualEthercatNetwork(EthercatNetworkBase):
         Returns:
             Virtual EtherCAT servo.
         """
-        raise NotImplementedError("Virtual EtherCAT network not yet implemented")
+        raise NotImplementedError("It will be implemented in SVD-10")
 
 
 __all__ = ["VirtualEthercatNetwork"]

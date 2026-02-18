@@ -35,7 +35,7 @@ class VirtualCanopenNetwork(CanopenNetworkBase):
         Returns:
             Virtual CANopen servo.
         """
-        raise NotImplementedError("Virtual CANopen network not yet implemented")
+        raise NotImplementedError("It will be implemented in SVD-35")
 
 
 __all__ = ["VirtualCanopenNetwork"]
