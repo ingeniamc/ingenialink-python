@@ -1,4 +1,3 @@
-import socket
 from typing import Callable, Optional
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
@@ -45,9 +44,7 @@ class VirtualEthernetNetwork(EthernetNetworkBase):
         Returns:
             VirtualEthernetServo: Instance of the servo connected.
         """
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(connection_timeout)
-        sock.connect((self._virtual_base.ip_address, port))
+        sock = self._virtual_base.create_connection(connection_timeout, port)
         servo = VirtualEthernetServo(
             sock, dictionary, servo_status_listener, disconnect_callback=disconnect_callback
         )
@@ -55,9 +52,11 @@ class VirtualEthernetNetwork(EthernetNetworkBase):
             servo.get_state()
         except ILError as e:
             servo.stop_status_listener()
-            raise ILError(f"Drive not found in IP {self._virtual_base.ip_address}.") from e
+            raise ILError(
+                f"Drive not found in IP {self._virtual_base.virtual_drive_ip_address}."
+            ) from e
         self.servos.append(servo)
-        self._set_servo_state(self._virtual_base.ip_address, NetState.CONNECTED)
+        self._set_servo_state(self._virtual_base.virtual_drive_ip_address, NetState.CONNECTED)
 
         if net_status_listener:
             self.start_status_listener()
