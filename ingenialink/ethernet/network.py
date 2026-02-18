@@ -46,7 +46,7 @@ class NetStatusListener(Thread):
 
     """
 
-    def __init__(self, network: "EthernetNetwork", refresh_time: float = 0.25) -> None:
+    def __init__(self, network: "EthernetNetworkBase", refresh_time: float = 0.25) -> None:
         super().__init__()
         self.__network = network
         self.__refresh_time = refresh_time
@@ -87,7 +87,7 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-class EthernetNetwork(EthernetBaseNetwork):
+class EthernetNetworkBase(EthernetBaseNetwork):
     """Network for all Ethernet communications.
 
     Args:
@@ -463,3 +463,7 @@ class EthernetNetwork(EthernetBaseNetwork):
     def protocol(self) -> NetProt:
         """Obtain network protocol."""
         return NetProt.ETH
+
+
+class EthernetNetwork(EthernetNetworkBase):
+    """Network for all Ethernet communications."""

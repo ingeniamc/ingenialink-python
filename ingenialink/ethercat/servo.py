@@ -29,6 +29,7 @@ from ingenialink.dictionary import CanOpenObject, Interface
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILEcatStateError, ILError, ILIOError
 from ingenialink.pdo import PDOMap, PDOServo, RPDOMap, TPDOMap
+from ingenialink.servo import EthercatServoBase
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -57,7 +58,7 @@ class EthercatEmergencyMessage(EmergencyMessage):
         super().__init__(servo, emergency_msg.error_code, emergency_msg.error_reg, data)
 
 
-class EthercatServo(PDOServo):
+class EthercatServo(PDOServo, EthercatServoBase):
     """Ethercat Servo instance.
 
     Args:

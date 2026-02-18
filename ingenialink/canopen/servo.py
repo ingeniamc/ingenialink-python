@@ -15,7 +15,7 @@ from ingenialink.dictionary import Interface
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.exceptions import ILIOError
 from ingenialink.register import Register
-from ingenialink.servo import Servo
+from ingenialink.servo import CanopenServoBase, Servo
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 
 logger = ingenialogger.get_logger(__name__)
@@ -35,7 +35,7 @@ class CanopenEmergencyMessage(EmergencyMessage):
         super().__init__(servo, emergency_msg.code, emergency_msg.register, emergency_msg.data)
 
 
-class CanopenServo(Servo):
+class CanopenServo(CanopenServoBase):
     """CANopen Servo instance.
 
     Args:

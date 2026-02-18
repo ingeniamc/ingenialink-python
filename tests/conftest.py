@@ -9,7 +9,7 @@ from summit_testing_framework.pytest_helpers.marker_helper import (
 )
 from virtual_drive.core import VirtualDrive
 
-from ingenialink.virtual.network import VirtualNetwork
+from ingenialink.virtual.ethernet.network import VirtualEthernetNetwork
 from tests.ethercat.mock import pysoem_mock_network  # noqa: F401
 
 pytest_plugins = [
@@ -78,7 +78,7 @@ def pytest_collection_modifyitems(
 def virtual_drive():
     server = VirtualDrive(81)
     server.start()
-    net = VirtualNetwork()
+    net = VirtualEthernetNetwork()
     virtual_servo = net.connect_to_slave(server.dictionary_path, server.port)
     yield server, virtual_servo
     server.stop()
@@ -93,7 +93,7 @@ def virtual_drive_custom_dict():
         server = VirtualDrive(next(next_port), dictionary)
         servers.append(server)
         server.start()
-        net = VirtualNetwork()
+        net = VirtualEthernetNetwork()
         servo = net.connect_to_slave(server.dictionary_path, server.port)
         return server, net, servo
 

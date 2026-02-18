@@ -21,7 +21,7 @@ from ingenialink.utils.mcb import MCB
 logger = ingenialogger.get_logger(__name__)
 
 
-class EthernetServo(Servo):
+class EthernetServoBase(Servo):
     """Servo object for all the Ethernet slave functionalities.
 
     Args:
@@ -213,3 +213,7 @@ class EthernetServo(Servo):
         except OSError as e:
             raise ILIOError("Error receiving data.") from e
         return MCB.read_mcb_data(reg, response)
+
+
+class EthernetServo(EthernetServoBase):
+    """Servo object for all the Ethernet slave functionalities."""
