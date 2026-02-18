@@ -177,6 +177,18 @@ class Network(ABC):
         raise NotImplementedError
 
 
+class EthernetBaseNetwork(Network, ABC):
+    """Declaration of the base Ethernet network behavior."""
+
+
+class EthercatBaseNetwork(Network, ABC):
+    """Declaration of the base EtherCAT network behavior."""
+
+
+class CanopenNetworkBase(Network, ABC):
+    """Declaration of the base CANopen network behavior."""
+
+
 # WARNING: Deprecated aliases
 _DEPRECATED = {
     "NET_PROT": "NetProt",

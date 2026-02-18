@@ -17,7 +17,7 @@ from typing_extensions import override
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.ethernet.resources import BASIC_ETHERNET_V2_XDF
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
+from ingenialink.network import EthernetBaseNetwork, NetDevEvt, NetProt, NetState, SlaveInfo
 from ingenialink.servo import Servo
 from ingenialink.utils.udp import UDP
 
@@ -87,7 +87,7 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-class EthernetNetwork(Network):
+class EthernetNetwork(EthernetBaseNetwork):
     """Network for all Ethernet communications.
 
     Args:

@@ -23,7 +23,7 @@ from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import CanopenServo
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
+from ingenialink.network import CanopenNetworkBase, NetDevEvt, NetProt, NetState, SlaveInfo
 from ingenialink.servo import Servo
 from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
@@ -225,7 +225,7 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-class CanopenNetwork(Network):
+class CanopenNetwork(CanopenNetworkBase):
     """Network of the CANopen communication.
 
     Args:
