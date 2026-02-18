@@ -1963,17 +1963,15 @@ class DictionaryV2(Dictionary):
         ):
             raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
         firmware_version = device.attrib.get("firmwareVersion")
-        product_code = device.attrib.get("ProductCode")
-        if product_code is not None and product_code.isdecimal():
-            product_code = int(product_code)
-        else:
-            product_code = None
+        product_code_str = device.attrib.get("ProductCode")
+        product_code: Optional[int] = None
+        if product_code_str is not None and product_code_str.isdecimal():
+            product_code = int(product_code_str)
         part_number = device.attrib.get("PartNumber")
-        revision_number = device.attrib.get("RevisionNumber")
-        if revision_number is not None and revision_number.isdecimal():
-            revision_number = int(revision_number)
-        else:
-            revision_number = None
+        revision_number_str = device.attrib.get("RevisionNumber")
+        revision_number: Optional[int] = None
+        if revision_number_str is not None and revision_number_str.isdecimal():
+            revision_number = int(revision_number_str)
         return DictionaryDescriptor(firmware_version, product_code, part_number, revision_number)
 
     @classmethod
@@ -2012,17 +2010,17 @@ class DictionaryV2(Dictionary):
                 f"Could not load the dictionary {dictionary_path}. Device interface is missing"
             )
         firmware_version = device.attrib.get("firmwareVersion")
-        product_code = device.attrib.get("ProductCode")
-        if product_code is not None and (product_code.isdecimal() or product_code == "-1"):
-            product_code = int(product_code)
-        else:
-            product_code = None
+        product_code_str = device.attrib.get("ProductCode")
+        product_code: Optional[int] = None
+        if product_code_str is not None and (
+            product_code_str.isdecimal() or product_code_str == "-1"
+        ):
+            product_code = int(product_code_str)
         part_number = device.attrib.get("PartNumber")
-        revision_number = device.attrib.get("RevisionNumber")
-        if revision_number is not None and revision_number.isdecimal():
-            revision_number = int(revision_number)
-        else:
-            revision_number = None
+        revision_number_str = device.attrib.get("RevisionNumber")
+        revision_number: Optional[int] = None
+        if revision_number_str is not None and revision_number_str.isdecimal():
+            revision_number = int(revision_number_str)
 
         interface_descriptor = DictionaryDescriptor(
             firmware_version,
@@ -2230,8 +2228,8 @@ class DictionaryV2(Dictionary):
         if identifier is None:
             return
         # Check category
-        register.cat_id = register.cat_id or "UNCATEGORIZED"
-        category = register.cat_id
+        category: str = register.cat_id or "UNCATEGORIZED"
+        register.cat_id = category
         if category not in self.categories.category_ids:
             self.categories._cat_ids.append(category)
             self.categories._categories[category] = {"en_US": category.capitalize()}
