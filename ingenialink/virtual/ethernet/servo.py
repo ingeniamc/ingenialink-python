@@ -18,7 +18,7 @@ logger = ingenialogger.get_logger(__name__)
 class VirtualEthernetServo(EthernetServoBase):
     """Virtual Ethernet servo implementation."""
 
-    interface = Interface.VIRTUAL
+    interface = Interface.ETH
 
     def __init__(
         self,
