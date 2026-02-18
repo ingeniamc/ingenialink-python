@@ -10,7 +10,7 @@ from ingenialink.virtual.servo import VirtualServoBase
 class VirtualEthernetServo(EthernetServoBase):
     """Virtual Ethernet servo implementation."""
 
-    interface = Interface.ETH
+    interface = Interface.VIRTUAL
 
     def __init__(
         self,
