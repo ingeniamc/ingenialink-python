@@ -1,8 +1,5 @@
-from virtual_drive.core import VirtualDrive
+from ingenialink.virtual.ethernet import VirtualEthernetNetwork
 
 
-class VirtualNetworkBase:
-    """Base class for shared virtual network behavior."""
-
-    def __init__(self) -> None:
-        self.ip_address = VirtualDrive.IP_ADDRESS
+class VirtualNetwork(VirtualEthernetNetwork):
+    """Legacy class for backward compatibility."""
