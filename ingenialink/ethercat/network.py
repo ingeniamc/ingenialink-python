@@ -36,7 +36,7 @@ from ingenialink.exceptions import (
     ILStateError,
     ILWrongWorkingCountError,
 )
-from ingenialink.network import EthercatBaseNetwork, NetDevEvt, NetProt, NetState, SlaveInfo
+from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -172,7 +172,7 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-class EthercatNetwork(EthercatBaseNetwork):
+class EthercatNetwork(Network):
     """Network for all EtherCAT communications.
 
     Args:
