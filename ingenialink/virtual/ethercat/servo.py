@@ -70,8 +70,8 @@ class VirtualEthercatServo(EthercatServoBase):
             return response
 
         if isinstance(response, dict):
-            if "error" in response:
-                raise ILIOError(str(response["error"]))
+            if "error_code" in response:
+                raise ILIOError(f"Error code {response['error_code']} received in read response")
             data = response.get("data")
             if isinstance(data, bytes):
                 return data
@@ -80,6 +80,6 @@ class VirtualEthercatServo(EthercatServoBase):
 
     @staticmethod
     def _deserialize_write_response(response: object) -> None:
-        if isinstance(response, dict) and "error" in response:
-            raise ILIOError(str(response["error"]))
+        if isinstance(response, dict) and "error_code" in response:
+            raise ILIOError(f"Error code {response['error_code']} received in write response")
         return None
