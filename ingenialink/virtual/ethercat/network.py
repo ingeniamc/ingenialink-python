@@ -1,11 +1,13 @@
 import socket
-from collections import OrderedDict, defaultdict
-from typing import Any, Callable, Optional, Union
+from collections import OrderedDict
+from typing import Any, Callable, Optional
+
+from typing_extensions import override
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.ethercat.network import EthercatNetworkBase
 from ingenialink.exceptions import ILError
-from ingenialink.network import NetDevEvt, NetProt, NetState, SlaveInfo
+from ingenialink.network import NetState, SlaveInfo
 from ingenialink.servo import Servo
 from ingenialink.virtual.base_network import VirtualNetworkBase
 from ingenialink.virtual.ethercat.servo import VirtualEthercatServo
@@ -17,7 +19,6 @@ class VirtualEthercatNetwork(EthercatNetworkBase):
     def __init__(self) -> None:
         super().__init__()
         self._virtual_base = VirtualNetworkBase()
-        self.__observers_net_state: dict[int, list[Callable[[NetDevEvt], Any]]] = defaultdict(list)
 
     def scan_slaves(self) -> list[int]:
         """Scan for virtual EtherCAT drives.
@@ -116,22 +117,19 @@ class VirtualEthercatNetwork(EthercatNetworkBase):
         if servo._disconnect_callback:
             servo._disconnect_callback(servo)
 
+    @override
     def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:
-        """Recover communication with a disconnected servo.
+        """The virtual EtherCAT network does not need to perform any action on disconnection.
 
         Args:
-            servo: Servo instance to recover.
-
-        Raises:
-            ValueError: If the provided servo is invalid.
+            servo: The servo that was disconnected, if applicable.
 
         Returns:
-            ``True`` when communication appears to be active, ``False`` otherwise.
+            True, indicating that the network is ready to accept new connections.
+
 
         """
-        if servo is None or not isinstance(servo, VirtualEthercatServo):
-            raise ValueError("Virtual EtherCAT Servo instance must be provided for recovery.")
-        return servo.socket.fileno() != -1
+        return True
 
     @staticmethod
     def load_firmware(*_args: Any, **_kwargs: Any) -> None:
@@ -142,95 +140,6 @@ class VirtualEthercatNetwork(EthercatNetworkBase):
 
         """
         raise NotImplementedError("Firmware loading is not supported for Virtual EtherCAT.")
-
-    def subscribe_to_status(
-        self, target: Union[int, str], callback: Callable[[NetDevEvt], Any]
-    ) -> None:
-        """Subscribe to connection status changes.
-
-        Args:
-            target: Target slave ID.
-            callback: Callback function to execute on state changes.
-
-        Raises:
-            ValueError: If the target ID type is invalid.
-
-        """
-        if not isinstance(target, int):
-            raise ValueError("The servo ID must be an integer.")
-        if callback in self.__observers_net_state[target]:
-            return
-        self.__observers_net_state[target].append(callback)
-
-    def unsubscribe_from_status(
-        self, target: Union[int, str], callback: Callable[[NetDevEvt], Any]
-    ) -> None:
-        """Unsubscribe from connection status changes.
-
-        Args:
-            target: Target slave ID.
-            callback: Callback function previously subscribed.
-
-        Raises:
-            ValueError: If the target ID type is invalid.
-
-        """
-        if not isinstance(target, int):
-            raise ValueError("The servo ID must be an integer.")
-        if callback not in self.__observers_net_state[target]:
-            return
-        self.__observers_net_state[target].remove(callback)
-
-    def start_status_listener(self) -> None:
-        """Start monitoring network state.
-
-        Status monitoring is not currently implemented for virtual EtherCAT.
-        """
-        return None
-
-    def stop_status_listener(self) -> None:
-        """Stop monitoring network state.
-
-        Status monitoring is not currently implemented for virtual EtherCAT.
-        """
-        return None
-
-    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
-        """Get the state of a servo in the network.
-
-        Args:
-            servo_id: Servo ID.
-
-        Raises:
-            ValueError: If the servo ID type is invalid.
-
-        Returns:
-            Current state of the servo.
-
-        """
-        if not isinstance(servo_id, int):
-            raise ValueError("The servo ID must be an integer.")
-        return self._servos_state[servo_id]
-
-    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
-        """Set the state of a servo in the network.
-
-        Args:
-            servo_id: Servo ID.
-            state: New servo state.
-
-        Raises:
-            ValueError: If the servo ID type is invalid.
-
-        """
-        if not isinstance(servo_id, int):
-            raise ValueError("The servo ID must be an integer.")
-        self._servos_state[servo_id] = state
-
-    @property
-    def protocol(self) -> NetProt:
-        """Obtain network protocol."""
-        return NetProt.ECAT
 
 
 __all__ = ["VirtualEthercatNetwork"]
