@@ -1,9 +1,7 @@
-import pickle
 import socket
 from collections.abc import Iterator
 from contextlib import contextmanager
 from threading import Lock
-from typing import Any, Callable, TypeVar
 
 import ingenialogger
 
@@ -11,8 +9,6 @@ from ingenialink.constants import ETH_BUF_SIZE
 from ingenialink.exceptions import ILIOError, ILTimeoutError
 
 logger = ingenialogger.get_logger(__name__)
-
-T = TypeVar("T")
 
 
 class VirtualServoBase:
@@ -81,32 +77,3 @@ class VirtualServoBase:
         with self.transaction():
             self.send_frame(frame)
             return self.receive_frame(recv_buffer_size)
-
-    def exchange_serialized_frame(
-        self,
-        frame_data: Any,
-        deserialize_response: Callable[[Any], T],
-        recv_buffer_size: int = ETH_BUF_SIZE,
-    ) -> T:
-        """Send a serialized python object frame and deserialize its response.
-
-        Args:
-            frame_data: Serializable request object to send.
-            deserialize_response: Callable used to deserialize the response object.
-            recv_buffer_size: Maximum frame size in bytes.
-
-        Raises:
-            ILIOError: If the response cannot be deserialized.
-
-        Returns:
-            Deserialized response value.
-
-        """
-        with self.transaction():
-            self.send_frame(pickle.dumps(frame_data))
-            response_frame = self.receive_frame(recv_buffer_size)
-        try:
-            response = pickle.loads(response_frame)
-        except (pickle.UnpicklingError, EOFError, AttributeError, ValueError, TypeError) as e:
-            raise ILIOError("Error deserializing response data.") from e
-        return deserialize_response(response)

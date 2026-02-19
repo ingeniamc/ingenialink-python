@@ -2,11 +2,13 @@ import socket
 from typing import Any, Callable, Optional
 
 from ingenialink import Servo
+from ingenialink.constants import ETH_BUF_SIZE
 from ingenialink.dictionary import Interface
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILIOError
 from ingenialink.register import Register
 from ingenialink.servo import EthercatServoBase
+from ingenialink.virtual.ethercat.codec import deserialize_sdo_frame, serialize_sdo_frame
 from ingenialink.virtual.servo import VirtualServoBase
 
 
@@ -34,6 +36,16 @@ class VirtualEthercatServo(EthercatServoBase):
         )
         self._virtual_base = VirtualServoBase(self.socket, self._lock)
 
+    def _exchange_sdo_frame(self, frame_data: dict[str, Any]) -> dict[str, Any]:
+        with self._virtual_base.transaction():
+            self._virtual_base.send_frame(serialize_sdo_frame(frame_data))
+            response_frame = self._virtual_base.receive_frame(ETH_BUF_SIZE)
+
+        try:
+            return deserialize_sdo_frame(response_frame)
+        except (UnicodeDecodeError, ValueError, TypeError) as e:
+            raise ILIOError("Error deserializing EtherCAT SDO response data.") from e
+
     def _read_raw(self, reg: Register, **kwargs: Any) -> bytes:
         _ = kwargs
         if not isinstance(reg, EthercatRegister):
@@ -43,9 +55,8 @@ class VirtualEthercatServo(EthercatServoBase):
             "index": reg.idx,
             "subindex": reg.subidx,
         }
-        return self._virtual_base.exchange_serialized_frame(
-            frame_data, self._deserialize_read_response
-        )
+        response = self._exchange_sdo_frame(frame_data)
+        return self._deserialize_read_response(response)
 
     def _write_raw(
         self,
@@ -62,7 +73,8 @@ class VirtualEthercatServo(EthercatServoBase):
             "subindex": reg.subidx,
             "data": data,
         }
-        self._virtual_base.exchange_serialized_frame(frame_data, self._deserialize_write_response)
+        response = self._exchange_sdo_frame(frame_data)
+        self._deserialize_write_response(response)
 
     @staticmethod
     def _deserialize_read_response(response: object) -> bytes:
