@@ -1378,8 +1378,7 @@ PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvM
 
 /* Variables to store parsed specifier data (populated during export stages) */
 Map virtualSpecifiers = null
-Map rackSpecifiersEcatNode = null
-Map rackSpecifiersCanNode = null
+Map rackSpecifiers = null
 
 /* Define default base test sessions to be used/overridden in stages */
 TestSession TEST_SESSIONS = new TestSession(
@@ -1669,6 +1668,13 @@ pipeline {
                                                 "virtual_specifiers.json",
                                                 true
                                             )
+
+                                            // Export rack specifiers
+                                            rackSpecifiers = testManager.exportSpecifiersModule(
+                                                RACK_SPECIFIERS_PATH,
+                                                "rack_specifiers.json",
+                                                true
+                                            )
                                         }
                                     }
                                 }
@@ -1823,18 +1829,6 @@ pipeline {
                                 }
                             }
                         }
-                        stage('Export Specifiers to JSON') {
-                            steps {
-                                script {
-                                    // Export specifiers and get the parsed data
-                                    rackSpecifiersEcatNode = testManager.exportSpecifiersModule(
-                                        RACK_SPECIFIERS_PATH,
-                                        "rack_specifiers.json",
-                                        true
-                                    )
-                                }
-                            }
-                        }
                         stage('Pcap Tests') {
                             when {
                                 expression {
@@ -1853,7 +1847,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "ethercat_everest" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ECAT_SETUP@EVE-XCR-E", rackSpecifiersEcatNode["ECAT_SETUP"])
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ECAT_SETUP@EVE-XCR-E", rackSpecifiers["ECAT_SETUP"])
                                     return shouldRun
                                 }
                             }
@@ -1871,7 +1865,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "ethercat_capitan" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ECAT_SETUP@CAP-XCR-E", rackSpecifiersEcatNode["ECAT_SETUP"])
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ECAT_SETUP@CAP-XCR-E", rackSpecifiers["ECAT_SETUP"])
                                     return shouldRun
                                 }
                             }
@@ -1889,7 +1883,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "ethercat_multislave" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("ECAT_MULTISLAVE", rackSpecifiersEcatNode["ECAT_MULTISLAVE_SETUP"])
+                                        testManager.shouldRunForSpecifier("ECAT_MULTISLAVE", rackSpecifiers["ECAT_MULTISLAVE_SETUP"])
                                     return shouldRun
                                 }
                             }
@@ -1907,7 +1901,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "fsoe_phase1" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("DEN-S-NET-E@PHASE1", rackSpecifiersEcatNode["ECAT_DEN_S_NET_E_SETUP"])
+                                        testManager.shouldRunForSpecifier("DEN-S-NET-E@PHASE1", rackSpecifiers["ECAT_DEN_S_NET_E_SETUP"])
                                     return shouldRun
                                 }
                             }
@@ -1925,7 +1919,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "fsoe_phase2" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("DEN-S-NET-E@PHASE2", rackSpecifiersEcatNode["ECAT_DEN_S_NET_E_SETUP"])
+                                        testManager.shouldRunForSpecifier("DEN-S-NET-E@PHASE2", rackSpecifiers["ECAT_DEN_S_NET_E_SETUP"])
                                     return shouldRun
                                 }
                             }
@@ -1981,23 +1975,11 @@ pipeline {
                                 }
                             }
                         }
-                        stage('Export Specifiers to JSON') {
-                            steps {
-                                script {
-                                    // Export specifiers and get the parsed data
-                                    rackSpecifiersCanNode = testManager.exportSpecifiersModule(
-                                        RACK_SPECIFIERS_PATH,
-                                        "rack_specifiers.json",
-                                        true
-                                    )
-                                }
-                            }
-                        }
                         stage('CANopen Everest') {
                             when {
                                 expression {
                                     def shouldRun = "canopen_everest" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.CAN_SETUP@EVE-XCR-C", rackSpecifiersCanNode["CAN_SETUP"])
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.CAN_SETUP@EVE-XCR-C", rackSpecifiers["CAN_SETUP"])
                                     return shouldRun
                                 }
                             }
@@ -2015,7 +1997,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "canopen_capitan" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.CAN_SETUP@CAP-XCR-C", rackSpecifiersCanNode["CAN_SETUP"])
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.CAN_SETUP@CAP-XCR-C", rackSpecifiers["CAN_SETUP"])
                                     return shouldRun
                                 }
                             }
@@ -2033,7 +2015,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "ethernet_everest" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ETH_SETUP@EVE-XCR-C", rackSpecifiersCanNode["ETH_SETUP"])
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ETH_SETUP@EVE-XCR-C", rackSpecifiers["ETH_SETUP"])
                                     return shouldRun
                                 }
                             }
@@ -2051,7 +2033,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "ethernet_capitan" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ETH_SETUP@CAP-XCR-C", rackSpecifiersCanNode["ETH_SETUP"])
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ETH_SETUP@CAP-XCR-C", rackSpecifiers["ETH_SETUP"])
                                     return shouldRun
                                 }
                             }
