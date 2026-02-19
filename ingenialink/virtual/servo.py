@@ -3,12 +3,8 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from threading import Lock
 
-import ingenialogger
-
 from ingenialink.constants import ETH_BUF_SIZE
 from ingenialink.exceptions import ILIOError, ILTimeoutError
-
-logger = ingenialogger.get_logger(__name__)
 
 
 class VirtualServoBase:

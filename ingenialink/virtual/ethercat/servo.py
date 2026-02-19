@@ -92,6 +92,8 @@ class VirtualEthercatServo(EthercatServoBase):
 
     @staticmethod
     def _deserialize_write_response(response: object) -> None:
-        if isinstance(response, dict) and "error_code" in response:
+        if not isinstance(response, (dict)):
+            raise ILIOError(f"Unexpected response type for write operation: {type(response)}")
+        if "error_code" in response:
             raise ILIOError(f"Error code {response['error_code']} received in write response")
         return None
