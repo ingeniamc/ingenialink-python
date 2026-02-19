@@ -48,5 +48,7 @@ def test_virtual_ethercat_servo_deserialize_read_response_from_dict() -> None:
 
 
 def test_virtual_ethercat_servo_deserialize_read_response_raises_on_error() -> None:
-    with pytest.raises(ILIOError):
-        VirtualEthercatServo._deserialize_read_response({"error": "read failed"})
+    error_code = 0x12345678
+    with pytest.raises(ILIOError) as exc_info:
+        VirtualEthercatServo._deserialize_read_response({"error_code": error_code})
+    assert str(exc_info.value) == f"Error code {error_code} received in read response"
