@@ -143,7 +143,7 @@ class VirtualEthercatNetwork(EthercatNetworkBase):
         """
         return True
 
-    @staticmethod
+    @override
     def load_firmware(*_args: Any, **_kwargs: Any) -> None:
         """Load firmware to a virtual EtherCAT drive.
 
