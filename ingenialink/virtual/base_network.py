@@ -1,13 +1,13 @@
 import socket
 
-from virtual_drive.core import VirtualDrive
+VIRTUAL_DRIVE_IP_ADDRESS = "127.0.0.1"
 
 
 class VirtualNetworkBase:
     """Base class for shared virtual network behavior."""
 
     def __init__(self) -> None:
-        self.virtual_drive_ip_address = VirtualDrive.IP_ADDRESS
+        self.virtual_drive_ip_address = VIRTUAL_DRIVE_IP_ADDRESS
 
     def create_connection(self, connection_timeout: float, port: int) -> socket.socket:
         """Creates a socket connection to the virtual drive.

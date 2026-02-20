@@ -117,6 +117,18 @@ class VirtualEthercatNetwork(EthercatNetworkBase):
         if servo._disconnect_callback:
             servo._disconnect_callback(servo)
 
+    def start_status_listener(self) -> None:
+        """Start network status listener.
+
+        Virtual EtherCAT does not require an active background listener.
+        """
+
+    def stop_status_listener(self) -> None:
+        """Stop network status listener.
+
+        Virtual EtherCAT does not require an active background listener.
+        """
+
     @override
     def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:
         """The virtual EtherCAT network does not need to perform any action on disconnection.
