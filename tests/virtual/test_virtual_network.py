@@ -60,7 +60,6 @@ def test_connect_virtual_custom_dictionaries(virtual_drive_custom_dict):
                 assert pytest.approx(value) == server.get_value_by_id(1, reg_key)
 
 
-@pytest.mark.skip("It will be fixed in INGK-1123")
 def test_connect_to_virtual_drive_old_disturbance(virtual_drive_custom_dict):
     dictionary = tests.resources.ethercat.TEST_DICT_ETHERCAT_OLD_DIST
     _, net, servo = virtual_drive_custom_dict(dictionary)
