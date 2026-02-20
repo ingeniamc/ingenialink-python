@@ -1,4 +1,3 @@
-import itertools
 import logging
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -26,7 +25,6 @@ pytest_plugins = [
 # The issue is solved by dynamically importing them before the tests start. All modules that should
 # be imported and ARE NOT part of the package should be specified here
 _DYNAMIC_MODULES_IMPORT = ["tests"]
-_NEXT_VIRTUAL_PORT = itertools.count(18081)
 
 
 class SuppressSpecificLogs(logging.Filter):
@@ -78,15 +76,14 @@ def pytest_collection_modifyitems(
 
 
 def _create_virtual_drive_connection(
-    port: int,
     connect_to_server: Callable[[VirtualDrive], tuple[Any, Any]],
     dictionary: Optional[str] = None,
     protocol: Interface = Interface.VIRTUAL,
 ) -> tuple[VirtualDrive, Any, Any]:
     server = (
-        VirtualDrive(port, protocol=protocol)
+        VirtualDrive(protocol=protocol)
         if dictionary is None
-        else VirtualDrive(port, dictionary, protocol=protocol)
+        else VirtualDrive(dictionary_path=dictionary, protocol=protocol)
     )
     server.start()
     try:
@@ -112,14 +109,9 @@ def _connect_virtual_ethercat(server: VirtualDrive) -> tuple[Any, Any]:
     return net, servo
 
 
-def _get_next_virtual_port() -> int:
-    return next(_NEXT_VIRTUAL_PORT)
-
-
 @pytest.fixture()
 def virtual_drive():
     server, _, virtual_servo = _create_virtual_drive_connection(
-        _get_next_virtual_port(),
         _connect_virtual_ethernet,
     )
     yield server, virtual_servo
@@ -132,7 +124,6 @@ def virtual_drive_custom_dict():
 
     def connect(dictionary):
         server, net, servo = _create_virtual_drive_connection(
-            _get_next_virtual_port(),
             _connect_virtual_ethernet,
             dictionary,
         )
@@ -149,7 +140,6 @@ def virtual_drive_custom_dict():
 @pytest.fixture()
 def virtual_drive_ethercat():
     server, _, virtual_servo = _create_virtual_drive_connection(
-        _get_next_virtual_port(),
         _connect_virtual_ethercat,
         protocol=Interface.ECAT,
     )
@@ -163,7 +153,6 @@ def virtual_drive_ethercat_custom_dict():
 
     def connect(dictionary):
         server, net, servo = _create_virtual_drive_connection(
-            _get_next_virtual_port(),
             _connect_virtual_ethercat,
             dictionary,
             protocol=Interface.ECAT,
