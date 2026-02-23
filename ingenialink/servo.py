@@ -1,7 +1,7 @@
 import re
 import threading
 import time
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from collections.abc import Iterator
 from enum import Enum, auto
 from typing import Any, Callable, Optional, Union
@@ -2130,11 +2130,3 @@ class Servo:
     def disturbance_number_mapped_registers(self) -> int:
         """Get the number of mapped disturbance registers."""
         return int(self.read(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS, subnode=0))
-
-
-class EthercatServoBase(Servo, ABC):
-    """Declaration of the base EtherCAT servo behavior."""
-
-
-class CanopenServoBase(Servo, ABC):
-    """Declaration of the base CANopen servo behavior."""

@@ -1,4 +1,4 @@
-from ingenialink.servo import CanopenServoBase
+from ingenialink.canopen.servo import CanopenServoBase
 
 
 class VirtualCanopenServo(CanopenServoBase):

@@ -1,4 +1,4 @@
-from ingenialink.servo import EthercatServoBase
+from ingenialink.ethercat.servo import EthercatServoBase
 
 
 class VirtualEthercatServo(EthercatServoBase):
