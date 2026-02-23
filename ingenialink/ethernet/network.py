@@ -283,11 +283,14 @@ class EthernetNetworkBase(Network):
         Returns:
             EthernetServo: Instance of the servo connected.
         """
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(connection_timeout)
-        sock.connect((target, port))
         servo = EthernetServo(
-            sock, dictionary, servo_status_listener, is_eoe, disconnect_callback=disconnect_callback
+            target,
+            dictionary,
+            port,
+            connection_timeout,
+            servo_status_listener,
+            is_eoe,
+            disconnect_callback=disconnect_callback,
         )
         try:
             servo.get_state()

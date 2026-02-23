@@ -1,4 +1,3 @@
-import socket
 from typing import Callable, Optional
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
@@ -45,11 +44,13 @@ class VirtualEthernetNetwork(EthernetNetworkBase):
         Returns:
             VirtualEthernetServo: Instance of the servo connected.
         """
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(connection_timeout)
-        sock.connect((self._virtual_base.ip_address, port))
         servo = VirtualEthernetServo(
-            sock, dictionary, servo_status_listener, disconnect_callback=disconnect_callback
+            self._virtual_base.ip_address,
+            dictionary,
+            port,
+            connection_timeout,
+            servo_status_listener,
+            disconnect_callback=disconnect_callback,
         )
         try:
             servo.get_state()
