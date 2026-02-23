@@ -225,7 +225,11 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-class CanopenNetwork(Network):
+class CanopenNetworkBase(Network):
+    """Base class for CANopen network communications."""
+
+
+class CanopenNetwork(CanopenNetworkBase):
     """Network of the CANopen communication.
 
     Args:

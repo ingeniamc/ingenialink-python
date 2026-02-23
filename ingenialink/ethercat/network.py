@@ -172,7 +172,11 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-class EthercatNetwork(Network):
+class EthercatNetworkBase(Network):
+    """Base class for EtherCAT network communications."""
+
+
+class EthercatNetwork(EthercatNetworkBase):
     """Network for all EtherCAT communications.
 
     Args:

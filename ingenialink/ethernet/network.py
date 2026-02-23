@@ -46,7 +46,7 @@ class NetStatusListener(Thread):
 
     """
 
-    def __init__(self, network: "EthernetNetwork", refresh_time: float = 0.25) -> None:
+    def __init__(self, network: "EthernetNetworkBase", refresh_time: float = 0.25) -> None:
         super().__init__()
         self.__network = network
         self.__refresh_time = refresh_time
@@ -87,7 +87,7 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-class EthernetNetwork(Network):
+class EthernetNetworkBase(Network):
     """Network for all Ethernet communications.
 
     Args:
@@ -283,11 +283,14 @@ class EthernetNetwork(Network):
         Returns:
             EthernetServo: Instance of the servo connected.
         """
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(connection_timeout)
-        sock.connect((target, port))
         servo = EthernetServo(
-            sock, dictionary, servo_status_listener, is_eoe, disconnect_callback=disconnect_callback
+            target,
+            dictionary,
+            port,
+            connection_timeout,
+            servo_status_listener,
+            is_eoe,
+            disconnect_callback=disconnect_callback,
         )
         try:
             servo.get_state()
@@ -463,3 +466,7 @@ class EthernetNetwork(Network):
     def protocol(self) -> NetProt:
         """Obtain network protocol."""
         return NetProt.ETH
+
+
+class EthernetNetwork(EthernetNetworkBase):
+    """Network for all Ethernet communications."""

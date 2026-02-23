@@ -1,4 +1,5 @@
 import contextlib
+from abc import ABC
 from collections.abc import Iterator
 from typing import Callable, Optional, Union
 
@@ -35,7 +36,11 @@ class CanopenEmergencyMessage(EmergencyMessage):
         super().__init__(servo, emergency_msg.code, emergency_msg.register, emergency_msg.data)
 
 
-class CanopenServo(Servo):
+class CanopenServoBase(Servo, ABC):
+    """Declaration of the base CANopen servo behavior."""
+
+
+class CanopenServo(CanopenServoBase):
     """CANopen Servo instance.
 
     Args:
