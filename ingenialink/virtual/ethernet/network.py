@@ -45,7 +45,7 @@ class VirtualEthernetNetwork(EthernetNetworkBase):
             VirtualEthernetServo: Instance of the servo connected.
         """
         servo = VirtualEthernetServo(
-            self._virtual_base.ip_address,
+            self._virtual_base.virtual_drive_ip_address,
             dictionary,
             port,
             connection_timeout,

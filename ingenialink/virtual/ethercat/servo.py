@@ -1,13 +1,15 @@
 import socket
 from typing import Any, Callable, Optional
 
+from typing_extensions import override
+
 from ingenialink import Servo
 from ingenialink.constants import ETH_BUF_SIZE
 from ingenialink.dictionary import Interface
 from ingenialink.ethercat.register import EthercatRegister
+from ingenialink.ethercat.servo import EthercatServoBase
 from ingenialink.exceptions import ILIOError
 from ingenialink.register import Register
-from ingenialink.servo import EthercatServoBase
 from ingenialink.virtual.ethercat.codec import deserialize_sdo_frame, serialize_sdo_frame
 from ingenialink.virtual.servo import VirtualServoBase
 
@@ -75,6 +77,10 @@ class VirtualEthercatServo(EthercatServoBase):
         }
         response = self._exchange_sdo_frame(frame_data)
         self._deserialize_write_response(response)
+
+    @override
+    def check_servo_is_in_preoperational_state(self) -> None:
+        pass
 
     @staticmethod
     def _deserialize_read_response(response: object) -> bytes:

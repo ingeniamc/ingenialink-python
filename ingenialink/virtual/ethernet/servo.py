@@ -3,10 +3,10 @@ from typing import Callable, Optional
 import ingenialogger
 
 from ingenialink import Servo
-from ingenialink.constants import MCB_CMD_READ, MCB_CMD_WRITE
+from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT, MCB_CMD_READ, MCB_CMD_WRITE
 from ingenialink.dictionary import Interface
 from ingenialink.ethernet.register import EthernetRegister
-from ingenialink.ethernet.servo import EthernetServoBase
+from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.exceptions import ILTimeoutError, ILWrongRegisterError
 from ingenialink.utils.mcb import MCB
 from ingenialink.virtual.servo import VirtualServoBase
