@@ -10,6 +10,7 @@ from summit_testing_framework.pytest_helpers.marker_helper import (
 from virtual_drive.core import VirtualDrive
 
 from ingenialink.dictionary import Interface
+from ingenialink.virtual.ethercat.network import VirtualEthercatNetwork
 from ingenialink.virtual.ethernet.network import VirtualEthernetNetwork
 from tests.ethercat.mock import pysoem_mock_network  # noqa: F401
 
@@ -102,8 +103,6 @@ def _connect_virtual_ethernet(server: VirtualDrive) -> tuple[VirtualEthernetNetw
 
 
 def _connect_virtual_ethercat(server: VirtualDrive) -> tuple[Any, Any]:
-    from ingenialink.virtual.ethercat.network import VirtualEthercatNetwork
-
     net = VirtualEthercatNetwork()
     servo = net.connect_to_slave(1, server.dictionary_path, server.port)
     return net, servo
