@@ -59,7 +59,7 @@ from ingenialink.exceptions import (
 from ingenialink.register import Register
 from ingenialink.table import Table
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, weak_lru
-from ingenialink.utils.observer import Observer
+from ingenialink.utils.event import create_event
 from ingenialink.utils.timeout import Timeout
 from ingenialink.virtual.dictionary import VirtualDictionaryV2, VirtualDictionaryV3
 
@@ -492,15 +492,14 @@ class Servo:
                 None,
             ]
         ] = []
-        self._disconnect_observers: Observer[Callable[[Servo], None]] = Observer()
+        self.disconnect_event, self._disconnect_event_publisher = create_event()
         if servo_status_listener:
             self.start_status_listener()
         else:
             self.stop_status_listener()
         if disconnect_callback is not None:
-            self._disconnect_observers.subscribe(disconnect_callback)
+            self.subscribe_to_disconnection(disconnect_callback)
 
-    @property
     @weak_lru()
     def __store_restore_manager(self) -> StoreRestoreManager:
         return StoreRestoreManager(self)
@@ -1329,26 +1328,6 @@ class Servo:
             logger.info("Callback not subscribed.")
             return
         self.__observers_servo_state.remove(callback)
-
-    def subscribe_to_disconnection(self, callback: Callable[["Servo"], None]) -> None:
-        """Subscribe to disconnection events.
-
-        The callback will be called when the servo is disconnected from the
-        network.
-
-        Args:
-            callback: Callable that takes the disconnected :class:`Servo` instance
-                as its only argument.
-        """
-        self._disconnect_observers.subscribe(callback)
-
-    def unsubscribe_from_disconnection(self, callback: Callable[["Servo"], None]) -> None:
-        """Unsubscribe from disconnection events.
-
-        Args:
-            callback: Previously subscribed callback.
-        """
-        self._disconnect_observers.unsubscribe(callback)
 
     def is_alive(self, attemps: int = 1) -> bool:
         """Checks if the servo responds to a reading a register.
