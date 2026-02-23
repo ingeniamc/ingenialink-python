@@ -1,4 +1,5 @@
 import os
+from abc import ABC
 from enum import Enum
 from typing import TYPE_CHECKING, Callable, Optional, Union, cast
 
@@ -57,7 +58,11 @@ class EthercatEmergencyMessage(EmergencyMessage):
         super().__init__(servo, emergency_msg.error_code, emergency_msg.error_reg, data)
 
 
-class EthercatServo(PDOServo):
+class EthercatServoBase(PDOServo, Servo, ABC):
+    """Declaration of the base EtherCAT servo behavior."""
+
+
+class EthercatServo(EthercatServoBase):
     """Ethercat Servo instance.
 
     Args:
