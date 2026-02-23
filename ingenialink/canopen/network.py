@@ -32,7 +32,7 @@ if platform.system() == "Windows":
     with DisableLogger():
         from can.interfaces.ixxat.exceptions import VCIError
 else:
-    VCIError = None  # type: ignore  # noqa: PGH003
+    VCIError = CanError  # type: ignore  # noqa: PGH003
 from canopen import Network as NetworkLib
 
 KVASER_DRIVER_INSTALLED = True
@@ -44,6 +44,7 @@ try:
     )
 except ImportError:
     KVASER_DRIVER_INSTALLED = False
+    CANLIBError = CANLIBOperationError = Exception  # type: ignore[assignment,misc]
 
 logger = ingenialogger.get_logger(__name__)
 
