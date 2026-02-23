@@ -44,9 +44,13 @@ class VirtualEthernetNetwork(EthernetNetworkBase):
         Returns:
             VirtualEthernetServo: Instance of the servo connected.
         """
-        sock = self._virtual_base.create_connection(connection_timeout, port)
         servo = VirtualEthernetServo(
-            sock, dictionary, servo_status_listener, disconnect_callback=disconnect_callback
+            self._virtual_base.ip_address,
+            dictionary,
+            port,
+            connection_timeout,
+            servo_status_listener,
+            disconnect_callback=disconnect_callback,
         )
         try:
             servo.get_state()

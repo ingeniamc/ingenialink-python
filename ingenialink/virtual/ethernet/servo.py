@@ -1,4 +1,3 @@
-import socket
 from typing import Callable, Optional
 
 import ingenialogger
@@ -15,22 +14,26 @@ from ingenialink.virtual.servo import VirtualServoBase
 logger = ingenialogger.get_logger(__name__)
 
 
-class VirtualEthernetServo(EthernetServoBase):
+class VirtualEthernetServo(EthernetServo):
     """Virtual Ethernet servo implementation."""
 
     interface = Interface.VIRTUAL
 
     def __init__(
         self,
-        socket: socket.socket,
+        target: str,
         dictionary_path: str,
+        port: int = 1061,
+        connection_timeout: float = DEFAULT_ETH_CONNECTION_TIMEOUT,
         servo_status_listener: bool = False,
         is_eoe: bool = False,
         disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ) -> None:
         super().__init__(
-            socket,
+            target,
             dictionary_path,
+            port,
+            connection_timeout,
             servo_status_listener,
             is_eoe,
             disconnect_callback,
