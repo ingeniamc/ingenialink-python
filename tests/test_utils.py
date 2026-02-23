@@ -5,6 +5,7 @@ import pytest
 from ingenialink.enums.register import RegDtype
 from ingenialink.exceptions import ILValueError
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, weak_lru
+from ingenialink.utils.event import create_event
 from ingenialink.utils.timeout import Timeout
 
 
@@ -87,3 +88,48 @@ def test_timeout():
         assert timeout.elapsed_time_s >= 2.5
         assert timeout.remaining_time_s == 0
         assert timeout.has_expired
+
+
+def test_create_event():
+    """Test the create_event factory function and pub/sub functionality."""
+    observers, publisher = create_event()
+
+    call_log1 = []
+    call_log2 = []
+
+    def callback1(message: str) -> None:
+        call_log1.append(message)
+
+    def callback2(message: str) -> None:
+        call_log2.append(message)
+
+    # Subscribe multiple
+    observers.subscribe(callback1)
+    observers.subscribe(callback2)
+
+    # Publish
+    publisher.notify("hello")
+    publisher.notify("world")
+
+    # Check calls
+    assert call_log1 == ["hello", "world"]
+    assert call_log2 == ["hello", "world"]
+
+    # Unsubscribe one
+    observers.unsubscribe(callback1)
+
+    # Publish again
+    publisher.notify("again")
+
+    # Check only callback2 was called
+    assert call_log1 == ["hello", "world"]  # No new calls
+    assert call_log2 == ["hello", "world", "again"]
+
+    # Unsubscribe the last
+    observers.unsubscribe(callback2)
+
+    # Publish, no calls
+    publisher.notify("final")
+
+    assert call_log1 == ["hello", "world"]
+    assert call_log2 == ["hello", "world", "again"]

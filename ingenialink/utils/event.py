@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 CallbackT = TypeVar("CallbackT", bound=Callable[..., Any])
 
 
-class Observers(Generic[CallbackT]):
+class _Observers(Generic[CallbackT]):
     """Generic publish/subscribe manager.
 
     Stores a list of subscriber callbacks and notifies them when an event
@@ -43,7 +43,7 @@ class Observers(Generic[CallbackT]):
         self.__subscribers.remove(callback)
 
 
-class Publisher(Generic[CallbackT]):
+class _Publisher(Generic[CallbackT]):
     """Publisher for an event, linked to an Observers instance."""
 
     def __init__(self, subscribers: list[CallbackT]) -> None:
@@ -60,7 +60,7 @@ class Publisher(Generic[CallbackT]):
             callback(*args, **kwargs)
 
 
-def create_event() -> tuple[Observers[Callable[..., Any]], Publisher[Callable[..., Any]]]:
+def create_event() -> tuple[_Observers[Callable[..., Any]], _Publisher[Callable[..., Any]]]:
     """Create a linked Observers and Publisher pair.
 
     Returns:
@@ -77,6 +77,6 @@ def create_event() -> tuple[Observers[Callable[..., Any]], Publisher[Callable[..
         publisher.notify(42)  # prints 42
     """
     subscribers: list[Callable[..., Any]] = []
-    observers = Observers[Callable[..., Any]](subscribers)
-    publisher = Publisher[Callable[..., Any]](subscribers)
+    observers = _Observers[Callable[..., Any]](subscribers)
+    publisher = _Publisher[Callable[..., Any]](subscribers)
     return observers, publisher
