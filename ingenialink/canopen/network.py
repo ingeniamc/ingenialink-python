@@ -357,6 +357,15 @@ class CanopenNetwork(Network):
                     f"{type(e).__name__}: {e}"
                 )
                 slave_info[slave_id] = SlaveInfo()
+            except (CanError, CANLIBOperationError, PcanCanOperationError, VCIError) as e:
+                logger.warning(
+                    f"CAN bus error while reading node {slave_id} information. "
+                    f"{type(e).__name__}: {e}"
+                )
+                with contextlib.suppress(Exception):
+                    if self._connection is not None and self._connection.bus is not None:
+                        self._connection.bus.reset()
+                slave_info[slave_id] = SlaveInfo()
             else:
                 slave_info[slave_id] = SlaveInfo(int(product_code), int(revision_number))
 
