@@ -3,11 +3,11 @@ from typing import Callable, Optional
 
 from ingenialink import Servo
 from ingenialink.dictionary import Interface
-from ingenialink.ethernet.servo import EthernetServoBase
+from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.virtual.servo import VirtualServoBase
 
 
-class VirtualEthernetServo(EthernetServoBase):
+class VirtualEthernetServo(EthernetServo):
     """Virtual Ethernet servo implementation."""
 
     interface = Interface.VIRTUAL

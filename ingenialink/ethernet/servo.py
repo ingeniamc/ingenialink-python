@@ -1,5 +1,6 @@
 import ipaddress
 import socket
+from abc import ABC
 from typing import Callable, Optional
 
 import ingenialogger
@@ -21,7 +22,11 @@ from ingenialink.utils.mcb import MCB
 logger = ingenialogger.get_logger(__name__)
 
 
-class EthernetServoBase(Servo):
+class EthernetServoBase(Servo, ABC):
+    """Declaration of the base Ethernet servo behavior."""
+
+
+class EthernetServo(EthernetServoBase):
     """Servo object for all the Ethernet slave functionalities.
 
     Args:
@@ -213,7 +218,3 @@ class EthernetServoBase(Servo):
         except OSError as e:
             raise ILIOError("Error receiving data.") from e
         return MCB.read_mcb_data(reg, response)
-
-
-class EthernetServo(EthernetServoBase):
-    """Servo object for all the Ethernet slave functionalities."""
