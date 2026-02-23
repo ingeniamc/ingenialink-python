@@ -443,8 +443,7 @@ class CanopenNetwork(Network):
         if not self.servos:
             self._teardown_connection()
         # Notify that disconnect_from_slave has been called
-        if servo._disconnect_callback:
-            servo._disconnect_callback(servo)
+        servo._disconnect_observers.notify(servo)
 
     def _setup_connection(self) -> None:
         """Creates a network interface object.

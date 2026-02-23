@@ -317,8 +317,7 @@ class EthernetNetwork(Network):
         if len(self.servos) == 0:
             self.stop_status_listener()
         # Notify that disconnect_from_slave has been called
-        if servo._disconnect_callback:
-            servo._disconnect_callback(servo)
+        servo._disconnect_observers.notify(servo)
 
     @staticmethod
     def close_socket(sock: socket.socket) -> None:
