@@ -25,7 +25,7 @@ classifiers = [
 requires-python = ">=3.9"
 dependencies = [
     "canopen==2.2.0",
-    "python-can==4.4.2",
+    "python-can==4.6.1",
     "ingenialogger>=0.2.1",
     "ping3==4.0.3",
     "pysoem>=1.1.13, <1.2.0",
