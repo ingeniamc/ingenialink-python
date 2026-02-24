@@ -11,7 +11,8 @@ from summit_testing_framework.setups.specifiers import (
 )
 
 from ingenialink.dictionary import Interface
-from tests.setups.config_files import (
+
+from .config_files import (
     CAP_XCR_C_CONFIG,
     CAP_XCR_E_CONFIG,
     EVE_XCR_C_CONFIG,
