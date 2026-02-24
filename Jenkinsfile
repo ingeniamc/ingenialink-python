@@ -49,6 +49,13 @@ def arrangeTestConfigsBySession(Map rackSpecifiers, String rackSpecifiersPath) {
     def testConfigsBySession = [:]
 
     rackSpecifiers.each { setupKey, specifiers ->
+        // Determine if this setup key is a SpecifierContainer (multiple specifiers)
+        // or a direct specifier (single specifier with version_configs).
+        // This affects the setup path format:
+        //   - Container: SETUP@PART_NUMBER or SETUP@PART_NUMBER@VERSION
+        //   - Direct:    SETUP or SETUP@VERSION
+        def isContainer = specifiers.size() > 1
+
         specifiers.each { specifierName, specifierData ->
             if (specifierData.containsKey("extra_data")) {
                 // No version level (e.g., ECAT_MULTISLAVE_SETUP)
@@ -80,11 +87,21 @@ def arrangeTestConfigsBySession(Map rackSpecifiers, String rackSpecifiersPath) {
                         }
                         def setupPath
                         def specifierLookup
-                        if (version == "latest") {
-                            setupPath = "${rackSpecifiersPath}.${setupKey}@${specifierName}"
+                        if (isContainer) {
+                            // SpecifierContainer: path is SETUP@PART_NUMBER or SETUP@PART_NUMBER@VERSION
+                            if (version == "latest") {
+                                setupPath = "${rackSpecifiersPath}.${setupKey}@${specifierName}"
+                            } else {
+                                setupPath = "${rackSpecifiersPath}.${setupKey}@${specifierName}@${version}"
+                            }
                             specifierLookup = "${rackSpecifiersPath}.${setupKey}@${specifierName}"
                         } else {
-                            setupPath = "${rackSpecifiersPath}.${setupKey}@${version}"
+                            // Direct specifier: path is SETUP or SETUP@VERSION
+                            if (version == "latest") {
+                                setupPath = "${rackSpecifiersPath}.${setupKey}"
+                            } else {
+                                setupPath = "${rackSpecifiersPath}.${setupKey}@${version}"
+                            }
                             specifierLookup = "${specifierName}@${version}"
                         }
                         testConfigsBySession[sessionName] << [
