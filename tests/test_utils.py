@@ -92,7 +92,7 @@ def test_timeout():
 
 def test_create_event():
     """Test the create_event factory function and pub/sub functionality."""
-    observers, publisher = create_event()
+    observers, publisher = create_event(str)
 
     call_log1 = []
     call_log2 = []

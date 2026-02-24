@@ -4,6 +4,7 @@ from typing import Any, Callable, Generic, TypeVar
 logger = logging.getLogger(__name__)
 
 CallbackT = TypeVar("CallbackT", bound=Callable[..., Any])
+T = TypeVar("T")
 
 
 class _Observers(Generic[CallbackT]):
@@ -60,23 +61,30 @@ class _Publisher(Generic[CallbackT]):
             callback(*args, **kwargs)
 
 
-def create_event() -> tuple[_Observers[Callable[..., Any]], _Publisher[Callable[..., Any]]]:
+def create_event(
+    callback_type: type[T],
+) -> tuple[_Observers[Callable[[T], None]], _Publisher[Callable[[T], None]]]:
     """Create a linked Observers and Publisher pair.
 
+    Args:
+        callback_type: Type of the argument emitted by the event.
+            Used only for type inference; ignored at runtime.
+
     Returns:
-        A tuple of (observers, publisher) where observers is public for subscribing,
-        and publisher is private for notifying.
+        A tuple of ``(observers, publisher)`` where *observers* is the public
+        handle for subscribing/unsubscribing and *publisher* is the private
+        handle used to fire the event.
 
     Example::
 
-        from typing import Callable
         from ingenialink.utils.event import create_event
 
-        observers, publisher = create_event()
+        observers, publisher = create_event(int)
         observers.subscribe(lambda x: print(x))
         publisher.notify(42)  # prints 42
     """
-    subscribers: list[Callable[..., Any]] = []
-    observers = _Observers[Callable[..., Any]](subscribers)
-    publisher = _Publisher[Callable[..., Any]](subscribers)
+    _ = callback_type  # used only for typing
+    subscribers: list[Any] = []
+    observers = _Observers(subscribers)
+    publisher = _Publisher(subscribers)
     return observers, publisher

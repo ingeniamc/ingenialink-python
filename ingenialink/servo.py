@@ -492,14 +492,15 @@ class Servo:
                 None,
             ]
         ] = []
-        self.disconnect_event, self._disconnect_event_publisher = create_event()
+        self.disconnect_event, self._disconnect_event_publisher = create_event(Servo)  # type: ignore[type-abstract]
         if servo_status_listener:
             self.start_status_listener()
         else:
             self.stop_status_listener()
         if disconnect_callback is not None:
-            self.subscribe_to_disconnection(disconnect_callback)
+            self.disconnect_event.subscribe(disconnect_callback)
 
+    @property
     @weak_lru()
     def __store_restore_manager(self) -> StoreRestoreManager:
         return StoreRestoreManager(self)
