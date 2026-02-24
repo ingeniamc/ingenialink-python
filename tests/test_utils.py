@@ -133,3 +133,25 @@ def test_create_event():
 
     assert call_log1 == ["hello", "world"]
     assert call_log2 == ["hello", "world", "again"]
+
+
+def test_create_event_callback_exception_handling():
+    """Ensure that an exception in one subscriber doesn't stop others."""
+    observers, publisher = create_event(int)
+
+    calls = []
+
+    def bad(x: int) -> None:
+        calls.append(("bad", x))
+        raise RuntimeError("boom")
+
+    def good(x: int) -> None:
+        calls.append(("good", x))
+
+    observers.subscribe(bad)
+    observers.subscribe(good)
+
+    # Should not raise; publisher must catch exceptions internally
+    publisher.notify(42)
+
+    assert calls == [("bad", 42), ("good", 42)]

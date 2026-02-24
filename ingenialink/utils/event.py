@@ -11,8 +11,7 @@ class _Observers(Generic[CallbackT]):
     """Generic publish/subscribe manager.
 
     Stores a list of subscriber callbacks and notifies them when an event
-    is published. Duplicate subscriptions are silently ignored (a warning is
-    logged instead).
+    is published. Duplicate subscriptions are silently ignored
 
     Type parameter:
         CallbackT: The callable type of the subscribers.
@@ -26,7 +25,7 @@ class _Observers(Generic[CallbackT]):
 
         Args:
             callback: Callable to register. If it is already subscribed the
-                call is a no-op (a warning is logged).
+                call is a no-op.
         """
         if callback in self.__subscribers:
             return
@@ -37,7 +36,7 @@ class _Observers(Generic[CallbackT]):
 
         Args:
             callback: Callable to remove. If it was not subscribed the call
-                is a no-op (a warning is logged).
+                is a no-op.
         """
         if callback not in self.__subscribers:
             return
@@ -58,7 +57,10 @@ class _Publisher(Generic[CallbackT]):
             **kwargs: Keyword arguments forwarded to every callback.
         """
         for callback in list(self.__subscribers):
-            callback(*args, **kwargs)
+            try:
+                callback(*args, **kwargs)
+            except Exception as e:  # noqa: PERF203
+                logger.exception("Error in event callback %s: %s", callback, e)
 
 
 def create_event(

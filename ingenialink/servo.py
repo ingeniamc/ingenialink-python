@@ -492,6 +492,7 @@ class Servo:
                 None,
             ]
         ] = []
+        # Event and publisher for disconnection events, emitted after the servo is disconnected
         self.disconnect_event, self._disconnect_event_publisher = create_event(Servo)  # type: ignore[type-abstract]
         if servo_status_listener:
             self.start_status_listener()
