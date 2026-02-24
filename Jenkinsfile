@@ -27,10 +27,140 @@ wheel_stashes = []
 def HARDWARE_MARKERS = ["ethernet", "ethercat", "canopen", "multislave", "fsoe", "eoe"]
 
 /**
- * Build an exclusion string like: 'not develop and not virtual and not ethernet ...'
- * @param excludes List markers to exclude (list of strings)
- * @return A string with 'not <marker>' joined with ' and ' suitable for pytest
+ * Arrange rack specifiers test configs by test session name.
+ *
+ * Processes the raw JSON specifiers map and groups test configurations by their
+ * test session (e.g., "ECAT_TEST_SESSIONS", "CAN_TEST_SESSIONS", "ETH_TEST_SESSIONS").
+ *
+ * Each entry contains all information needed to generate a Jenkins test stage:
+ * - stage_name: Display name (e.g., "EtherCAT Everest")
+ * - uid: Unique stage identifier (e.g., "ethercat_everest")
+ * - markers: Pytest marker expression (e.g., "ethercat")
+ * - setup: Full setup path for pytest (e.g., "tests.setups.rack_specifiers.ECAT_SETUP@EVE-XCR-E")
+ * - execution_policy: Schedule policy name (e.g., "always", "weekdays")
+ * - setup_key: Key in rackSpecifiers map for shouldRunForSpecifier lookup
+ * - specifier_lookup: First argument for shouldRunForSpecifier
+ *
+ * @param rackSpecifiers Parsed JSON map from exportSpecifiersModule
+ * @param rackSpecifiersPath Module path prefix (e.g., "tests.setups.rack_specifiers")
+ * @return Map<String, List<Map>> grouped by test session name
  */
+def arrangeTestConfigsBySession(Map rackSpecifiers, String rackSpecifiersPath) {
+    def testConfigsBySession = [:]
+
+    rackSpecifiers.each { setupKey, specifiers ->
+        // Determine if this setup key is a SpecifierContainer (multiple specifiers)
+        // or a direct specifier (single specifier with version_configs).
+        // This affects the setup path format:
+        //   - Container: SETUP@PART_NUMBER or SETUP@PART_NUMBER@VERSION
+        //   - Direct:    SETUP or SETUP@VERSION
+        def isContainer = specifiers.size() > 1
+
+        specifiers.each { specifierName, specifierData ->
+            if (specifierData.containsKey("extra_data")) {
+                // No version level (e.g., ECAT_MULTISLAVE_SETUP)
+                def extraData = specifierData.extra_data
+                def executionPolicy = extraData.execution_policy
+                extraData.test_configs.each { sessionName, testConfig ->
+                    if (!testConfigsBySession.containsKey(sessionName)) {
+                        testConfigsBySession[sessionName] = []
+                    }
+                    testConfigsBySession[sessionName] << [
+                        stage_name: testConfig.stage_name,
+                        uid: testConfig.run_test_stage_uid,
+                        markers: testConfig.markers,
+                        setup: "${rackSpecifiersPath}.${setupKey}",
+                        execution_policy: executionPolicy,
+                        setup_key: setupKey,
+                        specifier_lookup: specifierName,
+                    ]
+                }
+            } else {
+                // Has version level (e.g., ECAT_SETUP with "latest", ECAT_DEN_S_NET_E_SETUP with "PHASE1")
+                specifierData.each { version, versionData ->
+                    if (!versionData.containsKey("extra_data")) return
+                    def extraData = versionData.extra_data
+                    def executionPolicy = extraData.execution_policy
+                    extraData.test_configs.each { sessionName, testConfig ->
+                        if (!testConfigsBySession.containsKey(sessionName)) {
+                            testConfigsBySession[sessionName] = []
+                        }
+                        def setupPath
+                        def specifierLookup
+                        if (isContainer) {
+                            // SpecifierContainer: path is SETUP@PART_NUMBER or SETUP@PART_NUMBER@VERSION
+                            if (version == "latest") {
+                                setupPath = "${rackSpecifiersPath}.${setupKey}@${specifierName}"
+                                specifierLookup = "${rackSpecifiersPath}.${setupKey}@${specifierName}"
+                            } else {
+                                setupPath = "${rackSpecifiersPath}.${setupKey}@${specifierName}@${version}"
+                                specifierLookup = "${rackSpecifiersPath}.${setupKey}@${specifierName}@${version}"
+                            }
+                        } else {
+                            // Direct specifier: path is SETUP or SETUP@VERSION
+                            if (version == "latest") {
+                                setupPath = "${rackSpecifiersPath}.${setupKey}"
+                            } else {
+                                setupPath = "${rackSpecifiersPath}.${setupKey}@${version}"
+                            }
+                            specifierLookup = "${specifierName}@${version}"
+                        }
+                        testConfigsBySession[sessionName] << [
+                            stage_name: testConfig.stage_name,
+                            uid: testConfig.run_test_stage_uid,
+                            markers: testConfig.markers,
+                            setup: setupPath,
+                            execution_policy: executionPolicy,
+                            setup_key: setupKey,
+                            specifier_lookup: specifierLookup,
+                        ]
+                    }
+                }
+            }
+        }
+    }
+
+    return testConfigsBySession
+}
+
+/**
+ * Generate hardware test sub-stages dynamically from test configuration data.
+ *
+ * Creates scripted pipeline stages for each test configuration entry. Each stage
+ * checks if it should run based on the run_test_stages parameter and execution policy,
+ * then runs the test session if applicable.
+ *
+ * @param pipeline The pipeline context (pass 'this' from Jenkinsfile)
+ * @param testConfigs List of test configuration maps (from arrangeTestConfigsBySession)
+ * @param baseSession Base TestSession to override for each test
+ * @param testMgr PyTestManager instance
+ * @param rackSpecs Raw rackSpecifiers map (for shouldRunForSpecifier)
+ */
+def generateHwTestSubStages(def pipeline, List testConfigs, TestSession baseSession,
+                              def testMgr, Map rackSpecs) {
+    testConfigs.each { config ->
+        def uid = config.uid
+        def stageName = config.stage_name
+        def markers = config.markers
+        def setup = config.setup
+        def setupKey = config.setup_key
+        def specifierLookup = config.specifier_lookup
+
+        pipeline.stage(stageName) {
+            def shouldRun = (uid ==~ pipeline.params.run_test_stages) &&
+                testMgr.shouldRunForSpecifier(specifierLookup, rackSpecs[setupKey])
+            if (shouldRun) {
+                testMgr.runTestSession(baseSession.override(
+                    uid: uid,
+                    markers: markers,
+                    setup: setup
+                ))
+            } else {
+                pipeline.echo "Skipping ${stageName} (uid=${uid}): does not match run_test_stages pattern or execution policy."
+            }
+        }
+    }
+}
 
 
 def reassignFilePermissions() {
@@ -1378,8 +1508,8 @@ PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvM
 
 /* Variables to store parsed specifier data (populated during export stages) */
 Map virtualSpecifiers = null
-Map rackSpecifiersEcatNode = null
-Map rackSpecifiersCanNode = null
+Map rackSpecifiers = null
+Map testConfigsBySession = null
 
 /* Define default base test sessions to be used/overridden in stages */
 TestSession TEST_SESSIONS = new TestSession(
@@ -1676,6 +1806,20 @@ pipeline {
                                                 "virtual_specifiers.json",
                                                 true
                                             )
+
+                                            // Export rack specifiers
+                                            rackSpecifiers = testManager.exportSpecifiersModule(
+                                                RACK_SPECIFIERS_PATH,
+                                                "rack_specifiers.json",
+                                                true
+                                            )
+
+                                            // Arrange test configs by session for automatic stage generation
+                                            testConfigsBySession = arrangeTestConfigsBySession(rackSpecifiers, RACK_SPECIFIERS_PATH)
+                                            echo "Test configs arranged by session: ${testConfigsBySession.keySet()}"
+                                            testConfigsBySession.each { sessionName, configs ->
+                                                echo "  ${sessionName}: ${configs.collect { it.uid }}"
+                                            }
                                         }
                                     }
                                 }
@@ -1793,14 +1937,8 @@ pipeline {
                         beforeOptions true
                         beforeAgent true
                         expression {
-                          [
-                            "pcap",
-                            "ethercat_everest",
-                            "ethercat_capitan",
-                            "ethercat_multislave",
-                            "fsoe_phase1",
-                            "fsoe_phase2"
-                          ].any { it ==~ params.run_test_stages }
+                          def ecatUids = testConfigsBySession?.ECAT_TEST_SESSIONS?.collect { it.uid } ?: []
+                          (ecatUids + ["pcap"]).any { it ==~ params.run_test_stages }
                         }
                     }
                     options {
@@ -1830,18 +1968,6 @@ pipeline {
                                 }
                             }
                         }
-                        stage('Export Specifiers to JSON') {
-                            steps {
-                                script {
-                                    // Export specifiers and get the parsed data
-                                    rackSpecifiersEcatNode = testManager.exportSpecifiersModule(
-                                        RACK_SPECIFIERS_PATH,
-                                        "rack_specifiers.json",
-                                        true
-                                    )
-                                }
-                            }
-                        }
                         stage('Pcap Tests') {
                             when {
                                 expression {
@@ -1856,93 +1982,11 @@ pipeline {
                                 }
                             }
                         }
-                        stage('EtherCAT Everest') {
-                            when {
-                                expression {
-                                    def shouldRun = "ethercat_everest" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ECAT_SETUP@EVE-XCR-E", rackSpecifiersEcatNode["ECAT_SETUP"])
-                                    return shouldRun
-                                }
-                            }
+                        stage('Run EtherCAT Tests') {
                             steps {
                                 script {
-                                    testManager.runTestSession(ECAT_TEST_SESSIONS.override(
-                                        uid: "ethercat_everest",
-                                        markers: "ethercat",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_SETUP@EVE-XCR-E"
-                                    ))
-                                }
-                            }
-                        }
-                        stage('EtherCAT Capitan') {
-                            when {
-                                expression {
-                                    def shouldRun = "ethercat_capitan" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ECAT_SETUP@CAP-XCR-E", rackSpecifiersEcatNode["ECAT_SETUP"])
-                                    return shouldRun
-                                }
-                            }
-                            steps {
-                                script {
-                                    testManager.runTestSession(ECAT_TEST_SESSIONS.override(
-                                        uid: "ethercat_capitan",
-                                        markers: "ethercat",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_SETUP@CAP-XCR-E"
-                                    ))
-                                }
-                            }
-                        }
-                        stage('EtherCAT Multislave') {
-                            when {
-                                expression {
-                                    def shouldRun = "ethercat_multislave" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("ECAT_MULTISLAVE", rackSpecifiersEcatNode["ECAT_MULTISLAVE_SETUP"])
-                                    return shouldRun
-                                }
-                            }
-                            steps {
-                                script {
-                                    testManager.runTestSession(ECAT_TEST_SESSIONS.override(
-                                        uid: "ethercat_multislave",
-                                        markers: "multislave",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP"
-                                    ))
-                                }
-                            }
-                        }
-                        stage("Safety Denali Phase I") {
-                            when {
-                                expression {
-                                    def shouldRun = "fsoe_phase1" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("DEN-S-NET-E@PHASE1", rackSpecifiersEcatNode["ECAT_DEN_S_NET_E_SETUP"])
-                                    return shouldRun
-                                }
-                            }
-                            steps {
-                                script {
-                                    testManager.runTestSession(ECAT_TEST_SESSIONS.override(
-                                        uid: "fsoe_phase1",
-                                        markers: "fsoe",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_NET_E_SETUP@PHASE1"
-                                    ))
-                                }
-                            }
-                        }
-                        stage("Safety Denali Phase II") {
-                            when {
-                                expression {
-                                    def shouldRun = "fsoe_phase2" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("DEN-S-NET-E@PHASE2", rackSpecifiersEcatNode["ECAT_DEN_S_NET_E_SETUP"])
-                                    return shouldRun
-                                }
-                            }
-                            steps {
-                                script {
-                                    testManager.runTestSession(ECAT_TEST_SESSIONS.override(
-                                        uid: "fsoe_phase2",
-                                        markers: "fsoe",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_NET_E_SETUP@PHASE2"
-                                    ))
+                                    def ecatConfigs = testConfigsBySession?.ECAT_TEST_SESSIONS ?: []
+                                    generateHwTestSubStages(this, ecatConfigs, ECAT_TEST_SESSIONS, testManager, rackSpecifiers)
                                 }
                             }
                         }
@@ -1953,12 +1997,9 @@ pipeline {
                         beforeOptions true
                         beforeAgent true
                         expression {
-                          [
-                            "canopen_everest",
-                            "canopen_capitan",
-                            "ethernet_everest",
-                            "ethernet_capitan"
-                          ].any { it ==~ params.run_test_stages }
+                          def canUids = testConfigsBySession?.CAN_TEST_SESSIONS?.collect { it.uid } ?: []
+                          def ethUids = testConfigsBySession?.ETH_TEST_SESSIONS?.collect { it.uid } ?: []
+                          (canUids + ethUids).any { it ==~ params.run_test_stages }
                         }
                     }
                     options {
@@ -1988,87 +2029,13 @@ pipeline {
                                 }
                             }
                         }
-                        stage('Export Specifiers to JSON') {
+                        stage('Run CANopen/Ethernet Tests') {
                             steps {
                                 script {
-                                    // Export specifiers and get the parsed data
-                                    rackSpecifiersCanNode = testManager.exportSpecifiersModule(
-                                        RACK_SPECIFIERS_PATH,
-                                        "rack_specifiers.json",
-                                        true
-                                    )
-                                }
-                            }
-                        }
-                        stage('CANopen Everest') {
-                            when {
-                                expression {
-                                    def shouldRun = "canopen_everest" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.CAN_SETUP@EVE-XCR-C", rackSpecifiersCanNode["CAN_SETUP"])
-                                    return shouldRun
-                                }
-                            }
-                            steps {
-                                script {
-                                    testManager.runTestSession(CAN_TEST_SESSIONS.override(
-                                        uid: "canopen_everest",
-                                        markers: "canopen",
-                                        setup: "${RACK_SPECIFIERS_PATH}.CAN_SETUP@EVE-XCR-C"
-                                    ))
-                                }
-                            }
-                        }
-                        stage('CANopen Capitan') {
-                            when {
-                                expression {
-                                    def shouldRun = "canopen_capitan" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.CAN_SETUP@CAP-XCR-C", rackSpecifiersCanNode["CAN_SETUP"])
-                                    return shouldRun
-                                }
-                            }
-                            steps {
-                                script {
-                                    testManager.runTestSession(CAN_TEST_SESSIONS.override(
-                                        uid: "canopen_capitan",
-                                        markers: "canopen",
-                                        setup: "${RACK_SPECIFIERS_PATH}.CAN_SETUP@CAP-XCR-C"
-                                    ))
-                                }
-                            }
-                        }
-                        stage('Ethernet Everest') {
-                            when {
-                                expression {
-                                    def shouldRun = "ethernet_everest" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ETH_SETUP@EVE-XCR-C", rackSpecifiersCanNode["ETH_SETUP"])
-                                    return shouldRun
-                                }
-                            }
-                            steps {
-                                script {
-                                    testManager.runTestSession(ETH_TEST_SESSIONS.override(
-                                        uid: "ethernet_everest",
-                                        markers: "ethernet",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ETH_SETUP@EVE-XCR-C"
-                                    ))
-                                }
-                            }
-                        }
-                        stage('Ethernet Capitan') {
-                            when {
-                                expression {
-                                    def shouldRun = "ethernet_capitan" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ETH_SETUP@CAP-XCR-C", rackSpecifiersCanNode["ETH_SETUP"])
-                                    return shouldRun
-                                }
-                            }
-                            steps {
-                                script {
-                                    testManager.runTestSession(ETH_TEST_SESSIONS.override(
-                                        uid: "ethernet_capitan",
-                                        markers: "ethernet",
-                                        setup: "${RACK_SPECIFIERS_PATH}.ETH_SETUP@CAP-XCR-C"
-                                    ))
+                                    def canConfigs = testConfigsBySession?.CAN_TEST_SESSIONS ?: []
+                                    def ethConfigs = testConfigsBySession?.ETH_TEST_SESSIONS ?: []
+                                    generateHwTestSubStages(this, canConfigs, CAN_TEST_SESSIONS, testManager, rackSpecifiers)
+                                    generateHwTestSubStages(this, ethConfigs, ETH_TEST_SESSIONS, testManager, rackSpecifiers)
                                 }
                             }
                         }
