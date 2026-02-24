@@ -14,12 +14,13 @@ from ingenialink.dictionary import Interface
 
 __EXECUTION_POLICY_KEY: str = "execution_policy"
 __TEST_CONFIGS_KEY: str = "test_configs"
+__CONFIG_FILES_PATH: Path = Path(__file__).parent / "config_files"
 
 ECAT_SETUP = SpecifierContainer({
     PartNumber.EVE_XCR_E: RackServiceConfigSpecifier.from_firmware(
         part_number=PartNumber.EVE_XCR_E,
         interface=Interface.ECAT,
-        config_file=Path("//azr-srv-ingfs1/dist/setups/setup_eve_ecat/1.2.0/config.xml"),
+        config_file=__CONFIG_FILES_PATH / "ethercat/eve_xcr_e.xcf",
         version="2.6.0",
         dictionary_type=DictionaryType.XDF_V2,
         extra_data={
@@ -33,40 +34,21 @@ ECAT_SETUP = SpecifierContainer({
             },
         },
     ),
-    PartNumber.CAP_XCR_E: RackServiceConfigSpecifier.from_version_configs(
+    PartNumber.CAP_XCR_E: RackServiceConfigSpecifier.from_firmware(
         part_number=PartNumber.CAP_XCR_E,
         interface=Interface.ECAT,
-        version_configs={
-            "2.6.0": VersionConfig.from_version(
-                version="2.6.0",
-                config_file=Path("//azr-srv-ingfs1/dist/setups/setup_cap_ecat/1.1.0/config.xml"),
-                dictionary_type=DictionaryType.XDF_V2,
-                extra_data={
-                    __EXECUTION_POLICY_KEY: "always",
-                    __TEST_CONFIGS_KEY: {
-                        "ECAT_TEST_SESSIONS": PyTestConfig(
-                            markers="ethercat",
-                            run_test_stage_uid="ethercat_capitan",
-                            stage_name="EtherCAT Capitan - FW. 2.6.0",
-                        )
-                    },
-                },
-            ),
-            "2.9.0": VersionConfig.from_version(
-                version="2.9.0",
-                config_file=Path("//azr-srv-ingfs1/dist/setups/setup_cap_ecat/1.1.0/config.xml"),
-                dictionary_type=DictionaryType.XDF_V2,
-                extra_data={
-                    __EXECUTION_POLICY_KEY: "always",
-                    __TEST_CONFIGS_KEY: {
-                        "ECAT_TEST_SESSIONS": PyTestConfig(
-                            markers="ethercat",
-                            run_test_stage_uid="ethercat_capitan",
-                            stage_name="EtherCAT Capitan - FW. 2.9.0",
-                        )
-                    },
-                },
-            ),
+        config_file=__CONFIG_FILES_PATH / "ethercat/cap_xcr_e.xcf",
+        version="2.6.0",
+        dictionary_type=DictionaryType.XDF_V2,
+        extra_data={
+            __EXECUTION_POLICY_KEY: "always",
+            __TEST_CONFIGS_KEY: {
+                "ECAT_TEST_SESSIONS": PyTestConfig(
+                    markers="ethercat",
+                    run_test_stage_uid="ethercat_capitan",
+                    stage_name="EtherCAT Capitan",
+                )
+            },
         },
     ),
 })
@@ -75,7 +57,7 @@ ETH_SETUP = SpecifierContainer({
     PartNumber.EVE_XCR_C: RackServiceConfigSpecifier.from_firmware(
         part_number=PartNumber.EVE_XCR_C,
         interface=Interface.ETH,
-        config_file=Path("//azr-srv-ingfs1/dist/setups/setup_eve_can/1.2.0/config.xml"),
+        config_file=__CONFIG_FILES_PATH / "canopen/eve_xcr_c.xcf",
         version="2.4.0",
         dictionary_type=DictionaryType.XDF_V2,
         extra_data={
@@ -92,7 +74,7 @@ ETH_SETUP = SpecifierContainer({
     PartNumber.CAP_XCR_C: RackServiceConfigSpecifier.from_firmware(
         part_number=PartNumber.CAP_XCR_C,
         interface=Interface.ETH,
-        config_file=Path("//azr-srv-ingfs1/dist/setups/setup_cap_can/1.1.0/config.xml"),
+        config_file=__CONFIG_FILES_PATH / "canopen/cap_xcr_c.xcf",
         version="2.4.0",
         dictionary_type=DictionaryType.XDF_V2,
         extra_data={
@@ -112,7 +94,7 @@ CAN_SETUP = SpecifierContainer({
     PartNumber.EVE_XCR_C: RackServiceConfigSpecifier.from_firmware(
         part_number=PartNumber.EVE_XCR_C,
         interface=Interface.CAN,
-        config_file=Path("//azr-srv-ingfs1/dist/setups/setup_eve_can/1.2.0/config.xml"),
+        config_file=__CONFIG_FILES_PATH / "canopen/eve_xcr_c.xcf",
         version="2.4.0",
         dictionary_type=DictionaryType.XDF_V2,
         extra_data={
@@ -129,7 +111,7 @@ CAN_SETUP = SpecifierContainer({
     PartNumber.CAP_XCR_C: RackServiceConfigSpecifier.from_firmware(
         part_number=PartNumber.CAP_XCR_C,
         interface=Interface.CAN,
-        config_file=Path("//azr-srv-ingfs1/dist/setups/setup_cap_can/1.1.0/config.xml"),
+        config_file=__CONFIG_FILES_PATH / "canopen/cap_xcr_c.xcf",
         version="2.4.0",
         dictionary_type=DictionaryType.XDF_V2,
         extra_data={
