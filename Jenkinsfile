@@ -91,10 +91,11 @@ def arrangeTestConfigsBySession(Map rackSpecifiers, String rackSpecifiersPath) {
                             // SpecifierContainer: path is SETUP@PART_NUMBER or SETUP@PART_NUMBER@VERSION
                             if (version == "latest") {
                                 setupPath = "${rackSpecifiersPath}.${setupKey}@${specifierName}"
+                                specifierLookup = "${rackSpecifiersPath}.${setupKey}@${specifierName}"
                             } else {
                                 setupPath = "${rackSpecifiersPath}.${setupKey}@${specifierName}@${version}"
+                                specifierLookup = "${rackSpecifiersPath}.${setupKey}@${specifierName}@${version}"
                             }
-                            specifierLookup = "${rackSpecifiersPath}.${setupKey}@${specifierName}"
                         } else {
                             // Direct specifier: path is SETUP or SETUP@VERSION
                             if (version == "latest") {
