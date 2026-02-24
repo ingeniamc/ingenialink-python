@@ -32,7 +32,12 @@ if platform.system() == "Windows":
     with DisableLogger():
         from can.interfaces.ixxat.exceptions import VCIError
 else:
-    VCIError = CanError  # type: ignore  # noqa: PGH003
+
+    class _VCIErrorPlaceholderError(Exception):
+        """Placeholder for IXXAT VCIError on non-Windows platforms."""
+
+    VCIError = _VCIErrorPlaceholderError  # type: ignore[assignment,misc]
+
 from canopen import Network as NetworkLib
 
 KVASER_DRIVER_INSTALLED = True
@@ -44,7 +49,11 @@ try:
     )
 except ImportError:
     KVASER_DRIVER_INSTALLED = False
-    CANLIBError = CANLIBOperationError = Exception  # type: ignore[assignment,misc]
+
+    class _KvaserPlaceholderError(Exception):
+        """Placeholder error used when Kvaser CANLIB is not available."""
+
+    CANLIBError = CANLIBOperationError = _KvaserPlaceholderError  # type: ignore[assignment,misc]
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -340,11 +349,11 @@ class CanopenNetwork(Network):
             return slave_info
 
         for slave_id in slaves:
-            if slave_id not in connected_slaves:
-                node = self._connection.add_node(slave_id)
-            else:
-                node = connected_slaves[slave_id]
             try:
+                if slave_id not in connected_slaves:
+                    node = self._connection.add_node(slave_id)
+                else:
+                    node = connected_slaves[slave_id]
                 product_code = convert_bytes_to_dtype(
                     node.sdo.upload(self.DRIVE_INFO_INDEX, self.PRODUCT_CODE_SUB_IX), RegDtype.U32
                 )
@@ -352,7 +361,7 @@ class CanopenNetwork(Network):
                     node.sdo.upload(self.DRIVE_INFO_INDEX, self.REVISION_NUMBER_SUB_IX),
                     RegDtype.U32,
                 )
-            except canopen.sdo.exceptions.SdoError as e:
+            except canopen.sdo.exceptions.SdoError as e:  # noqa: PERF203
                 logger.warning(
                     f"The information of the node {slave_id} cannot be retrieved. "
                     f"{type(e).__name__}: {e}"
