@@ -192,7 +192,9 @@ ECAT_MULTISLAVE_SETUP = MultiRackServiceConfigSpecifier.create(
     identifier="ECAT_MULTISLAVE",
     specifiers=[
         ECAT_SETUP.get_specifier_by_identifier(PartNumber.EVE_XCR_E),
-        ECAT_SETUP.get_specifier_by_identifier(PartNumber.CAP_XCR_E),
+        ECAT_SETUP.get_specifier_by_identifier_with_version(
+            identifier=PartNumber.CAP_XCR_E, version="2.6.0"
+        ),
     ],
     extra_data={
         __EXECUTION_POLICY_KEY: "always",
