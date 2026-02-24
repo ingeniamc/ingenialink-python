@@ -34,21 +34,40 @@ ECAT_SETUP = SpecifierContainer({
             },
         },
     ),
-    PartNumber.CAP_XCR_E: RackServiceConfigSpecifier.from_firmware(
+    PartNumber.CAP_XCR_E: RackServiceConfigSpecifier.from_version_configs(
         part_number=PartNumber.CAP_XCR_E,
         interface=Interface.ECAT,
-        config_file=__CONFIG_FILES_PATH / "ethercat/cap_xcr_e.xcf",
-        version="2.6.0",
-        dictionary_type=DictionaryType.XDF_V2,
-        extra_data={
-            __EXECUTION_POLICY_KEY: "always",
-            __TEST_CONFIGS_KEY: {
-                "ECAT_TEST_SESSIONS": PyTestConfig(
-                    markers="ethercat",
-                    run_test_stage_uid="ethercat_capitan",
-                    stage_name="EtherCAT Capitan",
-                )
-            },
+        version_configs={
+            "2.6.0": VersionConfig.from_version(
+                version="2.6.0",
+                config_file=__CONFIG_FILES_PATH / "ethercat/cap_xcr_e.xcf",
+                dictionary_type=DictionaryType.XDF_V2,
+                extra_data={
+                    __EXECUTION_POLICY_KEY: "always",
+                    __TEST_CONFIGS_KEY: {
+                        "ECAT_TEST_SESSIONS": PyTestConfig(
+                            markers="ethercat",
+                            run_test_stage_uid="ethercat_capitan",
+                            stage_name="EtherCAT Capitan - FW. 2.6.0",
+                        )
+                    },
+                },
+            ),
+            "2.9.0": VersionConfig.from_version(
+                version="2.9.0",
+                config_file=__CONFIG_FILES_PATH / "ethercat/cap_xcr_e.xcf",
+                dictionary_type=DictionaryType.XDF_V2,
+                extra_data={
+                    __EXECUTION_POLICY_KEY: "always",
+                    __TEST_CONFIGS_KEY: {
+                        "ECAT_TEST_SESSIONS": PyTestConfig(
+                            markers="ethercat",
+                            run_test_stage_uid="ethercat_capitan",
+                            stage_name="EtherCAT Capitan - FW. 2.9.0",
+                        )
+                    },
+                },
+            ),
         },
     ),
 })
