@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.16') _
+@Library('cicd-lib@0.20') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -1024,31 +1024,26 @@ class PyTestManager {
     /**
      * Export specifiers to JSON file.
      * 
-     * This method exports specifier(s) to a JSON file using the summit_testing_framework.export_specifiers module.
+     * This method exports a specifier module to a JSON file using the summit_testing_framework.helpers.export_specifiers_module module.
      * The file is always created in the 'tests/setups/specifiers_json/' subdirectory of the working folder.
      * 
+     * @param specifierModule Specifier module to export (e.g., "tests.setups.rack_specifiers.ECAT_SETUP").
      * @param outputFileName Name of the output JSON file (default: "exported_specifiers.json")
-     * @param setups List of setup strings to export (default: empty list)
      * @param override Whether to override existing output file (default: true)
      * @return Map of parsed specifiers, or null if no setups provided
      */
-    Map exportSpecifiers(String outputFileName = "exported_specifiers.json", List setups = [], boolean override = true) {
+    Map exportSpecifiersModule(String specifierModule, String outputFileName = "exported_specifiers.json", boolean override = true) {
         // Always save in tests/setups/specifiers_json/ subdirectory of working folder
         def workingFolder = this.venvManager.getWorkingFolder()
         def workingOutputFile = this.venvManager.joinPath(workingFolder, "tests", "setups", "specifiers_json", outputFileName)
         
-        if (!setups) {
-            this.pipeline.echo "No setups provided. Skipping specifier export."
-            return null
-        }
-        this.pipeline.echo "Exporting specifiers: ${setups}"
+        this.pipeline.echo "Exporting specifier module: ${specifierModule}"
         this.pipeline.echo "Output file: ${workingOutputFile}"
         
         // Export specifiers
-        def specifiersArg = setups.join(" ")
         def overrideFlag = override ? "--override" : ""
         this.venvManager.withPython(this.venvManager.default_python_version) { venv ->
-            venv.run("poetry run poe export_specifiers -- --specifiers_path ${specifiersArg} --output_file ${workingOutputFile} --root_dir ${workingFolder} ${overrideFlag}")
+            venv.run("poetry run poe export_specifier_module -- --specifier_module ${specifierModule} --output_file ${workingOutputFile} --root_dir ${workingFolder} ${overrideFlag}")
         }
         
         // Copy from working folder to workspace if they're different
@@ -1383,9 +1378,8 @@ PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvM
 
 /* Variables to store parsed specifier data (populated during export stages) */
 Map virtualSpecifiers = null
-Map ecatSpecifiers = null
-Map canSpecifiers = null
-Map ethSpecifiers = null
+Map rackSpecifiersEcatNode = null
+Map rackSpecifiersCanNode = null
 
 /* Define default base test sessions to be used/overridden in stages */
 TestSession TEST_SESSIONS = new TestSession(
@@ -1619,6 +1613,13 @@ pipeline {
                                 VENV_WORKING_FOLDER = "/tmp/ingenialink_python"
                             }
                             stages {
+                                stage('Check Dependencies') {
+                                    steps {
+                                        script {
+                                            checkDependencies()
+                                        }
+                                    }
+                                }
                                 stage('Move workspace') {
                                     steps {
                                         script {
@@ -1670,9 +1671,9 @@ pipeline {
                                             }
                                             
                                             // Export specifiers and get the parsed data
-                                            virtualSpecifiers = testManager.exportSpecifiers(
+                                            virtualSpecifiers = testManager.exportSpecifiersModule(
+                                                "tests.setups.virtual_drive_specifier",
                                                 "virtual_specifiers.json",
-                                                ["tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_SETUP"],
                                                 true
                                             )
                                         }
@@ -1682,7 +1683,7 @@ pipeline {
                                     when{
                                         expression {
                                             def shouldRun = "pcap" ==~ params.run_test_stages &&
-                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers)
+                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers["VIRTUAL_DRIVE_SETUP"])
                                             return shouldRun
                                         }
                                     }
@@ -1705,7 +1706,7 @@ pipeline {
                                     when {
                                         expression {
                                             def shouldRun = "virtual_drive_tests" ==~ params.run_test_stages  &&
-                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers)
+                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers["VIRTUAL_DRIVE_SETUP"])
                                             return shouldRun
                                         }
                                     }
@@ -1833,10 +1834,9 @@ pipeline {
                             steps {
                                 script {
                                     // Export specifiers and get the parsed data
-                                    ecatSpecifiers = testManager.exportSpecifiers(
-                                        "ecat_specifiers.json",
-                                        ["${RACK_SPECIFIERS_PATH}.ECAT_SETUP", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP",
-                                         "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_NET_E_SETUP"],
+                                    rackSpecifiersEcatNode = testManager.exportSpecifiersModule(
+                                        RACK_SPECIFIERS_PATH,
+                                        "rack_specifiers.json",
                                         true
                                     )
                                 }
@@ -1860,7 +1860,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "ethercat_everest" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ECAT_SETUP@EVE-XCR-E", ecatSpecifiers)
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ECAT_SETUP@EVE-XCR-E", rackSpecifiersEcatNode["ECAT_SETUP"])
                                     return shouldRun
                                 }
                             }
@@ -1878,7 +1878,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "ethercat_capitan" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ECAT_SETUP@CAP-XCR-E", ecatSpecifiers)
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ECAT_SETUP@CAP-XCR-E", rackSpecifiersEcatNode["ECAT_SETUP"])
                                     return shouldRun
                                 }
                             }
@@ -1896,7 +1896,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "ethercat_multislave" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("ECAT_MULTISLAVE", ecatSpecifiers)
+                                        testManager.shouldRunForSpecifier("ECAT_MULTISLAVE", rackSpecifiersEcatNode["ECAT_MULTISLAVE_SETUP"])
                                     return shouldRun
                                 }
                             }
@@ -1914,7 +1914,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "fsoe_phase1" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("DEN-S-NET-E@PHASE1", ecatSpecifiers)
+                                        testManager.shouldRunForSpecifier("DEN-S-NET-E@PHASE1", rackSpecifiersEcatNode["ECAT_DEN_S_NET_E_SETUP"])
                                     return shouldRun
                                 }
                             }
@@ -1932,7 +1932,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "fsoe_phase2" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("DEN-S-NET-E@PHASE2", ecatSpecifiers)
+                                        testManager.shouldRunForSpecifier("DEN-S-NET-E@PHASE2", rackSpecifiersEcatNode["ECAT_DEN_S_NET_E_SETUP"])
                                     return shouldRun
                                 }
                             }
@@ -1992,14 +1992,9 @@ pipeline {
                             steps {
                                 script {
                                     // Export specifiers and get the parsed data
-                                    canSpecifiers = testManager.exportSpecifiers(
-                                        "can_specifiers.json",
-                                        ["${RACK_SPECIFIERS_PATH}.CAN_SETUP"],
-                                        true
-                                    )
-                                    ethSpecifiers = testManager.exportSpecifiers(
-                                        "eth_specifiers.json",
-                                        ["${RACK_SPECIFIERS_PATH}.ETH_SETUP"],
+                                    rackSpecifiersCanNode = testManager.exportSpecifiersModule(
+                                        RACK_SPECIFIERS_PATH,
+                                        "rack_specifiers.json",
                                         true
                                     )
                                 }
@@ -2009,7 +2004,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "canopen_everest" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.CAN_SETUP@EVE-XCR-C", canSpecifiers)
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.CAN_SETUP@EVE-XCR-C", rackSpecifiersCanNode["CAN_SETUP"])
                                     return shouldRun
                                 }
                             }
@@ -2027,7 +2022,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "canopen_capitan" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.CAN_SETUP@CAP-XCR-C", canSpecifiers)
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.CAN_SETUP@CAP-XCR-C", rackSpecifiersCanNode["CAN_SETUP"])
                                     return shouldRun
                                 }
                             }
@@ -2045,7 +2040,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "ethernet_everest" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ETH_SETUP@EVE-XCR-C", ethSpecifiers)
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ETH_SETUP@EVE-XCR-C", rackSpecifiersCanNode["ETH_SETUP"])
                                     return shouldRun
                                 }
                             }
@@ -2063,7 +2058,7 @@ pipeline {
                             when {
                                 expression {
                                     def shouldRun = "ethernet_capitan" ==~ params.run_test_stages &&
-                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ETH_SETUP@CAP-XCR-C", ethSpecifiers)
+                                        testManager.shouldRunForSpecifier("${RACK_SPECIFIERS_PATH}.ETH_SETUP@CAP-XCR-C", rackSpecifiersCanNode["ETH_SETUP"])
                                     return shouldRun
                                 }
                             }
