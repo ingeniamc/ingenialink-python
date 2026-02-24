@@ -2736,18 +2736,18 @@ testing = ["covdefaults (>=2.3)", "coverage (>=7.6.1)", "pytest-mock (>=3.14)"]
 
 [[package]]
 name = "pytest-mock"
-version = "3.6.1"
+version = "3.15.1"
 description = "Thin-wrapper around the mock package for easier use with pytest"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.9"
 groups = ["tests"]
 files = [
-    {file = "pytest-mock-3.6.1.tar.gz", hash = "sha256:40217a058c52a63f1042f0784f62009e976ba824c418cced42e88d5f40ab0e62"},
-    {file = "pytest_mock-3.6.1-py3-none-any.whl", hash = "sha256:30c2f2cc9759e76eee674b81ea28c9f0b94f8f0445a1b87762cadf774f0df7e3"},
+    {file = "pytest_mock-3.15.1-py3-none-any.whl", hash = "sha256:0a25e2eb88fe5168d535041d09a4529a188176ae608a6d249ee65abc0949630d"},
+    {file = "pytest_mock-3.15.1.tar.gz", hash = "sha256:1849a238f6f396da19762269de72cb1814ab44416fa73a8686deac10b0d87a0f"},
 ]
 
 [package.dependencies]
-pytest = ">=5.0"
+pytest = ">=6.2.5"
 
 [package.extras]
 dev = ["pre-commit", "pytest-asyncio", "tox"]
@@ -3778,13 +3778,13 @@ test = ["pytest"]
 
 [[package]]
 name = "summit-testing-framework"
-version = "0.2.0+pr74b14"
+version = "0.2.0+pr78b2"
 description = "Testing framework for Novanta drives"
 optional = false
 python-versions = ">=3.9"
 groups = ["tests"]
 files = [
-    {file = "summit_testing_framework-0.2.0+pr74b14-py3-none-any.whl", hash = "sha256:196e01e95763c31a463fec50144a67777f71ea4a7129b8ab5a908b9988210141"},
+    {file = "summit_testing_framework-0.2.0+pr78b2-py3-none-any.whl", hash = "sha256:250dbc75053118a29c673ab6924669e3c19ec3fb90450da030d4bdd30eee1651"},
 ]
 
 [package.dependencies]
@@ -4039,14 +4039,14 @@ zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "virtual-drive"
-version = "0.0.0+pr24b9"
+version = "0.0.0+pr24b14"
 description = "Emulates a Summit drive for development and testing purposes."
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "extra == \"virtual-drive\""
 files = [
-    {file = "virtual_drive-0.0.0+pr24b9-py3-none-any.whl", hash = "sha256:045b3e8178de55a692582f47f4afee9b21ecd88cd033634ac75eb2a88de59356"},
+    {file = "virtual_drive-0.0.0+pr24b14-py3-none-any.whl", hash = "sha256:ce81e95d630b204f4a7ce477c45f2c8e3f08d899ef09230fda5c9d0f4e1aa12c"},
 ]
 
 [package.dependencies]
@@ -4467,4 +4467,4 @@ virtual-drive = ["virtual_drive"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "a986db52b8932eed3642a283c6da8d651991a9997e2ad7b4f13ff271d667941d"
+content-hash = "1ae2c3f8d58805ad956536db28a45d45c7d20b46a7746317f283f1484ff92dec"
