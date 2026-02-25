@@ -1,9 +1,18 @@
 import threading
+from types import SimpleNamespace
 
 import pytest
+from can.interfaces.pcan.pcan import PcanCanOperationError
 from canopen.network import RemoteNode
 
 from ingenialink.canopen.servo import CanopenServo
+from ingenialink.exceptions import ILIOError
+
+RAW_IO_REGISTER = SimpleNamespace(idx=0x1018, subidx=0x02, identifier="DRV_ID_PRODUCT_CODE")
+
+
+def _raise_pcan_bus_off(*_args, **_kwargs):
+    raise PcanCanOperationError("Bus error: the CAN controller is in bus-off state.")
 
 
 @pytest.mark.canopen
@@ -80,3 +89,34 @@ class TestMinimumSdoTimeout:
 
         # Even after exception, timeout must be restored
         assert node.sdo.RESPONSE_TIMEOUT == 0.1
+
+
+class TestRawReadWriteBusOffHandling:
+    class _ServoForRawIO(CanopenServo):
+        def __init__(self, node: object) -> None:
+            self._CanopenServo__node = node
+            self._lock = threading.Lock()
+
+    @staticmethod
+    def _build_servo_with_failing_sdo(
+        method_name: str,
+    ) -> "TestRawReadWriteBusOffHandling._ServoForRawIO":
+        return TestRawReadWriteBusOffHandling._ServoForRawIO(
+            SimpleNamespace(sdo=SimpleNamespace(**{method_name: _raise_pcan_bus_off}))
+        )
+
+    def test_write_raw_translates_pcan_bus_off_to_ilioerror(self) -> None:
+        servo = self._build_servo_with_failing_sdo("download")
+
+        with pytest.raises(ILIOError) as exc_info:
+            servo._write_raw(RAW_IO_REGISTER, b"\x00")
+
+        assert str(exc_info.value) == "Error writing DRV_ID_PRODUCT_CODE"
+
+    def test_read_raw_translates_pcan_bus_off_to_ilioerror(self) -> None:
+        servo = self._build_servo_with_failing_sdo("upload")
+
+        with pytest.raises(ILIOError) as exc_info:
+            servo._read_raw(RAW_IO_REGISTER)
+
+        assert str(exc_info.value) == "Error reading DRV_ID_PRODUCT_CODE"
