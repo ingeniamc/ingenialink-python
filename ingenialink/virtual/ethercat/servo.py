@@ -4,7 +4,6 @@ from typing import Any, Callable, Optional
 from typing_extensions import override
 
 from ingenialink import Servo
-from ingenialink.constants import ETH_BUF_SIZE
 from ingenialink.dictionary import Interface
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethercat.servo import EthercatServoBase
@@ -41,7 +40,7 @@ class VirtualEthercatServo(EthercatServoBase):
     def _exchange_sdo_frame(self, frame_data: dict[str, Any]) -> dict[str, Any]:
         with self._virtual_base.transaction():
             self._virtual_base.send_frame(serialize_sdo_frame(frame_data))
-            response_frame = self._virtual_base.receive_frame(ETH_BUF_SIZE)
+            response_frame = self._virtual_base.receive_frame()
 
         try:
             return deserialize_sdo_frame(response_frame)

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ingenialink.constants import ETH_BUF_SIZE
+from ingenialink.virtual.servo import VIRTUAL_DRIVE_RECV_BUFFER_SIZE
 
 
 def serialize_sdo_frame(payload: dict[str, Any]) -> bytes:
@@ -42,7 +42,7 @@ def deserialize_sdo_frame(frame: bytes) -> dict[str, Any]:
             contains invalid byte values.
 
     """
-    if len(frame) > ETH_BUF_SIZE:
+    if len(frame) > VIRTUAL_DRIVE_RECV_BUFFER_SIZE:
         raise ValueError("EtherCAT SDO frame exceeds maximum allowed size")
 
     payload = json.loads(frame.decode("utf-8"))
