@@ -8,7 +8,6 @@ from xml.etree import ElementTree
 import pytest
 from packaging import version
 from summit_testing_framework.product_constants import PartNumber
-from summit_testing_framework.setups.environment_control import VirtualDriveEnvironmentController
 from summit_testing_framework.setups.specifiers import (
     RackServiceConfigSpecifier,
 )
@@ -265,7 +264,11 @@ def test_load_configuration_to_subnode_zero(setup_descriptor, servo, tmp_path) -
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-# Pending: Maximum firmware versions for comoco
+@pytest.mark.valid_versions_for_product(part_number="CAP-NET-E", max="2.8.9")
+@pytest.mark.valid_versions_for_product(part_number="CAP-XCR-E", max="2.8.9")
+@pytest.mark.valid_versions_for_product(part_number="EVE-NET-E", max="2.8.9")
+@pytest.mark.valid_versions_for_product(part_number="EVE-XCR-E", max="2.8.9")
+@pytest.mark.valid_versions_for_product(part_number="DEN-NET-E", max="2.8.9")
 def test_store_parameters_timed_recovery(servo, environment: "Environment", mocker) -> None:
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
@@ -299,12 +302,13 @@ def test_store_parameters_timed_recovery(servo, environment: "Environment", mock
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
 
-# Only run on virtual drive since rack drives tested fw version do not have these registers yet
-def test_store_parameters_polling_status(virtual_drive_custom_dict, att_client, mocker):
-    dict_with_status_reg = att_client.get_dictionary_xdf_v3_file("DEN-NET-E", "2.9.1")
-    server, _, servo = virtual_drive_custom_dict(dict_with_status_reg)
-    environment = VirtualDriveEnvironmentController(server.environment, aliases="default")
-
+@pytest.mark.ethercat
+@pytest.mark.valid_versions_for_product(part_number="CAP-NET-E", min="2.9.0")
+@pytest.mark.valid_versions_for_product(part_number="CAP-XCR-E", min="2.9.0")
+@pytest.mark.valid_versions_for_product(part_number="EVE-NET-E", min="2.9.0")
+@pytest.mark.valid_versions_for_product(part_number="EVE-XCR-E", min="2.9.0")
+@pytest.mark.valid_versions_for_product(part_number="DEN-NET-E", min="2.9.0")
+def test_store_parameters_polling_status(servo, environment: "Environment", mocker) -> None:
     # Both registers exist in this dictionary
     servo.dictionary.get_register("DRV_STORE_STATUS_MOCO")
     servo.dictionary.get_register("DRV_STORE_STATUS_COCO")
@@ -327,8 +331,6 @@ def test_store_parameters_polling_status(virtual_drive_custom_dict, att_client, 
     # Assert the polling-based recovery path was invoked
     polling_status_spy.assert_called_once()
 
-    # Virtual drive does not actually implement a power cycle or a real internal store,
-    # but the rest of the test procedure is executed the same way
     drives_reconnected = environment.power_cycle(
         wait_for_drives=False, reconnect_drives=True, reconnect_timeout=20
     )

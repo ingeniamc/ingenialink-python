@@ -85,7 +85,7 @@ ECAT_SETUP = SpecifierContainer({
                 config_file=_config_files.CAP_XCR_E_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "never",  # https://novantamotion.atlassian.net/browse/INGK-1249
+                    __EXECUTION_POLICY_KEY: "always",  # https://novantamotion.atlassian.net/browse/INGK-1249
                     __TEST_CONFIGS_KEY: {
                         "ECAT_TEST_SESSIONS": PyTestConfig(
                             markers="ethercat",
