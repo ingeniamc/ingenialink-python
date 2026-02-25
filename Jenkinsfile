@@ -203,6 +203,7 @@ class TestSchedulePolicy implements Serializable {
  * 
  * Built-in policies:
  * - "always": Always run tests (use for tests that should run on every pipeline trigger)
+ * - "never": Never run tests (use for setups that should be completely disabled)
  * - "weekends": Run only on Saturdays and Sundays
  * - "weekdays": Run only on weekdays (Monday to Friday)
  * - "nightly": Run only during nightTime hours (configurable, default: 7 PM to 6 AM)
@@ -261,6 +262,14 @@ class TestSchedulePolicyManager implements Serializable {
         // Always policy - always returns true
         registerPolicy(new TestSchedulePolicy("always", { pipeline ->
             return true
+        }))
+        
+        // Never policy - never returns true
+        registerPolicy(new TestSchedulePolicy("never", { pipeline ->
+            if (pipeline) {
+                pipeline.echo "Policy is 'never', skipping tests."
+            }
+            return false
         }))
         
         // Weekend policy - runs on Saturday and Sunday
