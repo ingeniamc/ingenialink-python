@@ -45,7 +45,7 @@ class VirtualEthernetNetwork(EthernetNetworkBase):
             VirtualEthernetServo: Instance of the servo connected.
         """
         servo = VirtualEthernetServo(
-            self._virtual_base.ip_address,
+            self._virtual_base.virtual_drive_ip_address,
             dictionary,
             port,
             connection_timeout,
@@ -56,9 +56,11 @@ class VirtualEthernetNetwork(EthernetNetworkBase):
             servo.get_state()
         except ILError as e:
             servo.stop_status_listener()
-            raise ILError(f"Drive not found in IP {self._virtual_base.ip_address}.") from e
+            raise ILError(
+                f"Drive not found in IP {self._virtual_base.virtual_drive_ip_address}."
+            ) from e
         self.servos.append(servo)
-        self._set_servo_state(self._virtual_base.ip_address, NetState.CONNECTED)
+        self._set_servo_state(self._virtual_base.virtual_drive_ip_address, NetState.CONNECTED)
 
         if net_status_listener:
             self.start_status_listener()
