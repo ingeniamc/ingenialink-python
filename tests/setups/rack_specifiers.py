@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from summit_testing_framework.jenkins.pytest_config import PyTestConfig
+from summit_testing_framework.pytest_helpers.import_helpers import import_module_from_local_path
 from summit_testing_framework.setups.specifier_container import SpecifierContainer
 from summit_testing_framework.setups.specifiers import (
     DictionaryType,
@@ -12,6 +13,14 @@ from summit_testing_framework.setups.specifiers import (
 
 from ingenialink.dictionary import Interface
 
+# This file is used to export the specifiers to a JSON. Since tests is not a package,
+# we need to import the config files using a helper function to be able to access them
+_config_files = import_module_from_local_path(
+    module_name="config_files", module_path=Path(__file__).parent / "config_files"
+)
+assert _config_files is not None
+
+
 __EXECUTION_POLICY_KEY: str = "execution_policy"
 __TEST_CONFIGS_KEY: str = "test_configs"
 
@@ -19,7 +28,7 @@ ECAT_SETUP = SpecifierContainer({
     PartNumber.EVE_XCR_E: RackServiceConfigSpecifier.from_firmware(
         part_number=PartNumber.EVE_XCR_E,
         interface=Interface.ECAT,
-        config_file=Path("//azr-srv-ingfs1/dist/setups/setup_eve_ecat/1.2.0/config.xml"),
+        config_file=_config_files.EVE_XCR_E_CONFIG,
         version="2.6.0",
         dictionary_type=DictionaryType.XDF_V2,
         extra_data={
@@ -36,7 +45,7 @@ ECAT_SETUP = SpecifierContainer({
     PartNumber.CAP_XCR_E: RackServiceConfigSpecifier.from_firmware(
         part_number=PartNumber.CAP_XCR_E,
         interface=Interface.ECAT,
-        config_file=Path("//azr-srv-ingfs1/dist/setups/setup_cap_ecat/1.1.0/config.xml"),
+        config_file=_config_files.CAP_XCR_E_CONFIG,
         version="2.6.0",
         dictionary_type=DictionaryType.XDF_V2,
         extra_data={
@@ -56,7 +65,7 @@ ETH_SETUP = SpecifierContainer({
     PartNumber.EVE_XCR_C: RackServiceConfigSpecifier.from_firmware(
         part_number=PartNumber.EVE_XCR_C,
         interface=Interface.ETH,
-        config_file=Path("//azr-srv-ingfs1/dist/setups/setup_eve_can/1.2.0/config.xml"),
+        config_file=_config_files.EVE_XCR_C_CONFIG,
         version="2.4.0",
         dictionary_type=DictionaryType.XDF_V2,
         extra_data={
@@ -73,7 +82,7 @@ ETH_SETUP = SpecifierContainer({
     PartNumber.CAP_XCR_C: RackServiceConfigSpecifier.from_firmware(
         part_number=PartNumber.CAP_XCR_C,
         interface=Interface.ETH,
-        config_file=Path("//azr-srv-ingfs1/dist/setups/setup_cap_can/1.1.0/config.xml"),
+        config_file=_config_files.CAP_XCR_C_CONFIG,
         version="2.4.0",
         dictionary_type=DictionaryType.XDF_V2,
         extra_data={
@@ -93,7 +102,7 @@ CAN_SETUP = SpecifierContainer({
     PartNumber.EVE_XCR_C: RackServiceConfigSpecifier.from_firmware(
         part_number=PartNumber.EVE_XCR_C,
         interface=Interface.CAN,
-        config_file=Path("//azr-srv-ingfs1/dist/setups/setup_eve_can/1.2.0/config.xml"),
+        config_file=_config_files.EVE_XCR_C_CONFIG,
         version="2.4.0",
         dictionary_type=DictionaryType.XDF_V2,
         extra_data={
@@ -110,7 +119,7 @@ CAN_SETUP = SpecifierContainer({
     PartNumber.CAP_XCR_C: RackServiceConfigSpecifier.from_firmware(
         part_number=PartNumber.CAP_XCR_C,
         interface=Interface.CAN,
-        config_file=Path("//azr-srv-ingfs1/dist/setups/setup_cap_can/1.1.0/config.xml"),
+        config_file=_config_files.CAP_XCR_C_CONFIG,
         version="2.4.0",
         dictionary_type=DictionaryType.XDF_V2,
         extra_data={
