@@ -192,6 +192,7 @@ class EthercatNetworkBase(Network):
 
         """
         if callback in self._observers_net_state[target]:
+            logger.info("Callback already subscribed.")
             return
         self._observers_net_state[target].append(callback)
 
@@ -206,6 +207,7 @@ class EthercatNetworkBase(Network):
 
         """
         if callback not in self._observers_net_state[target]:
+            logger.info("Callback not subscribed.")
             return
         self._observers_net_state[target].remove(callback)
 

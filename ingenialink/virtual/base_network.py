@@ -17,7 +17,7 @@ class VirtualNetworkBase:
             port: Port to connect to the slave.
 
         Returns:
-            socket.socket: Socket connected to the virtual drive.
+            Socket connected to the virtual drive.
 
         """
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
