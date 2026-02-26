@@ -646,8 +646,7 @@ class EthercatNetwork(EthercatNetworkBase):
             self.stop_status_listener()
             self.close_ecat_master()
         # Notify that disconnect_from_slave has been called
-        if servo._disconnect_callback:
-            servo._disconnect_callback(servo)
+        servo._disconnect_event_publisher.notify(servo)
 
     def config_pdo_maps(self) -> None:
         """Configure the PDO maps.
