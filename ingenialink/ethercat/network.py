@@ -8,7 +8,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from enum import Enum
 from threading import Thread
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
+from typing import TYPE_CHECKING, Callable, Optional, Union, cast
 
 import ingenialogger
 from typing_extensions import override
@@ -175,6 +175,74 @@ class NetStatusListener(Thread):
 class EthercatNetworkBase(Network):
     """Base class for EtherCAT network communications."""
 
+    def __init__(self) -> None:
+        super().__init__()
+        self._observers_net_state: dict[Union[int, str], list[Callable[[NetDevEvt], None]]] = (
+            defaultdict(list)
+        )
+
+    def subscribe_to_status(
+        self, target: Union[int, str], callback: Callable[[NetDevEvt], None]
+    ) -> None:
+        """Subscribe to network state changes.
+
+        Args:
+            target: Target slave ID.
+            callback: Callback function to execute on state changes.
+
+        """
+        if callback in self._observers_net_state[target]:
+            logger.info("Callback already subscribed.")
+            return
+        self._observers_net_state[target].append(callback)
+
+    def unsubscribe_from_status(
+        self, target: Union[int, str], callback: Callable[[NetDevEvt], None]
+    ) -> None:
+        """Unsubscribe from network state changes.
+
+        Args:
+            target: Target slave ID.
+            callback: Callback function previously subscribed.
+
+        """
+        if callback not in self._observers_net_state[target]:
+            logger.info("Callback not subscribed.")
+            return
+        self._observers_net_state[target].remove(callback)
+
+    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
+        """Get the state of a servo in the network.
+
+        Args:
+            servo_id: Servo ID.
+
+        Returns:
+            Current state of the servo.
+
+        """
+        return self._servos_state[servo_id]
+
+    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
+        """Set the state of a servo in the network.
+
+        Args:
+            servo_id: Servo ID.
+            state: New servo state.
+
+        """
+        self._servos_state[servo_id] = state
+
+    def _notify_status(self, target: Union[int, str], status: NetDevEvt) -> None:
+        """Notify subscribers of a network state change."""
+        for callback in self._observers_net_state[target]:
+            callback(status)
+
+    @property
+    def protocol(self) -> NetProt:
+        """Obtain network protocol."""
+        return NetProt.ECAT
+
 
 class EthercatNetwork(EthercatNetworkBase):
     """Network for all EtherCAT communications.
@@ -224,7 +292,6 @@ class EthercatNetwork(EthercatNetworkBase):
         self.interface_name: str = interface_name
         self.servos: list[EthercatServo] = []
         self.__listener_net_status: Optional[NetStatusListener] = None
-        self.__observers_net_state: dict[int, list[Any]] = defaultdict(list)
         self._ecat_master: pysoem.CdefMaster = pysoem.Master()
         self.__gil_release_config = gil_release_config
         self._ecat_master.always_release_gil = self.__gil_release_config.always_release
@@ -579,8 +646,7 @@ class EthercatNetwork(EthercatNetworkBase):
             self.stop_status_listener()
             self.close_ecat_master()
         # Notify that disconnect_from_slave has been called
-        if servo._disconnect_callback:
-            servo._disconnect_callback(servo)
+        servo._disconnect_event_publisher.notify(servo)
 
     def config_pdo_maps(self) -> None:
         """Configure the PDO maps.
@@ -737,36 +803,6 @@ class EthercatNetwork(EthercatNetworkBase):
             )
             for drive in node_list
         )
-
-    def subscribe_to_status(  # type: ignore [override]
-        self, slave_id: int, callback: Callable[[NetDevEvt], None]
-    ) -> None:
-        """Subscribe to network state changes.
-
-        Args:
-            slave_id: Slave ID of the drive to subscribe.
-            callback: Callback function.
-
-        """
-        if callback in self.__observers_net_state[slave_id]:
-            logger.info("Callback already subscribed.")
-            return
-        self.__observers_net_state[slave_id].append(callback)
-
-    def unsubscribe_from_status(  # type: ignore [override]
-        self, slave_id: int, callback: Callable[[str, NetDevEvt], None]
-    ) -> None:
-        """Unsubscribe from network state changes.
-
-        Args:
-            slave_id: Slave ID of the drive to subscribe.
-            callback: Callback function.
-
-        """
-        if callback not in self.__observers_net_state[slave_id]:
-            logger.info("Callback not subscribed.")
-            return
-        self.__observers_net_state[slave_id].remove(callback)
 
     def start_status_listener(self) -> None:
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
@@ -1004,44 +1040,6 @@ class EthercatNetwork(EthercatNetworkBase):
 
             if exception is not None:
                 raise exception
-
-    @property
-    def protocol(self) -> NetProt:
-        """NetProt: Obtain network protocol."""
-        return NetProt.ECAT
-
-    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
-        """Get the state of a servo that's a part of network.
-
-        The state indicates if the servo is connected or disconnected.
-
-        Args:
-            servo_id: The servo's slave ID.
-
-        Raises:
-            ValueError: If the servo ID is not an integer.
-
-        Returns:
-            The servo's state.
-        """
-        if not isinstance(servo_id, int):
-            raise ValueError("The servo ID must be an int.")
-        return self._servos_state[servo_id]
-
-    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
-        """Set the state of a servo that's a part of network.
-
-        Args:
-            servo_id: The servo's slave ID.
-            state: The servo's state.
-
-        """
-        self._servos_state[servo_id] = state
-
-    def _notify_status(self, slave_id: int, status: NetDevEvt) -> None:
-        """Notify subscribers of a network state change."""
-        for callback in self.__observers_net_state[slave_id]:
-            callback(status)
 
     @override
     def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:

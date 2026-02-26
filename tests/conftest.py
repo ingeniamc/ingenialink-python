@@ -1,6 +1,6 @@
-import itertools
 import logging
 from pathlib import Path
+from typing import Any, Callable, Optional
 
 import pytest
 from summit_testing_framework import dynamic_loader
@@ -9,6 +9,8 @@ from summit_testing_framework.pytest_helpers.marker_helper import (
 )
 from virtual_drive.core import VirtualDrive
 
+from ingenialink.dictionary import Interface
+from ingenialink.virtual.ethercat.network import VirtualEthercatNetwork
 from ingenialink.virtual.ethernet.network import VirtualEthernetNetwork
 from tests.ethercat.mock import pysoem_mock_network  # noqa: F401
 
@@ -30,18 +32,12 @@ class SuppressSpecificLogs(logging.Filter):
     def filter(self, record):
         message = record.getMessage()
         # Suppress logs containing this specific message
-        return not (
-            "Exception during load_configuration" in message
-            or record.name
-            == "ingenialink.configuration_file"  # https://novantamotion.atlassian.net/browse/CIT-433
-        )
+        return "Exception during load_configuration" not in message
 
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_configure(config):  # noqa: ARG001
     logging.getLogger("ingenialink.servo").addFilter(SuppressSpecificLogs())
-    # https://novantamotion.atlassian.net/browse/CIT-433
-    logging.getLogger("ingenialink.configuration_file").addFilter(SuppressSpecificLogs())
 
 
 def pytest_sessionstart(session):
@@ -74,12 +70,43 @@ def pytest_collection_modifyitems(
     apply_firmware_version_markers_to_items(config=config, items=items)
 
 
+def _create_virtual_drive_connection(
+    connect_to_server: Callable[[VirtualDrive], tuple[Any, Any]],
+    dictionary: Optional[str] = None,
+    protocol: Interface = Interface.VIRTUAL,
+) -> tuple[VirtualDrive, Any, Any]:
+    server = (
+        VirtualDrive(protocol=protocol)
+        if dictionary is None
+        else VirtualDrive(dictionary_path=dictionary, protocol=protocol)
+    )
+    server.start()
+    try:
+        net, servo = connect_to_server(server)
+    except Exception:
+        if server.is_alive():
+            server.stop()
+        raise
+    return server, net, servo
+
+
+def _connect_virtual_ethernet(server: VirtualDrive) -> tuple[VirtualEthernetNetwork, Any]:
+    net = VirtualEthernetNetwork()
+    servo = net.connect_to_slave(server.dictionary_path, server.port)
+    return net, servo
+
+
+def _connect_virtual_ethercat(server: VirtualDrive) -> tuple[Any, Any]:
+    net = VirtualEthercatNetwork()
+    servo = net.connect_to_slave(1, server.dictionary_path, server.port)
+    return net, servo
+
+
 @pytest.fixture()
 def virtual_drive():
-    server = VirtualDrive(81)
-    server.start()
-    net = VirtualEthernetNetwork()
-    virtual_servo = net.connect_to_slave(server.dictionary_path, server.port)
+    server, _, virtual_servo = _create_virtual_drive_connection(
+        _connect_virtual_ethernet,
+    )
     yield server, virtual_servo
     server.stop()
 
@@ -87,14 +114,43 @@ def virtual_drive():
 @pytest.fixture()
 def virtual_drive_custom_dict():
     servers: list[VirtualDrive] = []
-    next_port = itertools.count(81)
 
     def connect(dictionary):
-        server = VirtualDrive(next(next_port), dictionary)
+        server, net, servo = _create_virtual_drive_connection(
+            _connect_virtual_ethernet,
+            dictionary,
+        )
         servers.append(server)
-        server.start()
-        net = VirtualEthernetNetwork()
-        servo = net.connect_to_slave(server.dictionary_path, server.port)
+        return server, net, servo
+
+    yield connect
+
+    for server in servers:
+        if server.is_alive():
+            server.stop()
+
+
+@pytest.fixture()
+def virtual_drive_ethercat():
+    server, _, virtual_servo = _create_virtual_drive_connection(
+        _connect_virtual_ethercat,
+        protocol=Interface.ECAT,
+    )
+    yield server, virtual_servo
+    server.stop()
+
+
+@pytest.fixture()
+def virtual_drive_ethercat_custom_dict():
+    servers: list[VirtualDrive] = []
+
+    def connect(dictionary):
+        server, net, servo = _create_virtual_drive_connection(
+            _connect_virtual_ethercat,
+            dictionary,
+            protocol=Interface.ECAT,
+        )
+        servers.append(server)
         return server, net, servo
 
     yield connect

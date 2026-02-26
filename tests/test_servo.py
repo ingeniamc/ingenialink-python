@@ -207,7 +207,7 @@ def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: 
     _, _, servo = virtual_drive_custom_dict(dictionary)
     test_file = tests.resources.TEST_CONFIG_FILE
     mocker.patch(
-        "ingenialink.ethernet.servo.EthernetServo._write_raw",
+        "ingenialink.virtual.ethernet.servo.VirtualEthernetServo._write_raw",
         side_effect=ILError("Error writing"),
     )
     with pytest.raises(ILError) as exc_info:
@@ -669,6 +669,34 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
     servo.register_update_unsubscribe(register_update_callback.register_update_test)
 
     servo.write(user_over_voltage_uid, data=previous_reg_value, subnode=1)
+
+
+@pytest.mark.virtual
+def test_subscribe_disconnection(virtual_drive_custom_dict):  # noqa: F811
+    class DisconnectionTest:
+        def __init__(self):
+            self.call_count = 0
+            self.servo = None
+
+        def disconnection_callback(self, servo):
+            self.call_count += 1
+            self.servo = servo
+
+    disconnection_callback = DisconnectionTest()
+
+    dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
+    _, net, servo = virtual_drive_custom_dict(dictionary)
+    servo.disconnect_event.subscribe(disconnection_callback.disconnection_callback)
+
+    # Initially not called
+    assert disconnection_callback.call_count == 0
+
+    # Disconnect the servo
+    net.disconnect_from_slave(servo)
+
+    # Callback should have been called
+    assert disconnection_callback.call_count == 1
+    assert disconnection_callback.servo == servo
 
 
 @pytest.mark.parametrize(

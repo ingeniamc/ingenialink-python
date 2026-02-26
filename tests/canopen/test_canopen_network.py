@@ -1,7 +1,10 @@
 import platform
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
+from unittest.mock import Mock
 
 import pytest
+from can.interfaces.pcan.pcan import PcanCanOperationError
 from summit_testing_framework.setups import (
     MultiRackServiceConfigSpecifier,
     RackServiceConfigSpecifier,
@@ -20,6 +23,27 @@ if TYPE_CHECKING:
 test_bus = "virtual"
 test_baudrate = 1000000
 test_channel = 0
+
+
+def _raise_pcan_bus_off(*_args, **_kwargs) -> None:
+    raise PcanCanOperationError("Bus error: the CAN controller is in bus-off state.")
+
+
+def _configure_mocked_connection(net, connection, slaves=None):
+    """Attach a mocked connection to a network instance for unit-style tests.
+
+    Returns:
+        The same network instance with connection and optional slave scan behavior patched.
+    """
+
+    def setup_connection() -> None:
+        net._connection = connection
+
+    net._setup_connection = setup_connection
+    net._teardown_connection = lambda: None
+    if slaves is not None:
+        net.scan_slaves = lambda: slaves
+    return net
 
 
 @pytest.fixture
@@ -180,3 +204,73 @@ def test_recover_from_disconnection(net: "CanopenNetwork", servo: "CanopenServo"
     # Verify we can still communicate with the servo after recovery
     new_fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
     assert new_fw_version == fw_version, "Firmware version should remain the same after recovery"
+
+
+def test_scan_slaves_info_handles_bus_off_with_empty_slave_info(virtual_network) -> None:
+    """scan_slaves_info should not raise on PCAN bus-off and should reset the bus."""
+    # Arrange: one discovered slave whose SDO upload always fails with bus-off.
+    reset_bus = Mock()
+
+    bus = SimpleNamespace(reset=reset_bus)
+    sdo = SimpleNamespace(upload=_raise_pcan_bus_off)
+    node = SimpleNamespace(sdo=sdo)
+    connection = SimpleNamespace(bus=bus, add_node=lambda _node_id: node)
+    net = _configure_mocked_connection(virtual_network, connection, slaves=[1])
+
+    # Act
+    slaves_info = net.scan_slaves_info()
+
+    # Assert: the failure is handled, slave entry is present, and bus reset is attempted.
+    assert 1 in slaves_info
+    assert slaves_info[1].product_code is None
+    assert slaves_info[1].revision_number is None
+    reset_bus.assert_called_once_with()
+
+
+def test_scan_slaves_handles_pcan_bus_off(virtual_network) -> None:
+    """scan_slaves should recover from scanner bus-off by resetting the bus."""
+    # Arrange: scanner.search raises bus-off on an otherwise valid connection.
+    net = virtual_network
+    reset_bus = Mock()
+
+    net.get_available_devices = lambda: [(net.device, net.channel)]  # type: ignore[method-assign]
+    net._connection = SimpleNamespace(
+        scanner=SimpleNamespace(reset=lambda: None, search=_raise_pcan_bus_off, nodes=[]),
+        bus=SimpleNamespace(reset=reset_bus),
+    )
+
+    # Act
+    nodes = net.scan_slaves()
+
+    # Assert: scan returns empty result and bus reset is called once.
+    assert nodes == []
+    reset_bus.assert_called_once_with()
+
+
+def test_connect_to_slave_handles_pcan_bus_off_as_ilerror(virtual_network) -> None:
+    """connect_to_slave should translate low-level PCAN errors into ILError."""
+    # Arrange: adding the node fails with a PCAN bus-off runtime error.
+    connection = SimpleNamespace(add_node=_raise_pcan_bus_off)
+    net = _configure_mocked_connection(virtual_network, connection, slaves=[1])
+
+    # Act / Assert: API exposes a controlled library error.
+    with pytest.raises(ILError) as exc_info:
+        net.connect_to_slave(target=1, dictionary="dummy.xdf")
+
+    assert str(exc_info.value) == (
+        "Failed connecting to node 1. Please check the connection settings and verify the "
+        "transceiver is properly connected."
+    )
+
+
+def test_teardown_connection_handles_pcan_bus_off(virtual_network) -> None:
+    """_teardown_connection should swallow PCAN bus-off and always clear the connection."""
+    # Arrange: disconnect itself fails with bus-off.
+    net = virtual_network
+    net._connection = SimpleNamespace(disconnect=_raise_pcan_bus_off)
+
+    # Act
+    net._teardown_connection()
+
+    # Assert: teardown remains safe and always clears the connection object.
+    assert net._connection is None
