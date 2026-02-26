@@ -114,8 +114,7 @@ class VirtualEthercatNetwork(EthercatNetworkBase):
         self._set_servo_state(servo.slave_id, NetState.DISCONNECTED)
         if len(self.servos) == 0:
             self.stop_status_listener()
-        if servo._disconnect_callback:
-            servo._disconnect_callback(servo)
+        servo._disconnect_event_publisher.notify(servo)
 
     def start_status_listener(self) -> None:
         """Start network status listener.
