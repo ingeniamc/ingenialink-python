@@ -70,7 +70,7 @@ ECAT_SETUP = SpecifierContainer({
                 config_file=_config_files.CAP_XCR_E_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "always",
+                    __EXECUTION_POLICY_KEY: "nightly",
                     __TEST_CONFIGS_KEY: {
                         "ECAT_TEST_SESSIONS": PyTestConfig(
                             markers="ethercat",
@@ -85,7 +85,7 @@ ECAT_SETUP = SpecifierContainer({
                 config_file=_config_files.CAP_XCR_E_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "always",  # https://novantamotion.atlassian.net/browse/INGK-1249
+                    __EXECUTION_POLICY_KEY: "always",
                     __TEST_CONFIGS_KEY: {
                         "ECAT_TEST_SESSIONS": PyTestConfig(
                             markers="ethercat",
@@ -300,7 +300,7 @@ ECAT_MULTISLAVE_SETUP = MultiRackServiceConfigSpecifier.create(
         ),
         # https://novantamotion.atlassian.net/browse/INGK-1249
         ECAT_SETUP.get_specifier_by_identifier_with_version(
-            identifier=PartNumber.CAP_XCR_E, version="2.6.0"
+            identifier=PartNumber.CAP_XCR_E, version="2.9.0"
         ),
     ],
     extra_data={
