@@ -109,8 +109,6 @@ def _canopen_connection_register_assertions(
 @pytest.mark.canopen
 @pytest.mark.valid_versions_for_product(part_number="CAP-XCR-C", max="2.8.9")
 @pytest.mark.valid_versions_for_product(part_number="CAP-NET-C", max="2.8.9")
-@pytest.mark.valid_versions_for_product(part_number="EVE-XCR-C", max="2.8.9")
-@pytest.mark.valid_versions_for_product(part_number="EVE-NET-C", max="2.8.9")
 def test_canopen_connection_register_old_firmware(
     servo: "CanopenServo", net: "CanopenNetwork"
 ) -> None:
@@ -122,8 +120,6 @@ def test_canopen_connection_register_old_firmware(
 @pytest.mark.canopen
 @pytest.mark.valid_versions_for_product(part_number="CAP-XCR-C", min="2.9.0")
 @pytest.mark.valid_versions_for_product(part_number="CAP-NET-C", min="2.9.0")
-@pytest.mark.valid_versions_for_product(part_number="EVE-XCR-C", min="2.9.0")
-@pytest.mark.valid_versions_for_product(part_number="EVE-NET-C", min="2.9.0")
 def test_canopen_connection_register(servo: "CanopenServo", net: "CanopenNetwork") -> None:
     """New firmware versions represent None units with None, not '-'."""
     register = _canopen_connection_register_assertions(servo=servo, net=net)
