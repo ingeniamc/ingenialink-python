@@ -298,7 +298,6 @@ ECAT_MULTISLAVE_SETUP = MultiRackServiceConfigSpecifier.create(
         ECAT_SETUP.get_specifier_by_identifier_with_version(
             identifier=PartNumber.EVE_XCR_E, version="2.8.0"
         ),
-        # https://novantamotion.atlassian.net/browse/INGK-1249
         ECAT_SETUP.get_specifier_by_identifier_with_version(
             identifier=PartNumber.CAP_XCR_E, version="2.9.0"
         ),
