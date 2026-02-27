@@ -1836,7 +1836,7 @@ pipeline {
                                     when{
                                         expression {
                                             def shouldRun = "pcap" ==~ params.run_test_stages &&
-                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers["VIRTUAL_DRIVE_SETUP"])
+                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers["VIRTUAL_DRIVE_ETHERNET_SETUP"])
                                             return shouldRun
                                         }
                                     }
@@ -1859,7 +1859,7 @@ pipeline {
                                     when {
                                         expression {
                                             def shouldRun = "virtual_drive_tests" ==~ params.run_test_stages  &&
-                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers["VIRTUAL_DRIVE_SETUP"])
+                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers["VIRTUAL_DRIVE_ETHERNET_SETUP"])
                                             return shouldRun
                                         }
                                     }
