@@ -678,7 +678,6 @@ class PDOMap:
 
         Args:
             items: List of PDOMapItems.
-            dictionary: Canopen dictionary to retrieve the registers.
 
         Returns:
             PDOMap instance.
