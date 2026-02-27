@@ -1868,7 +1868,7 @@ pipeline {
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "virtual_drive", markers: 'virtual', setup: 'tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_SETUP'))
+                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "virtual_drive", markers: 'virtual', setup: 'tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_ETHERNET_SETUP'))
                                         }
                                     }
                                     post {
