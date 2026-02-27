@@ -264,15 +264,8 @@ def test_load_configuration_to_subnode_zero(setup_descriptor, servo, tmp_path) -
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-@pytest.mark.valid_versions_for_product(part_number="CAP-NET-E", max="2.8.9")
-@pytest.mark.valid_versions_for_product(part_number="CAP-XCR-E", max="2.8.9")
-@pytest.mark.valid_versions_for_product(part_number="DEN-NET-E", max="2.8.9")
-@pytest.mark.valid_versions_for_product(
-    part_number="CAP-XCR-C", max="2.8.9", interfaces=[Interface.CAN, Interface.ETH]
-)
-@pytest.mark.valid_versions_for_product(
-    part_number="CAP-NET-C", max="2.8.9", interfaces=[Interface.CAN, Interface.ETH]
-)
+@pytest.mark.valid_versions_for_standard_comocos(max="2.8.9")
+@pytest.mark.valid_versions_for_standard_cocomoco(max="2.8.9")
 def test_store_parameters_timed_recovery(servo, environment: "Environment", mocker) -> None:
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
@@ -307,15 +300,8 @@ def test_store_parameters_timed_recovery(servo, environment: "Environment", mock
 
 
 @pytest.mark.ethercat
-@pytest.mark.valid_versions_for_product(part_number="CAP-NET-E", min="2.9.0")
-@pytest.mark.valid_versions_for_product(part_number="CAP-XCR-E", min="2.9.0")
-@pytest.mark.valid_versions_for_product(part_number="DEN-NET-E", min="2.9.0")
-@pytest.mark.valid_versions_for_product(
-    part_number="CAP-XCR-C", min="2.9.0", interfaces=[Interface.CAN, Interface.ETH]
-)
-@pytest.mark.valid_versions_for_product(
-    part_number="CAP-NET-C", min="2.9.0", interfaces=[Interface.CAN, Interface.ETH]
-)
+@pytest.mark.valid_versions_for_standard_comocos(min="2.9.0")
+@pytest.mark.valid_versions_for_standard_cocomoco(min="2.9.0")
 def test_store_parameters_polling_status(servo, environment: "Environment", mocker) -> None:
     # Both registers exist in this dictionary
     servo.dictionary.get_register("DRV_STORE_STATUS_MOCO")
