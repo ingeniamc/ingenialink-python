@@ -118,6 +118,7 @@ def test_canopen_connection_register_old_firmware(
 
 @pytest.mark.canopen
 @pytest.mark.valid_versions_for_standard_comocos(min="2.8.0")
+@pytest.mark.not_valid_for_standard_cocomoco()  # CoCo-MoCos units have never been cleaned
 def test_canopen_connection_register(servo: "CanopenServo", net: "CanopenNetwork") -> None:
     """New firmware versions represent None units with None, not '-'."""
     register = _canopen_connection_register_assertions(servo=servo, net=net)
