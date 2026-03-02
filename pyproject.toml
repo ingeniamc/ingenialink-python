@@ -56,12 +56,18 @@ priority = "supplemental"
 
 
 [build-system]
-requires = ["setuptools==75.6.0", "setuptools_scm[toml]>=8", "wheel==0.42.0", "Cython==3.0.11"]
+requires = [
+  "setuptools==75.6.0", 
+  "setuptools_scm[toml]>=8", 
+  "wheel==0.42.0", 
+  "Cython==3.0.11",
+  "setuptools_scm_policies @ http://pypi.novanta.com/packages/setuptools_scm_policies-0.0+g4110325fa-py3-none-any.whl"
+]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
 version_scheme = "only-version"
-local_scheme = "node-and-date"
+local_scheme = "nm_local_scheme"
 write_to = "ingenialink/_version.py"
 
 [tool.setuptools]
