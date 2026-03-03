@@ -1,5 +1,6 @@
 import os
 import random
+import time
 
 import pytest
 from virtual_drive import resources as virtual_drive_resources
@@ -9,6 +10,8 @@ import tests.resources.ethercat
 from ingenialink.enums.register import RegAccess, RegDtype
 from ingenialink.exceptions import ILNACKError
 from ingenialink.network import NetState
+from ingenialink.servo import ServoState
+from ingenialink.virtual.ethernet.network import VirtualEthernetNetwork
 
 
 def test_connect_to_virtual_drive(virtual_drive_custom_dict):
@@ -66,3 +69,55 @@ def test_connect_to_virtual_drive_old_disturbance(virtual_drive_custom_dict):
     assert servo is not None and net is not None
     with pytest.raises(ILNACKError):
         servo.read("MON_DIST_STATUS", subnode=0)
+
+
+def test_virtual_ethernet_servo_and_network_status_listeners(mocker):
+    dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
+    server = VirtualDrive(dictionary_path=dictionary)
+    server.start()
+    net = VirtualEthernetNetwork()
+
+    try:
+        servo = net.connect_to_slave(
+            dictionary,
+            server.port,
+            servo_status_listener=True,
+            net_status_listener=True,
+        )
+
+        servo_events = []
+        net_events = []
+        servo.subscribe_to_status(lambda state, subnode: servo_events.append((state, subnode)))
+        net.subscribe_to_status(server.ip, net_events.append)
+
+        state_sequence = iter([ServoState.DISABLED, ServoState.ENABLED, ServoState.ENABLED])
+
+        def mocked_get_state(_subnode=1):
+            return next(state_sequence)
+
+        mocker.patch.object(servo, "get_state", side_effect=mocked_get_state)
+
+        timeout = time.time() + 4
+        while len(servo_events) < 2 and time.time() < timeout:
+            time.sleep(0.1)
+        assert len(servo_events) >= 2
+        assert servo_events[0][0] == ServoState.DISABLED
+        assert servo_events[1][0] == ServoState.ENABLED
+
+        mocker.patch.object(servo, "is_alive", return_value=False)
+        timeout = time.time() + 2
+        while len(net_events) < 1 and time.time() < timeout:
+            time.sleep(0.1)
+        assert len(net_events) >= 1
+
+        mocker.patch.object(servo, "is_alive", return_value=True)
+        timeout = time.time() + 2
+        while len(net_events) < 2 and time.time() < timeout:
+            time.sleep(0.1)
+        assert len(net_events) >= 2
+    finally:
+        net.stop_status_listener()
+        if net.servos:
+            net.disconnect_from_slave(net.servos[0])
+        if server.is_alive():
+            server.stop()
