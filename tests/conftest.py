@@ -10,6 +10,7 @@ from summit_testing_framework.pytest_helpers.marker_helper import (
 from virtual_drive.core import VirtualDrive
 
 from ingenialink.dictionary import Interface
+from ingenialink.virtual.canopen.network import VirtualCanopenNetwork
 from ingenialink.virtual.ethercat.network import VirtualEthercatNetwork
 from ingenialink.virtual.ethernet.network import VirtualEthernetNetwork
 from tests.ethercat.mock import pysoem_mock_network  # noqa: F401
@@ -102,6 +103,12 @@ def _connect_virtual_ethercat(server: VirtualDrive) -> tuple[Any, Any]:
     return net, servo
 
 
+def _connect_virtual_canopen(server: VirtualDrive) -> tuple[Any, Any]:
+    net = VirtualCanopenNetwork()
+    servo = net.connect_to_slave(1, server.dictionary_path, server.port)
+    return net, servo
+
+
 @pytest.fixture()
 def virtual_drive():
     server, _, virtual_servo = _create_virtual_drive_connection(
@@ -149,6 +156,26 @@ def virtual_drive_ethercat_custom_dict():
             _connect_virtual_ethercat,
             dictionary,
             protocol=Interface.ECAT,
+        )
+        servers.append(server)
+        return server, net, servo
+
+    yield connect
+
+    for server in servers:
+        if server.is_alive():
+            server.stop()
+
+
+@pytest.fixture()
+def virtual_drive_canopen_custom_dict():
+    servers: list[VirtualDrive] = []
+
+    def connect(dictionary):
+        server, net, servo = _create_virtual_drive_connection(
+            _connect_virtual_canopen,
+            dictionary,
+            protocol=Interface.CAN,
         )
         servers.append(server)
         return server, net, servo

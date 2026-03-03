@@ -2,6 +2,7 @@ import socket
 from collections.abc import Iterator
 from contextlib import contextmanager
 from threading import Lock
+from typing import Any
 
 from ingenialink.exceptions import ILIOError, ILTimeoutError
 
@@ -70,3 +71,70 @@ class VirtualServoBase:
         with self.transaction():
             self.send_frame(frame)
             return self.receive_frame()
+
+    def exchange_sdo_frame(self, frame_data: dict[str, Any]) -> dict[str, Any]:
+        """Send an SDO frame and return the deserialized response.
+
+        Args:
+            frame_data: SDO payload dictionary to send.
+
+        Returns:
+            The deserialized SDO response dictionary.
+
+        Raises:
+            ILIOError: If the response cannot be deserialized.
+
+        """
+        from ingenialink.virtual.codec import deserialize_sdo_frame, serialize_sdo_frame
+
+        with self.transaction():
+            self.send_frame(serialize_sdo_frame(frame_data))
+            response_frame = self.receive_frame()
+
+        try:
+            return deserialize_sdo_frame(response_frame)
+        except (UnicodeDecodeError, ValueError, TypeError) as e:
+            raise ILIOError("Error deserializing SDO response data.") from e
+
+    @staticmethod
+    def deserialize_read_response(response: object) -> bytes:
+        """Extract the data bytes from an SDO read response.
+
+        Args:
+            response: The deserialized SDO response.
+
+        Returns:
+            The data bytes from the response.
+
+        Raises:
+            ILIOError: If the response is unexpected or contains an error.
+
+        """
+        if isinstance(response, bytes):
+            return response
+
+        if isinstance(response, dict):
+            if "error_code" in response:
+                raise ILIOError(f"Error code {response['error_code']} received in read response")
+            data = response.get("data")
+            if isinstance(data, bytes):
+                return data
+
+        raise ILIOError(f"Unexpected response type for read operation: {type(response)}")
+
+    @staticmethod
+    def deserialize_write_response(response: object) -> None:
+        """Validate an SDO write response.
+
+        Args:
+            response: The deserialized SDO response.
+
+        Raises:
+            ILIOError: If the response is unexpected or contains an error.
+
+        """
+        if not isinstance(response, dict):
+            raise ILIOError(f"Unexpected response type for write operation: {type(response)}")
+        if "error_code" in response:
+            raise ILIOError(f"Error code {response['error_code']} received in write response")
+        return None
