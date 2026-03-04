@@ -32,10 +32,12 @@ class VirtualEthercatServo(EthercatServoBase):
         super().__init__(
             self.slave_id,
             dictionary_path,
-            servo_status_listener,
+            servo_status_listener=False,
             disconnect_callback=disconnect_callback,
         )
         self._virtual_base = VirtualServoBase(self.socket, self._lock)
+        if servo_status_listener:
+            self.start_status_listener()
 
     def _exchange_sdo_frame(self, frame_data: dict[str, Any]) -> dict[str, Any]:
         with self._virtual_base.transaction():
