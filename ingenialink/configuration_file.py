@@ -124,7 +124,6 @@ class Device:
         self.__interface_value_to_str = {
             value: key for key, value in _INTERFACE_XCF_OPTIONS.items()
         }
-        self.__interface_value_to_str[Interface.VIRTUAL] = "ETH"
 
     @classmethod
     def from_xcf(cls, element: ElementTree.Element) -> "Device":

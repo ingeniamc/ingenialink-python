@@ -61,7 +61,6 @@ from ingenialink.table import Table
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, weak_lru
 from ingenialink.utils.event import create_event
 from ingenialink.utils.timeout import Timeout
-from ingenialink.virtual.dictionary import VirtualDictionaryV2, VirtualDictionaryV3
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -115,8 +114,6 @@ class DictionaryFactory:
                 return EoEDictionaryV3(dictionary_path)
             if interface == Interface.ETH:
                 return EthernetDictionaryV3(dictionary_path)
-            if interface == Interface.VIRTUAL:
-                return VirtualDictionaryV3(dictionary_path)
         if major_version == 2:
             if interface == Interface.CAN:
                 return CanopenDictionaryV2(dictionary_path)
@@ -124,8 +121,6 @@ class DictionaryFactory:
                 return EthercatDictionaryV2(dictionary_path)
             if interface in [Interface.ETH, Interface.EoE]:
                 return EthernetDictionaryV2(dictionary_path)
-            if interface == Interface.VIRTUAL:
-                return VirtualDictionaryV2(dictionary_path)
         raise NotImplementedError(
             f"Dictionary version {major_version} is not supported for interface {interface.name}"
         )

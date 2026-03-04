@@ -685,7 +685,7 @@ def test_subscribe_disconnection(virtual_drive_custom_dict):  # noqa: F811
     disconnection_callback = DisconnectionTest()
 
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
-    _, net, servo = virtual_drive_custom_dict(dictionary)
+    _, net, servo = virtual_drive_custom_dict(dictionary, Interface.ETH)
     servo.disconnect_event.subscribe(disconnection_callback.disconnection_callback)
 
     # Initially not called
