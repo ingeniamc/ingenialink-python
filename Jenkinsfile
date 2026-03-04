@@ -184,15 +184,15 @@ def reassignFilePermissions() {
  */
 class TestSchedulePolicy implements Serializable {
     String key
-    Closure evaluator  // (pipeline) -> boolean
+    Closure evaluator  // (pipeline, Calendar triggerTime) -> boolean
     
     TestSchedulePolicy(String key, Closure evaluator) {
         this.key = key
         this.evaluator = evaluator
     }
     
-    boolean evaluate(def pipeline) {
-        return this.evaluator.call(pipeline)
+    boolean evaluate(def pipeline, Calendar triggerTime = null) {
+        return this.evaluator.call(pipeline, triggerTime)
     }
 }
 
@@ -217,12 +217,16 @@ class TestSchedulePolicy implements Serializable {
  *    def manager = new TestSchedulePolicyManager()
  *    manager.shouldRun("nightly", pipeline)
  * 
- * 2. Configure nightly hours:
+ * 2. Usage with a trigger time (evaluate policies as of a past moment):
+ *    manager.shouldRun("nightly", pipeline, triggerCalendar)
+ * 
+ * 3. Configure nightly hours:
  *    manager.setNightlyHours(20, 7)  // 8 PM to 7 AM
  * 
- * 3. Register custom policy:
- *    manager.registerPolicy(new TestSchedulePolicy("business_hours", { pipeline ->
- *        def hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+ * 4. Register custom policy:
+ *    manager.registerPolicy(new TestSchedulePolicy("business_hours", { pipeline, triggerTime ->
+ *        def calendar = triggerTime ?: Calendar.getInstance()
+ *        def hour = calendar.get(Calendar.HOUR_OF_DAY)
  *        return hour >= 9 && hour < 17
  *    }))
  */
@@ -260,12 +264,12 @@ class TestSchedulePolicyManager implements Serializable {
      */
     private void registerBuiltInPolicies() {
         // Always policy - always returns true
-        registerPolicy(new TestSchedulePolicy("always", { pipeline ->
+        registerPolicy(new TestSchedulePolicy("always", { pipeline, triggerTime ->
             return true
         }))
         
         // Never policy - never returns true
-        registerPolicy(new TestSchedulePolicy("never", { pipeline ->
+        registerPolicy(new TestSchedulePolicy("never", { pipeline, triggerTime ->
             if (pipeline) {
                 pipeline.echo "Policy is 'never', skipping tests."
             }
@@ -273,8 +277,8 @@ class TestSchedulePolicyManager implements Serializable {
         }))
         
         // Weekend policy - runs on Saturday and Sunday
-        registerPolicy(new TestSchedulePolicy("weekends", { pipeline ->
-            def calendar = Calendar.getInstance()
+        registerPolicy(new TestSchedulePolicy("weekends", { pipeline, triggerTime ->
+            def calendar = triggerTime ?: Calendar.getInstance()
             def dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
             def isWeekend = dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY
             if (pipeline) {
@@ -288,8 +292,8 @@ class TestSchedulePolicyManager implements Serializable {
         }))
         
         // Weekday policy - runs Monday through Friday
-        registerPolicy(new TestSchedulePolicy("weekdays", { pipeline ->
-            def calendar = Calendar.getInstance()
+        registerPolicy(new TestSchedulePolicy("weekdays", { pipeline, triggerTime ->
+            def calendar = triggerTime ?: Calendar.getInstance()
             def dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
             def isWeekday = dayOfWeek >= Calendar.MONDAY && dayOfWeek <= Calendar.FRIDAY
             if (pipeline) {
@@ -303,8 +307,8 @@ class TestSchedulePolicyManager implements Serializable {
         }))
         
         // Nightly policy - runs during configured night hours
-        registerPolicy(new TestSchedulePolicy("nightly", { pipeline ->
-            def calendar = Calendar.getInstance()
+        registerPolicy(new TestSchedulePolicy("nightly", { pipeline, triggerTime ->
+            def calendar = triggerTime ?: Calendar.getInstance()
             def hourOfDay = calendar.get(Calendar.HOUR_OF_DAY)
             def isNightTime = hourOfDay >= this.nightTimeStartHour || hourOfDay < this.nightTimeEndHour
             if (pipeline) {
@@ -355,10 +359,12 @@ class TestSchedulePolicyManager implements Serializable {
      * Check if tests should run based on the given policy key.
      * @param policyKey Policy key to evaluate
      * @param pipeline Pipeline context for logging (optional)
+     * @param triggerTime Calendar instance representing when the pipeline was triggered.
+     *        If provided, time-based policies use this instead of the current time.
      * @return true if tests should run, false otherwise
      * @throws IllegalArgumentException if policy key is unknown
      */
-    boolean shouldRun(String policyKey, def pipeline = null) {
+    boolean shouldRun(String policyKey, def pipeline = null, Calendar triggerTime = null) {
         // Ensure built-in policies are registered
         ensureBuiltInPoliciesRegistered()
 
@@ -367,7 +373,7 @@ class TestSchedulePolicyManager implements Serializable {
             throw new IllegalArgumentException("Unknown policy: ${policyKey}")
         }
         
-        return policy.evaluate(pipeline)
+        return policy.evaluate(pipeline, triggerTime)
     }
 }
 
@@ -1154,10 +1160,13 @@ class PyTestManager {
     private def venvManager
     private def pipeline
     private List coverageStashes = []
+    /** Calendar snapshot taken at construction time, used for schedule policy evaluation. */
+    private Calendar triggerTime
 
     PyTestManager(Map args = [pipeline: null, venvManager: null]) {
         this.venvManager = args.venvManager
         this.pipeline = args.pipeline
+        this.triggerTime = Calendar.getInstance()
     }
 
     /**
@@ -1259,7 +1268,7 @@ class PyTestManager {
             this.pipeline.echo "Checking execution policy '${executionPolicy}' for specifier '${specifierName}@${specifierVersion}'"
         }
         
-        return this.pipeline.schedulePolicyManager.shouldRun(executionPolicy, this.pipeline)
+        return this.pipeline.schedulePolicyManager.shouldRun(executionPolicy, this.pipeline, this.triggerTime)
     }
     
     /**
