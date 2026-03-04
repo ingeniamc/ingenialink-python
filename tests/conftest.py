@@ -74,8 +74,8 @@ def pytest_collection_modifyitems(
 
 def _create_virtual_drive_connection(
     connect_to_server: Callable[[VirtualDrive], tuple[Any, Any]],
+    protocol: Interface,
     dictionary: Optional[str] = None,
-    protocol: Interface = Interface.VIRTUAL,
 ) -> tuple[VirtualDrive, Any, Any]:
     server = (
         VirtualDrive(protocol=protocol)
@@ -114,6 +114,7 @@ def _connect_virtual_canopen(server: VirtualDrive) -> tuple[Any, Any]:
 def virtual_drive():
     server, _, virtual_servo = _create_virtual_drive_connection(
         _connect_virtual_ethernet,
+        Interface.ETH,
     )
     yield server, virtual_servo
     server.stop()
@@ -126,6 +127,7 @@ def virtual_drive_custom_dict():
     def connect(dictionary):
         server, net, servo = _create_virtual_drive_connection(
             _connect_virtual_ethernet,
+            Interface.ETH,
             dictionary,
         )
         servers.append(server)
@@ -142,7 +144,7 @@ def virtual_drive_custom_dict():
 def virtual_drive_ethercat():
     server, _, virtual_servo = _create_virtual_drive_connection(
         _connect_virtual_ethercat,
-        protocol=Interface.ECAT,
+        Interface.ECAT,
     )
     yield server, virtual_servo
     server.stop()
@@ -152,8 +154,8 @@ def virtual_drive_ethercat():
 def virtual_drive_canopen():
     server, net, virtual_servo = _create_virtual_drive_connection(
         _connect_virtual_canopen,
-        protocol=Interface.CAN,
-        dictionary=VIRTUAL_DRIVE_CAN_V2_XDF,
+        Interface.CAN,
+        VIRTUAL_DRIVE_CAN_V2_XDF,
     )
     yield server, net, virtual_servo
     server.stop()
@@ -166,8 +168,8 @@ def virtual_drive_ethercat_custom_dict():
     def connect(dictionary):
         server, net, servo = _create_virtual_drive_connection(
             _connect_virtual_ethercat,
+            Interface.ECAT,
             dictionary,
-            protocol=Interface.ECAT,
         )
         servers.append(server)
         return server, net, servo
