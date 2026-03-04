@@ -26,7 +26,6 @@ class Table:
         Args:
             servo: Servo instance.
             table: Dictionary table instance.
-            axis: Axis number for multi-axis servos
 
         Raises:
             ValueError: If index register does not have integer range.
