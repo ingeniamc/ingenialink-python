@@ -43,7 +43,7 @@ Source = "https://github.com/ingeniamc/ingenialink-python"
 version = "7.5.2"  # base version
 
 [project.optional-dependencies]
-virtual_drive = ["virtual_drive==0.0.0+pr24b17"]
+virtual_drive = ["virtual_drive==0.0.0+pr30b1"]
 
 [[tool.poetry.source]]
 name = "PyPI"
