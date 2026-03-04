@@ -6,9 +6,7 @@ from typing import Any
 
 from ingenialink.exceptions import ILIOError, ILTimeoutError
 from ingenialink.virtual.codec import deserialize_sdo_frame, serialize_sdo_frame
-
-VIRTUAL_DRIVE_RECV_BUFFER_SIZE = 2048
-
+from ingenialink.constants import VIRTUAL_DRIVE_RECV_BUFFER_SIZE
 
 class VirtualServoBase:
     """Base class for shared virtual servo behavior."""

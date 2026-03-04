@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ingenialink.virtual.servo import VIRTUAL_DRIVE_RECV_BUFFER_SIZE
+from ingenialink.constants import VIRTUAL_DRIVE_RECV_BUFFER_SIZE
 
 
 def serialize_sdo_frame(payload: dict[str, Any]) -> bytes:
