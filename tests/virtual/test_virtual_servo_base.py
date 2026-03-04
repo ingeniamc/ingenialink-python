@@ -3,9 +3,9 @@ from threading import Lock
 from unittest.mock import Mock
 
 import pytest
-from ingenialink.virtual.ethercat.codec import serialize_sdo_frame
 
 from ingenialink.exceptions import ILIOError, ILTimeoutError
+from ingenialink.virtual.codec import serialize_sdo_frame
 from ingenialink.virtual.ethercat.servo import VirtualEthercatServo
 from ingenialink.virtual.servo import VirtualServoBase
 
