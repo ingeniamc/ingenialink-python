@@ -83,16 +83,6 @@
                 <Label lang="en_US">Device type</Label>
             </Labels>
         </Register>
-        <Register access="rw" address_type="NVM_NONE" address="0x201000" dtype="u16" id="DRV_STATE_CONTROL" units="-" subnode="1" cyclic="CYCLIC_RX" desc="" cat_id="REPORTING">
-            <Labels>
-                <Label lang="en_US">Control word</Label>
-            </Labels>
-        </Register>
-        <Register access="r" address_type="NVM_NONE" address="0x201100" dtype="u16" id="DRV_STATE_STATUS" units="-" subnode="1" cyclic="CYCLIC_TX" desc="" cat_id="REPORTING">
-            <Labels>
-                <Label lang="en_US">Status word</Label>
-            </Labels>
-        </Register>
       </Registers>
     </Device>
     <Errors>

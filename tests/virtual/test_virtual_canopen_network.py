@@ -1,25 +1,23 @@
 import time
 
 from virtual_drive.core import VirtualDrive
+from virtual_drive.resources import VIRTUAL_DRIVE_CAN_V2_XDF
 
-import tests.resources.canopen
 from ingenialink.dictionary import Interface
 from ingenialink.network import NetState
 from ingenialink.servo import ServoState
 from ingenialink.virtual.canopen.network import VirtualCanopenNetwork
 
 
-def test_connect_to_virtual_drive_canopen(virtual_drive_canopen_custom_dict):
-    dictionary = tests.resources.canopen.TEST_DICT_CAN
-    _, net, servo = virtual_drive_canopen_custom_dict(dictionary)
+def test_connect_to_virtual_drive_canopen(virtual_drive_canopen):
+    _, net, servo = virtual_drive_canopen
     assert servo is not None and net is not None
     assert len(net.servos) == 1
     assert net.scan_slaves() == [servo.target]
 
 
-def test_virtual_drive_canopen_disconnection(virtual_drive_canopen_custom_dict):
-    dictionary = tests.resources.canopen.TEST_DICT_CAN
-    _, net, servo = virtual_drive_canopen_custom_dict(dictionary)
+def test_virtual_drive_canopen_disconnection(virtual_drive_canopen):
+    _, net, servo = virtual_drive_canopen
     net.disconnect_from_slave(servo)
     assert net.get_servo_state(servo.target) == NetState.DISCONNECTED
     assert len(net.servos) == 0
@@ -27,15 +25,14 @@ def test_virtual_drive_canopen_disconnection(virtual_drive_canopen_custom_dict):
 
 
 def test_virtual_canopen_servo_and_network_status_listeners(mocker):
-    dictionary = tests.resources.canopen.TEST_DICT_CAN
-    server = VirtualDrive(dictionary_path=dictionary, protocol=Interface.CAN)
+    server = VirtualDrive(dictionary_path=VIRTUAL_DRIVE_CAN_V2_XDF, protocol=Interface.CAN)
     server.start()
     net = VirtualCanopenNetwork()
 
     try:
         servo = net.connect_to_slave(
             1,
-            dictionary,
+            VIRTUAL_DRIVE_CAN_V2_XDF,
             server.port,
             servo_status_listener=True,
             net_status_listener=True,

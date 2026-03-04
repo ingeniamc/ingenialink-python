@@ -8,6 +8,7 @@ from summit_testing_framework.pytest_helpers.marker_helper import (
     apply_firmware_version_markers_to_items,
 )
 from virtual_drive.core import VirtualDrive
+from virtual_drive.resources import VIRTUAL_DRIVE_CAN_V2_XDF
 
 from ingenialink.dictionary import Interface
 from ingenialink.virtual.canopen.network import VirtualCanopenNetwork
@@ -148,6 +149,17 @@ def virtual_drive_ethercat():
 
 
 @pytest.fixture()
+def virtual_drive_canopen():
+    server, net, virtual_servo = _create_virtual_drive_connection(
+        _connect_virtual_canopen,
+        protocol=Interface.CAN,
+        dictionary=VIRTUAL_DRIVE_CAN_V2_XDF,
+    )
+    yield server, net, virtual_servo
+    server.stop()
+
+
+@pytest.fixture()
 def virtual_drive_ethercat_custom_dict():
     servers: list[VirtualDrive] = []
 
@@ -156,26 +168,6 @@ def virtual_drive_ethercat_custom_dict():
             _connect_virtual_ethercat,
             dictionary,
             protocol=Interface.ECAT,
-        )
-        servers.append(server)
-        return server, net, servo
-
-    yield connect
-
-    for server in servers:
-        if server.is_alive():
-            server.stop()
-
-
-@pytest.fixture()
-def virtual_drive_canopen_custom_dict():
-    servers: list[VirtualDrive] = []
-
-    def connect(dictionary):
-        server, net, servo = _create_virtual_drive_connection(
-            _connect_virtual_canopen,
-            dictionary,
-            protocol=Interface.CAN,
         )
         servers.append(server)
         return server, net, servo
