@@ -124,10 +124,18 @@ def virtual_drive():
 def virtual_drive_custom_dict():
     servers: list[VirtualDrive] = []
 
-    def connect(dictionary):
+    def connect(dictionary, protocol):
+        if protocol == Interface.ETH:
+            connect_fn = _connect_virtual_ethernet
+        elif protocol == Interface.ECAT:
+            connect_fn = _connect_virtual_ethercat
+        elif protocol == Interface.CAN:
+            connect_fn = _connect_virtual_canopen
+        else:
+            raise ValueError(f"Unsupported protocol: {protocol}")
         server, net, servo = _create_virtual_drive_connection(
-            _connect_virtual_ethernet,
-            Interface.ETH,
+            connect_fn,
+            protocol,
             dictionary,
         )
         servers.append(server)

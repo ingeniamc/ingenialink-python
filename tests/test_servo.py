@@ -204,7 +204,7 @@ def test_load_configuration(servo, tmp_path) -> None:
 
 def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: F811
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
-    _, _, servo = virtual_drive_custom_dict(dictionary)
+    _, _, servo = virtual_drive_custom_dict(dictionary, Interface.ETH)
     test_file = tests.resources.TEST_CONFIG_FILE
     mocker.patch(
         "ingenialink.virtual.ethernet.servo.VirtualEthernetServo._write_raw",
@@ -650,7 +650,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
     register_update_callback = RegisterUpdateTest()
 
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
-    _, _, servo = virtual_drive_custom_dict(dictionary)
+    _, _, servo = virtual_drive_custom_dict(dictionary, Interface.ETH)
     servo.register_update_subscribe(register_update_callback.register_update_test)
 
     previous_reg_value = servo.read(user_over_voltage_uid, subnode=1)
