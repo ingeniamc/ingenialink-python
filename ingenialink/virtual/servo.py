@@ -5,6 +5,7 @@ from threading import Lock
 from typing import Any
 
 from ingenialink.exceptions import ILIOError, ILTimeoutError
+from ingenialink.virtual.codec import deserialize_sdo_frame, serialize_sdo_frame
 
 VIRTUAL_DRIVE_RECV_BUFFER_SIZE = 2048
 
@@ -85,8 +86,6 @@ class VirtualServoBase:
             ILIOError: If the response cannot be deserialized.
 
         """
-        from ingenialink.virtual.codec import deserialize_sdo_frame, serialize_sdo_frame
-
         with self.transaction():
             self.send_frame(serialize_sdo_frame(frame_data))
             response_frame = self.receive_frame()

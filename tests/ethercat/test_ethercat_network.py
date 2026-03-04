@@ -56,7 +56,7 @@ def mocked_network_for_firmware_loading(mocker):
 @pytest.mark.no_pcap
 def test_raise_exception_if_not_winpcap():
     try:
-        import pysoem  # noqa: F401
+        import pysoem  # noqa: F401,PLC0415
 
         pytest.fail("WinPcap appears to be installed and thus the test cannot be executed.")
     except ImportError:

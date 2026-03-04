@@ -8,7 +8,7 @@ import pytest
 def adapters_module():
     current_platform = platform.system()
     if current_platform == "Windows":
-        import ingenialink.get_adapters_addresses as adapters
+        import ingenialink.get_adapters_addresses as adapters  # noqa: PLC0415
 
         return adapters
     pytest.skip(f"Skipping test, only available on Windows, platform={current_platform}")
