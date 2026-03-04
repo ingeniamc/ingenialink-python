@@ -1,8 +1,8 @@
 import socket
 import time
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from threading import Thread
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Union
 
 import ingenialogger
 from typing_extensions import override
@@ -10,7 +10,7 @@ from typing_extensions import override
 from ingenialink.canopen.network import CanopenNetworkBase
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.exceptions import ILError
-from ingenialink.network import NetDevEvt, NetState, SlaveInfo
+from ingenialink.network import NetDevEvt, NetProt, NetState, SlaveInfo
 from ingenialink.servo import Servo
 from ingenialink.virtual.base_network import VirtualNetworkBase
 from ingenialink.virtual.canopen.servo import VirtualCanopenServo
@@ -70,6 +70,71 @@ class VirtualCanopenNetwork(CanopenNetworkBase):
         super().__init__()
         self._virtual_base = VirtualNetworkBase()
         self.__listener_net_status: Optional[VirtualCanopenNetStatusListener] = None
+        self._observers_net_state: dict[Union[int, str], list[Callable[[NetDevEvt], None]]] = (
+            defaultdict(list)
+        )
+
+    def subscribe_to_status(
+        self, target: Union[int, str], callback: Callable[[NetDevEvt], None]
+    ) -> None:
+        """Subscribe to network state changes.
+
+        Args:
+            target: Target node ID.
+            callback: Callback function to execute on state changes.
+
+        """
+        if callback in self._observers_net_state[target]:
+            logger.info("Callback already subscribed.")
+            return
+        self._observers_net_state[target].append(callback)
+
+    def unsubscribe_from_status(
+        self, target: Union[int, str], callback: Callable[[NetDevEvt], None]
+    ) -> None:
+        """Unsubscribe from network state changes.
+
+        Args:
+            target: Target node ID.
+            callback: Callback function previously subscribed.
+
+        """
+        if callback not in self._observers_net_state[target]:
+            logger.info("Callback not subscribed.")
+            return
+        self._observers_net_state[target].remove(callback)
+
+    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
+        """Get the state of a servo in the network.
+
+        Args:
+            servo_id: Servo ID.
+
+        Returns:
+            Current state of the servo.
+
+        """
+        return self._servos_state[servo_id]
+
+    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
+        """Set the state of a servo in the network.
+
+        Args:
+            servo_id: Servo ID.
+            state: New servo state.
+
+        """
+        self._servos_state[servo_id] = state
+
+    def _notify_status(self, target: Union[int, str], status: NetDevEvt) -> None:
+        """Notify subscribers of a network state change."""
+        for callback in self._observers_net_state[target]:
+            callback(status)
+
+    @property
+    def protocol(self) -> NetProt:
+        """Obtain network protocol."""
+        return NetProt.CAN
 
     def scan_slaves(self) -> list[int]:
         """Scan for virtual CANopen drives.
