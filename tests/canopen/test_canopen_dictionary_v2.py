@@ -44,7 +44,12 @@ def test_read_dictionary_registers():
             "COMMS_ETH_NET_MASK",
             "CIA301_DRV_ID_DEVICE_TYPE",
         ],
-        1: ["COMMU_ANGLE_SENSOR", "CIA402_DRV_STATE_CONTROL"],
+        1: [
+            "COMMU_ANGLE_SENSOR",
+            "CIA402_DRV_STATE_CONTROL",
+            "DRV_STATE_CONTROL",
+            "DRV_STATE_STATUS",
+        ],
     }
 
     canopen_dict = CanopenDictionaryV2(tests.resources.canopen.TEST_DICT_CAN)

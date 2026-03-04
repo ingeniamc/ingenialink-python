@@ -1,11 +1,12 @@
 import time
 
+from virtual_drive.core import VirtualDrive
+
 import tests.resources.canopen
 from ingenialink.dictionary import Interface
 from ingenialink.network import NetState
 from ingenialink.servo import ServoState
 from ingenialink.virtual.canopen.network import VirtualCanopenNetwork
-from virtual_drive.core import VirtualDrive
 
 
 def test_connect_to_virtual_drive_canopen(virtual_drive_canopen_custom_dict):
@@ -55,8 +56,9 @@ def test_virtual_canopen_servo_and_network_status_listeners(mocker):
         timeout = time.time() + 4
         while len(servo_events) < 2 and time.time() < timeout:
             time.sleep(0.1)
-        assert len(servo_events) >= 1
-        assert servo_events[0][0] == ServoState.ENABLED
+        assert len(servo_events) >= 2
+        assert servo_events[0][0] == ServoState.DISABLED
+        assert servo_events[1][0] == ServoState.ENABLED
 
         mocker.patch.object(servo, "is_alive", return_value=False)
         timeout = time.time() + 2
