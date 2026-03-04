@@ -29,6 +29,7 @@ FTP_SESSION_OK_CODE = "220"
 FTP_LOGIN_OK_CODE = "230"
 FTP_FILE_TRANSFER_OK_CODE = "226"
 FTP_CLOSE_OK_CODE = "221"
+FTP_CLOSE_TIMEOUT_S = 120
 
 CMD_CHANGE_CPU = 0x67E4
 
@@ -163,6 +164,8 @@ class EthernetNetworkBase(Network):
             logger.info(ftp_output)
             if FTP_FILE_TRANSFER_OK_CODE not in ftp_output:
                 raise ILFirmwareLoadError("Unable to load the FW file through FTP")
+            if ftp.sock is not None:
+                ftp.sock.settimeout(FTP_CLOSE_TIMEOUT_S)  # Avoid quit/close get stuck
         logger.info("FTP session closed.")
 
     @staticmethod
