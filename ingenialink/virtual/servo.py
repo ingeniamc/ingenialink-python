@@ -4,9 +4,10 @@ from contextlib import contextmanager
 from threading import Lock
 from typing import Any
 
+from ingenialink.constants import VIRTUAL_DRIVE_RECV_BUFFER_SIZE
 from ingenialink.exceptions import ILIOError, ILTimeoutError
 from ingenialink.virtual.codec import deserialize_sdo_frame, serialize_sdo_frame
-from ingenialink.constants import VIRTUAL_DRIVE_RECV_BUFFER_SIZE
+
 
 class VirtualServoBase:
     """Base class for shared virtual servo behavior."""
