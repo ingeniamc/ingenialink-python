@@ -165,7 +165,7 @@ class EthernetNetworkBase(Network):
             if FTP_FILE_TRANSFER_OK_CODE not in ftp_output:
                 raise ILFirmwareLoadError("Unable to load the FW file through FTP")
             if ftp.sock is not None:
-                ftp.sock.settimeout(FTP_CLOSE_TIMEOUT_S)  # Avoid quit/close get stuck
+                ftp.sock.settimeout(FTP_CLOSE_TIMEOUT_S)  # Avoid quit/close getting stuck
         logger.info("FTP session closed.")
 
     @staticmethod
