@@ -120,6 +120,7 @@ pytest-mock = "==3.15.1"
 pytest-console-scripts = "==1.4.1"
 twisted = "==24.11.0"
 summit-testing-framework = {extras = ["ingeniamotion"], version = "0.2.0+g4633ee4b0"}
+ingeniamotion = "0.10.1+develop.d202.g1cba071"
 
 # -----------------------------------------------------------------------
 #                                   TASKS
