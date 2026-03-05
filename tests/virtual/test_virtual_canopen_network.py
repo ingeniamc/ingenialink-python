@@ -50,6 +50,8 @@ def test_virtual_canopen_servo_and_network_status_listeners(mocker):
 
         mocker.patch.object(servo, "get_state", side_effect=mocked_get_state)
 
+        # Wait until the servo listener has reported the first disabled
+        # and subsequent enabled events.
         timeout = time.time() + 4
         while len(servo_events) < 2 and time.time() < timeout:
             time.sleep(0.1)
@@ -57,12 +59,14 @@ def test_virtual_canopen_servo_and_network_status_listeners(mocker):
         assert servo_events[0][0] == ServoState.DISABLED
         assert servo_events[1][0] == ServoState.ENABLED
 
+        # Force the servo to appear offline so the network listener emits a disconnection event.
         mocker.patch.object(servo, "is_alive", return_value=False)
         timeout = time.time() + 2
         while len(net_events) < 1 and time.time() < timeout:
             time.sleep(0.1)
         assert len(net_events) >= 1
 
+        # Bring the servo back and wait for the next network status update.
         mocker.patch.object(servo, "is_alive", return_value=True)
         timeout = time.time() + 2
         while len(net_events) < 2 and time.time() < timeout:
