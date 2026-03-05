@@ -8,8 +8,10 @@ from summit_testing_framework.pytest_helpers.marker_helper import (
     apply_firmware_version_markers_to_items,
 )
 from virtual_drive.core import VirtualDrive
+from virtual_drive.resources import VIRTUAL_DRIVE_CAN_V2_XDF
 
 from ingenialink.dictionary import Interface
+from ingenialink.virtual.canopen.network import VirtualCanopenNetwork
 from ingenialink.virtual.ethercat.network import VirtualEthercatNetwork
 from ingenialink.virtual.ethernet.network import VirtualEthernetNetwork
 from tests.ethercat.mock import pysoem_mock_network  # noqa: F401
@@ -72,8 +74,8 @@ def pytest_collection_modifyitems(
 
 def _create_virtual_drive_connection(
     connect_to_server: Callable[[VirtualDrive], tuple[Any, Any]],
+    protocol: Interface,
     dictionary: Optional[str] = None,
-    protocol: Interface = Interface.VIRTUAL,
 ) -> tuple[VirtualDrive, Any, Any]:
     server = (
         VirtualDrive(protocol=protocol)
@@ -102,10 +104,17 @@ def _connect_virtual_ethercat(server: VirtualDrive) -> tuple[Any, Any]:
     return net, servo
 
 
+def _connect_virtual_canopen(server: VirtualDrive) -> tuple[Any, Any]:
+    net = VirtualCanopenNetwork()
+    servo = net.connect_to_slave(1, server.dictionary_path, server.port)
+    return net, servo
+
+
 @pytest.fixture()
 def virtual_drive():
     server, _, virtual_servo = _create_virtual_drive_connection(
         _connect_virtual_ethernet,
+        Interface.ETH,
     )
     yield server, virtual_servo
     server.stop()
@@ -115,9 +124,18 @@ def virtual_drive():
 def virtual_drive_custom_dict():
     servers: list[VirtualDrive] = []
 
-    def connect(dictionary):
+    def connect(dictionary, protocol):
+        if protocol == Interface.ETH:
+            connect_fn = _connect_virtual_ethernet
+        elif protocol == Interface.ECAT:
+            connect_fn = _connect_virtual_ethercat
+        elif protocol == Interface.CAN:
+            connect_fn = _connect_virtual_canopen
+        else:
+            raise ValueError(f"Unsupported protocol: {protocol}")
         server, net, servo = _create_virtual_drive_connection(
-            _connect_virtual_ethernet,
+            connect_fn,
+            protocol,
             dictionary,
         )
         servers.append(server)
@@ -134,9 +152,20 @@ def virtual_drive_custom_dict():
 def virtual_drive_ethercat():
     server, _, virtual_servo = _create_virtual_drive_connection(
         _connect_virtual_ethercat,
-        protocol=Interface.ECAT,
+        Interface.ECAT,
     )
     yield server, virtual_servo
+    server.stop()
+
+
+@pytest.fixture()
+def virtual_drive_canopen():
+    server, net, virtual_servo = _create_virtual_drive_connection(
+        _connect_virtual_canopen,
+        Interface.CAN,
+        VIRTUAL_DRIVE_CAN_V2_XDF,
+    )
+    yield server, net, virtual_servo
     server.stop()
 
 
@@ -147,8 +176,8 @@ def virtual_drive_ethercat_custom_dict():
     def connect(dictionary):
         server, net, servo = _create_virtual_drive_connection(
             _connect_virtual_ethercat,
+            Interface.ECAT,
             dictionary,
-            protocol=Interface.ECAT,
         )
         servers.append(server)
         return server, net, servo

@@ -7,7 +7,7 @@ import pytest
 import tests.resources
 from ingenialink import Servo
 from ingenialink.configuration_file import ConfigurationFile
-from ingenialink.dictionary import DictionaryTable
+from ingenialink.dictionary import DictionaryTable, Interface
 from ingenialink.exceptions import ILConfigurationError
 from ingenialink.table import Table
 
@@ -20,7 +20,7 @@ def virtual_drive_with_tables(virtual_drive_custom_dict) -> tuple[Servo, Table]:
         Tuple[Servo, Table]: The virtual servo and the user memory table.
     """
     dict_path = tests.resources.DEN_NET_E_WITH_TABLES
-    _, _, servo = virtual_drive_custom_dict(dict_path)
+    _, _, servo = virtual_drive_custom_dict(dict_path, Interface.ECAT)
     table = servo.get_table(uid="MEM_USR", axis=0)
     return servo, table
 
@@ -83,7 +83,7 @@ def test_servo_get_table(virtual_drive_custom_dict):
     """Test that Servo.get_table method works correctly."""
     dict_path = tests.resources.DEN_NET_E_WITH_TABLES
 
-    _, _, servo = virtual_drive_custom_dict(dict_path)
+    _, _, servo = virtual_drive_custom_dict(dict_path, Interface.ECAT)
 
     # Test with existing table
     uid = "COGGING_COMP"
