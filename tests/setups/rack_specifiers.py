@@ -34,7 +34,7 @@ ECAT_SETUP = SpecifierContainer({
                 config_file=_config_files.EVE_XCR_E_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "nightly",
+                    __EXECUTION_POLICY_KEY: "always",  # https://novantamotion.atlassian.net/browse/CIT-594
                     __TEST_CONFIGS_KEY: {
                         "ECAT_TEST_SESSIONS": PyTestConfig(
                             markers="ethercat",
@@ -49,7 +49,7 @@ ECAT_SETUP = SpecifierContainer({
                 config_file=_config_files.EVE_XCR_E_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "always",
+                    __EXECUTION_POLICY_KEY: "nightly",  # https://novantamotion.atlassian.net/browse/CIT-594
                     __TEST_CONFIGS_KEY: {
                         "ECAT_TEST_SESSIONS": PyTestConfig(
                             markers="ethercat",
@@ -70,7 +70,7 @@ ECAT_SETUP = SpecifierContainer({
                 config_file=_config_files.CAP_XCR_E_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "nightly",
+                    __EXECUTION_POLICY_KEY: "always",  # https://novantamotion.atlassian.net/browse/CIT-594
                     __TEST_CONFIGS_KEY: {
                         "ECAT_TEST_SESSIONS": PyTestConfig(
                             markers="ethercat",
@@ -85,7 +85,7 @@ ECAT_SETUP = SpecifierContainer({
                 config_file=_config_files.CAP_XCR_E_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "always",
+                    __EXECUTION_POLICY_KEY: "nightly",  # https://novantamotion.atlassian.net/browse/CIT-594
                     __TEST_CONFIGS_KEY: {
                         "ECAT_TEST_SESSIONS": PyTestConfig(
                             markers="ethercat",
@@ -109,7 +109,7 @@ ETH_SETUP = SpecifierContainer({
                 config_file=_config_files.EVE_XCR_C_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "nightly",
+                    __EXECUTION_POLICY_KEY: "always",  # https://novantamotion.atlassian.net/browse/CIT-594
                     __TEST_CONFIGS_KEY: {
                         "ETH_TEST_SESSIONS": PyTestConfig(
                             markers="ethernet",
@@ -124,7 +124,7 @@ ETH_SETUP = SpecifierContainer({
                 config_file=_config_files.EVE_XCR_C_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "always",
+                    __EXECUTION_POLICY_KEY: "nightly",  # https://novantamotion.atlassian.net/browse/CIT-594
                     __TEST_CONFIGS_KEY: {
                         "ETH_TEST_SESSIONS": PyTestConfig(
                             markers="ethernet",
@@ -145,7 +145,7 @@ ETH_SETUP = SpecifierContainer({
                 config_file=_config_files.CAP_XCR_C_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "nightly",
+                    __EXECUTION_POLICY_KEY: "always",  # https://novantamotion.atlassian.net/browse/CIT-594
                     __TEST_CONFIGS_KEY: {
                         "ETH_TEST_SESSIONS": PyTestConfig(
                             markers="ethernet",
@@ -160,7 +160,7 @@ ETH_SETUP = SpecifierContainer({
                 config_file=_config_files.CAP_XCR_C_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "always",
+                    __EXECUTION_POLICY_KEY: "nightly",  # https://novantamotion.atlassian.net/browse/CIT-594
                     __TEST_CONFIGS_KEY: {
                         "ETH_TEST_SESSIONS": PyTestConfig(
                             markers="ethernet",
@@ -184,7 +184,7 @@ CAN_SETUP = SpecifierContainer({
                 config_file=_config_files.EVE_XCR_C_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "nightly",
+                    __EXECUTION_POLICY_KEY: "always",  # https://novantamotion.atlassian.net/browse/CIT-594
                     __TEST_CONFIGS_KEY: {
                         "CAN_TEST_SESSIONS": PyTestConfig(
                             markers="canopen",
@@ -199,7 +199,7 @@ CAN_SETUP = SpecifierContainer({
                 config_file=_config_files.EVE_XCR_C_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "always",
+                    __EXECUTION_POLICY_KEY: "nightly",  # https://novantamotion.atlassian.net/browse/CIT-594
                     __TEST_CONFIGS_KEY: {
                         "CAN_TEST_SESSIONS": PyTestConfig(
                             markers="canopen",
@@ -220,7 +220,7 @@ CAN_SETUP = SpecifierContainer({
                 config_file=_config_files.CAP_XCR_C_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "nightly",
+                    __EXECUTION_POLICY_KEY: "always",  # https://novantamotion.atlassian.net/browse/CIT-594
                     __TEST_CONFIGS_KEY: {
                         "CAN_TEST_SESSIONS": PyTestConfig(
                             markers="canopen",
@@ -235,7 +235,7 @@ CAN_SETUP = SpecifierContainer({
                 config_file=_config_files.CAP_XCR_C_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "always",
+                    __EXECUTION_POLICY_KEY: "nightly",  # https://novantamotion.atlassian.net/browse/CIT-594
                     __TEST_CONFIGS_KEY: {
                         "CAN_TEST_SESSIONS": PyTestConfig(
                             markers="canopen",
@@ -295,11 +295,13 @@ ECAT_DEN_S_NET_E_SETUP = RackServiceConfigSpecifier.from_version_configs(
 ECAT_MULTISLAVE_SETUP = MultiRackServiceConfigSpecifier.create(
     identifier="ECAT_MULTISLAVE",
     specifiers=[
+        # https://novantamotion.atlassian.net/browse/CIT-594
         ECAT_SETUP.get_specifier_by_identifier_with_version(
-            identifier=PartNumber.EVE_XCR_E, version="2.8.0"
+            identifier=PartNumber.EVE_XCR_E, version="2.6.0"
         ),
+        # https://novantamotion.atlassian.net/browse/CIT-594
         ECAT_SETUP.get_specifier_by_identifier_with_version(
-            identifier=PartNumber.CAP_XCR_E, version="2.9.0"
+            identifier=PartNumber.CAP_XCR_E, version="2.6.0"
         ),
     ],
     extra_data={
