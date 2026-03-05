@@ -981,24 +981,6 @@ files = [
 packaging = ">=20"
 
 [[package]]
-name = "fsoe-master"
-version = "0.2.1"
-description = "FSoE Master Library"
-optional = false
-python-versions = ">=3.9"
-groups = ["tests"]
-files = [
-    {file = "fsoe_master-0.2.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d7d9c97d9c6805398ded85a6adc9acde91eb4355cc006712340104e44e9a4090"},
-    {file = "fsoe_master-0.2.1-cp310-cp310-win_amd64.whl", hash = "sha256:24f290176a4763a11de45abea7c01d606dd88717cec1100eb0f2c2a3982acc24"},
-    {file = "fsoe_master-0.2.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c7c2a1b80a430d29f319ef2b012499abd7f4d6516f05c89282ebd7fb12029f86"},
-    {file = "fsoe_master-0.2.1-cp311-cp311-win_amd64.whl", hash = "sha256:724368ff950db631ca66db8fb912cc1e34c047dc0d978c3a00a0d5fbe5db4a03"},
-    {file = "fsoe_master-0.2.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:9a933de618bde562b6b868e537f35ac9c2de2168333e93f9fc0145d18b3bbf02"},
-    {file = "fsoe_master-0.2.1-cp312-cp312-win_amd64.whl", hash = "sha256:cff774613524f03dfdc3842c3f307d84dae8cf615fc69d45db1971278373d1aa"},
-    {file = "fsoe_master-0.2.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b022871aed62743f22a88a4152ad8ded50497299c113b546c8dec4d1285edf60"},
-    {file = "fsoe_master-0.2.1-cp39-cp39-win_amd64.whl", hash = "sha256:91a30e23883d7edd15dedd1a4c2ecb18c508bc463eb8c54f0b9cd9bb012e6b6d"},
-]
-
-[[package]]
 name = "h11"
 version = "0.16.0"
 description = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
@@ -1213,25 +1195,29 @@ files = [
 
 [[package]]
 name = "ingeniamotion"
-version = "0.10.1"
+version = "0.10.1+develop.d202.g1cba071"
 description = "Motion library for Novanta servo drives"
 optional = false
 python-versions = ">=3.9"
 groups = ["tests"]
 files = [
-    {file = "ingeniamotion-0.10.1-py3-none-any.whl", hash = "sha256:67ff43e2ec8786aa266570d65b212b4d387148400520914eabab536cae131df7"},
-    {file = "ingeniamotion-0.10.1.tar.gz", hash = "sha256:5b29ba65f75b1fcffe9bd6c1236f00394209b7c06c4b2d2024e60ecca8e5b5c3"},
+    {file = "ingeniamotion-0.10.1+develop.d202.g1cba071-py3-none-any.whl", hash = "sha256:ed4e60f9ed66059786fd37682afa0667afa3cdbbecd92b64dde51f7a35c8c785"},
+    {file = "ingeniamotion-0.10.1+develop.d202.g1cba071.tar.gz", hash = "sha256:fa05317d46356540c50675dd5bc62769111fb3707f21e1abe5bde02fad217e56"},
 ]
 
 [package.dependencies]
 exceptiongroup = ">=1.3.0,<2.0.0"
-fsoe_master = {version = "0.2.1", optional = true, markers = "extra == \"fsoe\""}
 ifaddr = "0.1.7"
 ingenialink = ">=7.5.2,<8.0.0"
 ingenialogger = ">=0.2.1"
 
 [package.extras]
 fsoe = ["fsoe_master (==0.2.1)"]
+
+[package.source]
+type = "legacy"
+url = "http://pypi.novanta.com/simple"
+reference = "novanta"
 
 [[package]]
 name = "iniconfig"
@@ -3778,19 +3764,18 @@ test = ["pytest"]
 
 [[package]]
 name = "summit-testing-framework"
-version = "0.2.0+g4633ee4b0"
+version = "0.2.0+pr83b1"
 description = "Testing framework for Novanta drives"
 optional = false
 python-versions = ">=3.9"
 groups = ["tests"]
 files = [
-    {file = "summit_testing_framework-0.2.0+g4633ee4b0-py3-none-any.whl", hash = "sha256:35a02a9bb5ca9e1c238cc37d3d15476f67b6ebf34160582affe0fd8775de7fa1"},
+    {file = "summit_testing_framework-0.2.0+pr83b1-py3-none-any.whl", hash = "sha256:564927e06d49a88e5ceceef787dc618e73475d19bfd89b2ae404b8a1e3618ff5"},
 ]
 
 [package.dependencies]
 ingenia-att-api = "2.3.1"
 ingenialogger = ">=0.2.1"
-ingeniamotion = {version = ">=0.10.1", extras = ["fsoe"], optional = true, markers = "extra == \"ingeniamotion\""}
 pytest = ">=8.4.1,<9.0.0"
 pytest-env = ">=1.1.5"
 rpyc = "6.0.0"
@@ -4039,14 +4024,14 @@ zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "virtual-drive"
-version = "0.0.0+pr24b17"
+version = "0.0+g331cf1c3d"
 description = "Emulates a Summit drive for development and testing purposes."
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "extra == \"virtual-drive\""
 files = [
-    {file = "virtual_drive-0.0.0+pr24b17-py3-none-any.whl", hash = "sha256:a9e9ce343e10372786cdf8b20273764b6756855434e17af5aef8c0dacf774f70"},
+    {file = "virtual_drive-0.0+g331cf1c3d-py3-none-any.whl", hash = "sha256:879f203ee5af07325760e2038c29fa67cab905d253d7688fa51d8c87f67c3e96"},
 ]
 
 [package.dependencies]
@@ -4467,4 +4452,4 @@ virtual-drive = ["virtual_drive"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "046d7fd31e5309e7ba0f1de926a4eef8dca4bd51ce8a1ed1e6e73a3272f4fa64"
+content-hash = "aa378b9e078811617139a5f7ff832e8c348686de5c09bcac448d37145310bd16"

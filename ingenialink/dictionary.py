@@ -73,8 +73,6 @@ class Interface(enum.Enum):
     """EtherCAT"""
     EoE = enum.auto()
     """Ethernet over EtherCAT"""
-    VIRTUAL = enum.auto()
-    """Virtual Drive"""
 
 
 class SubnodeType(enum.Enum):
@@ -1223,15 +1221,7 @@ class DictionaryV3(Dictionary):
         Raises:
             ILDictionaryParseError: If the dictionary cannot be used for the chosen communication.
         """
-        if self.interface == Interface.VIRTUAL:
-            device_element = root.find(DictionaryV3._interface_to_device_element(Interface.ETH))
-            if device_element is None:
-                device_element = root.find(DictionaryV3._interface_to_device_element(Interface.EoE))
-                self.interface = Interface.EoE
-            else:
-                self.interface = Interface.ETH
-        else:
-            device_element = root.find(DictionaryV3._interface_to_device_element(self.interface))
+        device_element = root.find(DictionaryV3._interface_to_device_element(self.interface))
         if device_element is None:
             raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
         self.__read_device_attributes(device_element)
@@ -2086,8 +2076,7 @@ class DictionaryV2(Dictionary):
             self.revision_number = int(revision_number)
         self.dict_interface = device.attrib.get("Interface")
         if (
-            self.interface != Interface.VIRTUAL
-            and DictionaryV2._interface_to_str(self.interface) != self.dict_interface
+            DictionaryV2._interface_to_str(self.interface) != self.dict_interface
             and self.dict_interface is not None
         ):
             raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
