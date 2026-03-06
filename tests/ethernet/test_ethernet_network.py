@@ -1,7 +1,9 @@
+import contextlib
+import ftplib
 import socket
 import time
 from ftplib import error_temp
-from threading import Thread
+from threading import Event, Thread
 from typing import TYPE_CHECKING
 
 import pytest
@@ -17,7 +19,12 @@ from twisted.cred.portal import Portal
 from twisted.internet import reactor
 from twisted.protocols.ftp import FTPFactory, FTPRealm
 
-from ingenialink.ethernet.network import EthernetNetwork, NetDevEvt, NetProt, NetState
+from ingenialink.ethernet.network import (
+    EthernetNetwork,
+    NetDevEvt,
+    NetProt,
+    NetState,
+)
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 
 if TYPE_CHECKING:
@@ -65,6 +72,129 @@ class FTPServer(Thread):
     def join(self, timeout=None):
         self.stop()
         return super().join(timeout)
+
+
+class HangingQuitFTPServer(Thread):
+    """Minimal FTP control server that responds to USER/PASS but never responds to QUIT.
+
+    Used to simulate a drive that hangs on FTP disconnect after a firmware upload,
+    to verify that load_firmware does not block indefinitely.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(daemon=True)
+        self._stop_event = Event()
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._sock.bind(("127.0.0.1", 0))
+        self._sock.listen(1)
+        self.port: int = self._sock.getsockname()[1]
+
+    def run(self) -> None:
+        """Accept one FTP control connection and hang on QUIT."""
+        try:
+            self._sock.settimeout(10)
+            conn, _ = self._sock.accept()
+            conn.sendall(b"220 FTP server ready\r\n")
+            buffer = ""
+            while True:
+                data = conn.recv(4096)
+                if not data:
+                    break
+                buffer += data.decode(errors="ignore")
+                while "\r\n" in buffer:
+                    line, buffer = buffer.split("\r\n", 1)
+                    cmd = line.strip()
+                    if cmd.upper().startswith("USER"):
+                        conn.sendall(b"331 Password required\r\n")
+                    elif cmd.upper().startswith("PASS"):
+                        conn.sendall(b"230 Login successful\r\n")
+                    elif cmd.upper().startswith("QUIT"):
+                        # Block without responding until stop() sets the event.
+                        # This simulates a drive that ignores the QUIT command.
+                        self._stop_event.wait()
+                        return
+        except Exception:
+            pass
+        finally:
+            with contextlib.suppress(Exception):
+                self._sock.close()
+
+    def stop(self) -> None:
+        """Unblock the QUIT handler and close the listening socket."""
+        self._stop_event.set()
+        with contextlib.suppress(Exception):
+            self._sock.close()
+
+
+@pytest.fixture
+def hanging_quit_ftp_server():
+    server = HangingQuitFTPServer()
+    server.start()
+    yield server
+    server.stop()
+    server.join(timeout=5)
+
+
+@pytest.mark.timeout(20)
+def test_load_firmware_does_not_hang_when_ftp_server_ignores_quit(
+    mocker, hanging_quit_ftp_server: HangingQuitFTPServer, tmp_path
+) -> None:
+    """Test that load_firmware completes within FTP_CLOSE_TIMEOUT_S even when
+    the FTP server never responds to the QUIT command.
+
+    Some drive firmware versions stop responding after receiving the firmware
+    file, causing the FTP close/quit to block indefinitely. The socket timeout
+    set by load_firmware (FTP_CLOSE_TIMEOUT_S) must prevent this.
+
+    load_firmware is run in a daemon thread so that:
+      - the test fails fast (within max_expected_s) when the bug is present,
+      - pytest fixture teardown runs immediately after the assertion,
+      - @pytest.mark.timeout acts as a hard safety net for the whole test.
+    """
+    fw_file = tmp_path / "temp_file.lfu"
+    fw_file.touch()
+
+    # Reduce the FTP close timeout to keep the test fast
+    small_timeout_s = 2
+    max_expected_s = small_timeout_s * 5
+    mocker.patch("ingenialink.ethernet.network.FTP_CLOSE_TIMEOUT_S", small_timeout_s)
+
+    # Redirect FTP connect to our custom port (port 21 requires admin privileges)
+    real_connect = ftplib.FTP.connect
+
+    def patched_connect(self, host, _port=0, _timeout=-999, _source_address=None):  # type: ignore[override]
+        return real_connect(self, host, hanging_quit_ftp_server.port)
+
+    mocker.patch.object(ftplib.FTP, "connect", patched_connect)
+
+    # Mock storbinary to skip the PORT-mode data connection complexity
+    mocker.patch("ftplib.FTP.storbinary", return_value="226 Transfer complete")
+
+    net = EthernetNetwork()
+
+    # Run load_firmware in a daemon thread so the test does not block forever
+    # when the FTP timeout mechanism fails.
+    load_errors: list[Exception] = []
+
+    def _run() -> None:
+        try:
+            net.load_firmware(str(fw_file), target="127.0.0.1", ftp_user="user", ftp_pwd="password")
+        except Exception as exc:  # noqa: BLE001
+            load_errors.append(exc)
+
+    thread = Thread(target=_run, daemon=True)
+    start_time = time.time()
+    thread.start()
+    thread.join(timeout=max_expected_s)
+    elapsed = time.time() - start_time
+
+    assert not thread.is_alive(), (
+        f"load_firmware is still running after {elapsed:.1f}s (limit: {max_expected_s}s). "
+        "The FTP socket timeout is not preventing an indefinite hang."
+    )
+    if load_errors:
+        raise load_errors[0]
 
 
 @pytest.fixture(scope="module")
