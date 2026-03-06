@@ -84,7 +84,7 @@ Cython  = "==3.2.4"
 [tool.poetry.group.build]
 optional = true
 [tool.poetry.group.build.dependencies]
-twine = "==6.1.0"
+twine = "==6.2.0"
 
 # Dependencies for format task
 [tool.poetry.group.format]
