@@ -17,7 +17,7 @@ logger = ingenialogger.get_logger(__name__)
 class VirtualEthernetServo(EthernetServo):
     """Virtual Ethernet servo implementation."""
 
-    interface = Interface.VIRTUAL
+    interface = Interface.ETH
 
     def __init__(
         self,
@@ -34,11 +34,13 @@ class VirtualEthernetServo(EthernetServo):
             dictionary_path,
             port,
             connection_timeout,
-            servo_status_listener,
-            is_eoe,
-            disconnect_callback,
+            servo_status_listener=False,
+            is_eoe=is_eoe,
+            disconnect_callback=disconnect_callback,
         )
         self._virtual_base = VirtualServoBase(self.socket, self._lock)
+        if servo_status_listener:
+            self.start_status_listener()
 
     def _write_raw(self, reg: EthernetRegister, data: bytes) -> None:  # type: ignore [override]
         self._send_mcb_frame(MCB_CMD_WRITE, reg.address, reg.subnode, data)
