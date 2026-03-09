@@ -872,7 +872,8 @@ class TestSession implements Serializable {
         'startWiresharkTimeoutS',
         'jobName',
         'setAttApiToken',
-        'enableFirmwareVersionCheck'
+        'enableFirmwareVersionCheck',
+        'stageName'
     ]
 
     /**
@@ -881,6 +882,26 @@ class TestSession implements Serializable {
      * Default: null
      */
     String uid = null
+
+    /**
+     * Display name for the Jenkins stage generated for this session.
+     * Used by runTestStages() as the stage label.
+     * Default: null
+     */
+    String stageName = null
+
+    /**
+     * Whether this session should be executed.
+     * Set to false when a policy or uid-regex check determines the session should be skipped.
+     * Default: true
+     */
+    Boolean shouldRun = true
+
+    /**
+     * Human-readable reason why this session is skipped (null when shouldRun is true).
+     * Default: null
+     */
+    String skipReason = null
 
     /**
      * Virtual environment names to run tests against.
