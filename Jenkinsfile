@@ -124,39 +124,72 @@ def arrangeTestConfigsBySession(Map rackSpecifiers, String rackSpecifiersPath) {
 }
 
 /**
- * Generate hardware test sub-stages dynamically from test configuration data.
+ * Build TestSession objects from rack specifiers data.
  *
- * Creates scripted pipeline stages for each test configuration entry. Each stage
- * checks if it should run based on the run_test_stages parameter and execution policy,
- * then runs the test session if applicable.
+ * Sessions are created eagerly before any hardware node runs.
+ * Policy and uid-regex checks are evaluated here; every entry
+ * (including skipped ones) is retained so runTestStages() can mark them as skipped.
  *
- * @param pipeline The pipeline context (pass 'this' from Jenkinsfile)
- * @param testConfigs List of test configuration maps (from arrangeTestConfigsBySession)
- * @param baseSession Base TestSession to override for each test
- * @param testMgr PyTestManager instance
- * @param rackSpecs Raw rackSpecifiers map (for shouldRunForSpecifier)
+ * @param rackSpecifiers      Parsed JSON map from exportSpecifiersModule
+ * @param rackSpecifiersPath  Module path prefix for setup path construction
+ * @param baseSessions        Map<String, TestSession> keyed by session-group name
+ * @param testMgr             PyTestManager (for shouldRunForSpecifier policy checks)
+ * @param pipeline            The pipeline context (pass 'this')
+ * @return Map<String, List<TestSession>> grouped by session-group name
  */
-def generateHwTestSubStages(def pipeline, List testConfigs, TestSession baseSession,
-                              def testMgr, Map rackSpecs) {
-    testConfigs.each { config ->
-        def uid = config.uid
-        def stageName = config.stage_name
-        def markers = config.markers
-        def setup = config.setup
-        def setupKey = config.setup_key
-        def specifierLookup = config.specifier_lookup
+def buildTestSessions(Map rackSpecifiers, String rackSpecifiersPath,
+                      Map baseSessions, def testMgr, def pipeline) {
+    def rawConfigs = arrangeTestConfigsBySession(rackSpecifiers, rackSpecifiersPath)
+    def sessionsByGroup = [:]
 
-        pipeline.stage(stageName) {
-            def shouldRun = (uid ==~ pipeline.params.run_test_stages) &&
-                testMgr.shouldRunForSpecifier(specifierLookup, rackSpecs[setupKey])
-            if (shouldRun) {
-                testMgr.runTestSession(baseSession.override(
-                    uid: uid,
-                    markers: markers,
-                    setup: setup
-                ))
+    rawConfigs.each { sessionName, configs ->
+        def baseSession = baseSessions[sessionName]
+        if (!baseSession) {
+            pipeline.error("No base session found for group '${sessionName}'. Check that baseSessions contains all expected keys: ${baseSessions.keySet()}")
+        }
+
+        sessionsByGroup[sessionName] = configs.collect { config ->
+            def session = baseSession.override(
+                uid: config.uid,
+                markers: config.markers,
+                setup: config.setup,
+                stageName: config.stage_name
+            )
+
+            if (!(config.uid ==~ pipeline.params.run_test_stages)) {
+                session.shouldRun = false
+                session.skipReason = "uid '${config.uid}' does not match run_test_stages '${pipeline.params.run_test_stages}'"
+            } else if (!testMgr.shouldRunForSpecifier(config.specifier_lookup, rackSpecifiers[config.setup_key])) {
+                session.shouldRun = false
+                session.skipReason = "execution policy not satisfied for '${config.specifier_lookup}'"
+            }
+
+            return session
+        }
+    }
+
+    return sessionsByGroup
+}
+
+/**
+ * Run hardware test stages from pre-built TestSession objects.
+ *
+ * Each session produces exactly one Jenkins stage. Sessions with shouldRun==false
+ * are marked with Utils.markStageSkippedForConditional() so they appear grey
+ * (skipped) in the Jenkins UI rather than green (passed).
+ *
+ * @param pipeline  The pipeline context (pass 'this')
+ * @param sessions  List<TestSession> produced by buildTestSessions()
+ * @param testMgr   PyTestManager instance
+ */
+def runTestStages(def pipeline, List sessions, def testMgr) {
+    sessions.each { session ->
+        pipeline.stage(session.stageName) {
+            if (session.shouldRun) {
+                testMgr.runTestSession(session)
             } else {
-                pipeline.echo "Skipping ${stageName} (uid=${uid}): does not match run_test_stages pattern or execution policy."
+                pipeline.echo "Skipped: ${session.skipReason}"
+                org.jenkinsci.plugins.pipeline.modeldefinition.Utils.markStageSkippedForConditional(session.stageName)
             }
         }
     }
@@ -1549,6 +1582,7 @@ PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvM
 Map virtualSpecifiers = null
 Map rackSpecifiers = null
 Map testConfigsBySession = null
+Map testSessionsByGroup = null
 
 /* Define default base test sessions to be used/overridden in stages */
 TestSession TEST_SESSIONS = new TestSession(
@@ -1859,6 +1893,18 @@ pipeline {
                                             testConfigsBySession.each { sessionName, configs ->
                                                 echo "  ${sessionName}: ${configs.collect { it.uid }}"
                                             }
+
+                                            // Build pre-created TestSession objects (policy + uid-regex evaluated eagerly)
+                                            def baseSessions = [
+                                                "ECAT_TEST_SESSIONS": ECAT_TEST_SESSIONS,
+                                                "CAN_TEST_SESSIONS": CAN_TEST_SESSIONS,
+                                                "ETH_TEST_SESSIONS": ETH_TEST_SESSIONS,
+                                            ]
+                                            testSessionsByGroup = buildTestSessions(rackSpecifiers, RACK_SPECIFIERS_PATH, baseSessions, testManager, this)
+                                            echo "Test sessions built: ${testSessionsByGroup.keySet()}"
+                                            testSessionsByGroup.each { groupName, sessions ->
+                                                echo "  ${groupName}: ${sessions.collect { s -> "${s.stageName} (shouldRun=${s.shouldRun})" }}"
+                                            }
                                         }
                                     }
                                 }
@@ -1976,7 +2022,7 @@ pipeline {
                         beforeOptions true
                         beforeAgent true
                         expression {
-                          def ecatUids = testConfigsBySession?.ECAT_TEST_SESSIONS?.collect { it.uid } ?: []
+                          def ecatUids = testSessionsByGroup?.ECAT_TEST_SESSIONS?.collect { it.uid } ?: []
                           (ecatUids + ["pcap"]).any { it ==~ params.run_test_stages }
                         }
                     }
@@ -2024,8 +2070,8 @@ pipeline {
                         stage('Run EtherCAT Tests') {
                             steps {
                                 script {
-                                    def ecatConfigs = testConfigsBySession?.ECAT_TEST_SESSIONS ?: []
-                                    generateHwTestSubStages(this, ecatConfigs, ECAT_TEST_SESSIONS, testManager, rackSpecifiers)
+                                    def ecatSessions = testSessionsByGroup?.ECAT_TEST_SESSIONS ?: []
+                                    runTestStages(this, ecatSessions, testManager)
                                 }
                             }
                         }
@@ -2036,8 +2082,8 @@ pipeline {
                         beforeOptions true
                         beforeAgent true
                         expression {
-                          def canUids = testConfigsBySession?.CAN_TEST_SESSIONS?.collect { it.uid } ?: []
-                          def ethUids = testConfigsBySession?.ETH_TEST_SESSIONS?.collect { it.uid } ?: []
+                          def canUids = testSessionsByGroup?.CAN_TEST_SESSIONS?.collect { it.uid } ?: []
+                          def ethUids = testSessionsByGroup?.ETH_TEST_SESSIONS?.collect { it.uid } ?: []
                           (canUids + ethUids).any { it ==~ params.run_test_stages }
                         }
                     }
@@ -2071,10 +2117,10 @@ pipeline {
                         stage('Run CANopen/Ethernet Tests') {
                             steps {
                                 script {
-                                    def canConfigs = testConfigsBySession?.CAN_TEST_SESSIONS ?: []
-                                    def ethConfigs = testConfigsBySession?.ETH_TEST_SESSIONS ?: []
-                                    generateHwTestSubStages(this, canConfigs, CAN_TEST_SESSIONS, testManager, rackSpecifiers)
-                                    generateHwTestSubStages(this, ethConfigs, ETH_TEST_SESSIONS, testManager, rackSpecifiers)
+                                    def canSessions = testSessionsByGroup?.CAN_TEST_SESSIONS ?: []
+                                    def ethSessions = testSessionsByGroup?.ETH_TEST_SESSIONS ?: []
+                                    runTestStages(this, canSessions, testManager)
+                                    runTestStages(this, ethSessions, testManager)
                                 }
                             }
                         }
