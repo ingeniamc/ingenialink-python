@@ -26,176 +26,6 @@ wheel_stashes = []
 /* List of markers that require hardware */
 def HARDWARE_MARKERS = ["ethernet", "ethercat", "canopen", "multislave", "fsoe", "eoe"]
 
-/**
- * Arrange rack specifiers test configs by test session name.
- *
- * Processes the raw JSON specifiers map and groups test configurations by their
- * test session (e.g., "ECAT_TEST_SESSIONS", "CAN_TEST_SESSIONS", "ETH_TEST_SESSIONS").
- *
- * Each entry contains all information needed to generate a Jenkins test stage:
- * - stage_name: Display name (e.g., "EtherCAT Everest")
- * - uid: Unique stage identifier (e.g., "ethercat_everest")
- * - markers: Pytest marker expression (e.g., "ethercat")
- * - setup: Full setup path for pytest (e.g., "tests.setups.rack_specifiers.ECAT_SETUP@EVE-XCR-E")
- * - execution_policy: Schedule policy name (e.g., "always", "weekdays")
- * - setup_key: Key in rackSpecifiers map for shouldRunForSpecifier lookup
- * - specifier_lookup: First argument for shouldRunForSpecifier
- *
- * @param rackSpecifiers Parsed JSON map from exportSpecifiersModule
- * @param rackSpecifiersPath Module path prefix (e.g., "tests.setups.rack_specifiers")
- * @return Map<String, List<Map>> grouped by test session name
- */
-def arrangeTestConfigsBySession(Map rackSpecifiers, String rackSpecifiersPath) {
-    def testConfigsBySession = [:]
-
-    rackSpecifiers.each { setupKey, specifiers ->
-        // Determine if this setup key is a SpecifierContainer (multiple specifiers)
-        // or a direct specifier (single specifier with version_configs).
-        // This affects the setup path format:
-        //   - Container: SETUP@PART_NUMBER or SETUP@PART_NUMBER@VERSION
-        //   - Direct:    SETUP or SETUP@VERSION
-        def isContainer = specifiers.size() > 1
-
-        specifiers.each { specifierName, specifierData ->
-            if (specifierData.containsKey("extra_data")) {
-                // No version level (e.g., ECAT_MULTISLAVE_SETUP)
-                def extraData = specifierData.extra_data
-                def executionPolicy = extraData.execution_policy
-                extraData.test_configs.each { sessionName, testConfig ->
-                    if (!testConfigsBySession.containsKey(sessionName)) {
-                        testConfigsBySession[sessionName] = []
-                    }
-                    testConfigsBySession[sessionName] << [
-                        stage_name: testConfig.stage_name,
-                        uid: testConfig.run_test_stage_uid,
-                        markers: testConfig.markers,
-                        setup: "${rackSpecifiersPath}.${setupKey}",
-                        execution_policy: executionPolicy,
-                        setup_key: setupKey,
-                        specifier_lookup: specifierName,
-                    ]
-                }
-            } else {
-                // Has version level (e.g., ECAT_SETUP with "latest", ECAT_DEN_S_NET_E_SETUP with "PHASE1")
-                specifierData.each { version, versionData ->
-                    if (!versionData.containsKey("extra_data")) return
-                    def extraData = versionData.extra_data
-                    def executionPolicy = extraData.execution_policy
-                    extraData.test_configs.each { sessionName, testConfig ->
-                        if (!testConfigsBySession.containsKey(sessionName)) {
-                            testConfigsBySession[sessionName] = []
-                        }
-                        def setupPath
-                        def specifierLookup
-                        if (isContainer) {
-                            // SpecifierContainer: path is SETUP@PART_NUMBER or SETUP@PART_NUMBER@VERSION
-                            if (version == "latest") {
-                                setupPath = "${rackSpecifiersPath}.${setupKey}@${specifierName}"
-                                specifierLookup = "${rackSpecifiersPath}.${setupKey}@${specifierName}"
-                            } else {
-                                setupPath = "${rackSpecifiersPath}.${setupKey}@${specifierName}@${version}"
-                                specifierLookup = "${rackSpecifiersPath}.${setupKey}@${specifierName}@${version}"
-                            }
-                        } else {
-                            // Direct specifier: path is SETUP or SETUP@VERSION
-                            if (version == "latest") {
-                                setupPath = "${rackSpecifiersPath}.${setupKey}"
-                            } else {
-                                setupPath = "${rackSpecifiersPath}.${setupKey}@${version}"
-                            }
-                            specifierLookup = "${specifierName}@${version}"
-                        }
-                        testConfigsBySession[sessionName] << [
-                            stage_name: testConfig.stage_name,
-                            uid: testConfig.run_test_stage_uid,
-                            markers: testConfig.markers,
-                            setup: setupPath,
-                            execution_policy: executionPolicy,
-                            setup_key: setupKey,
-                            specifier_lookup: specifierLookup,
-                        ]
-                    }
-                }
-            }
-        }
-    }
-
-    return testConfigsBySession
-}
-
-/**
- * Build TestSession objects from rack specifiers data.
- *
- * Sessions are created eagerly before any hardware node runs.
- * Policy and uid-regex checks are evaluated here; every entry
- * (including skipped ones) is retained so runTestStages() can mark them as skipped.
- *
- * @param rackSpecifiers      Parsed JSON map from exportSpecifiersModule
- * @param rackSpecifiersPath  Module path prefix for setup path construction
- * @param baseSessions        Map<String, TestSession> keyed by session-group name
- * @param testMgr             PyTestManager (for shouldRunForSpecifier policy checks)
- * @param pipeline            The pipeline context (pass 'this')
- * @return Map<String, List<TestSession>> grouped by session-group name
- */
-def buildTestSessions(Map rackSpecifiers, String rackSpecifiersPath,
-                      Map baseSessions, def testMgr, def pipeline) {
-    def rawConfigs = arrangeTestConfigsBySession(rackSpecifiers, rackSpecifiersPath)
-    def sessionsByGroup = [:]
-
-    rawConfigs.each { sessionName, configs ->
-        def baseSession = baseSessions[sessionName]
-        if (!baseSession) {
-            pipeline.error("No base session found for group '${sessionName}'. Check that baseSessions contains all expected keys: ${baseSessions.keySet()}")
-        }
-
-        sessionsByGroup[sessionName] = configs.collect { config ->
-            def session = baseSession.override(
-                uid: config.uid,
-                markers: config.markers,
-                setup: config.setup,
-                stageName: config.stage_name
-            )
-
-            if (!(config.uid ==~ pipeline.params.run_test_stages)) {
-                session.shouldRun = false
-                session.skipReason = "uid '${config.uid}' does not match run_test_stages '${pipeline.params.run_test_stages}'"
-            } else if (!testMgr.shouldRunForSpecifier(config.specifier_lookup, rackSpecifiers[config.setup_key])) {
-                session.shouldRun = false
-                session.skipReason = "execution policy not satisfied for '${config.specifier_lookup}'"
-            }
-
-            return session
-        }
-    }
-
-    return sessionsByGroup
-}
-
-/**
- * Run hardware test stages from pre-built TestSession objects.
- *
- * Each session produces exactly one Jenkins stage. Sessions with shouldRun==false
- * are marked with Utils.markStageSkippedForConditional() so they appear grey
- * (skipped) in the Jenkins UI rather than green (passed).
- *
- * @param pipeline  The pipeline context (pass 'this')
- * @param sessions  List<TestSession> produced by buildTestSessions()
- * @param testMgr   PyTestManager instance
- */
-def runTestStages(def pipeline, List sessions, def testMgr) {
-    sessions.each { session ->
-        pipeline.stage(session.stageName) {
-            if (session.shouldRun) {
-                testMgr.runTestSession(session)
-            } else {
-                pipeline.echo "Skipped: ${session.skipReason}"
-                org.jenkinsci.plugins.pipeline.modeldefinition.Utils.markStageSkippedForConditional(session.stageName)
-            }
-        }
-    }
-}
-
-
 def reassignFilePermissions() {
     if (isUnix()) {
         sh 'chmod -R 777 .'
@@ -1568,6 +1398,134 @@ class PyTestManager {
             }
         }
     }
+
+    /**
+     * Build TestSession objects from rack specifiers data.
+     *
+     * Sessions are created eagerly before any hardware node runs.
+     * Policy and uid-regex checks are evaluated here; every entry
+     * (including skipped ones) is retained so runTestStages() can mark them as skipped.
+     *
+     * @param rackSpecifiers      Parsed JSON map from exportSpecifiersModule
+     * @param rackSpecifiersPath  Module path prefix for setup path construction
+     * @param baseSessions        Map<String, TestSession> keyed by session-group name
+     * @return Map<String, List<TestSession>> grouped by session-group name
+     */
+    Map buildTestSessions(Map rackSpecifiers, String rackSpecifiersPath, Map baseSessions) {
+        def sessionsByGroup = [:]
+
+        rackSpecifiers.each { setupKey, specifiers ->
+            // SpecifierContainer has more than one specifier (keyed by part number);
+            // a direct specifier has exactly one entry. This affects the setup path format:
+            //   Container: SETUP@PART_NUMBER or SETUP@PART_NUMBER@VERSION
+            //   Direct:    SETUP or SETUP@VERSION
+            def isContainer = specifiers.size() > 1
+
+            specifiers.each { specifierName, specifierData ->
+                def entries = []
+
+                if (specifierData.containsKey("extra_data")) {
+                    // No version level (e.g., ECAT_MULTISLAVE_SETUP)
+                    def extraData = specifierData.extra_data
+                    extraData.test_configs.each { sessionName, testConfig ->
+                        entries << [
+                            sessionName: sessionName,
+                            stage_name: testConfig.stage_name,
+                            uid: testConfig.run_test_stage_uid,
+                            markers: testConfig.markers,
+                            setup: "${rackSpecifiersPath}.${setupKey}",
+                            setup_key: setupKey,
+                            specifier_lookup: specifierName,
+                        ]
+                    }
+                } else {
+                    // Has version level (e.g., ECAT_SETUP, ECAT_DEN_S_NET_E_SETUP)
+                    specifierData.each { version, versionData ->
+                        if (!versionData.containsKey("extra_data")) return
+                        def extraData = versionData.extra_data
+                        def setupPath
+                        def specifierLookup
+                        if (isContainer) {
+                            // SpecifierContainer: path includes part number
+                            if (version == "latest") {
+                                setupPath = "${rackSpecifiersPath}.${setupKey}@${specifierName}"
+                                specifierLookup = "${rackSpecifiersPath}.${setupKey}@${specifierName}"
+                            } else {
+                                setupPath = "${rackSpecifiersPath}.${setupKey}@${specifierName}@${version}"
+                                specifierLookup = "${rackSpecifiersPath}.${setupKey}@${specifierName}@${version}"
+                            }
+                        } else {
+                            // Direct specifier: path is just SETUP or SETUP@VERSION
+                            setupPath = (version == "latest")
+                                ? "${rackSpecifiersPath}.${setupKey}"
+                                : "${rackSpecifiersPath}.${setupKey}@${version}"
+                            specifierLookup = "${specifierName}@${version}"
+                        }
+                        extraData.test_configs.each { sessionName, testConfig ->
+                            entries << [
+                                sessionName: sessionName,
+                                stage_name: testConfig.stage_name,
+                                uid: testConfig.run_test_stage_uid,
+                                markers: testConfig.markers,
+                                setup: setupPath,
+                                setup_key: setupKey,
+                                specifier_lookup: specifierLookup,
+                            ]
+                        }
+                    }
+                }
+
+                entries.each { config ->
+                    def sessionName = config.sessionName
+                    def baseSession = baseSessions[sessionName]
+                    if (!baseSession) {
+                        this.pipeline.error("No base session found for group '${sessionName}'. Check that baseSessions contains all expected keys: ${baseSessions.keySet()}")
+                    }
+                    if (!sessionsByGroup.containsKey(sessionName)) {
+                        sessionsByGroup[sessionName] = []
+                    }
+                    def session = baseSession.override(
+                        uid: config.uid,
+                        markers: config.markers,
+                        setup: config.setup,
+                        stageName: config.stage_name
+                    )
+                    if (!(config.uid ==~ this.pipeline.params.run_test_stages)) {
+                        session.shouldRun = false
+                        session.skipReason = "uid '${config.uid}' does not match run_test_stages '${this.pipeline.params.run_test_stages}'"
+                    } else if (!this.shouldRunForSpecifier(config.specifier_lookup, rackSpecifiers[config.setup_key])) {
+                        session.shouldRun = false
+                        session.skipReason = "execution policy not satisfied for '${config.specifier_lookup}'"
+                    }
+                    sessionsByGroup[sessionName] << session
+                }
+            }
+        }
+
+        return sessionsByGroup
+    }
+
+    /**
+     * Run hardware test stages from pre-built TestSession objects.
+     *
+     * Each session produces exactly one Jenkins stage. Sessions with shouldRun==false
+     * are marked with Utils.markStageSkippedForConditional() so they appear grey
+     * (skipped) in the Jenkins UI rather than green (passed).
+     *
+     * @param sessions  List<TestSession> produced by buildTestSessions()
+     */
+    def runTestStages(List sessions) {
+        sessions.each { session ->
+            this.pipeline.stage(session.stageName) {
+                if (session.shouldRun) {
+                    this.runTestSession(session)
+                } else {
+                    this.pipeline.echo "Skipped: ${session.skipReason}"
+                    org.jenkinsci.plugins.pipeline.modeldefinition.Utils.markStageSkippedForConditional(session.stageName)
+                }
+            }
+        }
+    }
 }
 
 VEnvManager venvManager = new VEnvManager(
@@ -1581,7 +1539,6 @@ PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvM
 /* Variables to store parsed specifier data (populated during export stages) */
 Map virtualSpecifiers = null
 Map rackSpecifiers = null
-Map testConfigsBySession = null
 Map testSessionsByGroup = null
 
 /* Define default base test sessions to be used/overridden in stages */
@@ -1887,20 +1844,13 @@ pipeline {
                                                 true
                                             )
 
-                                            // Arrange test configs by session for automatic stage generation
-                                            testConfigsBySession = arrangeTestConfigsBySession(rackSpecifiers, RACK_SPECIFIERS_PATH)
-                                            echo "Test configs arranged by session: ${testConfigsBySession.keySet()}"
-                                            testConfigsBySession.each { sessionName, configs ->
-                                                echo "  ${sessionName}: ${configs.collect { it.uid }}"
-                                            }
-
                                             // Build pre-created TestSession objects (policy + uid-regex evaluated eagerly)
                                             def baseSessions = [
                                                 "ECAT_TEST_SESSIONS": ECAT_TEST_SESSIONS,
                                                 "CAN_TEST_SESSIONS": CAN_TEST_SESSIONS,
                                                 "ETH_TEST_SESSIONS": ETH_TEST_SESSIONS,
                                             ]
-                                            testSessionsByGroup = buildTestSessions(rackSpecifiers, RACK_SPECIFIERS_PATH, baseSessions, testManager, this)
+                                            testSessionsByGroup = testManager.buildTestSessions(rackSpecifiers, RACK_SPECIFIERS_PATH, baseSessions)
                                             echo "Test sessions built: ${testSessionsByGroup.keySet()}"
                                             testSessionsByGroup.each { groupName, sessions ->
                                                 echo "  ${groupName}: ${sessions.collect { s -> "${s.stageName} (shouldRun=${s.shouldRun})" }}"
@@ -2071,7 +2021,7 @@ pipeline {
                             steps {
                                 script {
                                     def ecatSessions = testSessionsByGroup?.ECAT_TEST_SESSIONS ?: []
-                                    runTestStages(this, ecatSessions, testManager)
+                                    testManager.runTestStages(ecatSessions)
                                 }
                             }
                         }
@@ -2119,8 +2069,8 @@ pipeline {
                                 script {
                                     def canSessions = testSessionsByGroup?.CAN_TEST_SESSIONS ?: []
                                     def ethSessions = testSessionsByGroup?.ETH_TEST_SESSIONS ?: []
-                                    runTestStages(this, canSessions, testManager)
-                                    runTestStages(this, ethSessions, testManager)
+                                    testManager.runTestStages(canSessions)
+                                    testManager.runTestStages(ethSessions)
                                 }
                             }
                         }
