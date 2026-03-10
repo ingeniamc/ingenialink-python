@@ -47,14 +47,14 @@ def reassignFilePermissions() {
  */
 class TestSchedulePolicy implements Serializable {
     String key
-    Closure evaluator  // (pipeline, Calendar triggerTime) -> boolean
+    Closure evaluator  // (pipeline, Calendar triggerTime) -> [result: boolean, reason: String]
     
     TestSchedulePolicy(String key, Closure evaluator) {
         this.key = key
         this.evaluator = evaluator
     }
     
-    boolean evaluate(def pipeline, Calendar triggerTime = null) {
+    Map evaluate(def pipeline, Calendar triggerTime = null) {
         return this.evaluator.call(pipeline, triggerTime)
     }
 }
@@ -90,7 +90,8 @@ class TestSchedulePolicy implements Serializable {
  *    manager.registerPolicy(new TestSchedulePolicy("business_hours", { pipeline, triggerTime ->
  *        def calendar = triggerTime ?: Calendar.getInstance()
  *        def hour = calendar.get(Calendar.HOUR_OF_DAY)
- *        return hour >= 9 && hour < 17
+ *        def isBusinessHours = hour >= 9 && hour < 17
+ *        return [result: isBusinessHours, reason: isBusinessHours ? "" : "Not business hours (hour=${hour})"]
  *    }))
  */
 class TestSchedulePolicyManager implements Serializable {
@@ -128,60 +129,39 @@ class TestSchedulePolicyManager implements Serializable {
     private void registerBuiltInPolicies() {
         // Always policy - always returns true
         registerPolicy(new TestSchedulePolicy("always", { pipeline, triggerTime ->
-            return true
+            return [result: true, reason: "Policy 'always' is always enabled"]
         }))
-        
+
         // Never policy - never returns true
         registerPolicy(new TestSchedulePolicy("never", { pipeline, triggerTime ->
-            if (pipeline) {
-                pipeline.echo "Policy is 'never', skipping tests."
-            }
-            return false
+            return [result: false, reason: "Policy 'never' is always disabled"]
         }))
-        
+
         // Weekend policy - runs on Saturday and Sunday
         registerPolicy(new TestSchedulePolicy("weekends", { pipeline, triggerTime ->
             def calendar = triggerTime ?: Calendar.getInstance()
             def dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
             def isWeekend = dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY
-            if (pipeline) {
-                if (!isWeekend) {
-                    pipeline.echo "Today is not weekend (dayOfWeek=${dayOfWeek}), skipping tests."
-                } else {
-                    pipeline.echo "Today is weekend (dayOfWeek=${dayOfWeek}), running tests."
-                }
-            }
-            return isWeekend
+            def reason = isWeekend ? "" : "Policy 'weekends': today is not a weekend (dayOfWeek=${dayOfWeek})"
+            return [result: isWeekend, reason: reason]
         }))
-        
+
         // Weekday policy - runs Monday through Friday
         registerPolicy(new TestSchedulePolicy("weekdays", { pipeline, triggerTime ->
             def calendar = triggerTime ?: Calendar.getInstance()
             def dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
             def isWeekday = dayOfWeek >= Calendar.MONDAY && dayOfWeek <= Calendar.FRIDAY
-            if (pipeline) {
-                if (!isWeekday) {
-                    pipeline.echo "Today is not weekday (dayOfWeek=${dayOfWeek}), skipping tests."
-                } else {
-                    pipeline.echo "Today is weekday (dayOfWeek=${dayOfWeek}), running tests."
-                }
-            }
-            return isWeekday
+            def reason = isWeekday ? "" : "Policy 'weekdays': today is not a weekday (dayOfWeek=${dayOfWeek})"
+            return [result: isWeekday, reason: reason]
         }))
-        
+
         // Nightly policy - runs during configured night hours
         registerPolicy(new TestSchedulePolicy("nightly", { pipeline, triggerTime ->
             def calendar = triggerTime ?: Calendar.getInstance()
             def hourOfDay = calendar.get(Calendar.HOUR_OF_DAY)
             def isNightTime = hourOfDay >= this.nightTimeStartHour || hourOfDay < this.nightTimeEndHour
-            if (pipeline) {
-                if (!isNightTime) {
-                    pipeline.echo "Current time is not nightTime (hourOfDay=${hourOfDay}), skipping tests."
-                } else {
-                    pipeline.echo "Current time is nightTime (hourOfDay=${hourOfDay}), running tests."
-                }
-            }
-            return isNightTime
+            def reason = isNightTime ? "" : "Policy 'nightly': current time is not nightTime (hourOfDay=${hourOfDay}, nightTime is ${this.nightTimeStartHour}:00-${this.nightTimeEndHour}:00)"
+            return [result: isNightTime, reason: reason]
         }))
     }
     
@@ -221,13 +201,13 @@ class TestSchedulePolicyManager implements Serializable {
     /**
      * Check if tests should run based on the given policy key.
      * @param policyKey Policy key to evaluate
-     * @param pipeline Pipeline context for logging (optional)
+     * @param pipeline Pipeline context (kept for custom policy compatibility; not used internally for logging)
      * @param triggerTime Calendar instance representing when the pipeline was triggered.
      *        If provided, time-based policies use this instead of the current time.
-     * @return true if tests should run, false otherwise
+     * @return Map [result: boolean, reason: String] — reason is non-empty when result is false
      * @throws IllegalArgumentException if policy key is unknown
      */
-    boolean shouldRun(String policyKey, def pipeline = null, Calendar triggerTime = null) {
+    Map shouldRun(String policyKey, def pipeline = null, Calendar triggerTime = null) {
         // Ensure built-in policies are registered
         ensureBuiltInPoliciesRegistered()
 
@@ -1040,6 +1020,65 @@ class TestSession implements Serializable {
 
 }
 
+/**
+ * TestGroup - Named container for a set of TestSession objects that share a base configuration.
+ *
+ * A TestGroup ties together:
+ *  - A logical name that matches the key used in rack_specifiers test_configs
+ *    (e.g. "ECAT_TEST_SESSIONS", "CAN_TEST_SESSIONS", "ETH_TEST_SESSIONS").
+ *  - A base TestSession whose attributes are inherited by every session in the group.
+ *  - A list of TestSession objects (populated by PyTestManager.buildTestSessions() and
+ *    optionally extended manually for sessions not covered by rack_specifiers).
+ *
+ * Usage pattern:
+ *   1. Declare the group with a base session:
+ *        TestGroup ECAT_TESTS = new TestGroup("ECAT_TEST_SESSIONS", HW_TEST_SESSIONS.override())
+ *   2. Populate sessions from rack_specifiers JSON:
+ *        testManager.buildTestSessions(rackSpecifiers, RACK_SPECIFIERS_PATH, [ECAT_TESTS, ...])
+ *   3. Optionally append manually-managed sessions:
+ *        ECAT_TESTS.sessions << mySession
+ *   4. Gate the hardware node on the group and run all sessions:
+ *        when { expression { ECAT_TESTS.anyShouldRun() } }
+ *        testManager.runTestStages(ECAT_TESTS)
+ */
+class TestGroup {
+    /** Key used to look up this group in rack_specifiers test_configs (e.g. "ECAT_TEST_SESSIONS"). */
+    String name
+    /** Template session; every session in this group is derived via baseTestSession.override(). */
+    TestSession baseTestSession
+    /** Ordered list of sessions to run; populated by buildTestSessions() and manual appends. */
+    List<TestSession> sessions
+
+    TestGroup(String name, TestSession baseTestSession) {
+        this.name = name
+        this.baseTestSession = baseTestSession
+        this.sessions = []
+    }
+
+    /**
+     * Returns true if at least one session in this group has shouldRun == true.
+     * Used as the gate condition for allocating the hardware node.
+     */
+    boolean anyShouldRun() {
+        return this.sessions.any { it.shouldRun }
+    }
+
+    /**
+     * Returns a human-readable summary of the group and all its sessions.
+     * Includes run/skip status and the skip reason for excluded sessions.
+     */
+    String configSummary() {
+        def runCount = this.sessions.count { it.shouldRun }
+        def lines = ["TestGroup '${this.name}': ${this.sessions.size()} session(s), ${runCount} to run"]
+        this.sessions.each { session ->
+            def status = session.shouldRun ? 'run ' : 'skip'
+            def reason = session.shouldRun ? '' : " (${session.skipReason})"
+            lines << "  [${status}] ${session.stageName} [uid=${session.uid}]${reason}"
+        }
+        return lines.join('\n')
+    }
+}
+
 class PyTestManager {
     private def venvManager
     private def pipeline
@@ -1112,47 +1151,48 @@ class PyTestManager {
     
     /**
      * Check if tests should run for a specific specifier based on its execution policy.
-     * 
-     * @param specifierSetup The specifier setup string (e.g., "tests.setups.rack_specifiers.ECAT_SETUP@EVE-XCR-E")
-     * @param specifiers Map of parsed specifiers data
-     * @return true if tests should run, false otherwise
+     *
+     * @param specifierSetup The specifier setup string (e.g., "EVE-XCR-E@2.6.0" or "ECAT_SETUP@EVE-XCR-E@2.6.0")
+     * @param specifiers Map of parsed specifiers data for the setup key
+     * @return Map [result: boolean, reason: String] — reason is non-empty when result is false
      */
-    boolean shouldRunForSpecifier(String specifierSetup, Map specifiers) {
+    Map shouldRunForSpecifier(String specifierSetup, Map specifiers) {
         def specifierInfo = this.extractSpecifierInfo(specifierSetup)
         if (!specifierInfo) {
-            this.pipeline.echo "No specifier found in setup '${specifierSetup}'. Defaulting to run tests."
-            return true
+            return [result: true, reason: ""]
         }
-        
+
         def specifierName = specifierInfo.name
         def specifierVersion = specifierInfo.version
-        
+
         if (!specifiers.containsKey(specifierName)) {
             throw new Exception("Specifier '${specifierName}' not found in specifiers JSON.")
         }
-        
+
         def specifier = specifiers[specifierName]
         def versionData = specifier?.get(specifierVersion)
-        def executionPolicy = null
-        
+        def executionPolicy
+
         if (!versionData) {
-            // Try non-versioned structure: check if execution_policy is directly in specifier - ONLY MULTIDRIVE
+            // No version key: unversioned specifier (e.g. ECAT_MULTISLAVE) — policy is at specifier level
             executionPolicy = specifier?.extra_data?.execution_policy
             if (!executionPolicy) {
                 throw new Exception("Version '${specifierVersion}' for specifier '${specifierName}' not found in specifiers JSON, and no execution policy found at specifier level.")
             }
-            this.pipeline.echo "Using non-versioned execution policy '${executionPolicy}' for specifier '${specifierName}'"
         } else {
-            // Versioned structure exists
             executionPolicy = versionData?.extra_data?.execution_policy
             if (!executionPolicy) {
-                this.pipeline.echo "No execution policy found for specifier '${specifierName}@${specifierVersion}'. Defaulting to run tests."
-                return true
+                // No policy key — default to run
+                return [result: true, reason: "Contains no policy key, defaulting to run"]
             }
-            this.pipeline.echo "Checking execution policy '${executionPolicy}' for specifier '${specifierName}@${specifierVersion}'"
         }
-        
-        return this.pipeline.schedulePolicyManager.shouldRun(executionPolicy, this.pipeline, this.triggerTime)
+
+        def policyResult = this.pipeline.schedulePolicyManager.shouldRun(executionPolicy, this.pipeline, this.triggerTime)
+        if (!policyResult.result) {
+            def specLabel = specifierVersion ? "${specifierName}@${specifierVersion}" : specifierName
+            return [result: false, reason: "[${specLabel}] ${policyResult.reason}"]
+        }
+        return [result: true, reason: ""]
     }
     
     /**
@@ -1400,19 +1440,19 @@ class PyTestManager {
     }
 
     /**
-     * Build TestSession objects from rack specifiers data.
+     * Populate test sessions into each TestGroup from rack specifiers data.
      *
      * Sessions are created eagerly before any hardware node runs.
      * Policy and uid-regex checks are evaluated here; every entry
      * (including skipped ones) is retained so runTestStages() can mark them as skipped.
+     * Groups are modified in-place; additional sessions can be appended after this call.
      *
      * @param rackSpecifiers      Parsed JSON map from exportSpecifiersModule
      * @param rackSpecifiersPath  Module path prefix for setup path construction
-     * @param baseSessions        Map<String, TestSession> keyed by session-group name
-     * @return Map<String, List<TestSession>> grouped by session-group name
+     * @param testGroups          List<TestGroup> to populate (modified in-place)
      */
-    Map buildTestSessions(Map rackSpecifiers, String rackSpecifiersPath, Map baseSessions) {
-        def sessionsByGroup = [:]
+    void buildTestSessions(Map rackSpecifiers, String rackSpecifiersPath, List testGroups) {
+        def groupsByName = testGroups.collectEntries { [it.name, it] }
 
         rackSpecifiers.each { setupKey, specifiers ->
             // A SpecifierContainer wraps multiple part numbers; a direct specifier exposes one.
@@ -1437,36 +1477,32 @@ class PyTestManager {
                     def specifierLookup = version ? "${specifierName}@${version}" : specifierName
 
                     versionData.extra_data.test_configs.each { sessionName, testConfig ->
-                        if (!sessionsByGroup.containsKey(sessionName)) sessionsByGroup[sessionName] = []
-                        sessionsByGroup[sessionName] << buildSession(
-                            baseSessions, sessionName, testConfig,
+                        def group = groupsByName[sessionName]
+                        if (!group) {
+                            this.pipeline.error("No TestGroup found for session name '${sessionName}'. Available groups: ${groupsByName.keySet()}")
+                        }
+                        group.sessions << buildSession(
+                            group.baseTestSession, testConfig,
                             setupPath, specifierLookup, rackSpecifiers[setupKey]
                         )
                     }
                 }
             }
         }
-
-        return sessionsByGroup
     }
 
     /**
      * Create a single TestSession from a test config entry, evaluate uid-regex and execution policy.
      *
-     * @param baseSessions     Map<String, TestSession> keyed by session-group name
-     * @param sessionName      Key used to look up the base session in baseSessions
+     * @param baseSession      Base TestSession to override (from TestGroup.baseTestSession)
      * @param testConfig       Map with uid, markers, stage_name from the exported specifier JSON
      * @param setupPath        Full specifier path string passed to pytest via --setup
      * @param specifierLookup  Identifier used to evaluate execution policy (e.g. "EVE-XCR-E@2.6.0")
      * @param specifiers       Specifier data map for the current setup key (for policy evaluation)
      * @return Configured TestSession with shouldRun and skipReason set
      */
-    private TestSession buildSession(Map baseSessions, String sessionName, Map testConfig,
+    private TestSession buildSession(TestSession baseSession, Map testConfig,
                                      String setupPath, String specifierLookup, Map specifiers) {
-        def baseSession = baseSessions[sessionName]
-        if (!baseSession) {
-            this.pipeline.error("No base session found for group '${sessionName}'. Check that baseSessions contains all expected keys: ${baseSessions.keySet()}")
-        }
         def session = baseSession.override(
             uid: testConfig.run_test_stage_uid,
             markers: testConfig.markers,
@@ -1476,9 +1512,12 @@ class PyTestManager {
         if (!(testConfig.run_test_stage_uid ==~ this.pipeline.params.run_test_stages)) {
             session.shouldRun = false
             session.skipReason = "uid '${testConfig.run_test_stage_uid}' does not match run_test_stages '${this.pipeline.params.run_test_stages}'"
-        } else if (!this.shouldRunForSpecifier(specifierLookup, specifiers)) {
-            session.shouldRun = false
-            session.skipReason = "execution policy not satisfied for '${specifierLookup}'"
+        } else {
+            def policyResult = this.shouldRunForSpecifier(specifierLookup, specifiers)
+            if (!policyResult.result) {
+                session.shouldRun = false
+                session.skipReason = policyResult.reason
+            }
         }
         return session
     }
@@ -1490,10 +1529,10 @@ class PyTestManager {
      * are marked with Utils.markStageSkippedForConditional() so they appear grey
      * (skipped) in the Jenkins UI rather than green (passed).
      *
-     * @param sessions  List<TestSession> produced by buildTestSessions()
+     * @param group  TestGroup whose sessions will be run
      */
-    def runTestStages(List sessions) {
-        sessions.each { session ->
+    def runTestStages(TestGroup group) {
+        group.sessions.each { session ->
             this.pipeline.stage(session.stageName) {
                 if (session.shouldRun) {
                     this.runTestSession(session)
@@ -1517,7 +1556,6 @@ PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvM
 /* Variables to store parsed specifier data (populated during export stages) */
 Map virtualSpecifiers = null
 Map rackSpecifiers = null
-Map testSessionsByGroup = null
 
 /* Define default base test sessions to be used/overridden in stages */
 TestSession TEST_SESSIONS = new TestSession(
@@ -1530,9 +1568,9 @@ TestSession TEST_SESSIONS = new TestSession(
     setAttApiToken: true
 )
 TestSession HW_TEST_SESSIONS = TEST_SESSIONS.override()
-TestSession CAN_TEST_SESSIONS = HW_TEST_SESSIONS.override()
-TestSession ETH_TEST_SESSIONS = HW_TEST_SESSIONS.override() // Wireshark logging is injected later based on parameter
-TestSession ECAT_TEST_SESSIONS = HW_TEST_SESSIONS.override() // Wireshark logging is injected later based on parameter
+TestGroup CAN_TESTS = new TestGroup("CAN_TEST_SESSIONS", HW_TEST_SESSIONS.override())
+TestGroup ETH_TESTS = new TestGroup("ETH_TEST_SESSIONS", HW_TEST_SESSIONS.override()) // Wireshark logging is injected later based on parameter
+TestGroup ECAT_TESTS = new TestGroup("ECAT_TEST_SESSIONS", HW_TEST_SESSIONS.override()) // Wireshark logging is injected later based on parameter
 
 
 /* Build develop everyday 3 times starting at 19:00 UTC (21:00 Barcelona Time), running all tests */
@@ -1614,10 +1652,10 @@ pipeline {
                     )
 
                     // Configure if ECAT and ETH sessions use Wireshark logging based on parameter
-                    ECAT_TEST_SESSIONS.setAttributeInCascade(
+                    ECAT_TESTS.baseTestSession.setAttributeInCascade(
                         useWiresharkLogging: params.WIRESHARK_LOGGING,
                     )
-                    ETH_TEST_SESSIONS.setAttributeInCascade(
+                    ETH_TESTS.baseTestSession.setAttributeInCascade(
                         useWiresharkLogging: params.WIRESHARK_LOGGING,
                     )
 
@@ -1809,6 +1847,7 @@ pipeline {
                                             }
                                             
                                             // Export specifiers and get the parsed data
+                                            // TODO do not export to json files and read them back
                                             virtualSpecifiers = testManager.exportSpecifiersModule(
                                                 "tests.setups.virtual_drive_specifier",
                                                 "virtual_specifiers.json",
@@ -1822,16 +1861,19 @@ pipeline {
                                                 true
                                             )
 
-                                            // Build pre-created TestSession objects (policy + uid-regex evaluated eagerly)
-                                            def baseSessions = [
-                                                "ECAT_TEST_SESSIONS": ECAT_TEST_SESSIONS,
-                                                "CAN_TEST_SESSIONS": CAN_TEST_SESSIONS,
-                                                "ETH_TEST_SESSIONS": ETH_TEST_SESSIONS,
-                                            ]
-                                            testSessionsByGroup = testManager.buildTestSessions(rackSpecifiers, RACK_SPECIFIERS_PATH, baseSessions)
-                                            echo "Test sessions built: ${testSessionsByGroup.keySet()}"
-                                            testSessionsByGroup.each { groupName, sessions ->
-                                                echo "  ${groupName}: ${sessions.collect { s -> "${s.stageName} (shouldRun=${s.shouldRun})" }}"
+                                            // Populate TestGroup sessions (policy + uid-regex evaluated here)
+                                            testManager.buildTestSessions(rackSpecifiers, RACK_SPECIFIERS_PATH, [ECAT_TESTS, CAN_TESTS, ETH_TESTS])
+
+                                            // Pcap tests run on the EtherCAT machine — add manually since they're not in rack_specifiers
+                                            def pcapSession = ETH_TESTS.baseTestSession.override(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
+                                            if (!("pcap" ==~ params.run_test_stages)) {
+                                                pcapSession.shouldRun = false
+                                                pcapSession.skipReason = "uid 'pcap' does not match run_test_stages '${params.run_test_stages}'"
+                                            }
+                                            ECAT_TESTS.sessions << pcapSession
+
+                                            [ECAT_TESTS, CAN_TESTS, ETH_TESTS].each { group ->
+                                                echo group.configSummary()
                                             }
                                         }
                                     }
@@ -1840,7 +1882,7 @@ pipeline {
                                     when{
                                         expression {
                                             def shouldRun = "pcap" ==~ params.run_test_stages &&
-                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers["VIRTUAL_DRIVE_ETHERNET_SETUP"])
+                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers["VIRTUAL_DRIVE_ETHERNET_SETUP"]).result
                                             return shouldRun
                                         }
                                     }
@@ -1863,7 +1905,7 @@ pipeline {
                                     when {
                                         expression {
                                             def shouldRun = "virtual_drive_tests" ==~ params.run_test_stages  &&
-                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers["VIRTUAL_DRIVE_ETHERNET_SETUP"])
+                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers["VIRTUAL_DRIVE_ETHERNET_SETUP"]).result
                                             return shouldRun
                                         }
                                     }
@@ -1950,8 +1992,7 @@ pipeline {
                         beforeOptions true
                         beforeAgent true
                         expression {
-                          def ecatUids = testSessionsByGroup?.ECAT_TEST_SESSIONS?.collect { it.uid } ?: []
-                          (ecatUids + ["pcap"]).any { it ==~ params.run_test_stages }
+                            ECAT_TESTS.anyShouldRun()
                         }
                     }
                     options {
@@ -1975,31 +2016,16 @@ pipeline {
                             steps {
                                 script {
                                     venvManager.createPoetryEnvironments(
-                                        pythonVersions: venvManager.defaultVenvNamesToVersion(ECAT_TEST_SESSIONS.runInVirtualEnvs),
+                                        pythonVersions: venvManager.defaultVenvNamesToVersion(ECAT_TESTS.baseTestSession.runInVirtualEnvs),
                                         additionalCommands: ["poetry run poe install-wheel"]
                                     )
-                                }
-                            }
-                        }
-                        stage('Pcap Tests') {
-                            when {
-                                expression {
-                                    "pcap" ==~ params.run_test_stages
-                                }
-                            }
-                            steps {
-                                /* Windows docker did not have npcap/winpcap installed so tests that require pcap are
-                                run on ethercat machine */
-                                script {
-                                    testManager.runTestSession(ETH_TEST_SESSIONS.override(uid: "pcap", markers: "pcap"))
                                 }
                             }
                         }
                         stage('Run EtherCAT Tests') {
                             steps {
                                 script {
-                                    def ecatSessions = testSessionsByGroup?.ECAT_TEST_SESSIONS ?: []
-                                    testManager.runTestStages(ecatSessions)
+                                    testManager.runTestStages(ECAT_TESTS)
                                 }
                             }
                         }
@@ -2010,9 +2036,7 @@ pipeline {
                         beforeOptions true
                         beforeAgent true
                         expression {
-                          def canUids = testSessionsByGroup?.CAN_TEST_SESSIONS?.collect { it.uid } ?: []
-                          def ethUids = testSessionsByGroup?.ETH_TEST_SESSIONS?.collect { it.uid } ?: []
-                          (canUids + ethUids).any { it ==~ params.run_test_stages }
+                            CAN_TESTS.anyShouldRun() || ETH_TESTS.anyShouldRun()
                         }
                     }
                     options {
@@ -2045,10 +2069,8 @@ pipeline {
                         stage('Run CANopen/Ethernet Tests') {
                             steps {
                                 script {
-                                    def canSessions = testSessionsByGroup?.CAN_TEST_SESSIONS ?: []
-                                    def ethSessions = testSessionsByGroup?.ETH_TEST_SESSIONS ?: []
-                                    testManager.runTestStages(canSessions)
-                                    testManager.runTestStages(ethSessions)
+                                    testManager.runTestStages(CAN_TESTS)
+                                    testManager.runTestStages(ETH_TESTS)
                                 }
                             }
                         }
