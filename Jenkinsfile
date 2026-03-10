@@ -699,6 +699,8 @@ class TestSession implements Serializable {
      */
     private static final List<String> CONFIG_ATTRS = [
         'uid',
+        'shouldRun',
+        'skipReason',
         'runInVirtualEnvs',
         'markers',
         'testTimeoutMinutes',
@@ -1035,8 +1037,8 @@ class TestSession implements Serializable {
  *        TestGroup ECAT_TESTS = new TestGroup("ECAT_TEST_SESSIONS", HW_TEST_SESSIONS.override())
  *   2. Populate sessions from rack_specifiers JSON:
  *        testManager.buildTestSessions(rackSpecifiers, RACK_SPECIFIERS_PATH, [ECAT_TESTS, ...])
- *   3. Optionally append manually-managed sessions:
- *        ECAT_TESTS.sessions << mySession
+ *   3. Optionally append manually-managed sessions via addSession():
+ *        ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests", params.run_test_stages)
  *   4. Gate the hardware node on the group and run all sessions:
  *        when { expression { ECAT_TESTS.anyShouldRun() } }
  *        testManager.runTestStages(ECAT_TESTS)
@@ -1053,6 +1055,32 @@ class TestGroup {
         this.name = name
         this.baseTestSession = baseTestSession
         this.sessions = []
+    }
+
+    /**
+     * Override baseTestSession with the given attributes, evaluate the uid filter, and add to this group.
+     *
+     * The 'overrides' map uses the same keys as TestSession.override() (e.g. uid, markers, setup,
+     * stageName, shouldRun, skipReason). Policy evaluation in buildTestSessions() is encoded
+     * by including shouldRun/skipReason in the map before calling this method.
+     *
+     * Usage examples:
+     *   // Manual session (always runs when uid matches):
+     *   ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests", params.run_test_stages)
+     *
+     *   // Session with policy already evaluated (used by buildTestSessions()):
+     *   group.addSession(uid: ..., ..., shouldRun: false, skipReason: "...", params.run_test_stages)
+     *
+     * @param overrides            Map of TestSession attribute overrides (must include at least 'uid')
+     * @param runTestStagesPattern Regex pattern from params.run_test_stages
+     */
+    void addSession(Map overrides, String runTestStagesPattern) {
+        def session = this.baseTestSession.override(overrides)
+        if (!(session.uid ==~ runTestStagesPattern)) {
+            session.shouldRun = false
+            session.skipReason = "uid '${session.uid}' does not match run_test_stages '${runTestStagesPattern}'"
+        }
+        this.sessions << session
     }
 
     /**
@@ -1149,98 +1177,6 @@ class PyTestManager {
         return specifiers
     }
     
-    /**
-     * Check if tests should run for a specific specifier based on its execution policy.
-     *
-     * @param specifierSetup The specifier setup string (e.g., "EVE-XCR-E@2.6.0" or "ECAT_SETUP@EVE-XCR-E@2.6.0")
-     * @param specifiers Map of parsed specifiers data for the setup key
-     * @return Map [result: boolean, reason: String] — reason is non-empty when result is false
-     */
-    Map shouldRunForSpecifier(String specifierSetup, Map specifiers) {
-        def specifierInfo = this.extractSpecifierInfo(specifierSetup)
-        if (!specifierInfo) {
-            return [result: true, reason: ""]
-        }
-
-        def specifierName = specifierInfo.name
-        def specifierVersion = specifierInfo.version
-
-        if (!specifiers.containsKey(specifierName)) {
-            throw new Exception("Specifier '${specifierName}' not found in specifiers JSON.")
-        }
-
-        def specifier = specifiers[specifierName]
-        def versionData = specifier?.get(specifierVersion)
-        def executionPolicy
-
-        if (!versionData) {
-            // No version key: unversioned specifier (e.g. ECAT_MULTISLAVE) — policy is at specifier level
-            executionPolicy = specifier?.extra_data?.execution_policy
-            if (!executionPolicy) {
-                throw new Exception("Version '${specifierVersion}' for specifier '${specifierName}' not found in specifiers JSON, and no execution policy found at specifier level.")
-            }
-        } else {
-            executionPolicy = versionData?.extra_data?.execution_policy
-            if (!executionPolicy) {
-                // No policy key — default to run
-                return [result: true, reason: "Contains no policy key, defaulting to run"]
-            }
-        }
-
-        def policyResult = this.pipeline.schedulePolicyManager.shouldRun(executionPolicy, this.pipeline, this.triggerTime)
-        if (!policyResult.result) {
-            def specLabel = specifierVersion ? "${specifierName}@${specifierVersion}" : specifierName
-            return [result: false, reason: "[${specLabel}] ${policyResult.reason}"]
-        }
-        return [result: true, reason: ""]
-    }
-    
-    /**
-     * Extract the specifier name and version from a setup string.
-     * Examples:
-     *   "tests.setups.rack_specifiers.ECAT_SETUP@EVE-XCR-E" -> [name: "EVE-XCR-E", version: "latest"]
-     *   "tests.setups.rack_specifiers.ECAT_SETUP@CAP-XCR-E@2.0.0" -> [name: "CAP-XCR-E", version: "2.0.0"]
-     *   "DEN-S-NET-E@PHASE1" -> [name: "DEN-S-NET-E", version: "PHASE1"]
-     *   "tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_SETUP" -> [name: "tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_SETUP", version: "latest"]
-     * 
-     * @param setupString The setup string to parse
-     * @return Map with 'name' and 'version' keys, or null if setup is not defined
-     */
-    private Map extractSpecifierInfo(String setupString) {
-        if (!setupString) {
-            return null
-        }
-        
-        // If no @ symbol, use the entire string as the name
-        if (!setupString.contains('@')) {
-            return [
-                name: setupString,
-                version: "latest"
-            ]
-        }
-        
-        // Split by @ to get parts
-        def parts = setupString.split('@')
-        if (parts.size() < 2) {
-            return null
-        }
-        
-        // Check if parts[0] contains a dot - if not, it's a direct specifier name
-        if (!parts[0].contains('.')) {
-            // Direct specifier format: "DEN-S-NET-E@PHASE1"
-            return [
-                name: parts[0],
-                version: parts[1]
-            ]
-        }
-        
-        // Setup path format: "tests.setups.rack_specifiers.ECAT_SETUP@EVE-XCR-E"
-        return [
-            name: parts[1],
-            version: parts.size() > 2 ? parts[2] : "latest"
-        ]
-    }
-
     /**
      * Unstashes all coverage files.
      * 
@@ -1473,53 +1409,31 @@ class PyTestManager {
                     def setupPath = isContainer
                         ? "${rackSpecifiersPath}.${setupKey}@${specifierName}${versionTag}"
                         : "${rackSpecifiersPath}.${setupKey}${versionTag}"
-                    // specifierLookup identifies the specifier in shouldRunForSpecifier policy checks
-                    def specifierLookup = version ? "${specifierName}@${version}" : specifierName
+                    def executionPolicy = versionData?.extra_data?.execution_policy
 
                     versionData.extra_data.test_configs.each { sessionName, testConfig ->
                         def group = groupsByName[sessionName]
                         if (!group) {
                             this.pipeline.error("No TestGroup found for session name '${sessionName}'. Available groups: ${groupsByName.keySet()}")
                         }
-                        group.sessions << buildSession(
-                            group.baseTestSession, testConfig,
-                            setupPath, specifierLookup, rackSpecifiers[setupKey]
-                        )
+                        def overrides = [
+                            uid: testConfig.run_test_stage_uid,
+                            markers: testConfig.markers,
+                            setup: setupPath,
+                            stageName: testConfig.stage_name
+                        ]
+                        if (executionPolicy) {
+                            def policyResult = this.pipeline.schedulePolicyManager.shouldRun(executionPolicy, this.pipeline, this.triggerTime)
+                            if (!policyResult.result) {
+                                overrides.shouldRun = false
+                                overrides.skipReason = policyResult.reason
+                            }
+                        }
+                        group.addSession(overrides, this.pipeline.params.run_test_stages)
                     }
                 }
             }
         }
-    }
-
-    /**
-     * Create a single TestSession from a test config entry, evaluate uid-regex and execution policy.
-     *
-     * @param baseSession      Base TestSession to override (from TestGroup.baseTestSession)
-     * @param testConfig       Map with uid, markers, stage_name from the exported specifier JSON
-     * @param setupPath        Full specifier path string passed to pytest via --setup
-     * @param specifierLookup  Identifier used to evaluate execution policy (e.g. "EVE-XCR-E@2.6.0")
-     * @param specifiers       Specifier data map for the current setup key (for policy evaluation)
-     * @return Configured TestSession with shouldRun and skipReason set
-     */
-    private TestSession buildSession(TestSession baseSession, Map testConfig,
-                                     String setupPath, String specifierLookup, Map specifiers) {
-        def session = baseSession.override(
-            uid: testConfig.run_test_stage_uid,
-            markers: testConfig.markers,
-            setup: setupPath,
-            stageName: testConfig.stage_name
-        )
-        if (!(testConfig.run_test_stage_uid ==~ this.pipeline.params.run_test_stages)) {
-            session.shouldRun = false
-            session.skipReason = "uid '${testConfig.run_test_stage_uid}' does not match run_test_stages '${this.pipeline.params.run_test_stages}'"
-        } else {
-            def policyResult = this.shouldRunForSpecifier(specifierLookup, specifiers)
-            if (!policyResult.result) {
-                session.shouldRun = false
-                session.skipReason = policyResult.reason
-            }
-        }
-        return session
     }
 
     /**
@@ -1571,6 +1485,7 @@ TestSession HW_TEST_SESSIONS = TEST_SESSIONS.override()
 TestGroup CAN_TESTS = new TestGroup("CAN_TEST_SESSIONS", HW_TEST_SESSIONS.override())
 TestGroup ETH_TESTS = new TestGroup("ETH_TEST_SESSIONS", HW_TEST_SESSIONS.override()) // Wireshark logging is injected later based on parameter
 TestGroup ECAT_TESTS = new TestGroup("ECAT_TEST_SESSIONS", HW_TEST_SESSIONS.override()) // Wireshark logging is injected later based on parameter
+TestGroup LINUX_DOCKER_TESTS = new TestGroup("LINUX_DOCKER_TEST_SESSIONS", TEST_SESSIONS.override())
 
 
 /* Build develop everyday 3 times starting at 19:00 UTC (21:00 Barcelona Time), running all tests */
@@ -1838,7 +1753,7 @@ pipeline {
                                         }
                                     }
                                 }
-                                stage('Export Specifiers to JSON') {
+                                stage('Prepare test sessions') {
                                     steps {
                                         script {
                                             // Install wheel first (needed for summit_testing_framework to import ingenialink)
@@ -1863,66 +1778,34 @@ pipeline {
 
                                             // Populate TestGroup sessions (policy + uid-regex evaluated here)
                                             testManager.buildTestSessions(rackSpecifiers, RACK_SPECIFIERS_PATH, [ECAT_TESTS, CAN_TESTS, ETH_TESTS])
+                                            testManager.buildTestSessions(virtualSpecifiers, "tests.setups.virtual_drive_specifier", [LINUX_DOCKER_TESTS])
 
                                             // Pcap tests run on the EtherCAT machine — add manually since they're not in rack_specifiers
-                                            def pcapSession = ETH_TESTS.baseTestSession.override(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
-                                            if (!("pcap" ==~ params.run_test_stages)) {
-                                                pcapSession.shouldRun = false
-                                                pcapSession.skipReason = "uid 'pcap' does not match run_test_stages '${params.run_test_stages}'"
-                                            }
-                                            ECAT_TESTS.sessions << pcapSession
+                                            ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests", params.run_test_stages)
 
-                                            [ECAT_TESTS, CAN_TESTS, ETH_TESTS].each { group ->
+                                            // Linux no_pcap tests: markers are computed
+                                            LINUX_DOCKER_TESTS.addSession(
+                                                uid: "no_pcap",
+                                                markers: PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"]),
+                                                stageName: "Unit Tests (Linux no_pcap)",
+                                                params.run_test_stages)
+
+                                            [ECAT_TESTS, CAN_TESTS, ETH_TESTS, LINUX_DOCKER_TESTS].each { group ->
                                                 echo group.configSummary()
                                             }
                                         }
                                     }
                                 }
-                                stage('Run unit tests on linux docker') {
-                                    when{
-                                        expression {
-                                            def shouldRun = "pcap" ==~ params.run_test_stages &&
-                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers["VIRTUAL_DRIVE_ETHERNET_SETUP"]).result
-                                            return shouldRun
-                                        }
-                                    }
-                                    steps {
-                                        script {
-                                            def lin_marker = PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
-                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "pcap", markers: lin_marker))
-                                        }
-                                    }
-                                    post {
-                                        always {
-                                            script {
-                                                venvManager.copyFromWorkingFolder("pytest_reports/")
-                                            }
-                                            junit 'pytest_reports/*.xml'
-                                        }
-                                    }
-                                }
-                                stage('Run virtual drive tests on docker') {
+                                stage('Run Linux Docker tests') {
                                     when {
-                                        expression {
-                                            def shouldRun = "virtual_drive_tests" ==~ params.run_test_stages  &&
-                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers["VIRTUAL_DRIVE_ETHERNET_SETUP"]).result
-                                            return shouldRun
-                                        }
+                                        expression { LINUX_DOCKER_TESTS.anyShouldRun() }
                                     }
                                     steps {
                                         script {
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "virtual_drive", markers: 'virtual', setup: 'tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_ETHERNET_SETUP'))
-                                        }
-                                    }
-                                    post {
-                                        always {
-                                            script {
-                                                venvManager.copyFromWorkingFolder("pytest_reports/")
-                                            }
-                                            junit 'pytest_reports/*.xml'
+                                            testManager.runTestStages(LINUX_DOCKER_TESTS)
                                         }
                                     }
                                 }
