@@ -18,8 +18,6 @@ PYTHON_VERSION_MAX = "3.12"
 
 def BRANCH_NAME_MASTER = "master"
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
-def RACK_SPECIFIERS_PATH = "tests.setups.rack_specifiers"
-
 
 wheel_stashes = []
 
@@ -1033,32 +1031,35 @@ class TestSession implements Serializable {
  *    optionally extended manually for sessions not covered by rack_specifiers).
  *
  * Usage pattern:
- *   1. Declare the group with a base session:
- *        TestGroup ECAT_TESTS = new TestGroup("ECAT_TEST_SESSIONS", HW_TEST_SESSIONS.override())
+ *   1. Declare the group via the test manager (registers it for buildTestSessions):
+ *        TestGroup ECAT_TESTS = testManager.createGroup("ECAT_TEST_SESSIONS", HW_TEST_SESSIONS.override())
  *   2. Export and populate sessions from the specifier module:
- *        testManager.buildTestSessions(RACK_SPECIFIERS_PATH, [ECAT_TESTS, ...])
+ *        testManager.buildTestSessions("tests.setups.rack_specifiers")
  *   3. Optionally append manually-managed sessions via addSession():
- *        ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests", params.run_test_stages)
+ *        ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
  *   4. Gate the hardware node on the group and run all sessions:
  *        when { expression { ECAT_TESTS.anyShouldRun() } }
  *        testManager.runTestStages(ECAT_TESTS)
  */
 class TestGroup {
     /** Key used to look up this group in rack_specifiers test_configs (e.g. "ECAT_TEST_SESSIONS"). */
-    String name
+    final String name
     /** Template session; every session in this group is derived via baseTestSession.override(). */
-    TestSession baseTestSession
+    final TestSession baseTestSession
     /** Ordered list of sessions to run; populated by buildTestSessions() and manual appends. */
     List<TestSession> sessions
+    /** Back-reference to the PyTestManager that created this group */
+    private final def manager
 
-    TestGroup(String name, TestSession baseTestSession) {
+    TestGroup(String name, TestSession baseTestSession, manager) {
         this.name = name
         this.baseTestSession = baseTestSession
         this.sessions = []
+        this.manager = manager
     }
 
     /**
-     * Override baseTestSession with the given attributes, evaluate the uid filter, and add to this group.
+     * Add a new session to this group, by creating a session from the baseTestSession and overriding it with the given attributes.   
      *
      * The 'overrides' map uses the same keys as TestSession.override() (e.g. uid, markers, setup,
      * stageName, shouldRun, skipReason). Policy evaluation in buildTestSessions() is encoded
@@ -1066,19 +1067,19 @@ class TestGroup {
      *
      * Usage examples:
      *   // Manual session (always runs when uid matches):
-     *   ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests", params.run_test_stages)
+     *   ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
      *
      *   // Session with policy already evaluated (used by buildTestSessions()):
-     *   group.addSession(uid: ..., ..., shouldRun: false, skipReason: "...", params.run_test_stages)
+     *   group.addSession(uid: ..., ..., shouldRun: false, skipReason: "...")
      *
-     * @param overrides            Map of TestSession attribute overrides (must include at least 'uid')
-     * @param runTestStagesPattern Regex pattern from params.run_test_stages
+     * @param overrides  Map of TestSession attribute overrides (must include at least 'uid')
      */
-    void addSession(Map overrides, String runTestStagesPattern) {
+    void addSession(Map overrides) {
         def session = this.baseTestSession.override(overrides)
-        if (!(session.uid ==~ runTestStagesPattern)) {
+        def testSessionFilter = this.manager.testSessionFilter
+        if (!(session.uid ==~ testSessionFilter)) {
             session.shouldRun = false
-            session.skipReason = "uid '${session.uid}' does not match run_test_stages '${runTestStagesPattern}'"
+            session.skipReason = "uid '${session.uid}' does not match test_session_filter '${testSessionFilter}'"
         }
         this.sessions << session
     }
@@ -1113,11 +1114,41 @@ class PyTestManager {
     private List coverageStashes = []
     /** Calendar snapshot taken at construction time, used for schedule policy evaluation. */
     private Calendar triggerTime
+    /** All TestGroups registered via createGroup(), keyed by group name; */
+    private Map registeredGroups = [:]
+    /** Regex pattern used to filter which test sessions run; matched against each session's uid. */
+    String testSessionFilter = '.*'
 
     PyTestManager(Map args = [pipeline: null, venvManager: null]) {
         this.venvManager = args.venvManager
         this.pipeline = args.pipeline
         this.triggerTime = Calendar.getInstance()
+    }
+
+    /**
+     * Create a TestGroup, register it for use by buildTestSessions(), and return it.
+     *
+     * All groups created this way are automatically considered when buildTestSessions() is
+     * called
+     *
+     * @param name            Key matching the session name in the specifier JSON (e.g. "ECAT_TEST_SESSIONS")
+     * @param baseTestSession Template session whose attributes are inherited by every session in the group
+     * @return The newly created TestGroup
+     */
+    TestGroup createGroup(String name, TestSession baseTestSession) {
+        def group = new TestGroup(name, baseTestSession, this)
+        this.registeredGroups[name] = group
+        return group
+    }
+
+    /**
+     * Echo a configSummary() for every registered TestGroup.
+     * Useful at the end of session preparation to give a readable overview of what will run.
+     */
+    void echoTestGroupsSummary() {
+        this.registeredGroups.each { name, group ->
+            this.pipeline.echo(group.configSummary())
+        }
     }
 
     /**
@@ -1137,8 +1168,6 @@ class PyTestManager {
         // Always save in tests/setups/specifiers_json/ subdirectory of working folder
         def workingFolder = this.venvManager.getWorkingFolder()
         def workingOutputFile = this.venvManager.joinPath(workingFolder, "tests", "setups", "specifiers_json", outputFileName)
-
-        this.pipeline.echo "Exporting '${specifierModule}' ${workingOutputFile}"
 
         // Export specifiers (always override)
         this.venvManager.withPython(this.venvManager.default_python_version) { venv ->
@@ -1168,7 +1197,6 @@ class PyTestManager {
             throw new Exception("Specifiers JSON file not found at ${jsonPath}. Cannot load specifiers.")
         }
         
-        this.pipeline.echo "Loading specifiers from: ${jsonPath}"
         def jsonText = this.pipeline.readFile(file: jsonPath)
         def specifiers = this.pipeline.readJSON(text: jsonText)
         return specifiers
@@ -1373,23 +1401,20 @@ class PyTestManager {
     }
 
     /**
-     * Export and parse a specifier module, then populate test sessions into the given TestGroups.
+     * Export and parse a specifier module, then populate test sessions into all registered TestGroups.
      *
      * Exports the specifier module to a JSON artifact (filename derived from the module
      * path's last segment), then creates TestSession objects eagerly before any hardware
      * node runs. Policy and uid-regex checks are evaluated immediately; every entry
      * (including sessions that will be skipped) is retained so runTestStages() can mark
-     * them correctly. Groups are modified in-place; additional sessions can be appended
-     * after this call.
+     * them correctly. Only registered groups (created via createGroup()) are considered;
+     * additional sessions can be appended via group.addSession() after this call.
      *
-     * @param specifierModule  Python module path to export (e.g. RACK_SPECIFIERS_PATH).
-     *                         Used both as the specifier source and as the module prefix
-     *                         for pytest --setup path construction.
-     * @param testGroups       List<TestGroup> to populate (modified in-place)
+     * @param specifierModule  Python module path to export
+     *                         (e.g. "tests.setups.rack_specifiers").    
      */
-    void buildTestSessions(String specifierModule, List testGroups) {
+    void buildTestSessions(String specifierModule) {
         def exportedSpecifiers = this.exportSpecifiersModule(specifierModule)
-        def groupsByName = testGroups.collectEntries { [it.name, it] }
 
         exportedSpecifiers.each { setupKey, specifiers ->
             // A SpecifierContainer wraps multiple part numbers; a direct specifier exposes one.
@@ -1419,9 +1444,9 @@ class PyTestManager {
                     def executionPolicy = versionData?.extra_data?.execution_policy
 
                     versionData.extra_data.test_configs.each { sessionName, testConfig ->
-                        def group = groupsByName[sessionName]
+                        def group = this.registeredGroups[sessionName]
                         if (!group) {
-                            this.pipeline.error("No TestGroup found for session name '${sessionName}'. Available groups: ${groupsByName.keySet()}")
+                            this.pipeline.error("No TestGroup found for session name '${sessionName}'. Available groups: ${this.registeredGroups.keySet()}")
                         }
                         def overrides = [
                             uid: testConfig.run_test_stage_uid,
@@ -1436,7 +1461,7 @@ class PyTestManager {
                                 overrides.skipReason = policyResult.reason
                             }
                         }
-                        group.addSession(overrides, this.pipeline.params.run_test_stages)
+                        group.addSession(overrides)
                     }
                 }
             }
@@ -1485,10 +1510,10 @@ TestSession TEST_SESSIONS = new TestSession(
     setAttApiToken: true
 )
 TestSession HW_TEST_SESSIONS = TEST_SESSIONS.override()
-TestGroup CAN_TESTS = new TestGroup("CAN_TEST_SESSIONS", HW_TEST_SESSIONS.override())
-TestGroup ETH_TESTS = new TestGroup("ETH_TEST_SESSIONS", HW_TEST_SESSIONS.override()) // Wireshark logging is injected later based on parameter
-TestGroup ECAT_TESTS = new TestGroup("ECAT_TEST_SESSIONS", HW_TEST_SESSIONS.override()) // Wireshark logging is injected later based on parameter
-TestGroup LINUX_DOCKER_TESTS = new TestGroup("LINUX_DOCKER_TEST_SESSIONS", TEST_SESSIONS.override())
+TestGroup CAN_TESTS = testManager.createGroup("CAN_TEST_SESSIONS", HW_TEST_SESSIONS.override())
+TestGroup ETH_TESTS = testManager.createGroup("ETH_TEST_SESSIONS", HW_TEST_SESSIONS.override()) // Wireshark logging is injected later based on parameter
+TestGroup ECAT_TESTS = testManager.createGroup("ECAT_TEST_SESSIONS", HW_TEST_SESSIONS.override()) // Wireshark logging is injected later based on parameter
+TestGroup LINUX_DOCKER_TESTS = testManager.createGroup("LINUX_DOCKER_TEST_SESSIONS", TEST_SESSIONS.override())
 
 
 /* Build develop everyday 3 times starting at 19:00 UTC (21:00 Barcelona Time), running all tests */
@@ -1527,8 +1552,8 @@ pipeline {
                 'ethernet_everest',
                 'ethernet_capitan',
             ],
-            name: 'run_test_stages',
-            description: 'Regex pattern for which testing stage or substage to run (e.g. "fsoe.*", "ethercat_everest", ".*" for all)'
+            name: 'test_session_filter',
+            description: 'Regex pattern for which test sessions to run (e.g. "fsoe.*", "ethercat_everest", ".*" for all)'
         )
         booleanParam(name: 'WIRESHARK_LOGGING', defaultValue: false, description: 'Enable Wireshark logging')
         choice(
@@ -1576,6 +1601,8 @@ pipeline {
                     ETH_TESTS.baseTestSession.setAttributeInCascade(
                         useWiresharkLogging: params.WIRESHARK_LOGGING,
                     )
+
+                    testManager.testSessionFilter = params.test_session_filter
 
                     echo("Test sessions have been configured to run with the following base configuration:\n${TEST_SESSIONS.configSummary()}")
                 }
@@ -1679,7 +1706,7 @@ pipeline {
                                 stage('Run unit tests (no-pcap) tests on docker') {
                                     when {
                                         expression {
-                                            "no_pcap" ==~ params.run_test_stages
+                                            "no_pcap" ==~ params.test_session_filter
                                         }
                                     }
                                     steps {
@@ -1765,22 +1792,19 @@ pipeline {
                                             }
                                             
                                             // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here)
-                                            testManager.buildTestSessions(RACK_SPECIFIERS_PATH, [ECAT_TESTS, CAN_TESTS, ETH_TESTS])
-                                            testManager.buildTestSessions("tests.setups.virtual_drive_specifier", [LINUX_DOCKER_TESTS])
+                                            testManager.buildTestSessions("tests.setups.rack_specifiers")
+                                            testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
 
                                             // Pcap tests run on the EtherCAT machine — add manually since they're not in rack_specifiers
-                                            ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests", params.run_test_stages)
+                                            ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
 
                                             // Linux no_pcap tests: markers are computed
                                             LINUX_DOCKER_TESTS.addSession(
                                                 uid: "no_pcap",
                                                 markers: PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"]),
-                                                stageName: "Unit Tests (Linux no_pcap)",
-                                                params.run_test_stages)
+                                                stageName: "Unit Tests (Linux no_pcap)")
 
-                                            [ECAT_TESTS, CAN_TESTS, ETH_TESTS, LINUX_DOCKER_TESTS].each { group ->
-                                                echo group.configSummary()
-                                            }
+                                            testManager.echoTestGroupsSummary()
                                         }
                                     }
                                 }
