@@ -6,20 +6,21 @@ def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
-LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.6"
-WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.7"
+def LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.6"
+def WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.7"
 def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
 
-DEFAULT_PYTHON_VERSION = "3.9"
+def DEFAULT_PYTHON_VERSION = "3.9"
 
-ALL_PYTHON_VERSIONS = ["3.9", "3.10", "3.11", "3.12"] as Set
-PYTHON_VERSION_MIN = "3.9"
-PYTHON_VERSION_MAX = "3.12"
+def ALL_PYTHON_VERSIONS = ["3.9", "3.10", "3.11", "3.12"] as Set
+def PYTHON_VERSION_MIN = "3.9"
+def PYTHON_VERSION_MAX = "3.12"
 
 def BRANCH_NAME_MASTER = "master"
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 
-wheel_stashes = []
+
+List wheel_stashes = []
 
 /* List of markers that require hardware */
 def HARDWARE_MARKERS = ["ethernet", "ethercat", "canopen", "multislave", "fsoe", "eoe"]
@@ -683,14 +684,14 @@ class TestSession implements Serializable {
     * Parent session (if any)
     * Ancestor from which the session was created via override()
     */
-    TestSession parent = null
+    private TestSession parent = null
 
     /**
      * Child sessions
      * Offspring sessions created via override()
      * Used to propagate configuration changes via setAttributeInCascade()
      */
-    List<TestSession> children = []
+    private List<TestSession> children = []
     
     /**
      * List of configuration attributes that can be set and cascaded to children.
@@ -1075,6 +1076,9 @@ class TestGroup {
      * @param overrides  Map of TestSession attribute overrides (must include at least 'uid')
      */
     void addSession(Map overrides) {
+        if (!overrides.containsKey('uid') || !overrides.uid) {
+            throw new IllegalArgumentException("addSession() requires a non-null 'uid' in overrides. Got: ${overrides}")
+        }
         def session = this.baseTestSession.override(overrides)
         def testSessionFilter = this.manager.testSessionFilter
         if (!(session.uid ==~ testSessionFilter)) {
@@ -1443,7 +1447,16 @@ class PyTestManager {
                         : "${specifierModule}.${setupKey}${versionTag}"
                     def executionPolicy = versionData?.extra_data?.execution_policy
 
-                    versionData.extra_data.test_configs.each { sessionName, testConfig ->
+                    def testConfigs = versionData?.extra_data?.test_configs
+                    if (!testConfigs) {
+                        this.pipeline.error(
+                            "Missing 'extra_data.test_configs' for specifier '${specifierName}' "
+                            + "(version='${version}') in setup '${setupKey}'. "
+                            + "Ensure the specifier JSON contains extra_data with test_configs."
+                        )
+                    }
+
+                    testConfigs.each { sessionName, testConfig ->
                         def group = this.registeredGroups[sessionName]
                         if (!group) {
                             this.pipeline.error("No TestGroup found for session name '${sessionName}'. Available groups: ${this.registeredGroups.keySet()}")
@@ -1517,7 +1530,7 @@ TestGroup LINUX_DOCKER_TESTS = testManager.createGroup("LINUX_DOCKER_TEST_SESSIO
 
 
 /* Build develop everyday 3 times starting at 19:00 UTC (21:00 Barcelona Time), running all tests */
-CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * * % PYTHON_VERSIONS=All''' : ""
+def CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * * % PYTHON_VERSIONS=All''' : ""
 
 pipeline {
     agent none
