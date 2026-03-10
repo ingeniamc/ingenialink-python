@@ -1415,94 +1415,72 @@ class PyTestManager {
         def sessionsByGroup = [:]
 
         rackSpecifiers.each { setupKey, specifiers ->
-            // SpecifierContainer has more than one specifier (keyed by part number);
-            // a direct specifier has exactly one entry. This affects the setup path format:
-            //   Container: SETUP@PART_NUMBER or SETUP@PART_NUMBER@VERSION
-            //   Direct:    SETUP or SETUP@VERSION
-            def isContainer = specifiers.size() > 1
+            // A SpecifierContainer wraps multiple part numbers; a direct specifier exposes one.
+            // This determines the pytest --setup path format:
+            //   Container:         SETUP@PART_NUMBER@VERSION
+            //   Direct specifier:  SETUP@VERSION  (no part-number segment)
+            boolean isContainer = specifiers.size() > 1
 
             specifiers.each { specifierName, specifierData ->
-                def entries = []
+                // Normalise no-version specifiers (extra_data at the specifier level, no version key)
+                // to version "" so the loop below works uniformly for both versioned and unversioned.
+                // https://novantamotion.atlassian.net/browse/CIT-612
+                def versionedData = specifierData.containsKey("extra_data") ? ["": specifierData] : specifierData
 
-                if (specifierData.containsKey("extra_data")) {
-                    // No version level (e.g., ECAT_MULTISLAVE_SETUP)
-                    def extraData = specifierData.extra_data
-                    extraData.test_configs.each { sessionName, testConfig ->
-                        entries << [
-                            sessionName: sessionName,
-                            stage_name: testConfig.stage_name,
-                            uid: testConfig.run_test_stage_uid,
-                            markers: testConfig.markers,
-                            setup: "${rackSpecifiersPath}.${setupKey}",
-                            setup_key: setupKey,
-                            specifier_lookup: specifierName,
-                        ]
-                    }
-                } else {
-                    // Has version level (e.g., ECAT_SETUP, ECAT_DEN_S_NET_E_SETUP)
-                    specifierData.each { version, versionData ->
-                        if (!versionData.containsKey("extra_data")) return
-                        def extraData = versionData.extra_data
-                        def setupPath
-                        def specifierLookup
-                        if (isContainer) {
-                            // SpecifierContainer: path includes part number
-                            if (version == "latest") {
-                                setupPath = "${rackSpecifiersPath}.${setupKey}@${specifierName}"
-                                specifierLookup = "${rackSpecifiersPath}.${setupKey}@${specifierName}"
-                            } else {
-                                setupPath = "${rackSpecifiersPath}.${setupKey}@${specifierName}@${version}"
-                                specifierLookup = "${rackSpecifiersPath}.${setupKey}@${specifierName}@${version}"
-                            }
-                        } else {
-                            // Direct specifier: path is just SETUP or SETUP@VERSION
-                            setupPath = (version == "latest")
-                                ? "${rackSpecifiersPath}.${setupKey}"
-                                : "${rackSpecifiersPath}.${setupKey}@${version}"
-                            specifierLookup = "${specifierName}@${version}"
-                        }
-                        extraData.test_configs.each { sessionName, testConfig ->
-                            entries << [
-                                sessionName: sessionName,
-                                stage_name: testConfig.stage_name,
-                                uid: testConfig.run_test_stage_uid,
-                                markers: testConfig.markers,
-                                setup: setupPath,
-                                setup_key: setupKey,
-                                specifier_lookup: specifierLookup,
-                            ]
-                        }
-                    }
-                }
+                versionedData.each { version, versionData ->
+                    // "" version → no suffix (unversioned specifier, e.g. Multislave)
+                    def versionTag = version ? "@${version}" : ""
+                    def setupPath = isContainer
+                        ? "${rackSpecifiersPath}.${setupKey}@${specifierName}${versionTag}"
+                        : "${rackSpecifiersPath}.${setupKey}${versionTag}"
+                    // specifierLookup identifies the specifier in shouldRunForSpecifier policy checks
+                    def specifierLookup = version ? "${specifierName}@${version}" : specifierName
 
-                entries.each { config ->
-                    def sessionName = config.sessionName
-                    def baseSession = baseSessions[sessionName]
-                    if (!baseSession) {
-                        this.pipeline.error("No base session found for group '${sessionName}'. Check that baseSessions contains all expected keys: ${baseSessions.keySet()}")
+                    versionData.extra_data.test_configs.each { sessionName, testConfig ->
+                        if (!sessionsByGroup.containsKey(sessionName)) sessionsByGroup[sessionName] = []
+                        sessionsByGroup[sessionName] << buildSession(
+                            baseSessions, sessionName, testConfig,
+                            setupPath, specifierLookup, rackSpecifiers[setupKey]
+                        )
                     }
-                    if (!sessionsByGroup.containsKey(sessionName)) {
-                        sessionsByGroup[sessionName] = []
-                    }
-                    def session = baseSession.override(
-                        uid: config.uid,
-                        markers: config.markers,
-                        setup: config.setup,
-                        stageName: config.stage_name
-                    )
-                    if (!(config.uid ==~ this.pipeline.params.run_test_stages)) {
-                        session.shouldRun = false
-                        session.skipReason = "uid '${config.uid}' does not match run_test_stages '${this.pipeline.params.run_test_stages}'"
-                    } else if (!this.shouldRunForSpecifier(config.specifier_lookup, rackSpecifiers[config.setup_key])) {
-                        session.shouldRun = false
-                        session.skipReason = "execution policy not satisfied for '${config.specifier_lookup}'"
-                    }
-                    sessionsByGroup[sessionName] << session
                 }
             }
         }
 
         return sessionsByGroup
+    }
+
+    /**
+     * Create a single TestSession from a test config entry, evaluate uid-regex and execution policy.
+     *
+     * @param baseSessions     Map<String, TestSession> keyed by session-group name
+     * @param sessionName      Key used to look up the base session in baseSessions
+     * @param testConfig       Map with uid, markers, stage_name from the exported specifier JSON
+     * @param setupPath        Full specifier path string passed to pytest via --setup
+     * @param specifierLookup  Identifier used to evaluate execution policy (e.g. "EVE-XCR-E@2.6.0")
+     * @param specifiers       Specifier data map for the current setup key (for policy evaluation)
+     * @return Configured TestSession with shouldRun and skipReason set
+     */
+    private TestSession buildSession(Map baseSessions, String sessionName, Map testConfig,
+                                     String setupPath, String specifierLookup, Map specifiers) {
+        def baseSession = baseSessions[sessionName]
+        if (!baseSession) {
+            this.pipeline.error("No base session found for group '${sessionName}'. Check that baseSessions contains all expected keys: ${baseSessions.keySet()}")
+        }
+        def session = baseSession.override(
+            uid: testConfig.run_test_stage_uid,
+            markers: testConfig.markers,
+            setup: setupPath,
+            stageName: testConfig.stage_name
+        )
+        if (!(testConfig.run_test_stage_uid ==~ this.pipeline.params.run_test_stages)) {
+            session.shouldRun = false
+            session.skipReason = "uid '${testConfig.run_test_stage_uid}' does not match run_test_stages '${this.pipeline.params.run_test_stages}'"
+        } else if (!this.shouldRunForSpecifier(specifierLookup, specifiers)) {
+            session.shouldRun = false
+            session.skipReason = "execution policy not satisfied for '${specifierLookup}'"
+        }
+        return session
     }
 
     /**
