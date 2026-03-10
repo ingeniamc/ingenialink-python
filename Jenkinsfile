@@ -1035,8 +1035,8 @@ class TestSession implements Serializable {
  * Usage pattern:
  *   1. Declare the group with a base session:
  *        TestGroup ECAT_TESTS = new TestGroup("ECAT_TEST_SESSIONS", HW_TEST_SESSIONS.override())
- *   2. Populate sessions from rack_specifiers JSON:
- *        testManager.buildTestSessions(rackSpecifiers, RACK_SPECIFIERS_PATH, [ECAT_TESTS, ...])
+ *   2. Export and populate sessions from the specifier module:
+ *        testManager.buildTestSessions(RACK_SPECIFIERS_PATH, [ECAT_TESTS, ...])
  *   3. Optionally append manually-managed sessions via addSession():
  *        ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests", params.run_test_stages)
  *   4. Gate the hardware node on the group and run all sessions:
@@ -1121,43 +1121,40 @@ class PyTestManager {
     }
 
     /**
-     * Export specifiers to JSON file.
-     * 
-     * This method exports a specifier module to a JSON file using the summit_testing_framework.helpers.export_specifiers_module module.
-     * The file is always created in the 'tests/setups/specifiers_json/' subdirectory of the working folder.
-     * 
-     * @param specifierModule Specifier module to export (e.g., "tests.setups.rack_specifiers.ECAT_SETUP").
-     * @param outputFileName Name of the output JSON file (default: "exported_specifiers.json")
-     * @param override Whether to override existing output file (default: true)
-     * @return Map of parsed specifiers, or null if no setups provided
+     * Export specifiers to JSON file and return parsed data.
+     *
+     * The output filename is derived from the last segment of specifierModule
+     * (e.g. "tests.setups.rack_specifiers" → "rack_specifiers.json") and the
+     * file is always stored under tests/setups/specifiers_json/ in the working folder.
+     * The file is copied back to the workspace if needed, archived as a build
+     * artifact, and the parsed map is returned. Always overwrites an existing file.
+     *
+     * @param specifierModule Specifier module to export (e.g., "tests.setups.rack_specifiers")
+     * @return Map of parsed specifiers
      */
-    Map exportSpecifiersModule(String specifierModule, String outputFileName = "exported_specifiers.json", boolean override = true) {
+    private Map exportSpecifiersModule(String specifierModule) {
+        def outputFileName = specifierModule.tokenize('.').last() + '.json'
         // Always save in tests/setups/specifiers_json/ subdirectory of working folder
         def workingFolder = this.venvManager.getWorkingFolder()
         def workingOutputFile = this.venvManager.joinPath(workingFolder, "tests", "setups", "specifiers_json", outputFileName)
-        
-        this.pipeline.echo "Exporting specifier module: ${specifierModule}"
-        this.pipeline.echo "Output file: ${workingOutputFile}"
-        
-        // Export specifiers
-        def overrideFlag = override ? "--override" : ""
+
+        this.pipeline.echo "Exporting '${specifierModule}' ${workingOutputFile}"
+
+        // Export specifiers (always override)
         this.venvManager.withPython(this.venvManager.default_python_version) { venv ->
-            venv.run("poetry run poe export_specifier_module -- --specifier_module ${specifierModule} --output_file ${workingOutputFile} --root_dir ${workingFolder} ${overrideFlag}")
+            venv.run("poetry run poe export_specifier_module -- --specifier_module ${specifierModule} --output_file ${workingOutputFile} --root_dir ${workingFolder} --override")
         }
-        
+
         // Copy from working folder to workspace if they're different
         if (workingFolder != this.pipeline.env.WORKSPACE) {
             this.venvManager.copyFromWorkingFolder("tests/setups/specifiers_json/${outputFileName}")
         }
-        
+
         // Archive the artifact from workspace
         this.pipeline.archiveArtifacts artifacts: "tests/setups/specifiers_json/${outputFileName}", allowEmptyArchive: true
 
-        def jsonPath = "${this.pipeline.env.WORKSPACE}/tests/setups/specifiers_json/${outputFileName}"
-        this.pipeline.echo "Specifiers exported to: ${jsonPath}"
-        
         // Load and return the parsed specifiers
-        return this.loadSpecifiers(jsonPath)
+        return this.loadSpecifiers("${this.pipeline.env.WORKSPACE}/tests/setups/specifiers_json/${outputFileName}")
     }
     
     /**
@@ -1376,21 +1373,25 @@ class PyTestManager {
     }
 
     /**
-     * Populate test sessions into each TestGroup from rack specifiers data.
+     * Export and parse a specifier module, then populate test sessions into the given TestGroups.
      *
-     * Sessions are created eagerly before any hardware node runs.
-     * Policy and uid-regex checks are evaluated here; every entry
-     * (including skipped ones) is retained so runTestStages() can mark them as skipped.
-     * Groups are modified in-place; additional sessions can be appended after this call.
+     * Exports the specifier module to a JSON artifact (filename derived from the module
+     * path's last segment), then creates TestSession objects eagerly before any hardware
+     * node runs. Policy and uid-regex checks are evaluated immediately; every entry
+     * (including sessions that will be skipped) is retained so runTestStages() can mark
+     * them correctly. Groups are modified in-place; additional sessions can be appended
+     * after this call.
      *
-     * @param rackSpecifiers      Parsed JSON map from exportSpecifiersModule
-     * @param rackSpecifiersPath  Module path prefix for setup path construction
-     * @param testGroups          List<TestGroup> to populate (modified in-place)
+     * @param specifierModule  Python module path to export (e.g. RACK_SPECIFIERS_PATH).
+     *                         Used both as the specifier source and as the module prefix
+     *                         for pytest --setup path construction.
+     * @param testGroups       List<TestGroup> to populate (modified in-place)
      */
-    void buildTestSessions(Map rackSpecifiers, String rackSpecifiersPath, List testGroups) {
+    void buildTestSessions(String specifierModule, List testGroups) {
+        def exportedSpecifiers = this.exportSpecifiersModule(specifierModule)
         def groupsByName = testGroups.collectEntries { [it.name, it] }
 
-        rackSpecifiers.each { setupKey, specifiers ->
+        exportedSpecifiers.each { setupKey, specifiers ->
             // A SpecifierContainer wraps multiple part numbers; a direct specifier exposes one.
             // This determines the pytest --setup path format:
             //   Container:         SETUP@PART_NUMBER@VERSION
@@ -1413,8 +1414,8 @@ class PyTestManager {
                     // https://novantamotion.atlassian.net/browse/CIT-612
                     def versionTag = (version && version != "latest") ? "@${version}" : ""
                     def setupPath = isContainer
-                        ? "${rackSpecifiersPath}.${setupKey}@${specifierName}${versionTag}"
-                        : "${rackSpecifiersPath}.${setupKey}${versionTag}"
+                        ? "${specifierModule}.${setupKey}@${specifierName}${versionTag}"
+                        : "${specifierModule}.${setupKey}${versionTag}"
                     def executionPolicy = versionData?.extra_data?.execution_policy
 
                     versionData.extra_data.test_configs.each { sessionName, testConfig ->
@@ -1472,10 +1473,6 @@ VEnvManager venvManager = new VEnvManager(
 )
 
 PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvManager)
-
-/* Variables to store parsed specifier data (populated during export stages) */
-Map virtualSpecifiers = null
-Map rackSpecifiers = null
 
 /* Define default base test sessions to be used/overridden in stages */
 TestSession TEST_SESSIONS = new TestSession(
@@ -1767,24 +1764,9 @@ pipeline {
                                                 venv.run("poetry run poe install-wheel")
                                             }
                                             
-                                            // Export specifiers and get the parsed data
-                                            // TODO do not export to json files and read them back
-                                            virtualSpecifiers = testManager.exportSpecifiersModule(
-                                                "tests.setups.virtual_drive_specifier",
-                                                "virtual_specifiers.json",
-                                                true
-                                            )
-
-                                            // Export rack specifiers
-                                            rackSpecifiers = testManager.exportSpecifiersModule(
-                                                RACK_SPECIFIERS_PATH,
-                                                "rack_specifiers.json",
-                                                true
-                                            )
-
-                                            // Populate TestGroup sessions (policy + uid-regex evaluated here)
-                                            testManager.buildTestSessions(rackSpecifiers, RACK_SPECIFIERS_PATH, [ECAT_TESTS, CAN_TESTS, ETH_TESTS])
-                                            testManager.buildTestSessions(virtualSpecifiers, "tests.setups.virtual_drive_specifier", [LINUX_DOCKER_TESTS])
+                                            // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here)
+                                            testManager.buildTestSessions(RACK_SPECIFIERS_PATH, [ECAT_TESTS, CAN_TESTS, ETH_TESTS])
+                                            testManager.buildTestSessions("tests.setups.virtual_drive_specifier", [LINUX_DOCKER_TESTS])
 
                                             // Pcap tests run on the EtherCAT machine — add manually since they're not in rack_specifiers
                                             ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests", params.run_test_stages)
