@@ -1404,8 +1404,14 @@ class PyTestManager {
                 def versionedData = specifierData.containsKey("extra_data") ? ["": specifierData] : specifierData
 
                 versionedData.each { version, versionData ->
-                    // "" version → no suffix (unversioned specifier, e.g. Multislave)
-                    def versionTag = version ? "@${version}" : ""
+                    // "" and "latest" both mean no version suffix.
+                    // "" covers unversioned specifiers (e.g. Multislave, where extra_data
+                    // sits directly under the specifier and gets normalised to version="").
+                    // "latest" covers virtual-drive specifiers whose JSON always carries a
+                    // "latest" key even though there is no real version to pin; appending
+                    // "@latest" to the setup path would produce an invalid import path.
+                    // https://novantamotion.atlassian.net/browse/CIT-612
+                    def versionTag = (version && version != "latest") ? "@${version}" : ""
                     def setupPath = isContainer
                         ? "${rackSpecifiersPath}.${setupKey}@${specifierName}${versionTag}"
                         : "${rackSpecifiersPath}.${setupKey}${versionTag}"
