@@ -2234,18 +2234,18 @@ install = ["zstandard (>=0.21.0)"]
 
 [[package]]
 name = "ping3"
-version = "4.0.3"
+version = "5.1.5"
 description = "A pure python3 version of ICMP ping implementation using raw socket."
 optional = false
-python-versions = ">=3"
+python-versions = ">=3.5"
 groups = ["main"]
 files = [
-    {file = "ping3-4.0.3-py3-none-any.whl", hash = "sha256:0d5d0920029ff513128c77705c616b93f506cafd363b3d498759e4399acc18f0"},
-    {file = "ping3-4.0.3.tar.gz", hash = "sha256:372a5c26c6aeebf5da310df7660ee6204146edc46f1bad19e349ae57cadb1d94"},
+    {file = "ping3-5.1.5-py3-none-any.whl", hash = "sha256:9503164d054b87b01a6bd0df83a49c29e7c8427eb06940f874ebd4ed2d8ba8f6"},
+    {file = "ping3-5.1.5.tar.gz", hash = "sha256:6c99bc844e0b7dbc5c9765e8b530140daf1ccd2112c99db01ab79831bd8081cd"},
 ]
 
 [package.extras]
-dev = ["build", "pycodestyle", "twine"]
+dev = ["build", "twine"]
 
 [[package]]
 name = "pip-system-certs"
@@ -4428,4 +4428,4 @@ virtual-drive = ["virtual_drive"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "c42c547f6836ef62f22ad2aa7bfaee5e2733cd2d55f5ae172d1206251cfc6e3a"
+content-hash = "196294b35372b31ed02ebb41c2a96c8b27ce45dc565b2f97c34ee174d8f1d3ed"
