@@ -15,7 +15,7 @@ from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILEcatStateError, ILError
-from ingenialink.pdo import PDOMap, RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
+from ingenialink.pdo import BIT_ENDIAN, PDOMap, RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.register import Register
 from ingenialink.servo import DictionaryFactory
 from ingenialink.utils._utils import convert_dtype_to_bytes, dtype_length_bits
@@ -687,7 +687,7 @@ def test_pdo_item_custom_size(open_dictionary):
         tpdo_item.value
     assert str(exc_info.value) == "Raw data is empty."
 
-    tpdo_item.raw_data_bits = bitarray("1001")
+    tpdo_item.raw_data_bits = bitarray("1001", endian=BIT_ENDIAN)
     assert tpdo_item.raw_data_bytes == b"\x09"
 
 
@@ -698,7 +698,7 @@ def test_pdo_item_custom_size_wrong_length(open_dictionary):
     tpdo_item = TPDOMapItem(register, size_bits=5)
 
     with pytest.raises(ILError) as exc_info:
-        tpdo_item.raw_data_bits = bitarray("1001")
+        tpdo_item.raw_data_bits = bitarray("1001", endian=BIT_ENDIAN)
 
     assert str(exc_info.value) == "Wrong size. Expected 5, obtained 4"
 
@@ -758,7 +758,7 @@ def test_map_pdo_with_bools(open_dictionary):
         rpdo_map.add_item(item)
 
     item1.value = 411601032
-    item2.raw_data_bits = bitarray("1011")
+    item2.raw_data_bits = bitarray("1011", endian=BIT_ENDIAN)
     item3.value = False
     item4.value = True
 
