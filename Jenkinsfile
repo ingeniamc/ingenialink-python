@@ -226,12 +226,6 @@ class TestSchedulePolicyManager implements Serializable {
     }
 }
 
-// Global policy manager instance - can be customized at pipeline start
-@groovy.transform.Field
-TestSchedulePolicyManager schedulePolicyManager = new TestSchedulePolicyManager()
-
-
-
 /**
  * VEnvManager - Manages Python virtual environments across Jenkins nodes
  * 
@@ -1125,6 +1119,8 @@ class TestGroup {
 class PyTestManager {
     private VEnvManager venvManager
     private def pipeline
+    /** Policy manager for schedule-based test gating (always, never, nightly, weekends, etc.) */
+    TestSchedulePolicyManager schedulePolicyManager = new TestSchedulePolicyManager()
     private List coverageStashes = []
     /** Calendar snapshot taken at construction time, used for schedule policy evaluation. */
     private Calendar triggerTime
@@ -1478,7 +1474,7 @@ class PyTestManager {
                             stageName: testConfig.stage_name
                         ]
                         if (executionPolicy) {
-                            def policyResult = this.pipeline.schedulePolicyManager.shouldRun(executionPolicy, this.pipeline, this.triggerTime)
+                            def policyResult = this.schedulePolicyManager.shouldRun(executionPolicy, this.pipeline, this.triggerTime)
                             if (!policyResult.result) {
                                 overrides.shouldRun = false
                                 overrides.skipReason = policyResult.reason
