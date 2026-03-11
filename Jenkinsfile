@@ -141,7 +141,9 @@ class TestSchedulePolicyManager implements Serializable {
             def calendar = triggerTime ?: Calendar.getInstance()
             def dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
             def isWeekend = dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY
-            def reason = isWeekend ? "" : "Policy 'weekends': today is not a weekend (dayOfWeek=${dayOfWeek})"
+            def reason = isWeekend
+                ? "Policy 'weekends': today is a weekend (dayOfWeek=${dayOfWeek})"
+                : "Policy 'weekends': today is not a weekend (dayOfWeek=${dayOfWeek})"
             return [result: isWeekend, reason: reason]
         }))
 
@@ -150,7 +152,9 @@ class TestSchedulePolicyManager implements Serializable {
             def calendar = triggerTime ?: Calendar.getInstance()
             def dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
             def isWeekday = dayOfWeek >= Calendar.MONDAY && dayOfWeek <= Calendar.FRIDAY
-            def reason = isWeekday ? "" : "Policy 'weekdays': today is not a weekday (dayOfWeek=${dayOfWeek})"
+            def reason = isWeekday
+                ? "Policy 'weekdays': today is a weekday (dayOfWeek=${dayOfWeek})"
+                : "Policy 'weekdays': today is not a weekday (dayOfWeek=${dayOfWeek})"
             return [result: isWeekday, reason: reason]
         }))
 
@@ -159,7 +163,9 @@ class TestSchedulePolicyManager implements Serializable {
             def calendar = triggerTime ?: Calendar.getInstance()
             def hourOfDay = calendar.get(Calendar.HOUR_OF_DAY)
             def isNightTime = hourOfDay >= this.nightTimeStartHour || hourOfDay < this.nightTimeEndHour
-            def reason = isNightTime ? "" : "Policy 'nightly': current time is not nightTime (hourOfDay=${hourOfDay}, nightTime is ${this.nightTimeStartHour}:00-${this.nightTimeEndHour}:00)"
+            def reason = isNightTime
+                ? "Policy 'nightly': current time is nightTime (hourOfDay=${hourOfDay}, nightTime is ${this.nightTimeStartHour}:00-${this.nightTimeEndHour}:00)"
+                : "Policy 'nightly': current time is not nightTime (hourOfDay=${hourOfDay}, nightTime is ${this.nightTimeStartHour}:00-${this.nightTimeEndHour}:00)"
             return [result: isNightTime, reason: reason]
         }))
     }
@@ -203,7 +209,7 @@ class TestSchedulePolicyManager implements Serializable {
      * @param pipeline Pipeline context (kept for custom policy compatibility; not used internally for logging)
      * @param triggerTime Calendar instance representing when the pipeline was triggered.
      *        If provided, time-based policies use this instead of the current time.
-     * @return Map [result: boolean, reason: String] — reason is non-empty when result is false
+     * @return Map [result: boolean, reason: String] — reason explains why the policy returned its result
      * @throws IllegalArgumentException if policy key is unknown
      */
     Map shouldRun(String policyKey, def pipeline = null, Calendar triggerTime = null) {
@@ -1079,6 +1085,9 @@ class TestGroup {
         if (!overrides.containsKey('uid') || !overrides.uid) {
             throw new IllegalArgumentException("addSession() requires a non-null 'uid' in overrides. Got: ${overrides}")
         }
+        if (!overrides.containsKey('stageName') || !overrides.stageName) {
+            throw new IllegalArgumentException("addSession() requires a non-null 'stageName' in overrides. Got: ${overrides}")
+        }
         def session = this.baseTestSession.override(overrides)
         def testSessionFilter = this.manager.testSessionFilter
         if (!(session.uid ==~ testSessionFilter)) {
@@ -1811,11 +1820,17 @@ pipeline {
                                             // Pcap tests run on the EtherCAT machine — add manually since they're not in rack_specifiers
                                             ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
 
-                                            // Linux no_pcap tests: markers are computed
+                                            // Linux pcap tests: runs pcap-marked tests that don't need hardware
+                                            LINUX_DOCKER_TESTS.addSession(
+                                                uid: "pcap",
+                                                markers: "pcap",
+                                                stageName: "Pcap Tests (Linux)")
+
+                                            // Linux unit tests: everything except hardware, virtual, and pcap
                                             LINUX_DOCKER_TESTS.addSession(
                                                 uid: "no_pcap",
-                                                markers: PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"]),
-                                                stageName: "Unit Tests (Linux no_pcap)")
+                                                markers: PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "pcap"]),
+                                                stageName: "Unit Tests (Linux)")
 
                                             testManager.echoTestGroupsSummary()
                                         }
