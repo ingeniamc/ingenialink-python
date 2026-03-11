@@ -1823,10 +1823,10 @@ pipeline {
                                                 markers: "pcap",
                                                 stageName: "Pcap Tests (Linux)")
 
-                                            // Linux unit tests: everything except hardware, virtual, and pcap
+                                            // Linux unit tests: everything that does not have a marker
                                             LINUX_DOCKER_TESTS.addSession(
                                                 uid: "no_pcap",
-                                                markers: PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "pcap"]),
+                                                markers: PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "pcap", "no_pcap"]),
                                                 stageName: "Unit Tests (Linux)")
 
                                             testManager.echoTestGroupsSummary()
