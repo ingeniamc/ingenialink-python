@@ -20,6 +20,7 @@ def BRANCH_NAME_MASTER = "master"
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 
 
+@groovy.transform.Field
 List wheel_stashes = []
 
 /* List of markers that require hardware */
@@ -1056,9 +1057,9 @@ class TestGroup {
     /** Ordered list of sessions to run; populated by buildTestSessions() and manual appends. */
     List<TestSession> sessions
     /** Back-reference to the PyTestManager that created this group */
-    private final def manager
+    private final PyTestManager manager
 
-    TestGroup(String name, TestSession baseTestSession, manager) {
+    TestGroup(String name, TestSession baseTestSession, PyTestManager manager) {
         this.name = name
         this.baseTestSession = baseTestSession
         this.sessions = []
@@ -1122,7 +1123,7 @@ class TestGroup {
 }
 
 class PyTestManager {
-    private def venvManager
+    private VEnvManager venvManager
     private def pipeline
     private List coverageStashes = []
     /** Calendar snapshot taken at construction time, used for schedule policy evaluation. */
