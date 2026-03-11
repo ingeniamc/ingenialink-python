@@ -1162,14 +1162,14 @@ files = [
 
 [[package]]
 name = "ingeniamotion"
-version = "0.10.1+develop.d202.g1cba071"
+version = "0.10.1.post238+develop.886f321"
 description = "Motion library for Novanta servo drives"
 optional = false
 python-versions = ">=3.9"
 groups = ["tests"]
 files = [
-    {file = "ingeniamotion-0.10.1+develop.d202.g1cba071-py3-none-any.whl", hash = "sha256:ed4e60f9ed66059786fd37682afa0667afa3cdbbecd92b64dde51f7a35c8c785"},
-    {file = "ingeniamotion-0.10.1+develop.d202.g1cba071.tar.gz", hash = "sha256:fa05317d46356540c50675dd5bc62769111fb3707f21e1abe5bde02fad217e56"},
+    {file = "ingeniamotion-0.10.1.post238+develop.886f321-py3-none-any.whl", hash = "sha256:ef15162ec4387d7b8723168ef9889138be3bfaed55965b1b0805f2164821ecf1"},
+    {file = "ingeniamotion-0.10.1.post238+develop.886f321.tar.gz", hash = "sha256:ec6ac3e4ca2d82582e1d84576c86ffb6e943e5a81590565f9266298cea55eba9"},
 ]
 
 [package.dependencies]
@@ -4419,4 +4419,4 @@ virtual-drive = ["virtual_drive"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "c42c547f6836ef62f22ad2aa7bfaee5e2733cd2d55f5ae172d1206251cfc6e3a"
+content-hash = "56c6da06adc5a67e7f762e143510d89e150f89a3c052969d1d9ca4e35dc7fa22"
