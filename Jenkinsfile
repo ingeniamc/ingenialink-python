@@ -93,29 +93,12 @@ class TestSchedulePolicyManager implements Serializable {
     /** Set of active run-policy tags for this build (e.g. "nightly", "weekend"). */
     Set<String> runPolicyTags = [] as Set
     
-    // Track if built-in policies have been registered
-    private boolean builtInPoliciesRegistered = false
-    
     TestSchedulePolicyManager() {
-        // Don't register built-in policies in constructor to avoid CPS transformation issues
-        // They will be registered lazily on first use
-    }
-    
-    /**
-     * Ensure built-in policies are registered (lazy initialization).
-     * Safe to call multiple times - only registers once.
-     */
-    private void ensureBuiltInPoliciesRegistered() {
-        if (this.builtInPoliciesRegistered) {
-            return
-        }
         registerBuiltInPolicies()
-        this.builtInPoliciesRegistered = true
     }
     
     /**
      * Register all built-in policies.
-     * Separated into a method for clarity and to allow re-registration when configuration changes.
      */
     private void registerBuiltInPolicies() {
         // Always policy - always returns true
@@ -166,9 +149,6 @@ class TestSchedulePolicyManager implements Serializable {
      * @throws IllegalArgumentException if policy key is unknown
      */
     Map shouldRun(String policyKey) {
-        // Ensure built-in policies are registered
-        ensureBuiltInPoliciesRegistered()
-
         def policy = this.policies[policyKey]
         if (!policy) {
             throw new IllegalArgumentException("Unknown policy: ${policyKey}")
