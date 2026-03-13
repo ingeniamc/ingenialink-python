@@ -6,162 +6,25 @@ def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
-LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.6"
-WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.7"
+def LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.6"
+def WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.7"
 def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
 
-DEFAULT_PYTHON_VERSION = "3.9"
+def DEFAULT_PYTHON_VERSION = "3.9"
 
-ALL_PYTHON_VERSIONS = ["3.9", "3.10", "3.11", "3.12"] as Set
-PYTHON_VERSION_MIN = "3.9"
-PYTHON_VERSION_MAX = "3.12"
+def ALL_PYTHON_VERSIONS = ["3.9", "3.10", "3.11", "3.12"] as Set
+def PYTHON_VERSION_MIN = "3.9"
+def PYTHON_VERSION_MAX = "3.12"
 
 def BRANCH_NAME_MASTER = "master"
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
-def RACK_SPECIFIERS_PATH = "tests.setups.rack_specifiers"
 
 
-wheel_stashes = []
+@groovy.transform.Field
+List wheel_stashes = []
 
 /* List of markers that require hardware */
 def HARDWARE_MARKERS = ["ethernet", "ethercat", "canopen", "multislave", "fsoe", "eoe"]
-
-/**
- * Arrange rack specifiers test configs by test session name.
- *
- * Processes the raw JSON specifiers map and groups test configurations by their
- * test session (e.g., "ECAT_TEST_SESSIONS", "CAN_TEST_SESSIONS", "ETH_TEST_SESSIONS").
- *
- * Each entry contains all information needed to generate a Jenkins test stage:
- * - stage_name: Display name (e.g., "EtherCAT Everest")
- * - uid: Unique stage identifier (e.g., "ethercat_everest")
- * - markers: Pytest marker expression (e.g., "ethercat")
- * - setup: Full setup path for pytest (e.g., "tests.setups.rack_specifiers.ECAT_SETUP@EVE-XCR-E")
- * - execution_policy: Schedule policy name (e.g., "always", "weekdays")
- * - setup_key: Key in rackSpecifiers map for shouldRunForSpecifier lookup
- * - specifier_lookup: First argument for shouldRunForSpecifier
- *
- * @param rackSpecifiers Parsed JSON map from exportSpecifiersModule
- * @param rackSpecifiersPath Module path prefix (e.g., "tests.setups.rack_specifiers")
- * @return Map<String, List<Map>> grouped by test session name
- */
-def arrangeTestConfigsBySession(Map rackSpecifiers, String rackSpecifiersPath) {
-    def testConfigsBySession = [:]
-
-    rackSpecifiers.each { setupKey, specifiers ->
-        // Determine if this setup key is a SpecifierContainer (multiple specifiers)
-        // or a direct specifier (single specifier with version_configs).
-        // This affects the setup path format:
-        //   - Container: SETUP@PART_NUMBER or SETUP@PART_NUMBER@VERSION
-        //   - Direct:    SETUP or SETUP@VERSION
-        def isContainer = specifiers.size() > 1
-
-        specifiers.each { specifierName, specifierData ->
-            if (specifierData.containsKey("extra_data")) {
-                // No version level (e.g., ECAT_MULTISLAVE_SETUP)
-                def extraData = specifierData.extra_data
-                def executionPolicy = extraData.execution_policy
-                extraData.test_configs.each { sessionName, testConfig ->
-                    if (!testConfigsBySession.containsKey(sessionName)) {
-                        testConfigsBySession[sessionName] = []
-                    }
-                    testConfigsBySession[sessionName] << [
-                        stage_name: testConfig.stage_name,
-                        uid: testConfig.run_test_stage_uid,
-                        markers: testConfig.markers,
-                        setup: "${rackSpecifiersPath}.${setupKey}",
-                        execution_policy: executionPolicy,
-                        setup_key: setupKey,
-                        specifier_lookup: specifierName,
-                    ]
-                }
-            } else {
-                // Has version level (e.g., ECAT_SETUP with "latest", ECAT_DEN_S_NET_E_SETUP with "PHASE1")
-                specifierData.each { version, versionData ->
-                    if (!versionData.containsKey("extra_data")) return
-                    def extraData = versionData.extra_data
-                    def executionPolicy = extraData.execution_policy
-                    extraData.test_configs.each { sessionName, testConfig ->
-                        if (!testConfigsBySession.containsKey(sessionName)) {
-                            testConfigsBySession[sessionName] = []
-                        }
-                        def setupPath
-                        def specifierLookup
-                        if (isContainer) {
-                            // SpecifierContainer: path is SETUP@PART_NUMBER or SETUP@PART_NUMBER@VERSION
-                            if (version == "latest") {
-                                setupPath = "${rackSpecifiersPath}.${setupKey}@${specifierName}"
-                                specifierLookup = "${rackSpecifiersPath}.${setupKey}@${specifierName}"
-                            } else {
-                                setupPath = "${rackSpecifiersPath}.${setupKey}@${specifierName}@${version}"
-                                specifierLookup = "${rackSpecifiersPath}.${setupKey}@${specifierName}@${version}"
-                            }
-                        } else {
-                            // Direct specifier: path is SETUP or SETUP@VERSION
-                            if (version == "latest") {
-                                setupPath = "${rackSpecifiersPath}.${setupKey}"
-                            } else {
-                                setupPath = "${rackSpecifiersPath}.${setupKey}@${version}"
-                            }
-                            specifierLookup = "${specifierName}@${version}"
-                        }
-                        testConfigsBySession[sessionName] << [
-                            stage_name: testConfig.stage_name,
-                            uid: testConfig.run_test_stage_uid,
-                            markers: testConfig.markers,
-                            setup: setupPath,
-                            execution_policy: executionPolicy,
-                            setup_key: setupKey,
-                            specifier_lookup: specifierLookup,
-                        ]
-                    }
-                }
-            }
-        }
-    }
-
-    return testConfigsBySession
-}
-
-/**
- * Generate hardware test sub-stages dynamically from test configuration data.
- *
- * Creates scripted pipeline stages for each test configuration entry. Each stage
- * checks if it should run based on the run_test_stages parameter and execution policy,
- * then runs the test session if applicable.
- *
- * @param pipeline The pipeline context (pass 'this' from Jenkinsfile)
- * @param testConfigs List of test configuration maps (from arrangeTestConfigsBySession)
- * @param baseSession Base TestSession to override for each test
- * @param testMgr PyTestManager instance
- * @param rackSpecs Raw rackSpecifiers map (for shouldRunForSpecifier)
- */
-def generateHwTestSubStages(def pipeline, List testConfigs, TestSession baseSession,
-                              def testMgr, Map rackSpecs) {
-    testConfigs.each { config ->
-        def uid = config.uid
-        def stageName = config.stage_name
-        def markers = config.markers
-        def setup = config.setup
-        def setupKey = config.setup_key
-        def specifierLookup = config.specifier_lookup
-
-        pipeline.stage(stageName) {
-            def shouldRun = (uid ==~ pipeline.params.run_test_stages) &&
-                testMgr.shouldRunForSpecifier(specifierLookup, rackSpecs[setupKey])
-            if (shouldRun) {
-                testMgr.runTestSession(baseSession.override(
-                    uid: uid,
-                    markers: markers,
-                    setup: setup
-                ))
-            } else {
-                pipeline.echo "Skipping ${stageName} (uid=${uid}): does not match run_test_stages pattern or execution policy."
-            }
-        }
-    }
-}
-
 
 def reassignFilePermissions() {
     if (isUnix()) {
@@ -184,14 +47,14 @@ def reassignFilePermissions() {
  */
 class TestSchedulePolicy implements Serializable {
     String key
-    Closure evaluator  // (pipeline, Calendar triggerTime) -> boolean
+    Closure evaluator  // (pipeline, Calendar triggerTime) -> [result: boolean, reason: String]
     
     TestSchedulePolicy(String key, Closure evaluator) {
         this.key = key
         this.evaluator = evaluator
     }
     
-    boolean evaluate(def pipeline, Calendar triggerTime = null) {
+    Map evaluate(def pipeline, Calendar triggerTime = null) {
         return this.evaluator.call(pipeline, triggerTime)
     }
 }
@@ -227,7 +90,8 @@ class TestSchedulePolicy implements Serializable {
  *    manager.registerPolicy(new TestSchedulePolicy("business_hours", { pipeline, triggerTime ->
  *        def calendar = triggerTime ?: Calendar.getInstance()
  *        def hour = calendar.get(Calendar.HOUR_OF_DAY)
- *        return hour >= 9 && hour < 17
+ *        def isBusinessHours = hour >= 9 && hour < 17
+ *        return [result: isBusinessHours, reason: isBusinessHours ? "" : "Not business hours (hour=${hour})"]
  *    }))
  */
 class TestSchedulePolicyManager implements Serializable {
@@ -265,60 +129,45 @@ class TestSchedulePolicyManager implements Serializable {
     private void registerBuiltInPolicies() {
         // Always policy - always returns true
         registerPolicy(new TestSchedulePolicy("always", { pipeline, triggerTime ->
-            return true
+            return [result: true, reason: "Policy 'always' is always enabled"]
         }))
-        
+
         // Never policy - never returns true
         registerPolicy(new TestSchedulePolicy("never", { pipeline, triggerTime ->
-            if (pipeline) {
-                pipeline.echo "Policy is 'never', skipping tests."
-            }
-            return false
+            return [result: false, reason: "Policy 'never' is always disabled"]
         }))
-        
+
         // Weekend policy - runs on Saturday and Sunday
         registerPolicy(new TestSchedulePolicy("weekends", { pipeline, triggerTime ->
             def calendar = triggerTime ?: Calendar.getInstance()
             def dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
             def isWeekend = dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY
-            if (pipeline) {
-                if (!isWeekend) {
-                    pipeline.echo "Today is not weekend (dayOfWeek=${dayOfWeek}), skipping tests."
-                } else {
-                    pipeline.echo "Today is weekend (dayOfWeek=${dayOfWeek}), running tests."
-                }
-            }
-            return isWeekend
+            def reason = isWeekend
+                ? "Policy 'weekends': today is a weekend (dayOfWeek=${dayOfWeek})"
+                : "Policy 'weekends': today is not a weekend (dayOfWeek=${dayOfWeek})"
+            return [result: isWeekend, reason: reason]
         }))
-        
+
         // Weekday policy - runs Monday through Friday
         registerPolicy(new TestSchedulePolicy("weekdays", { pipeline, triggerTime ->
             def calendar = triggerTime ?: Calendar.getInstance()
             def dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
             def isWeekday = dayOfWeek >= Calendar.MONDAY && dayOfWeek <= Calendar.FRIDAY
-            if (pipeline) {
-                if (!isWeekday) {
-                    pipeline.echo "Today is not weekday (dayOfWeek=${dayOfWeek}), skipping tests."
-                } else {
-                    pipeline.echo "Today is weekday (dayOfWeek=${dayOfWeek}), running tests."
-                }
-            }
-            return isWeekday
+            def reason = isWeekday
+                ? "Policy 'weekdays': today is a weekday (dayOfWeek=${dayOfWeek})"
+                : "Policy 'weekdays': today is not a weekday (dayOfWeek=${dayOfWeek})"
+            return [result: isWeekday, reason: reason]
         }))
-        
+
         // Nightly policy - runs during configured night hours
         registerPolicy(new TestSchedulePolicy("nightly", { pipeline, triggerTime ->
             def calendar = triggerTime ?: Calendar.getInstance()
             def hourOfDay = calendar.get(Calendar.HOUR_OF_DAY)
             def isNightTime = hourOfDay >= this.nightTimeStartHour || hourOfDay < this.nightTimeEndHour
-            if (pipeline) {
-                if (!isNightTime) {
-                    pipeline.echo "Current time is not nightTime (hourOfDay=${hourOfDay}), skipping tests."
-                } else {
-                    pipeline.echo "Current time is nightTime (hourOfDay=${hourOfDay}), running tests."
-                }
-            }
-            return isNightTime
+            def reason = isNightTime
+                ? "Policy 'nightly': current time is nightTime (hourOfDay=${hourOfDay}, nightTime is ${this.nightTimeStartHour}:00-${this.nightTimeEndHour}:00)"
+                : "Policy 'nightly': current time is not nightTime (hourOfDay=${hourOfDay}, nightTime is ${this.nightTimeStartHour}:00-${this.nightTimeEndHour}:00)"
+            return [result: isNightTime, reason: reason]
         }))
     }
     
@@ -358,13 +207,13 @@ class TestSchedulePolicyManager implements Serializable {
     /**
      * Check if tests should run based on the given policy key.
      * @param policyKey Policy key to evaluate
-     * @param pipeline Pipeline context for logging (optional)
+     * @param pipeline Pipeline context (kept for custom policy compatibility; not used internally for logging)
      * @param triggerTime Calendar instance representing when the pipeline was triggered.
      *        If provided, time-based policies use this instead of the current time.
-     * @return true if tests should run, false otherwise
+     * @return Map [result: boolean, reason: String] — reason explains why the policy returned its result
      * @throws IllegalArgumentException if policy key is unknown
      */
-    boolean shouldRun(String policyKey, def pipeline = null, Calendar triggerTime = null) {
+    Map shouldRun(String policyKey, def pipeline = null, Calendar triggerTime = null) {
         // Ensure built-in policies are registered
         ensureBuiltInPoliciesRegistered()
 
@@ -376,12 +225,6 @@ class TestSchedulePolicyManager implements Serializable {
         return policy.evaluate(pipeline, triggerTime)
     }
 }
-
-// Global policy manager instance - can be customized at pipeline start
-@groovy.transform.Field
-TestSchedulePolicyManager schedulePolicyManager = new TestSchedulePolicyManager()
-
-
 
 /**
  * VEnvManager - Manages Python virtual environments across Jenkins nodes
@@ -842,20 +685,22 @@ class TestSession implements Serializable {
     * Parent session (if any)
     * Ancestor from which the session was created via override()
     */
-    TestSession parent = null
+    private TestSession parent = null
 
     /**
      * Child sessions
      * Offspring sessions created via override()
      * Used to propagate configuration changes via setAttributeInCascade()
      */
-    List<TestSession> children = []
+    private List<TestSession> children = []
     
     /**
      * List of configuration attributes that can be set and cascaded to children.
      */
     private static final List<String> CONFIG_ATTRS = [
         'uid',
+        'shouldRun',
+        'skipReason',
         'runInVirtualEnvs',
         'markers',
         'testTimeoutMinutes',
@@ -872,7 +717,8 @@ class TestSession implements Serializable {
         'startWiresharkTimeoutS',
         'jobName',
         'setAttApiToken',
-        'enableFirmwareVersionCheck'
+        'enableFirmwareVersionCheck',
+        'stageName'
     ]
 
     /**
@@ -881,6 +727,26 @@ class TestSession implements Serializable {
      * Default: null
      */
     String uid = null
+
+    /**
+     * Display name for the Jenkins stage generated for this session.
+     * Used by runTestStages() as the stage label.
+     * Default: null
+     */
+    String stageName = null
+
+    /**
+     * Whether this session should be executed.
+     * Set to false when a policy or uid-regex check determines the session should be skipped.
+     * Default: true
+     */
+    Boolean shouldRun = true
+
+    /**
+     * Human-readable reason why this session is skipped (null when shouldRun is true).
+     * Default: null
+     */
+    String skipReason = null
 
     /**
      * Virtual environment names to run tests against.
@@ -1156,12 +1022,112 @@ class TestSession implements Serializable {
 
 }
 
+/**
+ * TestGroup - Named container for a set of TestSession objects that share a base configuration.
+ *
+ * A TestGroup ties together:
+ *  - A logical name that matches the key used in rack_specifiers test_configs
+ *    (e.g. "ECAT_TEST_SESSIONS", "CAN_TEST_SESSIONS", "ETH_TEST_SESSIONS").
+ *  - A base TestSession whose attributes are inherited by every session in the group.
+ *  - A list of TestSession objects (populated by PyTestManager.buildTestSessions() and
+ *    optionally extended manually for sessions not covered by rack_specifiers).
+ *
+ * Usage pattern:
+ *   1. Declare the group via the test manager (registers it for buildTestSessions):
+ *        TestGroup ECAT_TESTS = testManager.createGroup("ECAT_TEST_SESSIONS", HW_TEST_SESSIONS.override())
+ *   2. Export and populate sessions from the specifier module:
+ *        testManager.buildTestSessions("tests.setups.rack_specifiers")
+ *   3. Optionally append manually-managed sessions via addSession():
+ *        ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
+ *   4. Gate the hardware node on the group and run all sessions:
+ *        when { expression { ECAT_TESTS.anyShouldRun() } }
+ *        testManager.runTestStages(ECAT_TESTS)
+ */
+class TestGroup {
+    /** Key used to look up this group in rack_specifiers test_configs (e.g. "ECAT_TEST_SESSIONS"). */
+    final String name
+    /** Template session; every session in this group is derived via baseTestSession.override(). */
+    final TestSession baseTestSession
+    /** Ordered list of sessions to run; populated by buildTestSessions() and manual appends. */
+    List<TestSession> sessions
+    /** Back-reference to the PyTestManager that created this group */
+    private final PyTestManager manager
+
+    TestGroup(String name, TestSession baseTestSession, PyTestManager manager) {
+        this.name = name
+        this.baseTestSession = baseTestSession
+        this.sessions = []
+        this.manager = manager
+    }
+
+    /**
+     * Add a new session to this group, by creating a session from the baseTestSession and overriding it with the given attributes.   
+     *
+     * The 'overrides' map uses the same keys as TestSession.override() (e.g. uid, markers, setup,
+     * stageName, shouldRun, skipReason). Policy evaluation in buildTestSessions() is encoded
+     * by including shouldRun/skipReason in the map before calling this method.
+     *
+     * Usage examples:
+     *   // Manual session (always runs when uid matches):
+     *   ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
+     *
+     *   // Session with policy already evaluated (used by buildTestSessions()):
+     *   group.addSession(uid: ..., ..., shouldRun: false, skipReason: "...")
+     *
+     * @param overrides  Map of TestSession attribute overrides (must include at least 'uid')
+     */
+    void addSession(Map overrides) {
+        if (!overrides.containsKey('uid') || !overrides.uid) {
+            throw new IllegalArgumentException("addSession() requires a non-null 'uid' in overrides. Got: ${overrides}")
+        }
+        if (!overrides.containsKey('stageName') || !overrides.stageName) {
+            throw new IllegalArgumentException("addSession() requires a non-null 'stageName' in overrides. Got: ${overrides}")
+        }
+        def session = this.baseTestSession.override(overrides)
+        def testSessionFilter = this.manager.testSessionFilter
+        if (!(session.uid ==~ testSessionFilter)) {
+            session.shouldRun = false
+            session.skipReason = "uid '${session.uid}' does not match test_session_filter '${testSessionFilter}'"
+        }
+        this.sessions << session
+    }
+
+    /**
+     * Returns true if at least one session in this group has shouldRun == true.
+     * Used as the gate condition for allocating the hardware node.
+     */
+    boolean anyShouldRun() {
+        return this.sessions.any { it.shouldRun }
+    }
+
+    /**
+     * Returns a human-readable summary of the group and all its sessions.
+     * Includes run/skip status and the skip reason for excluded sessions.
+     */
+    String configSummary() {
+        def runCount = this.sessions.count { it.shouldRun }
+        def lines = ["TestGroup '${this.name}': ${this.sessions.size()} session(s), ${runCount} to run"]
+        this.sessions.each { session ->
+            def status = session.shouldRun ? 'run ' : 'skip'
+            def reason = session.shouldRun ? '' : " (${session.skipReason})"
+            lines << "  [${status}] ${session.stageName} [uid=${session.uid}]${reason}"
+        }
+        return lines.join('\n')
+    }
+}
+
 class PyTestManager {
-    private def venvManager
+    private VEnvManager venvManager
     private def pipeline
+    /** Policy manager for schedule-based test gating (always, never, nightly, weekends, etc.) */
+    TestSchedulePolicyManager schedulePolicyManager = new TestSchedulePolicyManager()
     private List coverageStashes = []
     /** Calendar snapshot taken at construction time, used for schedule policy evaluation. */
     private Calendar triggerTime
+    /** All TestGroups registered via createGroup(), keyed by group name; */
+    private Map registeredGroups = [:]
+    /** Regex pattern used to filter which test sessions run; matched against each session's uid. */
+    String testSessionFilter = '.*'
 
     PyTestManager(Map args = [pipeline: null, venvManager: null]) {
         this.venvManager = args.venvManager
@@ -1170,43 +1136,64 @@ class PyTestManager {
     }
 
     /**
-     * Export specifiers to JSON file.
-     * 
-     * This method exports a specifier module to a JSON file using the summit_testing_framework.helpers.export_specifiers_module module.
-     * The file is always created in the 'tests/setups/specifiers_json/' subdirectory of the working folder.
-     * 
-     * @param specifierModule Specifier module to export (e.g., "tests.setups.rack_specifiers.ECAT_SETUP").
-     * @param outputFileName Name of the output JSON file (default: "exported_specifiers.json")
-     * @param override Whether to override existing output file (default: true)
-     * @return Map of parsed specifiers, or null if no setups provided
+     * Create a TestGroup, register it for use by buildTestSessions(), and return it.
+     *
+     * All groups created this way are automatically considered when buildTestSessions() is
+     * called
+     *
+     * @param name            Key matching the session name in the specifier JSON (e.g. "ECAT_TEST_SESSIONS")
+     * @param baseTestSession Template session whose attributes are inherited by every session in the group
+     * @return The newly created TestGroup
      */
-    Map exportSpecifiersModule(String specifierModule, String outputFileName = "exported_specifiers.json", boolean override = true) {
+    TestGroup createGroup(String name, TestSession baseTestSession) {
+        def group = new TestGroup(name, baseTestSession, this)
+        this.registeredGroups[name] = group
+        return group
+    }
+
+    /**
+     * Echo a configSummary() for every registered TestGroup.
+     * Useful at the end of session preparation to give a readable overview of what will run.
+     */
+    void echoTestGroupsSummary() {
+        this.registeredGroups.each { name, group ->
+            this.pipeline.echo(group.configSummary())
+        }
+    }
+
+    /**
+     * Export specifiers to JSON file and return parsed data.
+     *
+     * The output filename is derived from the last segment of specifierModule
+     * (e.g. "tests.setups.rack_specifiers" → "rack_specifiers.json") and the
+     * file is always stored under tests/setups/specifiers_json/ in the working folder.
+     * The file is copied back to the workspace if needed, archived as a build
+     * artifact, and the parsed map is returned. Always overwrites an existing file.
+     *
+     * @param specifierModule Specifier module to export (e.g., "tests.setups.rack_specifiers")
+     * @return Map of parsed specifiers
+     */
+    private Map exportSpecifiersModule(String specifierModule) {
+        def outputFileName = specifierModule.tokenize('.').last() + '.json'
         // Always save in tests/setups/specifiers_json/ subdirectory of working folder
         def workingFolder = this.venvManager.getWorkingFolder()
         def workingOutputFile = this.venvManager.joinPath(workingFolder, "tests", "setups", "specifiers_json", outputFileName)
-        
-        this.pipeline.echo "Exporting specifier module: ${specifierModule}"
-        this.pipeline.echo "Output file: ${workingOutputFile}"
-        
-        // Export specifiers
-        def overrideFlag = override ? "--override" : ""
+
+        // Export specifiers (always override)
         this.venvManager.withPython(this.venvManager.default_python_version) { venv ->
-            venv.run("poetry run poe export_specifier_module -- --specifier_module ${specifierModule} --output_file ${workingOutputFile} --root_dir ${workingFolder} ${overrideFlag}")
+            venv.run("poetry run poe export_specifier_module -- --specifier_module ${specifierModule} --output_file ${workingOutputFile} --root_dir ${workingFolder} --override")
         }
-        
+
         // Copy from working folder to workspace if they're different
         if (workingFolder != this.pipeline.env.WORKSPACE) {
             this.venvManager.copyFromWorkingFolder("tests/setups/specifiers_json/${outputFileName}")
         }
-        
+
         // Archive the artifact from workspace
         this.pipeline.archiveArtifacts artifacts: "tests/setups/specifiers_json/${outputFileName}", allowEmptyArchive: true
 
-        def jsonPath = "${this.pipeline.env.WORKSPACE}/tests/setups/specifiers_json/${outputFileName}"
-        this.pipeline.echo "Specifiers exported to: ${jsonPath}"
-        
         // Load and return the parsed specifiers
-        return this.loadSpecifiers(jsonPath)
+        return this.loadSpecifiers("${this.pipeline.env.WORKSPACE}/tests/setups/specifiers_json/${outputFileName}")
     }
     
     /**
@@ -1220,103 +1207,11 @@ class PyTestManager {
             throw new Exception("Specifiers JSON file not found at ${jsonPath}. Cannot load specifiers.")
         }
         
-        this.pipeline.echo "Loading specifiers from: ${jsonPath}"
         def jsonText = this.pipeline.readFile(file: jsonPath)
         def specifiers = this.pipeline.readJSON(text: jsonText)
         return specifiers
     }
     
-    /**
-     * Check if tests should run for a specific specifier based on its execution policy.
-     * 
-     * @param specifierSetup The specifier setup string (e.g., "tests.setups.rack_specifiers.ECAT_SETUP@EVE-XCR-E")
-     * @param specifiers Map of parsed specifiers data
-     * @return true if tests should run, false otherwise
-     */
-    boolean shouldRunForSpecifier(String specifierSetup, Map specifiers) {
-        def specifierInfo = this.extractSpecifierInfo(specifierSetup)
-        if (!specifierInfo) {
-            this.pipeline.echo "No specifier found in setup '${specifierSetup}'. Defaulting to run tests."
-            return true
-        }
-        
-        def specifierName = specifierInfo.name
-        def specifierVersion = specifierInfo.version
-        
-        if (!specifiers.containsKey(specifierName)) {
-            throw new Exception("Specifier '${specifierName}' not found in specifiers JSON.")
-        }
-        
-        def specifier = specifiers[specifierName]
-        def versionData = specifier?.get(specifierVersion)
-        def executionPolicy = null
-        
-        if (!versionData) {
-            // Try non-versioned structure: check if execution_policy is directly in specifier - ONLY MULTIDRIVE
-            executionPolicy = specifier?.extra_data?.execution_policy
-            if (!executionPolicy) {
-                throw new Exception("Version '${specifierVersion}' for specifier '${specifierName}' not found in specifiers JSON, and no execution policy found at specifier level.")
-            }
-            this.pipeline.echo "Using non-versioned execution policy '${executionPolicy}' for specifier '${specifierName}'"
-        } else {
-            // Versioned structure exists
-            executionPolicy = versionData?.extra_data?.execution_policy
-            if (!executionPolicy) {
-                this.pipeline.echo "No execution policy found for specifier '${specifierName}@${specifierVersion}'. Defaulting to run tests."
-                return true
-            }
-            this.pipeline.echo "Checking execution policy '${executionPolicy}' for specifier '${specifierName}@${specifierVersion}'"
-        }
-        
-        return this.pipeline.schedulePolicyManager.shouldRun(executionPolicy, this.pipeline, this.triggerTime)
-    }
-    
-    /**
-     * Extract the specifier name and version from a setup string.
-     * Examples:
-     *   "tests.setups.rack_specifiers.ECAT_SETUP@EVE-XCR-E" -> [name: "EVE-XCR-E", version: "latest"]
-     *   "tests.setups.rack_specifiers.ECAT_SETUP@CAP-XCR-E@2.0.0" -> [name: "CAP-XCR-E", version: "2.0.0"]
-     *   "DEN-S-NET-E@PHASE1" -> [name: "DEN-S-NET-E", version: "PHASE1"]
-     *   "tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_SETUP" -> [name: "tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_SETUP", version: "latest"]
-     * 
-     * @param setupString The setup string to parse
-     * @return Map with 'name' and 'version' keys, or null if setup is not defined
-     */
-    private Map extractSpecifierInfo(String setupString) {
-        if (!setupString) {
-            return null
-        }
-        
-        // If no @ symbol, use the entire string as the name
-        if (!setupString.contains('@')) {
-            return [
-                name: setupString,
-                version: "latest"
-            ]
-        }
-        
-        // Split by @ to get parts
-        def parts = setupString.split('@')
-        if (parts.size() < 2) {
-            return null
-        }
-        
-        // Check if parts[0] contains a dot - if not, it's a direct specifier name
-        if (!parts[0].contains('.')) {
-            // Direct specifier format: "DEN-S-NET-E@PHASE1"
-            return [
-                name: parts[0],
-                version: parts[1]
-            ]
-        }
-        
-        // Setup path format: "tests.setups.rack_specifiers.ECAT_SETUP@EVE-XCR-E"
-        return [
-            name: parts[1],
-            version: parts.size() > 2 ? parts[2] : "latest"
-        ]
-    }
-
     /**
      * Unstashes all coverage files.
      * 
@@ -1514,6 +1409,105 @@ class PyTestManager {
             }
         }
     }
+
+    /**
+     * Export and parse a specifier module, then populate test sessions into all registered TestGroups.
+     *
+     * Exports the specifier module to a JSON artifact (filename derived from the module
+     * path's last segment), then creates TestSession objects eagerly before any hardware
+     * node runs. Policy and uid-regex checks are evaluated immediately; every entry
+     * (including sessions that will be skipped) is retained so runTestStages() can mark
+     * them correctly. Only registered groups (created via createGroup()) are considered;
+     * additional sessions can be appended via group.addSession() after this call.
+     *
+     * @param specifierModule  Python module path to export
+     *                         (e.g. "tests.setups.rack_specifiers").    
+     */
+    void buildTestSessions(String specifierModule) {
+        def exportedSpecifiers = this.exportSpecifiersModule(specifierModule)
+
+        exportedSpecifiers.each { setupKey, specifiers ->
+            // A SpecifierContainer wraps multiple part numbers; a direct specifier exposes one.
+            // This determines the pytest --setup path format:
+            //   Container:         SETUP@PART_NUMBER@VERSION
+            //   Direct specifier:  SETUP@VERSION  (no part-number segment)
+            boolean isContainer = specifiers.size() > 1
+
+            specifiers.each { specifierName, specifierData ->
+                // Normalise no-version specifiers (extra_data at the specifier level, no version key)
+                // to version "" so the loop below works uniformly for both versioned and unversioned.
+                // https://novantamotion.atlassian.net/browse/CIT-612
+                def versionedData = specifierData.containsKey("extra_data") ? ["": specifierData] : specifierData
+
+                versionedData.each { version, versionData ->
+                    // "" and "latest" both mean no version suffix.
+                    // "" covers unversioned specifiers (e.g. Multislave, where extra_data
+                    // sits directly under the specifier and gets normalised to version="").
+                    // "latest" covers virtual-drive specifiers whose JSON always carries a
+                    // "latest" key even though there is no real version to pin; appending
+                    // "@latest" to the setup path would produce an invalid import path.
+                    // https://novantamotion.atlassian.net/browse/CIT-612
+                    def versionTag = (version && version != "latest") ? "@${version}" : ""
+                    def setupPath = isContainer
+                        ? "${specifierModule}.${setupKey}@${specifierName}${versionTag}"
+                        : "${specifierModule}.${setupKey}${versionTag}"
+                    def executionPolicy = versionData?.extra_data?.execution_policy
+
+                    def testConfigs = versionData?.extra_data?.test_configs
+                    if (!testConfigs) {
+                        this.pipeline.error(
+                            "Missing 'extra_data.test_configs' for specifier '${specifierName}' "
+                            + "(version='${version}') in setup '${setupKey}'. "
+                            + "Ensure the specifier JSON contains extra_data with test_configs."
+                        )
+                    }
+
+                    testConfigs.each { sessionName, testConfig ->
+                        def group = this.registeredGroups[sessionName]
+                        if (!group) {
+                            this.pipeline.error("No TestGroup found for session name '${sessionName}'. Available groups: ${this.registeredGroups.keySet()}")
+                        }
+                        def overrides = [
+                            uid: testConfig.run_test_stage_uid,
+                            markers: testConfig.markers,
+                            setup: setupPath,
+                            stageName: testConfig.stage_name
+                        ]
+                        if (executionPolicy) {
+                            def policyResult = this.schedulePolicyManager.shouldRun(executionPolicy, this.pipeline, this.triggerTime)
+                            if (!policyResult.result) {
+                                overrides.shouldRun = false
+                                overrides.skipReason = policyResult.reason
+                            }
+                        }
+                        group.addSession(overrides)
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Run hardware test stages from pre-built TestSession objects.
+     *
+     * Each session produces exactly one Jenkins stage. Sessions with shouldRun==false
+     * are marked with Utils.markStageSkippedForConditional() so they appear grey
+     * (skipped) in the Jenkins UI rather than green (passed).
+     *
+     * @param group  TestGroup whose sessions will be run
+     */
+    def runTestStages(TestGroup group) {
+        group.sessions.each { session ->
+            this.pipeline.stage(session.stageName) {
+                if (session.shouldRun) {
+                    this.runTestSession(session)
+                } else {
+                    this.pipeline.echo "Skipped: ${session.skipReason}"
+                    org.jenkinsci.plugins.pipeline.modeldefinition.Utils.markStageSkippedForConditional(session.stageName)
+                }
+            }
+        }
+    }
 }
 
 VEnvManager venvManager = new VEnvManager(
@@ -1523,11 +1517,6 @@ VEnvManager venvManager = new VEnvManager(
 )
 
 PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvManager)
-
-/* Variables to store parsed specifier data (populated during export stages) */
-Map virtualSpecifiers = null
-Map rackSpecifiers = null
-Map testConfigsBySession = null
 
 /* Define default base test sessions to be used/overridden in stages */
 TestSession TEST_SESSIONS = new TestSession(
@@ -1540,13 +1529,14 @@ TestSession TEST_SESSIONS = new TestSession(
     setAttApiToken: true
 )
 TestSession HW_TEST_SESSIONS = TEST_SESSIONS.override()
-TestSession CAN_TEST_SESSIONS = HW_TEST_SESSIONS.override()
-TestSession ETH_TEST_SESSIONS = HW_TEST_SESSIONS.override() // Wireshark logging is injected later based on parameter
-TestSession ECAT_TEST_SESSIONS = HW_TEST_SESSIONS.override() // Wireshark logging is injected later based on parameter
+TestGroup CAN_TESTS = testManager.createGroup("CAN_TEST_SESSIONS", HW_TEST_SESSIONS.override())
+TestGroup ETH_TESTS = testManager.createGroup("ETH_TEST_SESSIONS", HW_TEST_SESSIONS.override()) // Wireshark logging is injected later based on parameter
+TestGroup ECAT_TESTS = testManager.createGroup("ECAT_TEST_SESSIONS", HW_TEST_SESSIONS.override()) // Wireshark logging is injected later based on parameter
+TestGroup LINUX_DOCKER_TESTS = testManager.createGroup("LINUX_DOCKER_TEST_SESSIONS", TEST_SESSIONS.override())
 
 
 /* Build develop everyday 3 times starting at 19:00 UTC (21:00 Barcelona Time), running all tests */
-CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * * % PYTHON_VERSIONS=All''' : ""
+def CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * * % PYTHON_VERSIONS=All''' : ""
 
 pipeline {
     agent none
@@ -1581,8 +1571,8 @@ pipeline {
                 'ethernet_everest',
                 'ethernet_capitan',
             ],
-            name: 'run_test_stages',
-            description: 'Regex pattern for which testing stage or substage to run (e.g. "fsoe.*", "ethercat_everest", ".*" for all)'
+            name: 'test_session_filter',
+            description: 'Regex pattern for which test sessions to run (e.g. "fsoe.*", "ethercat_everest", ".*" for all)'
         )
         booleanParam(name: 'WIRESHARK_LOGGING', defaultValue: false, description: 'Enable Wireshark logging')
         choice(
@@ -1624,12 +1614,14 @@ pipeline {
                     )
 
                     // Configure if ECAT and ETH sessions use Wireshark logging based on parameter
-                    ECAT_TEST_SESSIONS.setAttributeInCascade(
+                    ECAT_TESTS.baseTestSession.setAttributeInCascade(
                         useWiresharkLogging: params.WIRESHARK_LOGGING,
                     )
-                    ETH_TEST_SESSIONS.setAttributeInCascade(
+                    ETH_TESTS.baseTestSession.setAttributeInCascade(
                         useWiresharkLogging: params.WIRESHARK_LOGGING,
                     )
+
+                    testManager.testSessionFilter = params.test_session_filter
 
                     echo("Test sessions have been configured to run with the following base configuration:\n${TEST_SESSIONS.configSummary()}")
                 }
@@ -1733,7 +1725,7 @@ pipeline {
                                 stage('Run unit tests (no-pcap) tests on docker') {
                                     when {
                                         expression {
-                                            "no_pcap" ==~ params.run_test_stages
+                                            "no_pcap" ==~ params.test_session_filter
                                         }
                                     }
                                     steps {
@@ -1810,7 +1802,7 @@ pipeline {
                                         }
                                     }
                                 }
-                                stage('Export Specifiers to JSON') {
+                                stage('Prepare test sessions') {
                                     steps {
                                         script {
                                             // Install wheel first (needed for summit_testing_framework to import ingenialink)
@@ -1818,74 +1810,39 @@ pipeline {
                                                 venv.run("poetry run poe install-wheel")
                                             }
                                             
-                                            // Export specifiers and get the parsed data
-                                            virtualSpecifiers = testManager.exportSpecifiersModule(
-                                                "tests.setups.virtual_drive_specifier",
-                                                "virtual_specifiers.json",
-                                                true
-                                            )
+                                            // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here)
+                                            testManager.buildTestSessions("tests.setups.rack_specifiers")
+                                            testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
 
-                                            // Export rack specifiers
-                                            rackSpecifiers = testManager.exportSpecifiersModule(
-                                                RACK_SPECIFIERS_PATH,
-                                                "rack_specifiers.json",
-                                                true
-                                            )
+                                            // Pcap tests run on the EtherCAT machine — add manually since they're not in rack_specifiers
+                                            ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
 
-                                            // Arrange test configs by session for automatic stage generation
-                                            testConfigsBySession = arrangeTestConfigsBySession(rackSpecifiers, RACK_SPECIFIERS_PATH)
-                                            echo "Test configs arranged by session: ${testConfigsBySession.keySet()}"
-                                            testConfigsBySession.each { sessionName, configs ->
-                                                echo "  ${sessionName}: ${configs.collect { it.uid }}"
-                                            }
+                                            // Linux pcap tests: runs pcap-marked tests that don't need hardware
+                                            LINUX_DOCKER_TESTS.addSession(
+                                                uid: "pcap",
+                                                markers: "pcap",
+                                                stageName: "Pcap Tests (Linux)")
+
+                                            // Linux unit tests: everything that does not have a marker
+                                            LINUX_DOCKER_TESTS.addSession(
+                                                uid: "no_pcap",
+                                                markers: PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "pcap", "no_pcap"]),
+                                                stageName: "Unit Tests (Linux)")
+
+                                            testManager.echoTestGroupsSummary()
                                         }
                                     }
                                 }
-                                stage('Run unit tests on linux docker') {
-                                    when{
-                                        expression {
-                                            def shouldRun = "pcap" ==~ params.run_test_stages &&
-                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers["VIRTUAL_DRIVE_ETHERNET_SETUP"])
-                                            return shouldRun
-                                        }
-                                    }
-                                    steps {
-                                        script {
-                                            def lin_marker = PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "no_pcap"])
-                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "pcap", markers: lin_marker))
-                                        }
-                                    }
-                                    post {
-                                        always {
-                                            script {
-                                                venvManager.copyFromWorkingFolder("pytest_reports/")
-                                            }
-                                            junit 'pytest_reports/*.xml'
-                                        }
-                                    }
-                                }
-                                stage('Run virtual drive tests on docker') {
+                                stage('Run Linux Docker tests') {
                                     when {
-                                        expression {
-                                            def shouldRun = "virtual_drive_tests" ==~ params.run_test_stages  &&
-                                                testManager.shouldRunForSpecifier("virtual_drive", virtualSpecifiers["VIRTUAL_DRIVE_ETHERNET_SETUP"])
-                                            return shouldRun
-                                        }
+                                        expression { LINUX_DOCKER_TESTS.anyShouldRun() }
                                     }
                                     steps {
                                         script {
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "virtual_drive", markers: 'virtual', setup: 'tests.setups.virtual_drive_specifier.VIRTUAL_DRIVE_ETHERNET_SETUP'))
-                                        }
-                                    }
-                                    post {
-                                        always {
-                                            script {
-                                                venvManager.copyFromWorkingFolder("pytest_reports/")
-                                            }
-                                            junit 'pytest_reports/*.xml'
+                                            testManager.runTestStages(LINUX_DOCKER_TESTS)
                                         }
                                     }
                                 }
@@ -1955,8 +1912,7 @@ pipeline {
                         beforeOptions true
                         beforeAgent true
                         expression {
-                          def ecatUids = testConfigsBySession?.ECAT_TEST_SESSIONS?.collect { it.uid } ?: []
-                          (ecatUids + ["pcap"]).any { it ==~ params.run_test_stages }
+                            ECAT_TESTS.anyShouldRun()
                         }
                     }
                     options {
@@ -1980,31 +1936,16 @@ pipeline {
                             steps {
                                 script {
                                     venvManager.createPoetryEnvironments(
-                                        pythonVersions: venvManager.defaultVenvNamesToVersion(ECAT_TEST_SESSIONS.runInVirtualEnvs),
+                                        pythonVersions: venvManager.defaultVenvNamesToVersion(ECAT_TESTS.baseTestSession.runInVirtualEnvs),
                                         additionalCommands: ["poetry run poe install-wheel"]
                                     )
-                                }
-                            }
-                        }
-                        stage('Pcap Tests') {
-                            when {
-                                expression {
-                                    "pcap" ==~ params.run_test_stages
-                                }
-                            }
-                            steps {
-                                /* Windows docker did not have npcap/winpcap installed so tests that require pcap are
-                                run on ethercat machine */
-                                script {
-                                    testManager.runTestSession(ETH_TEST_SESSIONS.override(uid: "pcap", markers: "pcap"))
                                 }
                             }
                         }
                         stage('Run EtherCAT Tests') {
                             steps {
                                 script {
-                                    def ecatConfigs = testConfigsBySession?.ECAT_TEST_SESSIONS ?: []
-                                    generateHwTestSubStages(this, ecatConfigs, ECAT_TEST_SESSIONS, testManager, rackSpecifiers)
+                                    testManager.runTestStages(ECAT_TESTS)
                                 }
                             }
                         }
@@ -2015,9 +1956,7 @@ pipeline {
                         beforeOptions true
                         beforeAgent true
                         expression {
-                          def canUids = testConfigsBySession?.CAN_TEST_SESSIONS?.collect { it.uid } ?: []
-                          def ethUids = testConfigsBySession?.ETH_TEST_SESSIONS?.collect { it.uid } ?: []
-                          (canUids + ethUids).any { it ==~ params.run_test_stages }
+                            CAN_TESTS.anyShouldRun() || ETH_TESTS.anyShouldRun()
                         }
                     }
                     options {
@@ -2050,10 +1989,8 @@ pipeline {
                         stage('Run CANopen/Ethernet Tests') {
                             steps {
                                 script {
-                                    def canConfigs = testConfigsBySession?.CAN_TEST_SESSIONS ?: []
-                                    def ethConfigs = testConfigsBySession?.ETH_TEST_SESSIONS ?: []
-                                    generateHwTestSubStages(this, canConfigs, CAN_TEST_SESSIONS, testManager, rackSpecifiers)
-                                    generateHwTestSubStages(this, ethConfigs, ETH_TEST_SESSIONS, testManager, rackSpecifiers)
+                                    testManager.runTestStages(CAN_TESTS)
+                                    testManager.runTestStages(ETH_TESTS)
                                 }
                             }
                         }
