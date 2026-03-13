@@ -1058,7 +1058,8 @@ class EthercatNetwork(EthercatNetworkBase):
 
         """
         self._ecat_master.read_state()
-        if self._ecat_master.state == pysoem.PREOP_STATE:
+        all_servos_have_refs = all(s.slave_exists for s in self.servos)
+        if self._ecat_master.state == pysoem.PREOP_STATE and all_servos_have_refs:
             return True
         self.__init_nodes()
         if not self.servos:

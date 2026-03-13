@@ -490,6 +490,36 @@ def test_stop_pdos_skips_disconnected_slaves(pysoem_mock_network, mocker):  # no
     net.close_ecat_master()
 
 
+@pytest.mark.pcap
+def test_recover_from_disconnection_does_not_shortcut_when_slave_ref_cleared(
+    pysoem_mock_network,  # noqa: ARG001
+):
+    """Test that recover_from_disconnection() does not return True when a slave ref is missing.
+
+    The master can report PREOP_STATE while a slave reference has been cleared by a
+    previous failed config_init(). Without the fix, the PREOP shortcut would return True
+    (false positive), leading to a bounce loop when the reconnect task fails.
+    """
+    net = EthercatNetwork("dummy_ifname")
+    servo = net.connect_to_slave(
+        slave_id=1,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+    assert servo.slave_exists is True
+
+    # Simulate a previous failed config_init(): slave reference is cleared
+    servo.update_slave_reference(None)
+    assert servo.slave_exists is False
+
+    # Master reports PREOP state (the shortcut path)
+    net._ecat_master.state = pysoem.PREOP_STATE
+
+    # Should NOT return True — slave refs are invalid despite master being in PREOP
+    assert net.recover_from_disconnection() is False
+
+    net.close_ecat_master()
+
+
 def test_gil_configuration():
     gil_config_1 = GilReleaseConfig.always()
     assert all([
