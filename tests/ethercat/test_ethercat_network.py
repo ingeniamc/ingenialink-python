@@ -465,6 +465,31 @@ def test_disconnect_from_slave_with_non_existent_slave(pysoem_mock_network):
     assert net._EthercatNetwork__is_master_running is False
 
 
+@pytest.mark.pcap
+def test_stop_pdos_skips_disconnected_slaves(pysoem_mock_network, mocker):  # noqa: ARG001
+    """Test that stop_pdos() skips slaves in NONE_STATE and does not call __init_nodes().
+
+    When a slave is physically disconnected, its state transitions to NONE_STATE.
+    stop_pdos() must not attempt to change state or call __init_nodes() for such slaves —
+    doing so would clear slave references and prevent reconnection detection.
+    """
+    net = EthercatNetwork("dummy_ifname")
+    servo = net.connect_to_slave(
+        slave_id=1,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+    assert servo.slave_exists is True
+
+    # Simulate disconnection: slave transitions to NONE_STATE
+    servo.slave.state = pysoem.NONE_STATE
+
+    init_nodes_mock = mocker.patch.object(net, "_EthercatNetwork__init_nodes")
+    net.stop_pdos()
+
+    init_nodes_mock.assert_not_called()
+    net.close_ecat_master()
+
+
 def test_gil_configuration():
     gil_config_1 = GilReleaseConfig.always()
     assert all([

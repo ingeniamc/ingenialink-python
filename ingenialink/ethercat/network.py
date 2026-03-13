@@ -700,7 +700,10 @@ class EthercatNetwork(EthercatNetworkBase):
             return
         self._ecat_master.read_state()
         restore_servos_list = [
-            servo for servo in self.servos if servo.slave.state != pysoem.PREOP_STATE
+            servo
+            for servo in self.servos
+            if servo.slave_exists
+            and servo.slave.state not in (pysoem.PREOP_STATE, pysoem.NONE_STATE)
         ]
         if len(restore_servos_list) == 0:
             return
