@@ -141,8 +141,22 @@ class NetStatusListener(Thread):
 
         This method checks the status of all servos in the network and notifies
         subscribers of any state changes (connection/disconnection).
+
+        The method is split into four phases:
+
+        1. Detect newly disconnected slaves and emit REMOVED events.
+        2. Check whether any slave still needs recovery; return early if not.
+        3. Attempt a single network-wide recovery (avoid redundant config_init calls).
+        4. Emit ADDED for each slave that is actually alive after the recovery.
+
+        Separating detection from recovery ensures that recovery is retried even
+        when a previous failed attempt left slave references cleared
+        (``slave_exists=False``), because the gate is ``servo_state==DISCONNECTED``
+        rather than ``is_servo_alive``.
         """
         self._ecat_master.read_state()
+
+        # Phase 1: per-slave disconnection detection
         for servo in self.__network.servos:
             slave_id = servo.slave_id
             servo_state = self.__network.get_servo_state(slave_id)
@@ -150,11 +164,24 @@ class NetStatusListener(Thread):
             if not is_servo_alive and servo_state == NetState.CONNECTED:
                 self.__network._notify_status(slave_id, NetDevEvt.REMOVED)
                 self.__network._set_servo_state(slave_id, NetState.DISCONNECTED)
-            if (
-                is_servo_alive
-                and servo_state == NetState.DISCONNECTED
-                and self.__network.recover_from_disconnection()
-            ):
+
+        # Phase 2: skip recovery if every slave is already connected
+        if not any(
+            self.__network.get_servo_state(servo.slave_id) == NetState.DISCONNECTED
+            for servo in self.__network.servos
+        ):
+            return
+
+        # Phase 3: network-wide recovery attempt
+        if not self.__network.recover_from_disconnection():
+            return
+
+        # Phase 4: emit ADDED only for slaves that are actually alive after recovery
+        for servo in self.__network.servos:
+            slave_id = servo.slave_id
+            servo_state = self.__network.get_servo_state(slave_id)
+            is_servo_alive = servo.slave_exists and (servo.slave.state != pysoem.NONE_STATE)
+            if is_servo_alive and servo_state == NetState.DISCONNECTED:
                 self.__network._notify_status(slave_id, NetDevEvt.ADDED)
                 self.__network._set_servo_state(slave_id, NetState.CONNECTED)
 
