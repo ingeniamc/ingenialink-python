@@ -90,7 +90,6 @@ class PDONetworkManager:
                         self._net.send_receive_processdata(self._refresh_rate)
                 except ILWrongWorkingCountError as il_error:
                     self._pd_thread_stop_event.set()
-                    self._net.stop_pdos()
                     duration_error = (
                         (
                             f"Last iteration took {iteration_duration * 1000:0.1f} ms which is "
@@ -106,10 +105,10 @@ class PDONetworkManager:
                     )
                     self._notify_exceptions(
                         ILError(
-                            "Stopping the PDO thread due to the following exception:"
-                            f" {il_error} {duration_error}"
+                            f"PDO exchange error (wrong working count): {il_error} {duration_error}"
                         )
                     )
+                    # stop_pdos() will be indirectly called through _pdo_thread_exception_handler
                 except Exception as il_error:
                     self._pd_thread_stop_event.set()
                     if first_iteration:
