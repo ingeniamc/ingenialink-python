@@ -33,132 +33,6 @@ def reassignFilePermissions() {
 }
 
 /**
- * TestSchedulePolicy - Represents a single scheduling policy
- * 
- * A policy consists of:
- * - A unique key/name
- * - An evaluator closure that determines if tests should run
- * 
- * Usage:
- *    def policy = new TestSchedulePolicy("business_hours", {
- *        def hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
- *        return hour >= 9 && hour < 17
- *    })
- */
-class TestSchedulePolicy implements Serializable {
-    String key
-    Closure evaluator  // () -> [result: boolean, reason: String]
-    
-    TestSchedulePolicy(String key, Closure evaluator) {
-        this.key = key
-        this.evaluator = evaluator
-    }
-    
-    Map evaluate() {
-        return this.evaluator.call()
-    }
-}
-
-/**
- * TestSchedulePolicyManager - Registry and manager for scheduling policies
- * 
- * This class manages multiple scheduling policies and provides policy evaluation.
- * Policies are tag-based: callers populate `runPolicyTags` with the active tags
- * for the current build, and each policy checks whether its tag is present.
- * 
- * Built-in policies:
- * - "always": Always run tests (use for tests that should run on every build trigger)
- * - "never": Never run tests (use for setups that should be completely disabled)
- * - "nightly": Run when the 'nightly' tag is present (set by cron-triggered builds)
- * - "weekends": Run when the 'weekend' tag is present (set by weekend cron-triggered builds)
- * 
- * Note: Policies determine IF tests should run when triggered, not WHEN to trigger.
- * 
- * Usage examples:
- * 
- * 1. Basic usage:
- *    def manager = new TestSchedulePolicyManager()
- *    manager.runPolicyTags = ["nightly"] as Set
- *    manager.shouldRun("nightly")  // => [result: true, ...]
- * 
- * 2. Register custom policy:
- *    manager.registerPolicy(new TestSchedulePolicy("custom", {
- *        return [result: true, reason: "Custom logic"]
- *    }))
- */
-class TestSchedulePolicyManager implements Serializable {
-    // Registry of policies by key
-    private Map<String, TestSchedulePolicy> policies = [:]
-    
-    /** Set of active run-policy tags for this build (e.g. "nightly", "weekend"). */
-    Set<String> runPolicyTags = [] as Set
-    
-    TestSchedulePolicyManager() {
-        registerBuiltInPolicies()
-    }
-    
-    /**
-     * Register all built-in policies.
-     */
-    private void registerBuiltInPolicies() {
-        // Always policy - always returns true
-        registerPolicy(new TestSchedulePolicy("always", {
-            return [result: true, reason: "Policy 'always' is always enabled"]
-        }))
-
-        // Never policy - never returns true
-        registerPolicy(new TestSchedulePolicy("never", {
-            return [result: false, reason: "Policy 'never' is always disabled"]
-        }))
-
-        // Weekend policy - runs when the 'weekend' tag is present in runPolicyTags
-        registerPolicy(new TestSchedulePolicy("weekends", {
-            def hasTag = this.runPolicyTags.contains("weekend")
-            def reason = hasTag
-                ? "Policy 'weekends': 'weekend' tag is present (runPolicyTags=${this.runPolicyTags})"
-                : "Policy 'weekends': 'weekend' tag is not present (runPolicyTags=${this.runPolicyTags})"
-            return [result: hasTag, reason: reason]
-        }))
-
-        // Nightly policy - runs when the 'nightly' tag is present in runPolicyTags
-        registerPolicy(new TestSchedulePolicy("nightly", {
-            def hasTag = this.runPolicyTags.contains("nightly")
-            def reason = hasTag
-                ? "Policy 'nightly': 'nightly' tag is present (runPolicyTags=${this.runPolicyTags})"
-                : "Policy 'nightly': 'nightly' tag is not present (runPolicyTags=${this.runPolicyTags})"
-            return [result: hasTag, reason: reason]
-        }))
-    }
-    
-    /**
-     * Register a policy in the manager.
-     * @param policy TestSchedulePolicy instance to register
-     */
-    void registerPolicy(TestSchedulePolicy policy) {
-        // Check for collision with existing policy keys
-        if (this.policies.containsKey(policy.key)) {
-            throw new IllegalArgumentException("Policy with key '${policy.key}' is already registered.")
-        }
-        this.policies[policy.key] = policy
-    }
-    
-    /**
-     * Check if tests should run based on the given policy key.
-     * @param policyKey Policy key to evaluate
-     * @return Map [result: boolean, reason: String] — reason explains why the policy returned its result
-     * @throws IllegalArgumentException if policy key is unknown
-     */
-    Map shouldRun(String policyKey) {
-        def policy = this.policies[policyKey]
-        if (!policy) {
-            throw new IllegalArgumentException("Unknown policy: ${policyKey}")
-        }
-        
-        return policy.evaluate()
-    }
-}
-
-/**
  * VEnvManager - Manages Python virtual environments across Jenkins nodes
  * 
  * This class provides a centralized way to create, manage, and execute code within
@@ -1051,8 +925,12 @@ class TestGroup {
 class PyTestManager {
     private VEnvManager venvManager
     private def pipeline
-    /** Policy manager for schedule-based test gating (always, never, nightly, weekends, etc.) */
-    TestSchedulePolicyManager schedulePolicyManager = new TestSchedulePolicyManager()
+    /**
+     * Set of active run-policy tags for this build (e.g. "nightly", "weekends").
+     * Populated from pipeline boolean parameters (RUN_POLICY_NIGHTLY, RUN_POLICY_WEEKEND).
+     * Used by shouldRunPolicy() for tag-based test gating.
+     */
+    Set<String> runPolicyTags = [] as Set
     private List coverageStashes = []
     /** All TestGroups registered via createGroup(), keyed by group name; */
     private Map registeredGroups = [:]
@@ -1062,6 +940,26 @@ class PyTestManager {
     PyTestManager(Map args = [pipeline: null, venvManager: null]) {
         this.venvManager = args.venvManager
         this.pipeline = args.pipeline
+    }
+
+    /**
+     * Check if tests should run based on the given policy key.
+     * "always" and "never" are reserved; everything else is a tag lookup against runPolicyTags.
+     * @param policyKey Policy key to evaluate
+     * @return Map [result: boolean, reason: String]
+     */
+    Map shouldRunPolicy(String policyKey) {
+        if (policyKey == "always") {
+            return [result: true, reason: "Policy 'always' is always enabled"]
+        }
+        if (policyKey == "never") {
+            return [result: false, reason: "Policy 'never' is always disabled"]
+        }
+        def hasTag = this.runPolicyTags.contains(policyKey)
+        def reason = hasTag
+            ? "Policy '${policyKey}': tag is present (runPolicyTags=${this.runPolicyTags})"
+            : "Policy '${policyKey}': tag is not present (runPolicyTags=${this.runPolicyTags})"
+        return [result: hasTag, reason: reason]
     }
 
     /**
@@ -1403,7 +1301,7 @@ class PyTestManager {
                             stageName: testConfig.stage_name
                         ]
                         if (executionPolicy) {
-                            def policyResult = this.schedulePolicyManager.shouldRun(executionPolicy)
+                            def policyResult = this.shouldRunPolicy(executionPolicy)
                             if (!policyResult.result) {
                                 overrides.shouldRun = false
                                 overrides.skipReason = policyResult.reason
@@ -1570,8 +1468,8 @@ pipeline {
                     // Parse run policy tags from boolean parameters
                     def runPolicyTags = [] as Set
                     if (params.RUN_POLICY_NIGHTLY) { runPolicyTags.add("nightly") }
-                    if (params.RUN_POLICY_WEEKEND) { runPolicyTags.add("weekend") }
-                    testManager.schedulePolicyManager.runPolicyTags = runPolicyTags
+                    if (params.RUN_POLICY_WEEKEND) { runPolicyTags.add("weekends") }
+                    testManager.runPolicyTags = runPolicyTags
 
                     echo("Test sessions have been configured to run with the following base configuration:\n${TEST_SESSIONS.configSummary()}")
                 }
