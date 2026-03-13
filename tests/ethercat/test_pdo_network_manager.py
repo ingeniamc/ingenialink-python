@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING
 import pytest
 from summit_testing_framework.setups.descriptors import EthercatMultiSlaveSetup
 
+from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.exceptions import ILError, ILWrongWorkingCountError
 from ingenialink.pdo import PDOMap, RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.pdo_network_manager import PDONetworkManager
 
 if TYPE_CHECKING:
-    from ingenialink.ethercat.network import EthercatNetwork
     from ingenialink.ethercat.servo import EthercatServo
 
 
@@ -315,3 +315,22 @@ def test_start_pdos_in_safe_drive_without_safe_pdos_mapped_triggers_error(
         "The PDO exchange has been stopped due to a wrong PDO configuration in a safe drive. "
         "Please, check that the safe PDOs are correctly mapped."
     ) in str(exceptions[0])
+
+
+@pytest.mark.pcap
+def test_notify_exceptions_calls_all_subscribers_even_if_one_raises() -> None:
+    """All exception subscribers are notified even if an earlier one raises."""
+    net = EthercatNetwork("fake_interface")
+    second_called: list[ILError] = []
+
+    def raising_callback(_exc: ILError) -> None:
+        raise RuntimeError
+
+    net.pdo_manager.subscribe_to_exceptions(raising_callback)
+    net.pdo_manager.subscribe_to_exceptions(second_called.append)
+
+    error = ILError("test")
+    net.pdo_manager._notify_exceptions(error)
+
+    assert second_called == [error]
+    net.close_ecat_master()
