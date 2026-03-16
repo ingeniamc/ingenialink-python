@@ -751,7 +751,6 @@ class TestSession implements Serializable {
             args.add("--import-mode=${this.importMode}")
         }
         args.add("--junitxml=pytest_reports/junit-${venv.version}.xml")
-        args.add("--junit-prefix=${venv.version}")
         if (this.markers) {
             args.add("-m \"${this.markers}\"")
         }
