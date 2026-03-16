@@ -1155,11 +1155,13 @@ def test_recover_from_disconnection(net: "EthercatNetwork", servo: "EthercatServ
 def test_net_status_listener_detects_power_cycle(
     net: "EthercatNetwork", servo: "EthercatServo", environment: "Environment"
 ) -> None:
-    """Test that NetStatusListener detects disconnection and reconnection on a real power cycle.
+    """Test that NetStatusListener detects disconnection and reconnection on a real power cycle,
+    both with PDOs inactive and with PDOs actively running.
 
-    Powers off and on a real drive using the environment controller and verifies that
-    the NetStatusListener fires REMOVED when the drive disconnects and ADDED when it
-    recovers, leaving the network in CONNECTED state.
+    Scenario 1 (no PDOs): verifies the basic listener detect-and-recover path.
+    Scenario 2 (PDOs active): verifies that when a WKC error stops the PDO thread, the listener
+    resumes calling process() and completes the same detect-and-recover cycle, leaving PDOs
+    stopped after reconnection.
     """
     removed_event = threading.Event()
     added_event = threading.Event()
@@ -1174,7 +1176,7 @@ def test_net_status_listener_detects_power_cycle(
     net.start_status_listener()
 
     try:
-        # Power cycle without framework reconnection — the listener handles recovery autonomously.
+        # --- Scenario 1: power cycle without PDOs active ---
         environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
 
         assert removed_event.wait(timeout=30.0), (
@@ -1186,7 +1188,51 @@ def test_net_status_listener_detects_power_cycle(
             "NetStatusListener did not detect the drive reconnection within 60 s"
         )
         assert net.get_servo_state(servo.slave_id) == NetState.CONNECTED
+
+        # --- Scenario 2: power cycle with PDOs active ---
+        removed_event.clear()
+        added_event.clear()
+
+        rpdo_map = RPDOMap()
+        tpdo_map = TPDOMap()
+        initial_operation_mode = cast("int", servo.read("DRV_OP_CMD"))
+        operation_mode = PDOMap.create_item_from_register_uid(
+            "DRV_OP_CMD", dictionary=servo.dictionary, value=initial_operation_mode, axis=1
+        )
+        actual_position = PDOMap.create_item_from_register_uid(
+            "CL_POS_FBK_VALUE", dictionary=servo.dictionary, axis=1
+        )
+        rpdo_map.add_item(operation_mode)
+        tpdo_map.add_item(actual_position)
+        servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+
+        rpdo_map.subscribe_to_process_data_event(lambda: None)
+        tpdo_map.subscribe_to_process_data_event(lambda: None)
+
+        refresh_rate: float = 0.5
+        net.activate_pdos(refresh_rate=refresh_rate)
+        time.sleep(2 * refresh_rate)
+        assert net.pdo_manager.is_active is True
+
+        # Power cycle while PDOs are running. The PDO thread detects the WKC error and stops
+        # PDOs via the exception handler, after which the listener resumes calling process().
+        environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
+
+        assert removed_event.wait(timeout=30.0), (
+            "NetStatusListener did not detect the drive disconnection within 30 s (PDO scenario)"
+        )
+        assert net.get_servo_state(servo.slave_id) == NetState.DISCONNECTED
+
+        assert added_event.wait(timeout=60.0), (
+            "NetStatusListener did not detect the drive reconnection within 60 s (PDO scenario)"
+        )
+        assert net.get_servo_state(servo.slave_id) == NetState.CONNECTED
+        assert net.pdo_manager.is_active is False, (
+            "PDOs should have been stopped by the exception handler during power cycle"
+        )
     finally:
+        # servo/net status listeners are not reset
+        # https://novantamotion.atlassian.net/browse/CIT-627
         net.stop_status_listener()
 
 
@@ -1218,7 +1264,6 @@ def test_ensure_network_reference_method():
 
     # Cleanup
     release_network_reference(net)
-
 
 
 @pytest.mark.pcap
