@@ -32,6 +32,40 @@ def reassignFilePermissions() {
     }
 }
 
+
+/**
+ * VirtualEnvironment - Represents an activated Python virtual environment.
+ *
+ * Instances are created and registered by VEnvManager.createVirtualEnvironment().
+ * Retrieve them via VEnvManager.withVirtualEnv() and call venv.run(cmd) to
+ * execute commands inside the activated environment.
+ */
+class VirtualEnvironment implements Serializable {
+    /** Virtual environment directory name (e.g. ".venv3.9", ".venv-without-x-lib") */
+    final String name
+    /** Python version string (e.g. "3.9"), or null if not applicable */
+    final String version
+    /** True when running on a Unix agent */
+    final boolean isUnix
+
+    private final VEnvManager _manager
+
+    VirtualEnvironment(String name, String version, boolean isUnix, VEnvManager manager) {
+        this.name = name
+        this.version = version
+        this.isUnix = isUnix
+        this._manager = manager
+    }
+
+    /** Execute a shell command inside this virtual environment. */
+    def run(String cmd) {
+        def activateCmd = isUnix
+            ? ". ${name}/bin/activate\n "
+            : "call ${name}\\Scripts\\activate\n "
+        _manager.runInWorkingFolder(activateCmd + cmd)
+    }
+}
+
 /**
  * VEnvManager - Manages Python virtual environments across Jenkins nodes
  * 
@@ -57,8 +91,8 @@ class VEnvManager {
     * Structure: {
     *   nodeName1: {
     *     workspacePath1: {
-    *       venvName1: venvPath1,
-    *       venvName2: venvPath2,
+    *       venvName1: VirtualEnvironment,
+    *       venvName2: VirtualEnvironment,
     *       ...
     *     },
     *   },
@@ -197,7 +231,7 @@ class VEnvManager {
     * Arguments:
     *   cmd: Command to execute
     */
-    private def run(String cmd) {
+    def runInWorkingFolder(String cmd) {
         def workingFolder = this.getWorkingFolder()
         // Change directory. Avoid changing directory if working folder is workspace
         def fullCmd = (workingFolder == this.pipeline.env.WORKSPACE) ? cmd : "cd ${workingFolder}\n${cmd}"
@@ -289,29 +323,27 @@ class VEnvManager {
     }
 
     /**
-    * Execute code within a virtual environment
-    * Arguments:
-    *   venvName: Name of the virtual environment
-    *   pythonVersion: Python version for this venv (optional, used to set venv.version)
-    *   body: Closure to execute inside the venv
+    * Look up the VirtualEnvironment stored at creation time for a given venv name.
+    * Returns null if the venv was not created via createVirtualEnvironment.
     */
-    def withVirtualEnv(String venvName, String pythonVersion = null, Closure body) {
-        def ctx = [
-            run: { cmd ->
-                def activateCmd
-                if (this.isUnixNode()) {
-                    activateCmd = ". ${venvName}/bin/activate\n "
-                } else {
-                    activateCmd = "call ${venvName}\\Scripts\\activate\n "
-                }
-                this.run(activateCmd + cmd)
-            },
-            name: venvName,
-            version: pythonVersion,
-            isUnix: this.isUnixNode()
-        ]
+    private def getStoredVenv(String venvName) {
+        def nodeName = this.getNodeName()
+        def workingFolder = this.getWorkingFolder()
+        return this.venvs.get(nodeName)?.get(workingFolder)?.get(venvName)
+    }
 
-        body(ctx)
+    /**
+    * Retrieve a registered virtual environment and execute code within it.
+    * Arguments:
+    *   venvName: Name of the virtual environment (must have been created via createVirtualEnvironment)
+    *   body: Closure to execute, receives the VirtualEnvironment as its argument
+    */
+    def withVirtualEnv(String venvName, Closure body) {
+        def venv = this.getStoredVenv(venvName)
+        if (venv == null) {
+            this.pipeline.error("Virtual environment '${venvName}' has not been registered. Call createVirtualEnvironment() first.")
+        }
+        body(venv)
     }
 
     /**
@@ -330,10 +362,9 @@ class VEnvManager {
         def venvName = args.venvName ?: this.pythonVersionDefaultVenvName(pythonVersion)
 
         // Create the virtual environment using pipeline context
-        this.run("py -${pythonVersion} -m venv --without-pip ${venvName}")
+        this.runInWorkingFolder("py -${pythonVersion} -m venv --without-pip ${venvName}")
 
-        // Store the created venv path
-        def venvPath = this.joinPath(workingFolder, venvName)
+        // Register the virtual environment
         def nodeName = this.getNodeName()
         if (!this.venvs.containsKey(nodeName)) {
             this.venvs[nodeName] = [:]
@@ -341,8 +372,7 @@ class VEnvManager {
         if (!this.venvs[nodeName].containsKey(workingFolder)) {
             this.venvs[nodeName][workingFolder] = [:]
         }
-        this.venvs[nodeName][workingFolder][venvName] = venvPath
-        return venvPath
+        this.venvs[nodeName][workingFolder][venvName] = new VirtualEnvironment(venvName, pythonVersion, this.isUnixNode(), this)
     }
 
     /**
@@ -380,10 +410,8 @@ class VEnvManager {
         if (venvMap.isEmpty()) {
             this.pipeline.error("Virtual environments map is empty for workingFolder: ${workingFolder} on node: ${nodeName}")
         }
-        venvMap.each { venvName, venvPath ->
-            this.withVirtualEnv(venvName) { venv ->
-                body(venv)
-            }
+        venvMap.each { venvName, venv ->
+            body(venv)
         }
     }
 
@@ -396,7 +424,7 @@ class VEnvManager {
      */
     def withPython(String pythonVersion, Closure body) {
         def venvName = this.pythonVersionDefaultVenvName(pythonVersion)
-        this.withVirtualEnv(venvName, pythonVersion, body)
+        this.withVirtualEnv(venvName, body)
     }
 
 
