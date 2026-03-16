@@ -1590,7 +1590,7 @@ pipeline {
                                     post {
                                         success {
                                             script {
-                                                venvManager.run('"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256')
+                                                venvManager.runInWorkingFolder('"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256')
                                                 venvManager.copyFromWorkingFolder("docs.zip")
                                             }
                                             stash includes: 'docs.zip', name: 'docs'
