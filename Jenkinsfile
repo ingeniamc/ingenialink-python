@@ -756,10 +756,10 @@ class TestSession implements Serializable {
     /**
      * Generate the list of arguments for the pytest command.
      * 
-     * @param venv The virtual environment context map
+     * @param venv The virtual environment to run tests in
      * @return List of arguments as strings
      */
-    List<String> getTestArgs(Map venv) {
+    List<String> getTestArgs(VirtualEnvironment venv) {
         def args = []
 
         if (this.useCoverage) {
