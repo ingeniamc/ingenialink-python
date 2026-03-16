@@ -10,6 +10,7 @@
 
 ### Fixed
 - Fix sdo timeout rollback issue during store and firmware loading operations.
+- Fix issues of servo status listener of ethercat drives when the drive is on operational state
 
 ## [7.5.2] - 2025-11-24
 ### Added
