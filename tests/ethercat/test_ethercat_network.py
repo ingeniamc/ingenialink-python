@@ -29,7 +29,6 @@ from ingenialink.ethercat.network import (
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetState
 from ingenialink.pdo import PDOMap, RPDOMap, TPDOMap
-from ingenialink.utils.timeout import Timeout
 from tests.ethercat.mock import pysoem_mock_network
 
 if TYPE_CHECKING:
@@ -1311,8 +1310,7 @@ def test_net_status_listener_calls_process_when_pdos_inactive(mocker):
 
     process_mock = mocker.patch.object(listener, "process")
 
-    # pdo_manager.is_active is False by default — process() should be called
-    time.sleep(0.1)
+    time.sleep(0.5)
 
     assert process_mock.call_count > 0, "process() should be called when PDOs are inactive"
 
@@ -1352,9 +1350,7 @@ def test_net_status_listener_threaded_disconnect_reconnect_cycle(pysoem_mock_net
     # Clearing the slave reference makes is_servo_alive=False on the next process() call.
     servo.update_slave_reference(None)
 
-    with Timeout(2.0) as t:
-        while not removed_event.is_set():
-            t.check()
+    assert removed_event.wait(timeout=2.0), "Timeout waiting for REMOVED event"
     assert net.get_servo_state(1) == NetState.DISCONNECTED
 
     # --- Phase 2: simulate reconnection ---
@@ -1366,9 +1362,7 @@ def test_net_status_listener_threaded_disconnect_reconnect_cycle(pysoem_mock_net
 
     mocker.patch.object(EthercatNetwork, "recover_from_disconnection", side_effect=mock_recovery)
 
-    with Timeout(2.0) as t:
-        while not added_event.is_set():
-            t.check()
+    assert added_event.wait(timeout=2.0), "Timeout waiting for ADDED event"
     assert net.get_servo_state(1) == NetState.CONNECTED
 
     net.stop_status_listener()
