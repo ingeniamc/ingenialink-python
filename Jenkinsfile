@@ -43,7 +43,7 @@ def reassignFilePermissions() {
 class VirtualEnvironment implements Serializable {
     /** Virtual environment directory name (e.g. ".venv3.9", ".venv-without-x-lib") */
     final String name
-    /** Python version string (e.g. "3.9"), or null if not applicable */
+    /** Python version string (e.g. "3.9") */
     final String version
     /** True when running on a Unix agent */
     final boolean isUnix
