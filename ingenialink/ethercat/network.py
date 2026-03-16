@@ -1088,6 +1088,17 @@ class EthercatNetwork(EthercatNetworkBase):
         all_servos_have_refs = all(s.slave_exists for s in self.servos)
         if self._ecat_master.state == pysoem.PREOP_STATE and all_servos_have_refs:
             return True
+
+        # Clean start the master to try to recover the CoE communication.
+        # This is needed to avoid the master state machine to be stuck in a wrong
+        # state after a disconnection.
+        self._lock.acquire()
+        try:
+            self._ecat_master.close()
+            self._ecat_master.open(self.interface_name)
+        finally:
+            self._lock.release()
+
         self.__init_nodes()
         if not self.servos:
             log_message = (

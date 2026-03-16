@@ -1,4 +1,5 @@
 import contextlib
+from unittest.mock import MagicMock, call
 
 import tests.resources
 
@@ -28,6 +29,7 @@ from ingenialink.ethercat.network import (
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetState
 from ingenialink.pdo import PDOMap, RPDOMap, TPDOMap
+from tests.ethercat.mock import pysoem_mock_network
 
 if TYPE_CHECKING:
     from pytest import FixtureRequest
@@ -491,9 +493,8 @@ def test_stop_pdos_skips_disconnected_slaves(pysoem_mock_network, mocker):  # no
 
 
 @pytest.mark.pcap
-def test_recover_from_disconnection_does_not_shortcut_when_slave_ref_cleared(
-    pysoem_mock_network,  # noqa: ARG001
-):
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_recover_from_disconnection_does_not_shortcut_when_slave_ref_cleared():
     """Test that recover_from_disconnection() does not return True when a slave ref is missing.
 
     The master can report PREOP_STATE while a slave reference has been cleared by a
@@ -516,6 +517,37 @@ def test_recover_from_disconnection_does_not_shortcut_when_slave_ref_cleared(
 
     # Should NOT return True — slave refs are invalid despite master being in PREOP
     assert net.recover_from_disconnection() is False
+
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_recover_from_disconnection_closes_and_reopens_master(
+    mocker,
+):
+    """Test that recover_from_disconnection() closes and reopens the SOEM master before re-enum.
+
+    After a cable disconnect the SOEM master's internal state can become corrupted.
+    Closing and reopening the master reinitialises the NIC socket so that config_init()
+    can discover slaves again.
+    """
+    net = EthercatNetwork("dummy_ifname")
+    net.connect_to_slave(
+        slave_id=1,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+
+    close_mock = mocker.patch.object(net._ecat_master, "close")
+    open_mock = mocker.patch.object(net._ecat_master, "open")
+    manager = MagicMock()
+    manager.attach_mock(close_mock, "close")
+    manager.attach_mock(open_mock, "open")
+
+    # Master state is INIT (not PREOP) so the shortcut does not trigger.
+    net.recover_from_disconnection()
+
+    manager.assert_has_calls([call.close(), call.open(net.interface_name)], any_order=False)
 
     net.close_ecat_master()
 
@@ -716,7 +748,8 @@ def test_network_is_not_released_if_gil_operation_ongoing(
 
 
 @pytest.mark.pcap
-def test_slave_update_on_config_init(pysoem_mock_network):  # noqa: ARG001
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_slave_update_on_config_init():
     net = EthercatNetwork("dummy_ifname")
 
     servo = net.connect_to_slave(
@@ -784,7 +817,8 @@ def test_slave_reference_set_to_none_when_not_in_init_nodes(pysoem_mock_network)
 
 
 @pytest.mark.pcap
-def test_net_status_listener_handles_none_slave_reference(pysoem_mock_network, mocker):  # noqa: ARG001
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_net_status_listener_handles_none_slave_reference(mocker):
     """Test that NetStatusListener doesn't crash when servo.slave is None.
 
     This verifies the fix for INGK-1211 where the listener checks slave_exists
@@ -806,6 +840,10 @@ def test_net_status_listener_handles_none_slave_reference(pysoem_mock_network, m
 
     # Manually set the slave reference to None to simulate a missing slave
     servo.update_slave_reference(None)
+
+    # Prevent recovery from restoring the slave reference so we can assert
+    # that detection alone sets the state correctly.
+    mocker.patch.object(EthercatNetwork, "recover_from_disconnection", return_value=False)
 
     # Manually trigger the listener's process method to detect the missing slave
     net._EthercatNetwork__listener_net_status.process()
@@ -917,6 +955,110 @@ def test_net_status_listener_detects_slave_reconnection(pysoem_mock_network, moc
     # The listener should have detected the reconnection
     assert NetDevEvt.ADDED in events_detected
     assert net.get_servo_state(1) == NetState.CONNECTED
+
+    net.stop_status_listener()
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_net_status_listener_retries_recovery_after_failed_attempt(
+    mocker,
+):
+    """Test that process() retries recovery even when slave_exists=False after a failed attempt.
+
+    After a failed recover_from_disconnection(), config_init() may clear slave references
+    (slave_exists=False). The fix ensures recovery is retried based on servo_state==DISCONNECTED
+    rather than is_servo_alive, so the slave can be rediscovered on the next process() cycle.
+    """
+    events_detected = []
+
+    def status_callback(event: NetDevEvt) -> None:
+        events_detected.append(event)
+
+    net = EthercatNetwork("dummy_ifname")
+    servo = net.connect_to_slave(
+        slave_id=1,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+    net.subscribe_to_status(1, status_callback)
+    net.start_status_listener()
+
+    # Simulate disconnection with cleared slave reference (as left by a failed config_init)
+    saved_slave = servo.slave
+    servo.update_slave_reference(None)
+    net._set_servo_state(1, NetState.DISCONNECTED)
+
+    call_count = [0]
+
+    def recover_side_effect() -> bool:
+        call_count[0] += 1
+        if call_count[0] >= 2:
+            # Cable reconnected: restore slave reference
+            servo.update_slave_reference(saved_slave)
+            servo.slave.state = pysoem.PREOP_STATE
+            return True
+        return False
+
+    mocker.patch.object(
+        EthercatNetwork, "recover_from_disconnection", side_effect=recover_side_effect
+    )
+
+    # First process: recovery fails, ADDED should not be emitted
+    net._EthercatNetwork__listener_net_status.process()
+    assert NetDevEvt.ADDED not in events_detected
+    assert net.get_servo_state(1) == NetState.DISCONNECTED
+
+    # Second process: recovery succeeds (cable reconnected), ADDED should be emitted
+    net._EthercatNetwork__listener_net_status.process()
+    assert NetDevEvt.ADDED in events_detected
+    assert net.get_servo_state(1) == NetState.CONNECTED
+
+    net.stop_status_listener()
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+def test_net_status_listener_recovery_called_once_for_multiple_disconnected_slaves(
+    pysoem_mock_network,
+    mocker,  # noqa: ARG001
+):
+    """Test that recover_from_disconnection() is called once even with multiple disconnected slaves.
+
+    recover_from_disconnection() is a network-wide operation. Calling it per-slave in a loop
+    causes redundant config_init() runs and delays. The fix calls it once then verifies
+    each slave individually (Phase 4).
+    """
+    net = EthercatNetwork("dummy_ifname")
+    pysoem_mock_network.set_num_slaves(2)
+
+    servo1 = net.connect_to_slave(
+        slave_id=1,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+    servo2 = net.connect_to_slave(
+        slave_id=2,
+        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+    )
+    net.subscribe_to_status(1, lambda _: None)
+    net.subscribe_to_status(2, lambda _: None)
+    net.start_status_listener()
+
+    # Put both slaves in DISCONNECTED state while keeping slave refs valid
+    net._set_servo_state(1, NetState.DISCONNECTED)
+    net._set_servo_state(2, NetState.DISCONNECTED)
+    servo1.slave.state = pysoem.PREOP_STATE
+    servo2.slave.state = pysoem.PREOP_STATE
+
+    recover_mock = mocker.patch.object(
+        EthercatNetwork, "recover_from_disconnection", return_value=True
+    )
+
+    net._EthercatNetwork__listener_net_status.process()
+
+    recover_mock.assert_called_once()
+    assert net.get_servo_state(1) == NetState.CONNECTED
+    assert net.get_servo_state(2) == NetState.CONNECTED
 
     net.stop_status_listener()
     net.close_ecat_master()

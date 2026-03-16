@@ -10,6 +10,7 @@ from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.exceptions import ILError, ILWrongWorkingCountError
 from ingenialink.pdo import PDOMap, RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.pdo_network_manager import PDONetworkManager
+from ingenialink.utils.timeout import Timeout
 
 if TYPE_CHECKING:
     from ingenialink.ethercat.servo import EthercatServo
@@ -151,10 +152,9 @@ def test_subscribe_exceptions(net: "EthercatNetwork", mocker) -> None:
     net.pdo_manager.subscribe_to_exceptions(received_exceptions.append)
     net.activate_pdos()
 
-    t = time.time()
-    timeout = 1
-    while net.pdo_manager.is_active and ((time.time() - t) < timeout):
-        pass
+    with Timeout(1) as t:
+        while (len(received_exceptions) == 0 or net.pdo_manager.is_active) and not t.has_expired:
+            pass
 
     assert not net.pdo_manager.is_active
     assert len(received_exceptions) == 1
