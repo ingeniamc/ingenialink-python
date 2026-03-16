@@ -29,11 +29,13 @@ from ingenialink.ethercat.network import (
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetState
 from ingenialink.pdo import PDOMap, RPDOMap, TPDOMap
+from ingenialink.utils.timeout import Timeout
 from tests.ethercat.mock import pysoem_mock_network
 
 if TYPE_CHECKING:
     from pytest import FixtureRequest
     from pytest_mock import MockerFixture
+    from summit_testing_framework.environment import Environment
     from summit_testing_framework.setup_fixtures import ConnectionWrapper
     from summit_testing_framework.setups.descriptors import DriveEcatSetup
 
@@ -1149,6 +1151,45 @@ def test_recover_from_disconnection(net: "EthercatNetwork", servo: "EthercatServ
     assert servo.slave.state == pysoem.PREOP_STATE, "Servo should be in PREOP state after recovery"
 
 
+@pytest.mark.ethercat
+def test_net_status_listener_detects_power_cycle(
+    net: "EthercatNetwork", servo: "EthercatServo", environment: "Environment"
+) -> None:
+    """Test that NetStatusListener detects disconnection and reconnection on a real power cycle.
+
+    Powers off and on a real drive using the environment controller and verifies that
+    the NetStatusListener fires REMOVED when the drive disconnects and ADDED when it
+    recovers, leaving the network in CONNECTED state.
+    """
+    removed_event = threading.Event()
+    added_event = threading.Event()
+
+    def status_callback(evt: NetDevEvt) -> None:
+        if evt == NetDevEvt.REMOVED:
+            removed_event.set()
+        elif evt == NetDevEvt.ADDED:
+            added_event.set()
+
+    net.subscribe_to_status(servo.slave_id, status_callback)
+    net.start_status_listener()
+
+    try:
+        # Power cycle without framework reconnection — the listener handles recovery autonomously.
+        environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
+
+        assert removed_event.wait(timeout=30.0), (
+            "NetStatusListener did not detect the drive disconnection within 30 s"
+        )
+        assert net.get_servo_state(servo.slave_id) == NetState.DISCONNECTED
+
+        assert added_event.wait(timeout=60.0), (
+            "NetStatusListener did not detect the drive reconnection within 60 s"
+        )
+        assert net.get_servo_state(servo.slave_id) == NetState.CONNECTED
+    finally:
+        net.stop_status_listener()
+
+
 @pytest.mark.pcap
 def test_ensure_network_reference_method():
     """Test the _ensure_network_reference helper method.
@@ -1229,6 +1270,61 @@ def test_net_status_listener_calls_process_when_pdos_inactive(mocker):
     time.sleep(0.1)
 
     assert process_mock.call_count > 0, "process() should be called when PDOs are inactive"
+
+    net.stop_status_listener()
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+def test_net_status_listener_threaded_disconnect_reconnect_cycle(pysoem_mock_network, mocker):
+    """Integration test: the listener *thread* detects a full disconnect/reconnect cycle.
+
+    Unlike the process()-direct tests, this runs the NetStatusListener as an actual thread
+    and verifies that REMOVED and ADDED events fire asynchronously using threading.Events.
+
+    The environment controller (pysoem_mock_network) is used to simulate slave
+    presence: set_num_slaves(0) makes config_init return no slaves, set_num_slaves(1)
+    restores them.  recover_from_disconnection() is mocked to call __init_nodes() at
+    the right moment and signal success, keeping the test self-contained.
+    """
+    removed_event = threading.Event()
+    added_event = threading.Event()
+
+    def status_callback(evt: NetDevEvt) -> None:
+        if evt == NetDevEvt.REMOVED:
+            removed_event.set()
+        elif evt == NetDevEvt.ADDED:
+            added_event.set()
+
+    net = EthercatNetwork("dummy_ifname")
+    servo = net.connect_to_slave(1, tests.resources.DEN_NET_E_2_8_0_xdf_v3)
+    net.subscribe_to_status(1, status_callback)
+    net.start_status_listener()
+    listener = net._EthercatNetwork__listener_net_status
+    listener._NetStatusListener__refresh_time = 0.01  # speed up the run loop
+
+    # --- Phase 1: simulate disconnection ---
+    # Clearing the slave reference makes is_servo_alive=False on the next process() call.
+    servo.update_slave_reference(None)
+
+    with Timeout(2.0) as t:
+        while not removed_event.is_set():
+            t.check()
+    assert net.get_servo_state(1) == NetState.DISCONNECTED
+
+    # --- Phase 2: simulate reconnection ---
+    # restore the slave reference so that Phase 4 of process() sees a live slave.
+    def mock_recovery() -> bool:
+        pysoem_mock_network.set_num_slaves(1)
+        net._EthercatNetwork__init_nodes()  # slave ref restored; slave.state = INIT_STATE (1)
+        return True
+
+    mocker.patch.object(EthercatNetwork, "recover_from_disconnection", side_effect=mock_recovery)
+
+    with Timeout(2.0) as t:
+        while not added_event.is_set():
+            t.check()
+    assert net.get_servo_state(1) == NetState.CONNECTED
 
     net.stop_status_listener()
     net.close_ecat_master()
