@@ -1,5 +1,5 @@
 import contextlib
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock, PropertyMock, call
 
 import tests.resources
 
@@ -1177,6 +1177,61 @@ def test_ensure_network_reference_method():
 
     # Cleanup
     release_network_reference(net)
+
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_net_status_listener_skips_process_when_pdos_active(mocker):
+    """Test that the listener does not call process() while PDOs are running.
+
+    NetStatusListener checks network.pdo_manager.is_active at the top of its run
+    loop.  When PDOs are active, process() must not be called to prevent concurrent
+    SOEM-master access from the PDO thread and the listener thread.
+    """
+    net = EthercatNetwork("dummy_ifname")
+    net.connect_to_slave(1, tests.resources.DEN_NET_E_2_8_0_xdf_v3)
+
+    # Patch is_active=True BEFORE starting the listener so that the run loop never
+    # sees is_active=False and therefore never calls process().
+    mocker.patch.object(
+        type(net.pdo_manager), "is_active", new_callable=PropertyMock, return_value=True
+    )
+
+    net.start_status_listener()
+    listener = net._EthercatNetwork__listener_net_status
+    listener._NetStatusListener__refresh_time = 0.01  # speed up the run loop
+    process_mock = mocker.patch.object(listener, "process")
+
+    time.sleep(0.1)  # allow several run-loop iterations
+
+    process_mock.assert_not_called()
+
+    net.stop_status_listener()
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_net_status_listener_calls_process_when_pdos_inactive(mocker):
+    """Test that the listener calls process() normally when PDOs are not running."""
+    net = EthercatNetwork("dummy_ifname")
+    net.connect_to_slave(1, tests.resources.DEN_NET_E_2_8_0_xdf_v3)
+
+    mocker.patch.object(EthercatNetwork, "recover_from_disconnection", return_value=False)
+    net.start_status_listener()
+    listener = net._EthercatNetwork__listener_net_status
+    listener._NetStatusListener__refresh_time = 0.01  # speed up the run loop
+
+    process_mock = mocker.patch.object(listener, "process")
+
+    # pdo_manager.is_active is False by default — process() should be called
+    time.sleep(0.1)
+
+    assert process_mock.call_count > 0, "process() should be called when PDOs are inactive"
+
+    net.stop_status_listener()
+    net.close_ecat_master()
 
 
 class TestEthercatNetworkContextManager:

@@ -124,6 +124,11 @@ class SlaveState(Enum):
 class NetStatusListener(Thread):
     """Network status listener thread to check if the drive is alive.
 
+    Processing is skipped while the PDO exchange thread is running
+    (``network.pdo_manager.is_active`` is ``True``) because the PDO thread already
+    acts as the authoritative "is the bus alive" signal via WKC errors.  Having
+    both active at the same time is redundant.
+
     Args:
         network: Network instance of the EtherCAT communication.
 
@@ -186,10 +191,15 @@ class NetStatusListener(Thread):
                 self.__network._set_servo_state(slave_id, NetState.CONNECTED)
 
     def run(self) -> None:
-        """Check the network status continuously."""
+        """Check the network status continuously.
+
+        Skips :py:meth:`process` while ``pdo_manager.is_active`` is ``True``
+        because the PDO thread already signals bus health via WKC errors.
+        """
         while not self.__stop:
             try:
-                self.process()
+                if not self.__network.pdo_manager.is_active:
+                    self.process()
             except Exception as e:
                 logger.exception(f"Exception occurred while processing network status: {e}")
             time.sleep(self.__refresh_time)
