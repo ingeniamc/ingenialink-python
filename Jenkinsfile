@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.20') _
+﻿@Library('cicd-lib@0.20') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -1456,26 +1456,16 @@ class PyTestManager {
 <head>
   <meta charset="UTF-8">
   <title>Test Coverage Dashboard</title>
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
   <style>
     body { font-family: monospace; font-size: 11px; margin: 20px; }
     h1   { font-size: 16px; }
-    .controls { margin: 8px 0 12px; }
-    .controls input { width: 320px; padding: 3px 6px; font-size: 11px; }
-    #count { margin-left: 8px; color: #555; }
-    table { border-collapse: collapse; }
-    thead th { position: sticky; top: 0; z-index: 2; background: #f5f5f5;
-               border: 1px solid #ccc; padding: 4px 8px; white-space: nowrap; }
-    thead tr.group-row th { background: #dde8f5; font-weight: bold; text-align: center; }
+    table.dataTable { border-collapse: collapse !important; }
+    thead th { white-space: nowrap; }
+    thead tr.group-row th { background: #dde8f5 !important; font-weight: bold; text-align: center; }
     tbody tr:hover td { filter: brightness(0.92); }
-    td   { border: 1px solid #ccc; padding: 3px 6px; text-align: center; }
-    td.test-name { text-align: left; white-space: nowrap; position: sticky;
-                   left: 0; background: #fff; z-index: 1; }
-    thead th.test-name { z-index: 3; }
-    th.sortable { cursor: pointer; user-select: none; }
-    th.sortable:hover { background: #c8d8ec; }
+    td.test-name { text-align: left; white-space: nowrap; }
     th.skipped { color: #888; font-style: italic; }
-    th.sort-asc::after  { content: " ▲"; font-size: 9px; }
-    th.sort-desc::after { content: " ▼"; font-size: 9px; }
     .policy-always   { background: #c6efce; }
     .policy-nightly  { background: #ffeb9c; }
     .policy-weekends { background: #f4b942; }
@@ -1495,17 +1485,12 @@ class PyTestManager {
             sb.append("    <span class=\"legend-item policy-${label}\">${label}</span>\n")
         }
         sb.append('  </div>\n')
-        sb.append('  <div class="controls">\n')
-        sb.append('    <label for="filter">Filter tests:</label>\n')
-        sb.append('    <input id="filter" type="text" placeholder="e.g. test_servo or ethercat" />\n')
-        sb.append('    <span id="count"></span>\n')
-        sb.append('  </div>\n')
 
         sb.append('  <table id="dashboard">\n    <thead>\n')
 
         // ── Row 1: group headers ─────────────────────────────────
         sb.append('      <tr class="group-row">\n')
-        sb.append('        <th rowspan="2" class="test-name sortable" onclick="sortByCol(0)">Test Node ID</th>\n')
+        sb.append('        <th rowspan="2" class="test-name">Test Node ID</th>\n')
         groupedSessions.each { pair ->
             def groupName = pair[0]
             def sessions  = pair[1]
@@ -1515,9 +1500,8 @@ class PyTestManager {
 
         // ── Row 2: session UID headers ────────────────────────────
         sb.append('      <tr class="session-row">\n')
-        def colIndex = [1]  // mutable counter inside closure
         allSessions.each { session ->
-            def skippedClass = !session.shouldRun ? 'skipped sortable' : 'sortable'
+            def skippedClass = !session.shouldRun ? 'skipped' : ''
             def titleLines = []
             if (session.markers) { titleLines << "markers: ${session.markers}" }
             if (session.setup)   { titleLines << "setup: ${session.setup}" }
@@ -1525,8 +1509,8 @@ class PyTestManager {
             def titleAttr = titleLines
                 ? " title=\"${titleLines.join('&#10;').replace('"', '&quot;')}\""
                 : ''
-            sb.append("        <th class=\"${skippedClass}\"${titleAttr} onclick=\"sortByCol(${colIndex[0]})\">${session.uid}</th>\n")
-            colIndex[0]++
+            def classAttr = skippedClass ? " class=\"${skippedClass}\"" : ''
+            sb.append("        <th${classAttr}${titleAttr}>${session.uid}</th>\n")
         }
         sb.append('      </tr>\n    </thead>\n    <tbody>\n')
 
@@ -1547,61 +1531,16 @@ class PyTestManager {
         }
         sb.append('    </tbody>\n  </table>\n')
 
-        // ── Vanilla JS: filter + sort ──────────────────────────────
         sb.append('''\
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
   <script>
-    var _sortCol = -1, _sortDir = 0, _origOrder = [];
-    document.addEventListener('DOMContentLoaded', function () {
-      _origOrder = Array.from(document.querySelectorAll('#dashboard tbody tr'));
-    });
-
-    function sortByCol(colIdx) {
-      var allHeaderCells = document.querySelectorAll('#dashboard thead th.sortable');
-      allHeaderCells.forEach(function(th) { th.classList.remove('sort-asc', 'sort-desc'); });
-
-      if (_sortCol === colIdx) {
-        _sortDir = _sortDir === 1 ? -1 : (_sortDir === -1 ? 0 : 1);
-      } else {
-        _sortCol = colIdx; _sortDir = 1;
-      }
-
-      var tbody = document.querySelector('#dashboard tbody');
-      var rows  = Array.from(tbody.rows);
-
-      if (_sortDir === 0) {
-        _origOrder.forEach(function(r) { tbody.appendChild(r); });
-        return;
-      }
-
-      // Mark active header
-      var headerIdx = 0;
-      allHeaderCells.forEach(function(th, i) {
-        if (parseInt(th.getAttribute('onclick').match(/\\d+/)[0]) === colIdx) {
-          th.classList.add(_sortDir === 1 ? 'sort-asc' : 'sort-desc');
-        }
+    $(document).ready(function () {
+      $('#dashboard').DataTable({
+        paging:        false,
+        orderCellsTop: false,
+        scrollX:       true
       });
-
-      rows.sort(function(a, b) {
-        var aT = a.cells[colIdx].textContent.trim();
-        var bT = b.cells[colIdx].textContent.trim();
-        var result = colIdx === 0
-          ? aT.localeCompare(bT)
-          : (bT ? 1 : 0) - (aT ? 1 : 0);  // covered (●) first
-        return result * _sortDir;
-      });
-      rows.forEach(function(r) { tbody.appendChild(r); });
-    }
-
-    document.getElementById('filter').addEventListener('input', function () {
-      var q = this.value.toLowerCase();
-      var rows = document.querySelectorAll('#dashboard tbody tr');
-      var n = 0;
-      rows.forEach(function(row) {
-        var show = row.cells[0].textContent.toLowerCase().indexOf(q) !== -1;
-        row.style.display = show ? '' : 'none';
-        if (show) n++;
-      });
-      document.getElementById('count').textContent = q ? '(' + n + ' shown)' : '';
     });
   </script>
 </body>
