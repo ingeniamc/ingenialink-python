@@ -125,7 +125,7 @@ pytest-cov = "==7.0.0"
 pytest-mock = "==3.15.1"
 pytest-console-scripts = "==1.4.1"
 twisted = "==25.5.0"
-summit-testing-framework = {version = "==0.2.0+pr1b8"}
+summit-testing-framework = {version = "==0.2.0.post232+develop.4b9deb4"}
 
 # -----------------------------------------------------------------------
 #                                   TASKS
