@@ -1443,10 +1443,10 @@ class PyTestManager {
         }
         def allSessions = groupedSessions.collectMany { it[1] }
 
-        // Pre-compute per-session test sets for O(1) membership checks
+        // Pre-compute per-session test lists for membership checks
         def sessionTestSets = [:]
         allSessions.each { session ->
-            sessionTestSets[session.uid] = new HashSet<String>(uidToTests[session.uid] ?: [])
+            sessionTestSets[session.uid] = uidToTests[session.uid] ?: []
         }
 
         def sb = new StringBuilder()
@@ -1630,17 +1630,19 @@ class PyTestManager {
         }
 
         // Baseline: collect ALL tests (no filters) so uncovered tests still appear as rows
-        def allTestsSet = new LinkedHashSet<String>(this.collectTests())
+        def allTestsList = this.collectTests()  // already an ordered List
 
         // Collect per-session test sets (one pytest --collect-only run per session)
         def uidToTests = [:]
         allSessions.each { session ->
             uidToTests[session.uid] = this.collectTests(session)
-            // Also add any newly discovered tests to the row set
-            uidToTests[session.uid].each { allTestsSet << it }
+            // Union: add any newly discovered tests while preserving insertion order
+            uidToTests[session.uid].each { test ->
+                if (!allTestsList.contains(test)) allTestsList << test
+            }
         }
 
-        def html = this.buildDashboardHtml(allTestsSet as List, uidToTests)
+        def html = this.buildDashboardHtml(allTestsList, uidToTests)
 
         def reportDir  = 'test_dashboard'
         def reportFile = 'index.html'
