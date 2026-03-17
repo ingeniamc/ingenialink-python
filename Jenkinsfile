@@ -1404,7 +1404,7 @@ class PyTestManager {
 
         def output = this.pipeline.readFile(file: outputFile)
         this.deleteFiles(outputFile)
-        return output.split('\n').findAll { line ->
+        return output.readLines().findAll { line ->
             def t = line.trim()
             t && t.contains('::') && !t.startsWith('#')
         }.collect { it.trim() }
@@ -1413,6 +1413,7 @@ class PyTestManager {
     /**
      * Map a policy tag to a CSS class name for the dashboard table.
      */
+    @NonCPS
     private static String policyCssClass(String policy) {
         def map = [always: 'policy-always', nightly: 'policy-nightly', weekends: 'policy-weekends', never: 'policy-never']
         return map.getOrDefault(policy ?: 'always', 'policy-other')
@@ -1429,6 +1430,7 @@ class PyTestManager {
      * @param uidToTests  Map from session uid → list of matching test node IDs
      * @return HTML string
      */
+    @NonCPS
     private String buildDashboardHtml(List<String> allTests, Map uidToTests) {
         // Build ordered list of [groupName, sessions] pairs (preserves createGroup() order)
         def groupedSessions = []
