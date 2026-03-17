@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.20') _
+﻿@Library('cicd-lib@0.20') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -148,7 +148,7 @@ class VEnvManager {
 
     /**
     * Convert a set of virtual environment names back to their Python versions.
-    * Reverses the convention: .venv{pythonVersion} → pythonVersion
+    * Reverses the convention: .venv{pythonVersion} â†’ pythonVersion
     * 
     * This is useful when you need to extract Python versions from venv names
     * for operations like createPoetryEnvironments that require version strings.
@@ -198,10 +198,10 @@ class VEnvManager {
     * Returns: Platform-specific path string ('/' on Linux, '\' on Windows)
     * 
     * Examples:
-    *   joinPath("/tmp", "mydir", "file.txt") → "/tmp/mydir/file.txt" (Linux)
-    *   joinPath("C:\\Users", "admin", "file.txt") → "C:\\Users\\admin\\file.txt" (Windows)
-    *   joinPath("/base/", "/subdir/", "file") → "/base/subdir/file"
-    *   joinPath("workspace", "dist/") → "workspace/dist/" (trailing slash preserved)
+    *   joinPath("/tmp", "mydir", "file.txt") â†’ "/tmp/mydir/file.txt" (Linux)
+    *   joinPath("C:\\Users", "admin", "file.txt") â†’ "C:\\Users\\admin\\file.txt" (Windows)
+    *   joinPath("/base/", "/subdir/", "file") â†’ "/base/subdir/file"
+    *   joinPath("workspace", "dist/") â†’ "workspace/dist/" (trailing slash preserved)
     */
     private def joinPath(String... parts) {
         // Filter out empty strings
@@ -1026,7 +1026,7 @@ class PyTestManager {
      * Export specifiers to JSON file and return parsed data.
      *
      * The output filename is derived from the last segment of specifierModule
-     * (e.g. "tests.setups.rack_specifiers" → "rack_specifiers.json") and the
+     * (e.g. "tests.setups.rack_specifiers" â†’ "rack_specifiers.json") and the
      * file is always stored under tests/setups/specifiers_json/ in the working folder.
      * The file is copied back to the workspace if needed, archived as a build
      * artifact, and the parsed map is returned. Always overwrites an existing file.
@@ -1252,7 +1252,7 @@ class PyTestManager {
                                 venv.run("${session.runTestBaseCommand} ${testArgsStr}")
                             }
                         } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
-                            // Build was cancelled or a timeout expired — re-throw so Jenkins marks
+                            // Build was cancelled or a timeout expired â€” re-throw so Jenkins marks
                             // the build as ABORTED instead of UNSTABLE, and skip publishing.
                             throw e
                         } catch (err) {
@@ -1379,7 +1379,7 @@ class PyTestManager {
         }
     }
 
-    // ─── Test Dashboard ──────────────────────────────────────────────────────
+    // â”€â”€â”€ Test Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
      * Run pytest --collect-only and return the list of selected test node IDs.
@@ -1395,7 +1395,7 @@ class PyTestManager {
      */
     private List<String> collectTests(TestSession session = null) {
         // Always write to the Jenkins workspace so readFile can access it without restrictions.
-        // pytest --collect-only still runs with cwd = workingFolder (via venv.run → runInWorkingFolder),
+        // pytest --collect-only still runs with cwd = workingFolder (via venv.run â†’ runInWorkingFolder),
         // so test discovery is unaffected.
         def outputFile = "${this.pipeline.env.WORKSPACE}/.collect_output.txt"
 
@@ -1429,7 +1429,7 @@ class PyTestManager {
      * Includes a filter input and click-to-sort columns via vanilla JS.
      *
      * @param allTests    Ordered list of all pytest node IDs (row headers)
-     * @param uidToTests  Map from session uid → list of matching test node IDs
+     * @param uidToTests  Map from session uid â†’ list of matching test node IDs
      * @return HTML string
      */
     @NonCPS
@@ -1450,7 +1450,7 @@ class PyTestManager {
         }
 
         def sb = new StringBuilder()
-        sb << '''\
+        sb.append('''\
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1474,8 +1474,8 @@ class PyTestManager {
     th.sortable { cursor: pointer; user-select: none; }
     th.sortable:hover { background: #c8d8ec; }
     th.skipped { color: #888; font-style: italic; }
-    th.sort-asc::after  { content: " ▲"; font-size: 9px; }
-    th.sort-desc::after { content: " ▼"; font-size: 9px; }
+    th.sort-asc::after  { content: " â–²"; font-size: 9px; }
+    th.sort-desc::after { content: " â–¼"; font-size: 9px; }
     .policy-always   { background: #c6efce; }
     .policy-nightly  { background: #ffeb9c; }
     .policy-weekends { background: #f4b942; }
@@ -1488,33 +1488,33 @@ class PyTestManager {
 </head>
 <body>
   <h1>Test Coverage Dashboard</h1>
-'''
-        sb << "  <p>${allTests.size()} test(s) &nbsp;|&nbsp; ${allSessions.size()} session(s)</p>\n"
-        sb << '  <div class="legend">\n'
+''')
+        sb.append("  <p>${allTests.size()} test(s) &nbsp;|&nbsp; ${allSessions.size()} session(s)</p>\n")
+        sb.append('  <div class="legend">\n')
         ['always', 'nightly', 'weekends', 'never', 'other'].each { label ->
-            sb << "    <span class=\"legend-item policy-${label}\">${label}</span>\n"
+            sb.append("    <span class=\"legend-item policy-${label}\">${label}</span>\n")
         }
-        sb << '  </div>\n'
-        sb << '  <div class="controls">\n'
-        sb << '    <label for="filter">Filter tests:</label>\n'
-        sb << '    <input id="filter" type="text" placeholder="e.g. test_servo or ethercat" />\n'
-        sb << '    <span id="count"></span>\n'
-        sb << '  </div>\n'
+        sb.append('  </div>\n')
+        sb.append('  <div class="controls">\n')
+        sb.append('    <label for="filter">Filter tests:</label>\n')
+        sb.append('    <input id="filter" type="text" placeholder="e.g. test_servo or ethercat" />\n')
+        sb.append('    <span id="count"></span>\n')
+        sb.append('  </div>\n')
 
-        sb << '  <table id="dashboard">\n    <thead>\n'
+        sb.append('  <table id="dashboard">\n    <thead>\n')
 
-        // ── Row 1: group headers ─────────────────────────────────
-        sb << '      <tr class="group-row">\n'
-        sb << '        <th rowspan="2" class="test-name sortable" onclick="sortByCol(0)">Test Node ID</th>\n'
+        // â”€â”€ Row 1: group headers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        sb.append('      <tr class="group-row">\n')
+        sb.append('        <th rowspan="2" class="test-name sortable" onclick="sortByCol(0)">Test Node ID</th>\n')
         groupedSessions.each { pair ->
             def groupName = pair[0]
             def sessions  = pair[1]
-            sb << "        <th colspan=\"${sessions.size()}\">${groupName}</th>\n"
+            sb.append("        <th colspan=\"${sessions.size()}\">${groupName}</th>\n")
         }
-        sb << '      </tr>\n'
+        sb.append('      </tr>\n')
 
-        // ── Row 2: session UID headers ────────────────────────────
-        sb << '      <tr class="session-row">\n'
+        // â”€â”€ Row 2: session UID headers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        sb.append('      <tr class="session-row">\n')
         def colIndex = [1]  // mutable counter inside closure
         allSessions.each { session ->
             def skippedClass = !session.shouldRun ? 'skipped sortable' : 'sortable'
@@ -1525,30 +1525,30 @@ class PyTestManager {
             def titleAttr = titleLines
                 ? " title=\"${titleLines.join('&#10;').replace('"', '&quot;')}\""
                 : ''
-            sb << "        <th class=\"${skippedClass}\"${titleAttr} onclick=\"sortByCol(${colIndex[0]})\">${session.uid}</th>\n"
+            sb.append("        <th class=\"${skippedClass}\"${titleAttr} onclick=\"sortByCol(${colIndex[0]})\">${session.uid}</th>\n")
             colIndex[0]++
         }
-        sb << '      </tr>\n    </thead>\n    <tbody>\n'
+        sb.append('      </tr>\n    </thead>\n    <tbody>\n')
 
-        // ── Body rows ─────────────────────────────────────────────
+        // â”€â”€ Body rows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         allTests.each { testId ->
-            sb << '      <tr>\n'
-            sb << "        <td class=\"test-name\">${testId.replace('&', '&amp;').replace('<', '&lt;')}</td>\n"
+            sb.append('      <tr>\n')
+            sb.append("        <td class=\"test-name\">${testId.replace('&', '&amp;').replace('<', '&lt;')}</td>\n")
             allSessions.each { session ->
                 if (sessionTestSets[session.uid]?.contains(testId)) {
                     def policyClass = policyCssClass(session.policy ?: 'always')
                     def policyLabel = (session.policy ?: 'always').replace('"', '&quot;')
-                    sb << "        <td class=\"${policyClass}\" title=\"${policyLabel}\">&#x25CF;</td>\n"
+                    sb.append("        <td class=\"${policyClass}\" title=\"${policyLabel}\">&#x25CF;</td>\n")
                 } else {
-                    sb << '        <td></td>\n'
+                    sb.append('        <td></td>\n')
                 }
             }
-            sb << '      </tr>\n'
+            sb.append('      </tr>\n')
         }
-        sb << '    </tbody>\n  </table>\n'
+        sb.append('    </tbody>\n  </table>\n')
 
-        // ── Vanilla JS: filter + sort ──────────────────────────────
-        sb << '''\
+        // â”€â”€ Vanilla JS: filter + sort â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        sb.append('''\
   <script>
     var _sortCol = -1, _sortDir = 0, _origOrder = [];
     document.addEventListener('DOMContentLoaded', function () {
@@ -1586,7 +1586,7 @@ class PyTestManager {
         var bT = b.cells[colIdx].textContent.trim();
         var result = colIdx === 0
           ? aT.localeCompare(bT)
-          : (bT ? 1 : 0) - (aT ? 1 : 0);  // covered (●) first
+          : (bT ? 1 : 0) - (aT ? 1 : 0);  // covered (â—) first
         return result * _sortDir;
       });
       rows.forEach(function(r) { tbody.appendChild(r); });
@@ -1606,7 +1606,7 @@ class PyTestManager {
   </script>
 </body>
 </html>
-'''
+''')
         return sb.toString()
     }
 
@@ -1694,11 +1694,11 @@ TestGroup LINUX_DOCKER_TESTS = testManager.createGroup("LINUX_DOCKER_TEST_SESSIO
  *
  * Nightly builds (every day):
  *   19:00, 21:00, 23:00 UTC (21:00, 23:00, 01:00 Barcelona Time)
- *   → Sets RUN_POLICY_NIGHTLY=true so that tests gated on the 'nightly' policy will run.
+ *   â†’ Sets RUN_POLICY_NIGHTLY=true so that tests gated on the 'nightly' policy will run.
  *
  * Weekend extra builds (Saturday & Sunday only):
  *   08:00, 14:00 UTC (10:00, 16:00 Barcelona Time)
- *   → Sets RUN_POLICY_NIGHTLY=true and RUN_POLICY_WEEKEND=true so that tests gated on
+ *   â†’ Sets RUN_POLICY_NIGHTLY=true and RUN_POLICY_WEEKEND=true so that tests gated on
  *     either 'nightly' or 'weekends' policy will run.
  */
 def NIGHTLY_CRON   = '0 19,21,23 * * * % PYTHON_VERSIONS=All;RUN_POLICY_NIGHTLY=true'
@@ -1989,7 +1989,7 @@ pipeline {
                                             testManager.buildTestSessions("tests.setups.rack_specifiers")
                                             testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
 
-                                            // Pcap tests run on the EtherCAT machine — add manually since they're not in rack_specifiers
+                                            // Pcap tests run on the EtherCAT machine â€” add manually since they're not in rack_specifiers
                                             ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
 
                                             // Linux pcap tests: runs pcap-marked tests that don't need hardware
