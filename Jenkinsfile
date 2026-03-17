@@ -1660,9 +1660,6 @@ pipeline {
                                     }
                                 }
                                 stage('Build wheels') {
-                                    environment {
-                                        SETUPTOOLS_SCM_PRETEND_VERSION = getPythonVersionForPr()
-                                    }
                                     steps {
                                         script {
                                             venvManager.forEachEnvironment() { venv ->
@@ -1777,9 +1774,6 @@ pipeline {
                                     }
                                 }
                                 stage('Build wheels') {
-                                    environment {
-                                        SETUPTOOLS_SCM_PRETEND_VERSION = getPythonVersionForPr()
-                                    }
                                     steps {
                                         script {
                                             // Linux for now does not contain compiled code
