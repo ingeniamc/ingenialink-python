@@ -1394,8 +1394,10 @@ class PyTestManager {
      * @return Ordered list of test node IDs (e.g. "tests/test_servo.py::test_connect")
      */
     private List<String> collectTests(TestSession session = null) {
-        def workingFolder = this.venvManager.getWorkingFolder()
-        def outputFile = this.venvManager.joinPath(workingFolder, ".collect_output.txt")
+        // Always write to the Jenkins workspace so readFile can access it without restrictions.
+        // pytest --collect-only still runs with cwd = workingFolder (via venv.run → runInWorkingFolder),
+        // so test discovery is unaffected.
+        def outputFile = "${this.pipeline.env.WORKSPACE}/.collect_output.txt"
 
         this.venvManager.withPython(this.venvManager.default_python_version) { venv ->
             def testArgsStr = session ? session.getTestArgs(venv).join(' ') : ''
