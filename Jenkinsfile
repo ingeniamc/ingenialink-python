@@ -552,7 +552,8 @@ class TestSession implements Serializable {
         'jobName',
         'setAttApiToken',
         'enableFirmwareVersionCheck',
-        'stageName'
+        'stageName',
+        'policy'
     ]
 
     /**
@@ -681,6 +682,12 @@ class TestSession implements Serializable {
      * Default: true
      */
     Boolean enableFirmwareVersionCheck = true
+
+    /**
+     * Execution policy tag for this session (e.g. 'always', 'nightly', 'weekends').
+     * Default: null
+     */
+    String policy = null
 
     TestSession(Map args = [:]) {
         // Validate arguments against whitelist
@@ -1099,6 +1106,21 @@ class PyTestManager {
     }
 
     /**
+     * Delete files matching a glob pattern (e.g. "wireshark/*.pcap", "*.coverage*").
+     * Silently succeeds if no files match or the path does not exist.
+     *
+     * @param pattern Unix-style glob pattern (forward slashes). On Windows, slashes are
+     *                converted to backslashes automatically.
+     */
+    private def deleteFiles(String pattern) {
+        if (this.venvManager.isUnixNode()) {
+            this.pipeline.sh(script: "rm -f ${pattern}", returnStatus: true)
+        } else {
+            this.pipeline.bat(script: "del /f \"${pattern.replace('/', '\\')}\" ", returnStatus: true)
+        }
+    }
+
+    /**
      * Archive Wireshark log files as Jenkins artifacts.
      * Archives all .pcap files from the specified directory.
      * 
@@ -1119,11 +1141,7 @@ class PyTestManager {
      * @param wiresharkDir Directory containing Wireshark log files to clear
      */
     private def clearWiresharkLogs(String wiresharkDir) {
-        if (this.venvManager.isUnixNode()) {
-            this.pipeline.sh(script: "rm -f ${wiresharkDir}/*.pcap", returnStatus: true)
-        } else {
-            this.pipeline.bat(script: "del /f \"${wiresharkDir}\\\\*.pcap\"", returnStatus: true)
-        }
+        this.deleteFiles("${wiresharkDir}/*.pcap")
     }
 
     /**
@@ -1131,11 +1149,7 @@ class PyTestManager {
      * Removes all .coverage* files to prepare for new test runs.
      */
     private def clearCoverageFiles() {
-        if (this.venvManager.isUnixNode()) {
-            this.pipeline.sh(script: 'rm -f *.coverage*', returnStatus: true)
-        } else {
-            this.pipeline.bat(script: 'del /f "*.coverage*"', returnStatus: true)
-        }
+        this.deleteFiles('*.coverage*')
     }
 
     /**
@@ -1192,11 +1206,7 @@ class PyTestManager {
         this.pipeline.junit "pytest_reports/*.xml"
         
         // Delete the junit after publishing it so it is not re-published on the next stage
-        if (this.venvManager.isUnixNode()) {
-            this.pipeline.sh "rm -f pytest_reports/*.xml"
-        } else {
-            this.pipeline.bat "del /S /Q pytest_reports\\*.xml"
-        }
+        this.deleteFiles('pytest_reports/*.xml')
     }
 
     /**
@@ -1330,7 +1340,8 @@ class PyTestManager {
                             uid: testConfig.run_test_stage_uid,
                             markers: testConfig.markers,
                             setup: setupPath,
-                            stageName: testConfig.stage_name
+                            stageName: testConfig.stage_name,
+                            policy: executionPolicy ?: 'always'
                         ]
                         if (executionPolicy) {
                             def policyResult = this.shouldRunPolicy(executionPolicy)
@@ -1366,6 +1377,284 @@ class PyTestManager {
                 }
             }
         }
+    }
+
+    // ─── Test Dashboard ──────────────────────────────────────────────────────
+
+    /**
+     * Run pytest --collect-only and return the list of selected test node IDs.
+     *
+     * When session is null the collection is unfiltered (no markers, no setup args),
+     * giving the full set of discoverable tests. When a session is supplied its
+     * getTestArgs() is used to mirror the exact arguments that runTestSession would pass.
+     *
+     * Always cleans up the temporary output file after reading it.
+     *
+     * @param session  TestSession to collect for, or null for unfiltered baseline
+     * @return Ordered list of test node IDs (e.g. "tests/test_servo.py::test_connect")
+     */
+    private List<String> collectTests(TestSession session = null) {
+        def workingFolder = this.venvManager.getWorkingFolder()
+        def outputFile = this.venvManager.joinPath(workingFolder, ".collect_output.txt")
+
+        this.venvManager.withPython(this.venvManager.default_python_version) { venv ->
+            def testArgsStr = session ? session.getTestArgs(venv).join(' ') : ''
+            venv.run("poetry run pytest --collect-only -q --tb=no --no-header ${testArgsStr} > \"${outputFile}\" 2>&1")
+        }
+
+        def output = this.pipeline.readFile(file: outputFile)
+        this.deleteFiles(outputFile)
+        return output.split('\n').findAll { line ->
+            def t = line.trim()
+            t && t.contains('::') && !t.startsWith('#')
+        }.collect { it.trim() }
+    }
+
+    /**
+     * Map a policy tag to a CSS class name for the dashboard table.
+     */
+    private static String policyCssClass(String policy) {
+        def map = [always: 'policy-always', nightly: 'policy-nightly', weekends: 'policy-weekends', never: 'policy-never']
+        return map.getOrDefault(policy ?: 'always', 'policy-other')
+    }
+
+    /**
+     * Build the HTML content for the test coverage dashboard.
+     *
+     * Group structure is derived from this.registeredGroups (insertion order preserved).
+     * The table has two header rows: TestGroup names (with colspan) and TestSession UIDs.
+     * Includes a filter input and click-to-sort columns via vanilla JS.
+     *
+     * @param allTests    Ordered list of all pytest node IDs (row headers)
+     * @param uidToTests  Map from session uid → list of matching test node IDs
+     * @return HTML string
+     */
+    private String buildDashboardHtml(List<String> allTests, Map uidToTests) {
+        // Build ordered list of [groupName, sessions] pairs (preserves createGroup() order)
+        def groupedSessions = []
+        this.registeredGroups.each { groupName, group ->
+            if (!group.sessions.isEmpty()) {
+                groupedSessions << [groupName, group.sessions]
+            }
+        }
+        def allSessions = groupedSessions.collectMany { it[1] }
+
+        // Pre-compute per-session test sets for O(1) membership checks
+        def sessionTestSets = [:]
+        allSessions.each { session ->
+            sessionTestSets[session.uid] = new HashSet<String>(uidToTests[session.uid] ?: [])
+        }
+
+        def sb = new StringBuilder()
+        sb << '''\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Coverage Dashboard</title>
+  <style>
+    body { font-family: monospace; font-size: 11px; margin: 20px; }
+    h1   { font-size: 16px; }
+    .controls { margin: 8px 0 12px; }
+    .controls input { width: 320px; padding: 3px 6px; font-size: 11px; }
+    #count { margin-left: 8px; color: #555; }
+    table { border-collapse: collapse; }
+    thead th { position: sticky; top: 0; z-index: 2; background: #f5f5f5;
+               border: 1px solid #ccc; padding: 4px 8px; white-space: nowrap; }
+    thead tr.group-row th { background: #dde8f5; font-weight: bold; text-align: center; }
+    tbody tr:hover td { filter: brightness(0.92); }
+    td   { border: 1px solid #ccc; padding: 3px 6px; text-align: center; }
+    td.test-name { text-align: left; white-space: nowrap; position: sticky;
+                   left: 0; background: #fff; z-index: 1; }
+    thead th.test-name { z-index: 3; }
+    th.sortable { cursor: pointer; user-select: none; }
+    th.sortable:hover { background: #c8d8ec; }
+    th.skipped { color: #888; font-style: italic; }
+    th.sort-asc::after  { content: " ▲"; font-size: 9px; }
+    th.sort-desc::after { content: " ▼"; font-size: 9px; }
+    .policy-always   { background: #c6efce; }
+    .policy-nightly  { background: #ffeb9c; }
+    .policy-weekends { background: #f4b942; }
+    .policy-never    { background: #d9d9d9; }
+    .policy-other    { background: #9fc5e8; }
+    .legend { margin: 8px 0; }
+    .legend-item { display: inline-block; margin-right: 8px;
+                   padding: 2px 10px; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h1>Test Coverage Dashboard</h1>
+'''
+        sb << "  <p>${allTests.size()} test(s) &nbsp;|&nbsp; ${allSessions.size()} session(s)</p>\n"
+        sb << '  <div class="legend">\n'
+        ['always', 'nightly', 'weekends', 'never', 'other'].each { label ->
+            sb << "    <span class=\"legend-item policy-${label}\">${label}</span>\n"
+        }
+        sb << '  </div>\n'
+        sb << '  <div class="controls">\n'
+        sb << '    <label for="filter">Filter tests:</label>\n'
+        sb << '    <input id="filter" type="text" placeholder="e.g. test_servo or ethercat" />\n'
+        sb << '    <span id="count"></span>\n'
+        sb << '  </div>\n'
+
+        sb << '  <table id="dashboard">\n    <thead>\n'
+
+        // ── Row 1: group headers ─────────────────────────────────
+        sb << '      <tr class="group-row">\n'
+        sb << '        <th rowspan="2" class="test-name sortable" onclick="sortByCol(0)">Test Node ID</th>\n'
+        groupedSessions.each { pair ->
+            def groupName = pair[0]
+            def sessions  = pair[1]
+            sb << "        <th colspan=\"${sessions.size()}\">${groupName}</th>\n"
+        }
+        sb << '      </tr>\n'
+
+        // ── Row 2: session UID headers ────────────────────────────
+        sb << '      <tr class="session-row">\n'
+        def colIndex = [1]  // mutable counter inside closure
+        allSessions.each { session ->
+            def skippedClass = !session.shouldRun ? 'skipped sortable' : 'sortable'
+            def titleLines = []
+            if (session.markers) { titleLines << "markers: ${session.markers}" }
+            if (session.setup)   { titleLines << "setup: ${session.setup}" }
+            if (!session.shouldRun && session.skipReason) { titleLines << "skip: ${session.skipReason}" }
+            def titleAttr = titleLines
+                ? " title=\"${titleLines.join('&#10;').replace('"', '&quot;')}\""
+                : ''
+            sb << "        <th class=\"${skippedClass}\"${titleAttr} onclick=\"sortByCol(${colIndex[0]})\">${session.uid}</th>\n"
+            colIndex[0]++
+        }
+        sb << '      </tr>\n    </thead>\n    <tbody>\n'
+
+        // ── Body rows ─────────────────────────────────────────────
+        allTests.each { testId ->
+            sb << '      <tr>\n'
+            sb << "        <td class=\"test-name\">${testId.replace('&', '&amp;').replace('<', '&lt;')}</td>\n"
+            allSessions.each { session ->
+                if (sessionTestSets[session.uid]?.contains(testId)) {
+                    def policyClass = policyCssClass(session.policy ?: 'always')
+                    def policyLabel = (session.policy ?: 'always').replace('"', '&quot;')
+                    sb << "        <td class=\"${policyClass}\" title=\"${policyLabel}\">&#x25CF;</td>\n"
+                } else {
+                    sb << '        <td></td>\n'
+                }
+            }
+            sb << '      </tr>\n'
+        }
+        sb << '    </tbody>\n  </table>\n'
+
+        // ── Vanilla JS: filter + sort ──────────────────────────────
+        sb << '''\
+  <script>
+    var _sortCol = -1, _sortDir = 0, _origOrder = [];
+    document.addEventListener('DOMContentLoaded', function () {
+      _origOrder = Array.from(document.querySelectorAll('#dashboard tbody tr'));
+    });
+
+    function sortByCol(colIdx) {
+      var allHeaderCells = document.querySelectorAll('#dashboard thead th.sortable');
+      allHeaderCells.forEach(function(th) { th.classList.remove('sort-asc', 'sort-desc'); });
+
+      if (_sortCol === colIdx) {
+        _sortDir = _sortDir === 1 ? -1 : (_sortDir === -1 ? 0 : 1);
+      } else {
+        _sortCol = colIdx; _sortDir = 1;
+      }
+
+      var tbody = document.querySelector('#dashboard tbody');
+      var rows  = Array.from(tbody.rows);
+
+      if (_sortDir === 0) {
+        _origOrder.forEach(function(r) { tbody.appendChild(r); });
+        return;
+      }
+
+      // Mark active header
+      var headerIdx = 0;
+      allHeaderCells.forEach(function(th, i) {
+        if (parseInt(th.getAttribute('onclick').match(/\\d+/)[0]) === colIdx) {
+          th.classList.add(_sortDir === 1 ? 'sort-asc' : 'sort-desc');
+        }
+      });
+
+      rows.sort(function(a, b) {
+        var aT = a.cells[colIdx].textContent.trim();
+        var bT = b.cells[colIdx].textContent.trim();
+        var result = colIdx === 0
+          ? aT.localeCompare(bT)
+          : (bT ? 1 : 0) - (aT ? 1 : 0);  // covered (●) first
+        return result * _sortDir;
+      });
+      rows.forEach(function(r) { tbody.appendChild(r); });
+    }
+
+    document.getElementById('filter').addEventListener('input', function () {
+      var q = this.value.toLowerCase();
+      var rows = document.querySelectorAll('#dashboard tbody tr');
+      var n = 0;
+      rows.forEach(function(row) {
+        var show = row.cells[0].textContent.toLowerCase().indexOf(q) !== -1;
+        row.style.display = show ? '' : 'none';
+        if (show) n++;
+      });
+      document.getElementById('count').textContent = q ? '(' + n + ' shown)' : '';
+    });
+  </script>
+</body>
+</html>
+'''
+        return sb.toString()
+    }
+
+
+    /**
+     * Collect tests for every registered session (using getTestArgs to mirror the actual
+     * run), build an HTML coverage matrix, and publish it as a Jenkins HTML report
+     * named "Test Coverage Dashboard".
+     *
+     * Must be called after buildTestSessions() and any manual addSession() calls,
+     * while still on the preparation node (requires an active venv).
+     */
+    def generateTestDashboard() {
+        def allSessions = []
+        this.registeredGroups.each { name, group ->
+            group.sessions.each { session -> allSessions << session }
+        }
+        if (allSessions.isEmpty()) {
+            this.pipeline.echo("generateTestDashboard: no sessions registered; skipping.")
+            return
+        }
+
+        // Baseline: collect ALL tests (no filters) so uncovered tests still appear as rows
+        def allTestsSet = new LinkedHashSet<String>(this.collectTests())
+
+        // Collect per-session test sets (one pytest --collect-only run per session)
+        def uidToTests = [:]
+        allSessions.each { session ->
+            uidToTests[session.uid] = this.collectTests(session)
+            // Also add any newly discovered tests to the row set
+            uidToTests[session.uid].each { allTestsSet << it }
+        }
+
+        def html = this.buildDashboardHtml(allTestsSet as List, uidToTests)
+
+        def reportDir  = 'test_dashboard'
+        def reportFile = 'index.html'
+        if (this.venvManager.isUnixNode()) {
+            this.pipeline.sh "mkdir -p ${reportDir}"
+        } else {
+            this.pipeline.bat "if not exist ${reportDir} mkdir ${reportDir}"
+        }
+        this.pipeline.writeFile(file: "${reportDir}/${reportFile}", text: html, encoding: 'UTF-8')
+        this.pipeline.publishHTML([
+            allowMissing         : false,
+            alwaysLinkToLastBuild: true,
+            keepAll              : true,
+            reportDir            : reportDir,
+            reportFiles          : reportFile,
+            reportName           : 'Test Coverage Dashboard',
+            reportTitles         : ''
+        ])
     }
 }
 
@@ -1710,6 +1999,7 @@ pipeline {
                                                 stageName: "Unit Tests (Linux)")
 
                                             testManager.echoTestGroupsSummary()
+                                            testManager.generateTestDashboard()
                                         }
                                     }
                                 }
