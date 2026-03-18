@@ -1421,6 +1421,11 @@ class PyTestManager {
         return map.getOrDefault(policy ?: 'always', 'policy-other')
     }
 
+    @NonCPS
+    private static Map policyLetterMap() {
+        return [always: 'A', nightly: 'N', weekends: 'W', never: 'X']
+    }
+
     /**
      * Build the HTML content for the test coverage dashboard.
      *
@@ -1464,9 +1469,13 @@ class PyTestManager {
     table.dataTable { border-collapse: collapse !important; }
     thead th { white-space: nowrap; }
     thead tr.group-row th { background: #dde8f5 !important; font-weight: bold; text-align: center; }
+    thead tr.session-row th { white-space: normal; text-align: center; min-width: 40px; max-width: 80px; font-size: 10px; }
     tbody tr:hover td { filter: brightness(0.92); }
-    td.test-name { text-align: left; white-space: nowrap; }
+    td.test-name { text-align: left; max-width: 400px; overflow: hidden;
+                   text-overflow: ellipsis; white-space: nowrap; }
+    td.test-name:hover { white-space: normal; word-break: break-all; overflow: visible; }
     th.skipped { color: #888; font-style: italic; }
+    td.policy-cell { text-align: center; font-weight: bold; font-size: 12px; }
     .policy-always   { background: #c6efce; }
     .policy-nightly  { background: #ffeb9c; }
     .policy-weekends { background: #f4b942; }
@@ -1482,8 +1491,10 @@ class PyTestManager {
 ''')
         sb.append("  <p>${allTests.size()} test(s) &nbsp;|&nbsp; ${allSessions.size()} session(s)</p>\n")
         sb.append('  <div class="legend">\n')
+        def letters = policyLetterMap()
         ['always', 'nightly', 'weekends', 'never', 'other'].each { label ->
-            sb.append("    <span class=\"legend-item policy-${label}\">${label}</span>\n")
+            def letter = letters.getOrDefault(label, '?')
+            sb.append("    <span class=\"legend-item policy-${label}\"><b>${letter}</b> = ${label}</span>\n")
         }
         sb.append('  </div>\n')
 
@@ -1511,7 +1522,8 @@ class PyTestManager {
                 ? " title=\"${titleLines.join('&#10;').replace('"', '&quot;')}\""
                 : ''
             def classAttr = skippedClass ? " class=\"${skippedClass}\"" : ''
-            sb.append("        <th${classAttr}${titleAttr}>${session.uid}</th>\n")
+            def displayUid = session.uid.replace('_', '<br>')
+            sb.append("        <th${classAttr}${titleAttr}>${displayUid}</th>\n")
         }
         sb.append('      </tr>\n    </thead>\n    <tbody>\n')
 
@@ -1522,8 +1534,10 @@ class PyTestManager {
             allSessions.each { session ->
                 if (sessionTestSets[session.uid]?.contains(testId)) {
                     def policyClass = policyCssClass(session.policy ?: 'always')
-                    def policyLabel = (session.policy ?: 'always').replace('"', '&quot;')
-                    sb.append("        <td class=\"${policyClass}\" title=\"${policyLabel}\">&#x25CF;</td>\n")
+                    def policyTag = session.policy ?: 'always'
+                    def policyLabel = policyTag.replace('"', '&quot;')
+                    def policyLetter = policyLetterMap().getOrDefault(policyTag, '?')
+                    sb.append("        <td class=\"${policyClass} policy-cell\" title=\"${policyLabel}\">${policyLetter}</td>\n")
                 } else {
                     sb.append('        <td></td>\n')
                 }
