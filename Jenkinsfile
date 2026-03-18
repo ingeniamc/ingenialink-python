@@ -1423,7 +1423,7 @@ class PyTestManager {
 
     @NonCPS
     private static Map policyLetterMap() {
-        return [always: 'A', nightly: 'N', weekends: 'W', never: 'X']
+        return [always: '&#x2705;', nightly: '&#x1F319;', weekends: '&#x1F31E;', never: '&#x274C;']
     }
 
     /**
@@ -1467,7 +1467,7 @@ class PyTestManager {
     body { font-family: monospace; font-size: 11px; margin: 20px; }
     h1   { font-size: 16px; }
     table.dataTable { border-collapse: collapse !important; }
-    thead th { white-space: nowrap; }
+    thead th { white-space: nowrap; position: sticky; top: 0; z-index: 10; background: #fff; }
     thead tr.group-row th { background: #dde8f5 !important; font-weight: bold; text-align: center; }
     thead tr.session-row th { white-space: normal; text-align: center; min-width: 40px; max-width: 80px; font-size: 10px; }
     tbody tr:nth-child(even) td { background-color: #f9f9f9; }
@@ -1485,6 +1485,7 @@ class PyTestManager {
     .legend { margin: 8px 0; }
     .legend-item { display: inline-block; margin-right: 8px;
                    padding: 2px 10px; border: 1px solid #ccc; }
+    .policy-none     { background: #ffc7ce; }
   </style>
 </head>
 <body>
@@ -1493,10 +1494,11 @@ class PyTestManager {
         sb.append("  <p>${allTests.size()} test(s) &nbsp;|&nbsp; ${allSessions.size()} session(s)</p>\n")
         sb.append('  <div class="legend">\n')
         def letters = policyLetterMap()
-        ['always', 'nightly', 'weekends', 'never', 'other'].each { label ->
-            def letter = letters.getOrDefault(label, '?')
-            sb.append("    <span class=\"legend-item policy-${label}\"><b>${letter}</b> = ${label}</span>\n")
+        ['always', 'nightly', 'weekends', 'never'].each { label ->
+            def letter = letters.getOrDefault(label, '&#x2753;')
+            sb.append("    <span class=\"legend-item policy-${label}\">${letter} = ${label}</span>\n")
         }
+        sb.append('    <span class="legend-item policy-none">&#x1F6AB; = not covered</span>\n')
         sb.append('  </div>\n')
 
         sb.append('  <table id="dashboard">\n    <thead>\n')
@@ -1551,10 +1553,10 @@ class PyTestManager {
             if (bestIdx < policyPriority.size()) {
                 def bestPolicy = policyPriority[bestIdx]
                 def bestClass = policyCssClass(bestPolicy)
-                def bestLetter = policyLetterMap().getOrDefault(bestPolicy, '?')
+                def bestLetter = policyLetterMap().getOrDefault(bestPolicy, '&#x2753;')
                 sb.append("        <td class=\"${bestClass} policy-cell\" title=\"${bestPolicy}\">${bestLetter}</td>\n")
             } else {
-                sb.append('        <td></td>\n')
+                sb.append('        <td class="policy-none policy-cell" title="not covered">&#x1F6AB;</td>\n')
             }
 
             // Output per-session cells
@@ -1563,7 +1565,7 @@ class PyTestManager {
                     def policyClass = policyCssClass(session.policy ?: 'always')
                     def policyTag = session.policy ?: 'always'
                     def policyLabel = policyTag.replace('"', '&quot;')
-                    def policyLetter = policyLetterMap().getOrDefault(policyTag, '?')
+                    def policyLetter = policyLetterMap().getOrDefault(policyTag, '&#x2753;')
                     sb.append("        <td class=\"${policyClass} policy-cell\" title=\"${policyLabel}\">${policyLetter}</td>\n")
                 } else {
                     sb.append('        <td></td>\n')
@@ -1583,6 +1585,11 @@ class PyTestManager {
         orderCellsTop: false,
         scrollX:       true
       });
+      // Hide Jenkins HTML Publisher "back to" wrapper link if present
+      try { if (window.parent) {
+        var wrapper = window.parent.document.querySelector('.htmlpublisher-wrapper a[href*="Back"]');
+        if (wrapper) wrapper.style.display = 'none';
+      }} catch(e) {}
     });
   </script>
 </body>
