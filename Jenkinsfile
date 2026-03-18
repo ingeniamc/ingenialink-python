@@ -1408,7 +1408,7 @@ class PyTestManager {
         this.deleteFiles(outputFile)
         return output.readLines().findAll { line ->
             def t = line.trim()
-            t && t.contains('::') && !t.startsWith('#')
+            t && t.contains('::') && !t.startsWith('#') && !t.contains('PytestCollectionWarning')
         }.collect { it.trim() }
     }
 
@@ -1470,6 +1470,7 @@ class PyTestManager {
     thead th { white-space: nowrap; }
     thead tr.group-row th { background: #dde8f5 !important; font-weight: bold; text-align: center; }
     thead tr.session-row th { white-space: normal; text-align: center; min-width: 40px; max-width: 80px; font-size: 10px; }
+    tbody tr:nth-child(even) td { background-color: #f9f9f9; }
     tbody tr:hover td { filter: brightness(0.92); }
     td.test-name { text-align: left; max-width: 400px; overflow: hidden;
                    text-overflow: ellipsis; white-space: nowrap; }
@@ -1503,6 +1504,7 @@ class PyTestManager {
         // ── Row 1: group headers ─────────────────────────────────
         sb.append('      <tr class="group-row">\n')
         sb.append('        <th rowspan="2" class="test-name">Test Node ID</th>\n')
+        sb.append('        <th rowspan="2">Best</th>\n')
         groupedSessions.each { pair ->
             def groupName = pair[0]
             def sessions  = pair[1]
@@ -1527,10 +1529,35 @@ class PyTestManager {
         }
         sb.append('      </tr>\n    </thead>\n    <tbody>\n')
 
+        // Policy priority: always > weekends > nightly > never (lower index = runs more often)
+        def policyPriority = ['always', 'weekends', 'nightly', 'never']
+
         // ── Body rows ─────────────────────────────────────────────
         allTests.each { testId ->
             sb.append('      <tr>\n')
-            sb.append("        <td class=\"test-name\">${testId.replace('&', '&amp;').replace('<', '&lt;')}</td>\n")
+            def displayName = testId.startsWith('tests/') ? testId.substring(6) : testId
+            sb.append("        <td class=\"test-name\">${displayName.replace('&', '&amp;').replace('<', '&lt;')}</td>\n")
+
+            // Compute the best (most frequent) policy across all sessions for this test
+            int bestIdx = policyPriority.size()
+            allSessions.each { session ->
+                if (sessionTestSets[session.uid]?.contains(testId)) {
+                    def policyTag = session.policy ?: 'always'
+                    int idx = policyPriority.indexOf(policyTag)
+                    if (idx >= 0 && idx < bestIdx) { bestIdx = idx }
+                }
+            }
+            // Output best-policy summary cell (2nd column)
+            if (bestIdx < policyPriority.size()) {
+                def bestPolicy = policyPriority[bestIdx]
+                def bestClass = policyCssClass(bestPolicy)
+                def bestLetter = policyLetterMap().getOrDefault(bestPolicy, '?')
+                sb.append("        <td class=\"${bestClass} policy-cell\" title=\"${bestPolicy}\">${bestLetter}</td>\n")
+            } else {
+                sb.append('        <td></td>\n')
+            }
+
+            // Output per-session cells
             allSessions.each { session ->
                 if (sessionTestSets[session.uid]?.contains(testId)) {
                     def policyClass = policyCssClass(session.policy ?: 'always')
