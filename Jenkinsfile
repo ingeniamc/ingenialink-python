@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.20') _
+﻿@Library('cicd-lib@0.20') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -881,23 +881,31 @@ class TestSession implements Serializable {
  *        ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
  *   4. Gate the hardware node on the group and run all sessions:
  *        when { expression { ECAT_TESTS.anyShouldRun() } }
- *        testManager.runTestStages(ECAT_TESTS)
+ *        ECAT_TESTS.runTestStages()
  */
 class TestGroup {
     /** Key used to look up this group in rack_specifiers test_configs (e.g. "ECAT_TEST_SESSIONS"). */
     final String name
     /** Template session; every session in this group is derived via baseTestSession.override(). */
     final TestSession baseTestSession
-    /** Ordered list of sessions to run; populated by buildTestSessions() and manual appends. */
-    List<TestSession> sessions
+    /** Ordered list of sessions to run; populated by buildTestSessions() and addSession(). */
+    private List<TestSession> sessions
     /** Back-reference to the PyTestManager that created this group */
     private final PyTestManager manager
+    /** When true, addSession() will throw. Set automatically by runTestStages() to prevent
+     *  concurrent modifications from parallel branches. */
+    private boolean locked = false
 
     TestGroup(String name, TestSession baseTestSession, PyTestManager manager) {
         this.name = name
         this.baseTestSession = baseTestSession
         this.sessions = []
         this.manager = manager
+    }
+
+    /** Read-only access to the sessions list. */
+    List<TestSession> getSessions() {
+        return this.sessions
     }
 
     /**
@@ -917,6 +925,12 @@ class TestGroup {
      * @param overrides  Map of TestSession attribute overrides (must include at least 'uid')
      */
     void addSession(Map overrides) {
+        if (this.locked) {
+            throw new IllegalStateException(
+                "Cannot add session to locked group '${this.name}'. "
+                + "The group was locked by runTestStages() to prevent concurrent modifications from parallel branches."
+            )
+        }
         if (!overrides.containsKey('uid') || !overrides.uid) {
             throw new IllegalArgumentException("addSession() requires a non-null 'uid' in overrides. Got: ${overrides}")
         }
@@ -953,6 +967,28 @@ class TestGroup {
             lines << "  [${status}] ${session.stageName} [uid=${session.uid}]${reason}"
         }
         return lines.join('\n')
+    }
+
+    /**
+     * Run test stages from pre-built TestSession objects.
+     *
+     * Locks the group to prevent concurrent modifications, then runs each session
+     * as a Jenkins stage. Sessions with shouldRun==false are marked with
+     * Utils.markStageSkippedForConditional() so they appear grey (skipped) in the
+     * Jenkins UI rather than green (passed).
+     */
+    def runTestStages() {
+        this.locked = true
+        this.sessions.each { session ->
+            this.manager.pipeline.stage(session.stageName) {
+                if (session.shouldRun) {
+                    this.manager.runTestSession(session)
+                } else {
+                    this.manager.pipeline.echo "Skipped: ${session.skipReason}"
+                    org.jenkinsci.plugins.pipeline.modeldefinition.Utils.markStageSkippedForConditional(session.stageName)
+                }
+            }
+        }
     }
 }
 
@@ -1331,10 +1367,10 @@ class PyTestManager {
                         )
                     }
 
-                    testConfigs.each { sessionName, testConfig ->
-                        def group = this.registeredGroups[sessionName]
+                    testConfigs.each { groupName, testConfig ->
+                        def group = this.registeredGroups[groupName]
                         if (!group) {
-                            this.pipeline.error("No TestGroup found for session name '${sessionName}'. Available groups: ${this.registeredGroups.keySet()}")
+                            this.pipeline.error("No TestGroup found for group name '${groupName}'. Available groups: ${this.registeredGroups.keySet()}")
                         }
                         def overrides = [
                             uid: testConfig.run_test_stage_uid,
@@ -1352,28 +1388,6 @@ class PyTestManager {
                         }
                         group.addSession(overrides)
                     }
-                }
-            }
-        }
-    }
-
-    /**
-     * Run hardware test stages from pre-built TestSession objects.
-     *
-     * Each session produces exactly one Jenkins stage. Sessions with shouldRun==false
-     * are marked with Utils.markStageSkippedForConditional() so they appear grey
-     * (skipped) in the Jenkins UI rather than green (passed).
-     *
-     * @param group  TestGroup whose sessions will be run
-     */
-    def runTestStages(TestGroup group) {
-        group.sessions.each { session ->
-            this.pipeline.stage(session.stageName) {
-                if (session.shouldRun) {
-                    this.runTestSession(session)
-                } else {
-                    this.pipeline.echo "Skipped: ${session.skipReason}"
-                    org.jenkinsci.plugins.pipeline.modeldefinition.Utils.markStageSkippedForConditional(session.stageName)
                 }
             }
         }
@@ -1687,6 +1701,7 @@ TestGroup CAN_TESTS = testManager.createGroup("CAN_TEST_SESSIONS", HW_TEST_SESSI
 TestGroup ETH_TESTS = testManager.createGroup("ETH_TEST_SESSIONS", HW_TEST_SESSIONS.override()) // Wireshark logging is injected later based on parameter
 TestGroup ECAT_TESTS = testManager.createGroup("ECAT_TEST_SESSIONS", HW_TEST_SESSIONS.override()) // Wireshark logging is injected later based on parameter
 TestGroup LINUX_DOCKER_TESTS = testManager.createGroup("LINUX_DOCKER_TEST_SESSIONS", TEST_SESSIONS.override())
+TestGroup WIN_DOCKER_TESTS = testManager.createGroup("WIN_DOCKER_TEST_SESSIONS", TEST_SESSIONS.override())
 
 
 /*
@@ -1803,6 +1818,33 @@ pipeline {
             }
         }
 
+        stage('Register manual test sessions') {
+            steps {
+                script {
+                    // Pcap tests run on the EtherCAT machine — add manually since they're not in rack_specifiers
+                    ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
+
+                    // Linux pcap tests: runs pcap-marked tests that don't need hardware
+                    LINUX_DOCKER_TESTS.addSession(
+                        uid: "pcap",
+                        markers: "pcap",
+                        stageName: "Pcap Tests (Linux)")
+
+                    // Linux unit tests: everything that does not have a marker
+                    LINUX_DOCKER_TESTS.addSession(
+                        uid: "no_pcap",
+                        markers: PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "pcap", "no_pcap"]),
+                        stageName: "Unit Tests (Linux)")
+
+                    // Windows unit tests: mirrors the ad-hoc session in Build Windows for dashboard visibility
+                    WIN_DOCKER_TESTS.addSession(
+                        uid: "no_pcap",
+                        markers: PyTestManager.markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS),
+                        stageName: "Unit Tests (Windows)")
+                }
+            }
+        }
+
         stage('Build and publish') {
             stages {
                 stage('Build') {
@@ -1900,17 +1942,15 @@ pipeline {
                                 stage('Run unit tests (no-pcap) tests on docker') {
                                     when {
                                         expression {
-                                            "no_pcap" ==~ params.test_session_filter
+                                            WIN_DOCKER_TESTS.anyShouldRun()
                                         }
                                     }
                                     steps {
                                         script {
-                                            /* Windows docker does not have npcap/winpcap installed so runs no_pcap tests */
-                                            def win_marker = PyTestManager.markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "no_pcap", markers: win_marker))
+                                            WIN_DOCKER_TESTS.runTestStages()
                                         }
                                     }
                                 }
@@ -1985,24 +2025,9 @@ pipeline {
                                                 venv.run("poetry run poe install-wheel")
                                             }
                                             
-                                            // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here)
+                                            // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here).
                                             testManager.buildTestSessions("tests.setups.rack_specifiers")
                                             testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
-
-                                            // Pcap tests run on the EtherCAT machine — add manually since they're not in rack_specifiers
-                                            ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
-
-                                            // Linux pcap tests: runs pcap-marked tests that don't need hardware
-                                            LINUX_DOCKER_TESTS.addSession(
-                                                uid: "pcap",
-                                                markers: "pcap",
-                                                stageName: "Pcap Tests (Linux)")
-
-                                            // Linux unit tests: everything that does not have a marker
-                                            LINUX_DOCKER_TESTS.addSession(
-                                                uid: "no_pcap",
-                                                markers: PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "pcap", "no_pcap"]),
-                                                stageName: "Unit Tests (Linux)")
 
                                             testManager.echoTestGroupsSummary()
                                             testManager.generateTestDashboard()
@@ -2018,7 +2043,7 @@ pipeline {
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            testManager.runTestStages(LINUX_DOCKER_TESTS)
+                                            LINUX_DOCKER_TESTS.runTestStages()
                                         }
                                     }
                                 }
@@ -2121,7 +2146,7 @@ pipeline {
                         stage('Run EtherCAT Tests') {
                             steps {
                                 script {
-                                    testManager.runTestStages(ECAT_TESTS)
+                                    ECAT_TESTS.runTestStages()
                                 }
                             }
                         }
@@ -2165,8 +2190,8 @@ pipeline {
                         stage('Run CANopen/Ethernet Tests') {
                             steps {
                                 script {
-                                    testManager.runTestStages(CAN_TESTS)
-                                    testManager.runTestStages(ETH_TESTS)
+                                    CAN_TESTS.runTestStages()
+                                    ETH_TESTS.runTestStages()
                                 }
                             }
                         }
