@@ -1441,7 +1441,8 @@ class PyTestManager {
                 groupedSessions << [groupName, group.sessions]
             }
         }
-        def allSessions = groupedSessions.collectMany { it[1] }
+        def allSessions = []
+        groupedSessions.each { pair -> pair[1].each { s -> allSessions << s } }
 
         // Pre-compute per-session test lists for membership checks
         def sessionTestSets = [:]
