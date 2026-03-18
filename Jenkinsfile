@@ -33,200 +33,6 @@ def reassignFilePermissions() {
 }
 
 /**
- * TestSchedulePolicy - Represents a single scheduling policy
- * 
- * A policy consists of:
- * - A unique key/name
- * - An evaluator closure that determines if tests should run
- * 
- * Usage:
- *    def policy = new TestSchedulePolicy("business_hours", { pipeline ->
- *        def hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
- *        return hour >= 9 && hour < 17
- *    })
- */
-class TestSchedulePolicy implements Serializable {
-    String key
-    Closure evaluator  // (pipeline, Calendar triggerTime) -> [result: boolean, reason: String]
-    
-    TestSchedulePolicy(String key, Closure evaluator) {
-        this.key = key
-        this.evaluator = evaluator
-    }
-    
-    Map evaluate(def pipeline, Calendar triggerTime = null) {
-        return this.evaluator.call(pipeline, triggerTime)
-    }
-}
-
-/**
- * TestSchedulePolicyManager - Registry and manager for scheduling policies
- * 
- * This class manages multiple scheduling policies and provides policy evaluation.
- * 
- * Built-in policies:
- * - "always": Always run tests (use for tests that should run on every pipeline trigger)
- * - "never": Never run tests (use for setups that should be completely disabled)
- * - "weekends": Run only on Saturdays and Sundays
- * - "weekdays": Run only on weekdays (Monday to Friday)
- * - "nightly": Run only during nightTime hours (configurable, default: 7 PM to 6 AM)
- * 
- * Note: For scheduling tests to run once per day, use Jenkins cron triggers (e.g., '0 2 * * *')
- * rather than a policy. Policies determine IF tests should run when triggered, not WHEN to trigger.
- * 
- * Usage examples:
- * 
- * 1. Basic usage with default settings:
- *    def manager = new TestSchedulePolicyManager()
- *    manager.shouldRun("nightly", pipeline)
- * 
- * 2. Usage with a trigger time (evaluate policies as of a past moment):
- *    manager.shouldRun("nightly", pipeline, triggerCalendar)
- * 
- * 3. Configure nightly hours:
- *    manager.setNightlyHours(20, 7)  // 8 PM to 7 AM
- * 
- * 4. Register custom policy:
- *    manager.registerPolicy(new TestSchedulePolicy("business_hours", { pipeline, triggerTime ->
- *        def calendar = triggerTime ?: Calendar.getInstance()
- *        def hour = calendar.get(Calendar.HOUR_OF_DAY)
- *        def isBusinessHours = hour >= 9 && hour < 17
- *        return [result: isBusinessHours, reason: isBusinessHours ? "" : "Not business hours (hour=${hour})"]
- *    }))
- */
-class TestSchedulePolicyManager implements Serializable {
-    // Registry of policies by key
-    private Map<String, TestSchedulePolicy> policies = [:]
-    
-    // Configuration for built-in policies
-    int nightTimeStartHour = 19  // 7 PM
-    int nightTimeEndHour = 6     // 6 AM
-    
-    // Track if built-in policies have been registered
-    private boolean builtInPoliciesRegistered = false
-    
-    TestSchedulePolicyManager() {
-        // Don't register built-in policies in constructor to avoid CPS transformation issues
-        // They will be registered lazily on first use
-    }
-    
-    /**
-     * Ensure built-in policies are registered (lazy initialization).
-     * Safe to call multiple times - only registers once.
-     */
-    private void ensureBuiltInPoliciesRegistered() {
-        if (this.builtInPoliciesRegistered) {
-            return
-        }
-        registerBuiltInPolicies()
-        this.builtInPoliciesRegistered = true
-    }
-    
-    /**
-     * Register all built-in policies.
-     * Separated into a method for clarity and to allow re-registration when configuration changes.
-     */
-    private void registerBuiltInPolicies() {
-        // Always policy - always returns true
-        registerPolicy(new TestSchedulePolicy("always", { pipeline, triggerTime ->
-            return [result: true, reason: "Policy 'always' is always enabled"]
-        }))
-
-        // Never policy - never returns true
-        registerPolicy(new TestSchedulePolicy("never", { pipeline, triggerTime ->
-            return [result: false, reason: "Policy 'never' is always disabled"]
-        }))
-
-        // Weekend policy - runs on Saturday and Sunday
-        registerPolicy(new TestSchedulePolicy("weekends", { pipeline, triggerTime ->
-            def calendar = triggerTime ?: Calendar.getInstance()
-            def dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
-            def isWeekend = dayOfWeek == Calendar.SATURDAY || dayOfWeek == Calendar.SUNDAY
-            def reason = isWeekend
-                ? "Policy 'weekends': today is a weekend (dayOfWeek=${dayOfWeek})"
-                : "Policy 'weekends': today is not a weekend (dayOfWeek=${dayOfWeek})"
-            return [result: isWeekend, reason: reason]
-        }))
-
-        // Weekday policy - runs Monday through Friday
-        registerPolicy(new TestSchedulePolicy("weekdays", { pipeline, triggerTime ->
-            def calendar = triggerTime ?: Calendar.getInstance()
-            def dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
-            def isWeekday = dayOfWeek >= Calendar.MONDAY && dayOfWeek <= Calendar.FRIDAY
-            def reason = isWeekday
-                ? "Policy 'weekdays': today is a weekday (dayOfWeek=${dayOfWeek})"
-                : "Policy 'weekdays': today is not a weekday (dayOfWeek=${dayOfWeek})"
-            return [result: isWeekday, reason: reason]
-        }))
-
-        // Nightly policy - runs during configured night hours
-        registerPolicy(new TestSchedulePolicy("nightly", { pipeline, triggerTime ->
-            def calendar = triggerTime ?: Calendar.getInstance()
-            def hourOfDay = calendar.get(Calendar.HOUR_OF_DAY)
-            def isNightTime = hourOfDay >= this.nightTimeStartHour || hourOfDay < this.nightTimeEndHour
-            def reason = isNightTime
-                ? "Policy 'nightly': current time is nightTime (hourOfDay=${hourOfDay}, nightTime is ${this.nightTimeStartHour}:00-${this.nightTimeEndHour}:00)"
-                : "Policy 'nightly': current time is not nightTime (hourOfDay=${hourOfDay}, nightTime is ${this.nightTimeStartHour}:00-${this.nightTimeEndHour}:00)"
-            return [result: isNightTime, reason: reason]
-        }))
-    }
-    
-    /**
-     * Configure the hours that define "nightTime" for the nightly policy.
-     * @param startHour Hour when nightTime begins (0-23)
-     * @param endHour Hour when nightTime ends (0-23)
-     * @throws IllegalArgumentException if hours are outside valid range
-     */
-    void setNightlyHours(int startHour, int endHour) {
-        if (startHour < 0 || startHour > 23) {
-            throw new IllegalArgumentException("startHour must be between 0 and 23, got: ${startHour}")
-        }
-        if (endHour < 0 || endHour > 23) {
-            throw new IllegalArgumentException("endHour must be between 0 and 23, got: ${endHour}")
-        }
-        this.nightTimeStartHour = startHour
-        this.nightTimeEndHour = endHour
-        // Re-register built-in policies with new configuration
-        this.builtInPoliciesRegistered = false
-        registerBuiltInPolicies()
-        this.builtInPoliciesRegistered = true
-    }
-    
-    /**
-     * Register a policy in the manager.
-     * @param policy TestSchedulePolicy instance to register
-     */
-    void registerPolicy(TestSchedulePolicy policy) {
-        // Check for collision with existing policy keys
-        if (this.policies.containsKey(policy.key)) {
-            throw new IllegalArgumentException("Policy with key '${policy.key}' is already registered.")
-        }
-        this.policies[policy.key] = policy
-    }
-    
-    /**
-     * Check if tests should run based on the given policy key.
-     * @param policyKey Policy key to evaluate
-     * @param pipeline Pipeline context (kept for custom policy compatibility; not used internally for logging)
-     * @param triggerTime Calendar instance representing when the pipeline was triggered.
-     *        If provided, time-based policies use this instead of the current time.
-     * @return Map [result: boolean, reason: String] — reason explains why the policy returned its result
-     * @throws IllegalArgumentException if policy key is unknown
-     */
-    Map shouldRun(String policyKey, def pipeline = null, Calendar triggerTime = null) {
-        // Ensure built-in policies are registered
-        ensureBuiltInPoliciesRegistered()
-
-        def policy = this.policies[policyKey]
-        if (!policy) {
-            throw new IllegalArgumentException("Unknown policy: ${policyKey}")
-        }
-        
-        return policy.evaluate(pipeline, triggerTime)
-    }
-}
-
-/**
  * VEnvManager - Manages Python virtual environments across Jenkins nodes
  * 
  * This class provides a centralized way to create, manage, and execute code within
@@ -1119,11 +925,13 @@ class TestGroup {
 class PyTestManager {
     private VEnvManager venvManager
     private def pipeline
-    /** Policy manager for schedule-based test gating (always, never, nightly, weekends, etc.) */
-    TestSchedulePolicyManager schedulePolicyManager = new TestSchedulePolicyManager()
+    /**
+     * Set of active run-policy tags for this build (e.g. "nightly", "weekends").
+     * Populated from pipeline boolean parameters (RUN_POLICY_NIGHTLY, RUN_POLICY_WEEKEND).
+     * Used by shouldRunPolicy() for tag-based test gating.
+     */
+    Set<String> runPolicyTags = [] as Set
     private List coverageStashes = []
-    /** Calendar snapshot taken at construction time, used for schedule policy evaluation. */
-    private Calendar triggerTime
     /** All TestGroups registered via createGroup(), keyed by group name; */
     private Map registeredGroups = [:]
     /** Regex pattern used to filter which test sessions run; matched against each session's uid. */
@@ -1132,7 +940,26 @@ class PyTestManager {
     PyTestManager(Map args = [pipeline: null, venvManager: null]) {
         this.venvManager = args.venvManager
         this.pipeline = args.pipeline
-        this.triggerTime = Calendar.getInstance()
+    }
+
+    /**
+     * Check if tests should run based on the given policy key.
+     * "always" and "never" are reserved; everything else is a tag lookup against runPolicyTags.
+     * @param policyKey Policy key to evaluate
+     * @return Map [result: boolean, reason: String]
+     */
+    Map shouldRunPolicy(String policyKey) {
+        if (policyKey == "always") {
+            return [result: true, reason: "Policy 'always' is always enabled"]
+        }
+        if (policyKey == "never") {
+            return [result: false, reason: "Policy 'never' is always disabled"]
+        }
+        def hasTag = this.runPolicyTags.contains(policyKey)
+        def reason = hasTag
+            ? "Policy '${policyKey}': tag is present (runPolicyTags=${this.runPolicyTags})"
+            : "Policy '${policyKey}': tag is not present (runPolicyTags=${this.runPolicyTags})"
+        return [result: hasTag, reason: reason]
     }
 
     /**
@@ -1474,7 +1301,7 @@ class PyTestManager {
                             stageName: testConfig.stage_name
                         ]
                         if (executionPolicy) {
-                            def policyResult = this.schedulePolicyManager.shouldRun(executionPolicy, this.pipeline, this.triggerTime)
+                            def policyResult = this.shouldRunPolicy(executionPolicy)
                             if (!policyResult.result) {
                                 overrides.shouldRun = false
                                 overrides.skipReason = policyResult.reason
@@ -1535,8 +1362,21 @@ TestGroup ECAT_TESTS = testManager.createGroup("ECAT_TEST_SESSIONS", HW_TEST_SES
 TestGroup LINUX_DOCKER_TESTS = testManager.createGroup("LINUX_DOCKER_TEST_SESSIONS", TEST_SESSIONS.override())
 
 
-/* Build develop everyday 3 times starting at 19:00 UTC (21:00 Barcelona Time), running all tests */
-def CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * * % PYTHON_VERSIONS=All''' : ""
+/*
+ * Cron schedules for the develop branch:
+ *
+ * Nightly builds (every day):
+ *   19:00, 21:00, 23:00 UTC (21:00, 23:00, 01:00 Barcelona Time)
+ *   → Sets RUN_POLICY_NIGHTLY=true so that tests gated on the 'nightly' policy will run.
+ *
+ * Weekend extra builds (Saturday & Sunday only):
+ *   08:00, 14:00 UTC (10:00, 16:00 Barcelona Time)
+ *   → Sets RUN_POLICY_NIGHTLY=true and RUN_POLICY_WEEKEND=true so that tests gated on
+ *     either 'nightly' or 'weekends' policy will run.
+ */
+def NIGHTLY_CRON   = '0 19,21,23 * * * % PYTHON_VERSIONS=All;RUN_POLICY_NIGHTLY=true'
+def WEEKEND_CRON   = '0 8,14 * * 6-7 % PYTHON_VERSIONS=All;RUN_POLICY_NIGHTLY=true;RUN_POLICY_WEEKEND=true'
+def CRON_SETTINGS  = BRANCH_NAME == "develop" ? "${NIGHTLY_CRON}\n${WEEKEND_CRON}" : ""
 
 pipeline {
     agent none
@@ -1580,6 +1420,8 @@ pipeline {
                 name: 'WIRESHARK_LOGGING_SCOPE'
         )
         booleanParam(name: 'CLEAR_SUCCESSFUL_WIRESHARK_LOGS', defaultValue: true, description: 'Clears Wireshark logs if the test passed')
+        booleanParam(name: 'RUN_POLICY_NIGHTLY', defaultValue: false, description: 'Tag this build as a nightly build (set automatically by cron triggers)')
+        booleanParam(name: 'RUN_POLICY_WEEKEND', defaultValue: false, description: 'Tag this build as a weekend build (set automatically by weekend cron triggers)')
     }
     stages {
         stage("Set env") {
@@ -1622,6 +1464,12 @@ pipeline {
                     )
 
                     testManager.testSessionFilter = params.test_session_filter
+
+                    // Parse run policy tags from boolean parameters
+                    def runPolicyTags = [] as Set
+                    if (params.RUN_POLICY_NIGHTLY) { runPolicyTags.add("nightly") }
+                    if (params.RUN_POLICY_WEEKEND) { runPolicyTags.add("weekends") }
+                    testManager.runPolicyTags = runPolicyTags
 
                     echo("Test sessions have been configured to run with the following base configuration:\n${TEST_SESSIONS.configSummary()}")
                 }

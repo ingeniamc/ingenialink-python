@@ -43,7 +43,7 @@ Source = "https://github.com/ingeniamc/ingenialink-python"
 version = "7.5.2"  # base version
 
 [project.optional-dependencies]
-virtual_drive = ["virtual_drive==0.0+gbbb8d11b3"]
+virtual_drive = ["virtual_drive==0.0.post535+mot3.5320.connection.permanently.3012679"]
 
 [[tool.poetry.source]]
 name = "PyPI"
@@ -61,7 +61,7 @@ requires = [
   "setuptools_scm[toml]>=8", 
   "wheel==0.42.0", 
   "Cython==3.0.11",
-  "setuptools_scm_policies @ http://pypi.novanta.com/packages/setuptools_scm_policies-0.1.0-py3-none-any.whl"
+  "setuptools_scm_policies @ http://pypi.novanta.com/packages/setuptools_scm_policies-0.1.0.post1.dev3+g65f3585d3-py3-none-any.whl"
 ]
 build-backend = "setuptools.build_meta"
 
@@ -124,8 +124,8 @@ pytest-env = "==1.1.5"
 pytest-cov = "==7.0.0"
 pytest-mock = "==3.15.1"
 pytest-console-scripts = "==1.4.1"
-twisted = "==24.11.0"
-summit-testing-framework = {version = "==0.2.0+pr1b8"}
+twisted = "==25.5.0"
+summit-testing-framework = {version = "==0.2.0.post232+develop.4b9deb4"}
 
 # -----------------------------------------------------------------------
 #                                   TASKS

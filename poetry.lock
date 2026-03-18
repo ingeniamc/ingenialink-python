@@ -3721,13 +3721,13 @@ test = ["pytest"]
 
 [[package]]
 name = "summit-testing-framework"
-version = "0.2.0+pr1b8"
+version = "0.2.0.post232+develop.4b9deb4"
 description = "Testing framework for Novanta drives"
 optional = false
 python-versions = ">=3.9"
 groups = ["tests"]
 files = [
-    {file = "summit_testing_framework-0.2.0+pr1b8-py3-none-any.whl", hash = "sha256:b1c8a9f690d900fa093e56250167a81ea6ae375cee7d569900f0fa2e812485e2"},
+    {file = "summit_testing_framework-0.2.0.post232+develop.4b9deb4-py3-none-any.whl", hash = "sha256:99aee653fb6258f17449f91980243f5032f1d1b9517b7b2a7119c67913009cd2"},
 ]
 
 [package.dependencies]
@@ -3901,14 +3901,14 @@ keyring = ["keyring (>=21.2.0)"]
 
 [[package]]
 name = "twisted"
-version = "24.11.0"
+version = "25.5.0"
 description = "An asynchronous networking framework written in Python"
 optional = false
 python-versions = ">=3.8.0"
 groups = ["tests"]
 files = [
-    {file = "twisted-24.11.0-py3-none-any.whl", hash = "sha256:fe403076c71f04d5d2d789a755b687c5637ec3bcd3b2b8252d76f2ba65f54261"},
-    {file = "twisted-24.11.0.tar.gz", hash = "sha256:695d0556d5ec579dcc464d2856b634880ed1319f45b10d19043f2b57eb0115b5"},
+    {file = "twisted-25.5.0-py3-none-any.whl", hash = "sha256:8559f654d01a54a8c3efe66d533d43f383531ebf8d81d9f9ab4769d91ca15df7"},
+    {file = "twisted-25.5.0.tar.gz", hash = "sha256:1deb272358cb6be1e3e8fc6f9c8b36f78eb0fa7c2233d2dbe11ec6fee04ea316"},
 ]
 
 [package.dependencies]
@@ -3921,19 +3921,20 @@ typing-extensions = ">=4.2.0"
 zope-interface = ">=5"
 
 [package.extras]
-all-non-platform = ["appdirs (>=1.4.0)", "appdirs (>=1.4.0)", "bcrypt (>=3.1.3)", "bcrypt (>=3.1.3)", "cryptography (>=3.3)", "cryptography (>=3.3)", "cython-test-exception-raiser (>=1.0.2,<2)", "cython-test-exception-raiser (>=1.0.2,<2)", "h2 (>=3.2,<5.0)", "h2 (>=3.2,<5.0)", "httpx[http2] (>=0.27)", "httpx[http2] (>=0.27)", "hypothesis (>=6.56)", "hypothesis (>=6.56)", "idna (>=2.4)", "idna (>=2.4)", "priority (>=1.1.0,<2.0)", "priority (>=1.1.0,<2.0)", "pyhamcrest (>=2)", "pyhamcrest (>=2)", "pyopenssl (>=21.0.0)", "pyopenssl (>=21.0.0)", "pyserial (>=3.0)", "pyserial (>=3.0)", "pywin32 (!=226) ; platform_system == \"Windows\"", "pywin32 (!=226) ; platform_system == \"Windows\"", "service-identity (>=18.1.0)", "service-identity (>=18.1.0)"]
+all-non-platform = ["appdirs (>=1.4.0)", "appdirs (>=1.4.0)", "bcrypt (>=3.1.3)", "bcrypt (>=3.1.3)", "cryptography (>=3.3)", "cryptography (>=3.3)", "cython-test-exception-raiser (>=1.0.2,<2)", "cython-test-exception-raiser (>=1.0.2,<2)", "h2 (>=3.2,<5.0)", "h2 (>=3.2,<5.0)", "httpx[http2] (>=0.27)", "httpx[http2] (>=0.27)", "hypothesis (>=6.56)", "hypothesis (>=6.56)", "idna (>=2.4)", "idna (>=2.4)", "priority (>=1.1.0,<2.0)", "priority (>=1.1.0,<2.0)", "pyhamcrest (>=2)", "pyhamcrest (>=2)", "pyopenssl (>=21.0.0)", "pyopenssl (>=21.0.0)", "pyserial (>=3.0)", "pyserial (>=3.0)", "pywin32 (!=226) ; platform_system == \"Windows\"", "pywin32 (!=226) ; platform_system == \"Windows\"", "service-identity (>=18.1.0)", "service-identity (>=18.1.0)", "wsproto", "wsproto"]
 conch = ["appdirs (>=1.4.0)", "bcrypt (>=3.1.3)", "cryptography (>=3.3)"]
-dev = ["coverage (>=7.5,<8.0)", "cython-test-exception-raiser (>=1.0.2,<2)", "httpx[http2] (>=0.27)", "hypothesis (>=6.56)", "pydoctor (>=23.9.0,<23.10.0)", "pyflakes (>=2.2,<3.0)", "pyhamcrest (>=2)", "python-subunit (>=1.4,<2.0)", "sphinx (>=6,<7)", "sphinx-rtd-theme (>=1.3,<2.0)", "towncrier (>=23.6,<24.0)", "twistedchecker (>=0.7,<1.0)"]
-dev-release = ["pydoctor (>=23.9.0,<23.10.0)", "pydoctor (>=23.9.0,<23.10.0)", "sphinx (>=6,<7)", "sphinx (>=6,<7)", "sphinx-rtd-theme (>=1.3,<2.0)", "sphinx-rtd-theme (>=1.3,<2.0)", "towncrier (>=23.6,<24.0)", "towncrier (>=23.6,<24.0)"]
-gtk-platform = ["appdirs (>=1.4.0)", "appdirs (>=1.4.0)", "bcrypt (>=3.1.3)", "bcrypt (>=3.1.3)", "cryptography (>=3.3)", "cryptography (>=3.3)", "cython-test-exception-raiser (>=1.0.2,<2)", "cython-test-exception-raiser (>=1.0.2,<2)", "h2 (>=3.2,<5.0)", "h2 (>=3.2,<5.0)", "httpx[http2] (>=0.27)", "httpx[http2] (>=0.27)", "hypothesis (>=6.56)", "hypothesis (>=6.56)", "idna (>=2.4)", "idna (>=2.4)", "priority (>=1.1.0,<2.0)", "priority (>=1.1.0,<2.0)", "pygobject", "pygobject", "pyhamcrest (>=2)", "pyhamcrest (>=2)", "pyopenssl (>=21.0.0)", "pyopenssl (>=21.0.0)", "pyserial (>=3.0)", "pyserial (>=3.0)", "pywin32 (!=226) ; platform_system == \"Windows\"", "pywin32 (!=226) ; platform_system == \"Windows\"", "service-identity (>=18.1.0)", "service-identity (>=18.1.0)"]
+dev = ["coverage (>=7.5,<8.0)", "cython-test-exception-raiser (>=1.0.2,<2)", "httpx[http2] (>=0.27)", "hypothesis (>=6.56)", "pydoctor (>=24.11.1,<24.12.0)", "pyflakes (>=2.2,<3.0)", "pyhamcrest (>=2)", "python-subunit (>=1.4,<2.0)", "sphinx (>=6,<7)", "sphinx-rtd-theme (>=1.3,<2.0)", "towncrier (>=23.6,<24.0)", "twistedchecker (>=0.7,<1.0)"]
+dev-release = ["pydoctor (>=24.11.1,<24.12.0)", "pydoctor (>=24.11.1,<24.12.0)", "sphinx (>=6,<7)", "sphinx (>=6,<7)", "sphinx-rtd-theme (>=1.3,<2.0)", "sphinx-rtd-theme (>=1.3,<2.0)", "towncrier (>=23.6,<24.0)", "towncrier (>=23.6,<24.0)"]
+gtk-platform = ["appdirs (>=1.4.0)", "appdirs (>=1.4.0)", "bcrypt (>=3.1.3)", "bcrypt (>=3.1.3)", "cryptography (>=3.3)", "cryptography (>=3.3)", "cython-test-exception-raiser (>=1.0.2,<2)", "cython-test-exception-raiser (>=1.0.2,<2)", "h2 (>=3.2,<5.0)", "h2 (>=3.2,<5.0)", "httpx[http2] (>=0.27)", "httpx[http2] (>=0.27)", "hypothesis (>=6.56)", "hypothesis (>=6.56)", "idna (>=2.4)", "idna (>=2.4)", "priority (>=1.1.0,<2.0)", "priority (>=1.1.0,<2.0)", "pygobject", "pygobject", "pyhamcrest (>=2)", "pyhamcrest (>=2)", "pyopenssl (>=21.0.0)", "pyopenssl (>=21.0.0)", "pyserial (>=3.0)", "pyserial (>=3.0)", "pywin32 (!=226) ; platform_system == \"Windows\"", "pywin32 (!=226) ; platform_system == \"Windows\"", "service-identity (>=18.1.0)", "service-identity (>=18.1.0)", "wsproto", "wsproto"]
 http2 = ["h2 (>=3.2,<5.0)", "priority (>=1.1.0,<2.0)"]
-macos-platform = ["appdirs (>=1.4.0)", "appdirs (>=1.4.0)", "bcrypt (>=3.1.3)", "bcrypt (>=3.1.3)", "cryptography (>=3.3)", "cryptography (>=3.3)", "cython-test-exception-raiser (>=1.0.2,<2)", "cython-test-exception-raiser (>=1.0.2,<2)", "h2 (>=3.2,<5.0)", "h2 (>=3.2,<5.0)", "httpx[http2] (>=0.27)", "httpx[http2] (>=0.27)", "hypothesis (>=6.56)", "hypothesis (>=6.56)", "idna (>=2.4)", "idna (>=2.4)", "priority (>=1.1.0,<2.0)", "priority (>=1.1.0,<2.0)", "pyhamcrest (>=2)", "pyhamcrest (>=2)", "pyobjc-core", "pyobjc-core", "pyobjc-framework-cfnetwork", "pyobjc-framework-cfnetwork", "pyobjc-framework-cocoa", "pyobjc-framework-cocoa", "pyopenssl (>=21.0.0)", "pyopenssl (>=21.0.0)", "pyserial (>=3.0)", "pyserial (>=3.0)", "pywin32 (!=226) ; platform_system == \"Windows\"", "pywin32 (!=226) ; platform_system == \"Windows\"", "service-identity (>=18.1.0)", "service-identity (>=18.1.0)"]
-mypy = ["appdirs (>=1.4.0)", "bcrypt (>=3.1.3)", "coverage (>=7.5,<8.0)", "cryptography (>=3.3)", "cython-test-exception-raiser (>=1.0.2,<2)", "h2 (>=3.2,<5.0)", "httpx[http2] (>=0.27)", "hypothesis (>=6.56)", "idna (>=2.4)", "mypy (==1.10.1)", "mypy-zope (==1.0.6)", "priority (>=1.1.0,<2.0)", "pydoctor (>=23.9.0,<23.10.0)", "pyflakes (>=2.2,<3.0)", "pyhamcrest (>=2)", "pyopenssl (>=21.0.0)", "pyserial (>=3.0)", "python-subunit (>=1.4,<2.0)", "pywin32 (!=226) ; platform_system == \"Windows\"", "service-identity (>=18.1.0)", "sphinx (>=6,<7)", "sphinx-rtd-theme (>=1.3,<2.0)", "towncrier (>=23.6,<24.0)", "twistedchecker (>=0.7,<1.0)", "types-pyopenssl", "types-setuptools"]
-osx-platform = ["appdirs (>=1.4.0)", "appdirs (>=1.4.0)", "bcrypt (>=3.1.3)", "bcrypt (>=3.1.3)", "cryptography (>=3.3)", "cryptography (>=3.3)", "cython-test-exception-raiser (>=1.0.2,<2)", "cython-test-exception-raiser (>=1.0.2,<2)", "h2 (>=3.2,<5.0)", "h2 (>=3.2,<5.0)", "httpx[http2] (>=0.27)", "httpx[http2] (>=0.27)", "hypothesis (>=6.56)", "hypothesis (>=6.56)", "idna (>=2.4)", "idna (>=2.4)", "priority (>=1.1.0,<2.0)", "priority (>=1.1.0,<2.0)", "pyhamcrest (>=2)", "pyhamcrest (>=2)", "pyobjc-core", "pyobjc-core", "pyobjc-framework-cfnetwork", "pyobjc-framework-cfnetwork", "pyobjc-framework-cocoa", "pyobjc-framework-cocoa", "pyopenssl (>=21.0.0)", "pyopenssl (>=21.0.0)", "pyserial (>=3.0)", "pyserial (>=3.0)", "pywin32 (!=226) ; platform_system == \"Windows\"", "pywin32 (!=226) ; platform_system == \"Windows\"", "service-identity (>=18.1.0)", "service-identity (>=18.1.0)"]
+macos-platform = ["appdirs (>=1.4.0)", "appdirs (>=1.4.0)", "bcrypt (>=3.1.3)", "bcrypt (>=3.1.3)", "cryptography (>=3.3)", "cryptography (>=3.3)", "cython-test-exception-raiser (>=1.0.2,<2)", "cython-test-exception-raiser (>=1.0.2,<2)", "h2 (>=3.2,<5.0)", "h2 (>=3.2,<5.0)", "httpx[http2] (>=0.27)", "httpx[http2] (>=0.27)", "hypothesis (>=6.56)", "hypothesis (>=6.56)", "idna (>=2.4)", "idna (>=2.4)", "priority (>=1.1.0,<2.0)", "priority (>=1.1.0,<2.0)", "pyhamcrest (>=2)", "pyhamcrest (>=2)", "pyobjc-core (<11) ; python_version < \"3.9\"", "pyobjc-core (<11) ; python_version < \"3.9\"", "pyobjc-core ; python_version >= \"3.9\"", "pyobjc-core ; python_version >= \"3.9\"", "pyobjc-framework-cfnetwork (<11) ; python_version < \"3.9\"", "pyobjc-framework-cfnetwork (<11) ; python_version < \"3.9\"", "pyobjc-framework-cfnetwork ; python_version >= \"3.9\"", "pyobjc-framework-cfnetwork ; python_version >= \"3.9\"", "pyobjc-framework-cocoa (<11) ; python_version < \"3.9\"", "pyobjc-framework-cocoa (<11) ; python_version < \"3.9\"", "pyobjc-framework-cocoa ; python_version >= \"3.9\"", "pyobjc-framework-cocoa ; python_version >= \"3.9\"", "pyopenssl (>=21.0.0)", "pyopenssl (>=21.0.0)", "pyserial (>=3.0)", "pyserial (>=3.0)", "pywin32 (!=226) ; platform_system == \"Windows\"", "pywin32 (!=226) ; platform_system == \"Windows\"", "service-identity (>=18.1.0)", "service-identity (>=18.1.0)", "wsproto", "wsproto"]
+mypy = ["appdirs (>=1.4.0)", "bcrypt (>=3.1.3)", "coverage (>=7.5,<8.0)", "cryptography (>=3.3)", "cython-test-exception-raiser (>=1.0.2,<2)", "h2 (>=3.2,<5.0)", "httpx[http2] (>=0.27)", "hypothesis (>=6.56)", "idna (>=2.4)", "mypy (==1.10.1)", "mypy-zope (==1.0.6)", "priority (>=1.1.0,<2.0)", "pydoctor (>=24.11.1,<24.12.0)", "pyflakes (>=2.2,<3.0)", "pyhamcrest (>=2)", "pyopenssl (>=21.0.0)", "pyserial (>=3.0)", "python-subunit (>=1.4,<2.0)", "pywin32 (!=226) ; platform_system == \"Windows\"", "service-identity (>=18.1.0)", "sphinx (>=6,<7)", "sphinx-rtd-theme (>=1.3,<2.0)", "towncrier (>=23.6,<24.0)", "twistedchecker (>=0.7,<1.0)", "types-pyopenssl", "types-setuptools", "wsproto"]
+osx-platform = ["appdirs (>=1.4.0)", "appdirs (>=1.4.0)", "bcrypt (>=3.1.3)", "bcrypt (>=3.1.3)", "cryptography (>=3.3)", "cryptography (>=3.3)", "cython-test-exception-raiser (>=1.0.2,<2)", "cython-test-exception-raiser (>=1.0.2,<2)", "h2 (>=3.2,<5.0)", "h2 (>=3.2,<5.0)", "httpx[http2] (>=0.27)", "httpx[http2] (>=0.27)", "hypothesis (>=6.56)", "hypothesis (>=6.56)", "idna (>=2.4)", "idna (>=2.4)", "priority (>=1.1.0,<2.0)", "priority (>=1.1.0,<2.0)", "pyhamcrest (>=2)", "pyhamcrest (>=2)", "pyobjc-core (<11) ; python_version < \"3.9\"", "pyobjc-core (<11) ; python_version < \"3.9\"", "pyobjc-core ; python_version >= \"3.9\"", "pyobjc-core ; python_version >= \"3.9\"", "pyobjc-framework-cfnetwork (<11) ; python_version < \"3.9\"", "pyobjc-framework-cfnetwork (<11) ; python_version < \"3.9\"", "pyobjc-framework-cfnetwork ; python_version >= \"3.9\"", "pyobjc-framework-cfnetwork ; python_version >= \"3.9\"", "pyobjc-framework-cocoa (<11) ; python_version < \"3.9\"", "pyobjc-framework-cocoa (<11) ; python_version < \"3.9\"", "pyobjc-framework-cocoa ; python_version >= \"3.9\"", "pyobjc-framework-cocoa ; python_version >= \"3.9\"", "pyopenssl (>=21.0.0)", "pyopenssl (>=21.0.0)", "pyserial (>=3.0)", "pyserial (>=3.0)", "pywin32 (!=226) ; platform_system == \"Windows\"", "pywin32 (!=226) ; platform_system == \"Windows\"", "service-identity (>=18.1.0)", "service-identity (>=18.1.0)", "wsproto", "wsproto"]
 serial = ["pyserial (>=3.0)", "pywin32 (!=226) ; platform_system == \"Windows\""]
 test = ["cython-test-exception-raiser (>=1.0.2,<2)", "httpx[http2] (>=0.27)", "hypothesis (>=6.56)", "pyhamcrest (>=2)"]
 tls = ["idna (>=2.4)", "pyopenssl (>=21.0.0)", "service-identity (>=18.1.0)"]
-windows-platform = ["appdirs (>=1.4.0)", "appdirs (>=1.4.0)", "bcrypt (>=3.1.3)", "bcrypt (>=3.1.3)", "cryptography (>=3.3)", "cryptography (>=3.3)", "cython-test-exception-raiser (>=1.0.2,<2)", "cython-test-exception-raiser (>=1.0.2,<2)", "h2 (>=3.2,<5.0)", "h2 (>=3.2,<5.0)", "httpx[http2] (>=0.27)", "httpx[http2] (>=0.27)", "hypothesis (>=6.56)", "hypothesis (>=6.56)", "idna (>=2.4)", "idna (>=2.4)", "priority (>=1.1.0,<2.0)", "priority (>=1.1.0,<2.0)", "pyhamcrest (>=2)", "pyhamcrest (>=2)", "pyopenssl (>=21.0.0)", "pyopenssl (>=21.0.0)", "pyserial (>=3.0)", "pyserial (>=3.0)", "pywin32 (!=226)", "pywin32 (!=226)", "pywin32 (!=226) ; platform_system == \"Windows\"", "pywin32 (!=226) ; platform_system == \"Windows\"", "service-identity (>=18.1.0)", "service-identity (>=18.1.0)", "twisted-iocpsupport (>=1.0.2)", "twisted-iocpsupport (>=1.0.2)"]
+websocket = ["wsproto"]
+windows-platform = ["appdirs (>=1.4.0)", "appdirs (>=1.4.0)", "bcrypt (>=3.1.3)", "bcrypt (>=3.1.3)", "cryptography (>=3.3)", "cryptography (>=3.3)", "cython-test-exception-raiser (>=1.0.2,<2)", "cython-test-exception-raiser (>=1.0.2,<2)", "h2 (>=3.2,<5.0)", "h2 (>=3.2,<5.0)", "httpx[http2] (>=0.27)", "httpx[http2] (>=0.27)", "hypothesis (>=6.56)", "hypothesis (>=6.56)", "idna (>=2.4)", "idna (>=2.4)", "priority (>=1.1.0,<2.0)", "priority (>=1.1.0,<2.0)", "pyhamcrest (>=2)", "pyhamcrest (>=2)", "pyopenssl (>=21.0.0)", "pyopenssl (>=21.0.0)", "pyserial (>=3.0)", "pyserial (>=3.0)", "pywin32 (!=226)", "pywin32 (!=226)", "pywin32 (!=226) ; platform_system == \"Windows\"", "pywin32 (!=226) ; platform_system == \"Windows\"", "service-identity (>=18.1.0)", "service-identity (>=18.1.0)", "twisted-iocpsupport (>=1.0.2)", "twisted-iocpsupport (>=1.0.2)", "wsproto", "wsproto"]
 
 [[package]]
 name = "typing-extensions"
@@ -3969,18 +3970,18 @@ zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "virtual-drive"
-version = "0.0+gbbb8d11b3"
+version = "0.0.post535+mot3.5320.connection.permanently.3012679"
 description = "Emulates a Summit drive for development and testing purposes."
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
 markers = "extra == \"virtual-drive\""
 files = [
-    {file = "virtual_drive-0.0+gbbb8d11b3-py3-none-any.whl", hash = "sha256:920672a74102880feb245ce36fd3d13a7a1d2e0b4da23d06940e24e982d8dffd"},
+    {file = "virtual_drive-0.0.post535+mot3.5320.connection.permanently.3012679-py3-none-any.whl", hash = "sha256:d9da9e99fa0afd0bc397605c640c0da773e2700a6d213ec2c3525af2bdeb5e9a"},
 ]
 
 [package.dependencies]
-ingenialink = ">=7.5.2.dev0"
+ingenialink = ">=7.5.2"
 numpy = ">=1.26.0"
 scipy = ">=1.12.0"
 
@@ -4397,4 +4398,4 @@ virtual-drive = ["virtual_drive"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "c0cfbd8a0acbf25b02a1d6026f402fdb847f1fe471f32281b8ca8dcb241a8f64"
+content-hash = "58a269a83fc12220b30076a87926a99595a0997148bd8e9f5a1adaf00fcaa913"
