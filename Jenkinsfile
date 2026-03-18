@@ -1590,7 +1590,10 @@ class PyTestManager {
             def reportDir  = 'test_dashboard'
             def reportFile = 'index.html'
             if (this.venvManager.isUnixNode()) {
-                this.pipeline.sh "rm -rf ${reportDir} && mkdir -p ${reportDir}"
+                // Use absolute WORKSPACE path so the sh step (cwd may differ) always
+                // cleans the correct directory, then chmod 777 so Jenkins remoting can write.
+                def wsReportDir = "${this.pipeline.env.WORKSPACE}/${reportDir}"
+                this.pipeline.sh "rm -rf '${wsReportDir}' && mkdir -p '${wsReportDir}' && chmod 777 '${wsReportDir}'"
             } else {
                 this.pipeline.bat "if exist ${reportDir} rmdir /s /q ${reportDir} && mkdir ${reportDir}"
             }
