@@ -1,4 +1,4 @@
-﻿@Library('cicd-lib@0.20') _
+@Library('cicd-lib@0.20') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -889,7 +889,7 @@ class TestGroup {
     /** Template session; every session in this group is derived via baseTestSession.override(). */
     final TestSession baseTestSession
     /** Ordered list of sessions to run; populated by buildTestSessions() and addSession(). */
-    private List<TestSession> sessions
+    private List<TestSession> _sessions
     /** Back-reference to the PyTestManager that created this group */
     private final PyTestManager manager
     /** When true, addSession() will throw. Set automatically by runTestStages() to prevent
@@ -899,13 +899,14 @@ class TestGroup {
     TestGroup(String name, TestSession baseTestSession, PyTestManager manager) {
         this.name = name
         this.baseTestSession = baseTestSession
-        this.sessions = []
+        this._sessions = []
         this.manager = manager
     }
 
     /** Read-only access to the sessions list. */
+    @NonCPS
     List<TestSession> getSessions() {
-        return this.sessions
+        return this._sessions
     }
 
     /**
@@ -943,7 +944,7 @@ class TestGroup {
             session.shouldRun = false
             session.skipReason = "uid '${session.uid}' does not match test_session_filter '${testSessionFilter}'"
         }
-        this.sessions << session
+        this._sessions << session
     }
 
     /**
@@ -951,7 +952,7 @@ class TestGroup {
      * Used as the gate condition for allocating the hardware node.
      */
     boolean anyShouldRun() {
-        return this.sessions.any { it.shouldRun }
+        return this._sessions.any { it.shouldRun }
     }
 
     /**
@@ -959,9 +960,9 @@ class TestGroup {
      * Includes run/skip status and the skip reason for excluded sessions.
      */
     String configSummary() {
-        def runCount = this.sessions.count { it.shouldRun }
-        def lines = ["TestGroup '${this.name}': ${this.sessions.size()} session(s), ${runCount} to run"]
-        this.sessions.each { session ->
+        def runCount = this._sessions.count { it.shouldRun }
+        def lines = ["TestGroup '${this.name}': ${this._sessions.size()} session(s), ${runCount} to run"]
+        this._sessions.each { session ->
             def status = session.shouldRun ? 'run ' : 'skip'
             def reason = session.shouldRun ? '' : " (${session.skipReason})"
             lines << "  [${status}] ${session.stageName} [uid=${session.uid}]${reason}"
@@ -979,7 +980,7 @@ class TestGroup {
      */
     def runTestStages() {
         this.locked = true
-        this.sessions.each { session ->
+        this._sessions.each { session ->
             this.manager.pipeline.stage(session.stageName) {
                 if (session.shouldRun) {
                     this.manager.runTestSession(session)
@@ -1441,10 +1442,103 @@ class PyTestManager {
     }
 
     /**
+     * Build a trie from session UIDs split on '_'.
+     * Each node: Map with keys 'label' (String), 'children' (List), 'session' (TestSession or null).
+     * Leaf nodes carry the session reference.
+     *
+     * NOTE: All trie helpers use explicit Map.get()/put() and typed for-loops
+     * to avoid DefaultGroovyMethods.invokeMethod which the Jenkins sandbox blocks.
+     */
+    @NonCPS
+    private static Map buildUidTrie(List sessions) {
+        Map root = [label: '', children: [], session: null]
+        for (int i = 0; i < sessions.size(); i++) {
+            def session = sessions.get(i)
+            String[] parts = session.uid.split('_')
+            Map node = root
+            for (int p = 0; p < parts.length; p++) {
+                String part = parts[p]
+                List children = (List) node.get('children')
+                Map existing = null
+                for (int c = 0; c < children.size(); c++) {
+                    Map child = (Map) children.get(c)
+                    if (child.get('label') == part) {
+                        existing = child
+                        break
+                    }
+                }
+                if (existing == null) {
+                    existing = [label: part, children: [], session: null]
+                    children.add(existing)
+                }
+                node = existing
+            }
+            node.put('session', session)
+        }
+        return root
+    }
+
+    /** Max depth of a trie (0 for a leaf). */
+    @NonCPS
+    private static int trieDepth(Map node) {
+        List children = (List) node.get('children')
+        if (children.isEmpty()) return 0
+        int maxD = 0
+        for (int i = 0; i < children.size(); i++) {
+            int d = trieDepth((Map) children.get(i))
+            if (d > maxD) maxD = d
+        }
+        return 1 + maxD
+    }
+
+    /** Number of leaf nodes below (inclusive). */
+    @NonCPS
+    private static int trieLeafCount(Map node) {
+        List children = (List) node.get('children')
+        if (children.isEmpty()) return 1
+        int sum = 0
+        for (int i = 0; i < children.size(); i++) {
+            sum += trieLeafCount((Map) children.get(i))
+        }
+        return sum
+    }
+
+    /**
+     * Collect header cells from a trie, returning a list of lists (one per header row).
+     * Each cell: Map with keys 'label', 'colspan', 'rowspan', 'session'.
+     */
+    @NonCPS
+    private static List collectTrieHeaderCells(Map root, int totalRows) {
+        List rows = []
+        for (int i = 0; i < totalRows; i++) { rows.add([]) }
+        List rootChildren = (List) root.get('children')
+        for (int i = 0; i < rootChildren.size(); i++) {
+            traverseTrieNode((Map) rootChildren.get(i), 0, totalRows, rows)
+        }
+        return rows
+    }
+
+    @NonCPS
+    private static void traverseTrieNode(Map node, int depth, int totalRows, List rows) {
+        List children = (List) node.get('children')
+        List rowList = (List) rows.get(depth)
+        if (children.isEmpty()) {
+            rowList.add([label: node.get('label'), colspan: 1, rowspan: totalRows - depth, session: node.get('session')])
+        } else {
+            rowList.add([label: node.get('label'), colspan: trieLeafCount(node), rowspan: 1, session: null])
+            for (int i = 0; i < children.size(); i++) {
+                traverseTrieNode((Map) children.get(i), depth + 1, totalRows, rows)
+            }
+        }
+    }
+
+    /**
      * Build the HTML content for the test coverage dashboard.
      *
      * Group structure is derived from this.registeredGroups (insertion order preserved).
-     * The table has two header rows: TestGroup names (with colspan) and TestSession UIDs.
+     * The table has hierarchical header rows: TestGroup names at the top, then
+     * session UID parts split on '_' are displayed as a multi-level trie so that
+     * common prefixes (e.g. 'ethercat', 'everest') share a single header cell.
      * Includes a filter input and click-to-sort columns via vanilla JS.
      *
      * @param allTests    Ordered list of all pytest node IDs (row headers)
@@ -1517,33 +1611,67 @@ class PyTestManager {
 
         sb.append('  <table id="dashboard">\n    <thead>\n')
 
+        // Build a UID trie per group and compute the max depth across all groups
+        List groupTries = []
+        int maxTrieDepth = 0
+        for (int gi = 0; gi < groupedSessions.size(); gi++) {
+            List pair = (List) groupedSessions.get(gi)
+            Map trie = buildUidTrie((List) pair.get(1))
+            int depth = trieDepth(trie)
+            if (depth > maxTrieDepth) maxTrieDepth = depth
+            groupTries.add(trie)
+        }
+        int totalHeaderRows = maxTrieDepth + 1  // +1 for the group name row
+
         // ── Row 1: group headers ─────────────────────────────────
         sb.append('      <tr class="group-row">\n')
-        sb.append('        <th rowspan="2" class="test-name">Test Node ID</th>\n')
-        sb.append('        <th rowspan="2">Best</th>\n')
-        groupedSessions.each { pair ->
-            def groupName = pair[0]
-            def sessions  = pair[1]
+        sb.append("        <th rowspan=\"${totalHeaderRows}\" class=\"test-name\">Test Node ID</th>\n")
+        sb.append("        <th rowspan=\"${totalHeaderRows}\">Best</th>\n")
+        for (int gi = 0; gi < groupedSessions.size(); gi++) {
+            List pair = (List) groupedSessions.get(gi)
+            String groupName = (String) pair.get(0)
+            List sessions = (List) pair.get(1)
             sb.append("        <th colspan=\"${sessions.size()}\">${groupName}</th>\n")
         }
         sb.append('      </tr>\n')
 
-        // ── Row 2: session UID headers ────────────────────────────
-        sb.append('      <tr class="session-row">\n')
-        allSessions.each { session ->
-            def skippedClass = !session.shouldRun ? 'skipped' : ''
-            def titleLines = []
-            if (session.markers) { titleLines << "markers: ${session.markers}" }
-            if (session.setup)   { titleLines << "setup: ${session.setup}" }
-            if (!session.shouldRun && session.skipReason) { titleLines << "skip: ${session.skipReason}" }
-            def titleAttr = titleLines
-                ? " title=\"${titleLines.join('&#10;').replace('"', '&quot;')}\""
-                : ''
-            def classAttr = skippedClass ? " class=\"${skippedClass}\"" : ''
-            def displayUid = session.uid.replace('_', '<br>')
-            sb.append("        <th${classAttr}${titleAttr}>${displayUid}</th>\n")
+        // ── Rows 2..N: hierarchical UID headers ──────────────────
+        List allTrieRows = []
+        for (int gi = 0; gi < groupTries.size(); gi++) {
+            allTrieRows.add(collectTrieHeaderCells((Map) groupTries.get(gi), maxTrieDepth))
         }
-        sb.append('      </tr>\n    </thead>\n    <tbody>\n')
+        for (int row = 0; row < maxTrieDepth; row++) {
+            sb.append('      <tr class="session-row">\n')
+            for (int gi = 0; gi < allTrieRows.size(); gi++) {
+                List trieRows = (List) allTrieRows.get(gi)
+                List rowCells = (List) trieRows.get(row)
+                for (int ci = 0; ci < rowCells.size(); ci++) {
+                    Map cell = (Map) rowCells.get(ci)
+                    List attrs = []
+                    int colspanVal = (int) cell.get('colspan')
+                    int rowspanVal = (int) cell.get('rowspan')
+                    if (colspanVal > 1) attrs.add("colspan=\"${colspanVal}\"")
+                    if (rowspanVal > 1) attrs.add("rowspan=\"${rowspanVal}\"")
+                    // Leaf cells carry session info for tooltips
+                    def cellSession = cell.get('session')
+                    if (cellSession != null) {
+                        if (!cellSession.shouldRun) attrs.add('class="skipped"')
+                        List titleLines = []
+                        if (cellSession.markers) { titleLines.add("markers: ${cellSession.markers}") }
+                        if (cellSession.setup)   { titleLines.add("setup: ${cellSession.setup}") }
+                        if (!cellSession.shouldRun && cellSession.skipReason) { titleLines.add("skip: ${cellSession.skipReason}") }
+                        if (!titleLines.isEmpty()) {
+                            attrs.add("title=\"${titleLines.join('&#10;').replace('"', '&quot;')}\"")
+                        }
+                    }
+                    String attrStr = attrs.isEmpty() ? '' : ' ' + attrs.join(' ')
+                    String cellLabel = (String) cell.get('label')
+                    sb.append("        <th${attrStr}>${cellLabel}</th>\n")
+                }
+            }
+            sb.append('      </tr>\n')
+        }
+        sb.append('    </thead>\n    <tbody>\n')
 
         // Policy priority: always > weekends > nightly > never (lower index = runs more often)
         def policyPriority = ['always', 'weekends', 'nightly', 'never']
