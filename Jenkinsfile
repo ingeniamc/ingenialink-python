@@ -1587,9 +1587,9 @@ class PyTestManager {
         def reportDir  = 'test_dashboard'
         def reportFile = 'index.html'
         if (this.venvManager.isUnixNode()) {
-            this.pipeline.sh "mkdir -p ${reportDir}"
+            this.pipeline.sh "rm -rf ${reportDir} && mkdir -p ${reportDir}"
         } else {
-            this.pipeline.bat "if not exist ${reportDir} mkdir ${reportDir}"
+            this.pipeline.bat "if exist ${reportDir} rmdir /s /q ${reportDir} && mkdir ${reportDir}"
         }
         this.pipeline.writeFile(file: "${reportDir}/${reportFile}", text: html, encoding: 'UTF-8')
         this.pipeline.publishHTML([
