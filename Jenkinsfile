@@ -1560,47 +1560,56 @@ class PyTestManager {
      * while still on the preparation node (requires an active venv).
      */
     def generateTestDashboard() {
-        def allSessions = []
-        this.registeredGroups.each { name, group ->
-            group.sessions.each { session -> allSessions << session }
-        }
-        if (allSessions.isEmpty()) {
-            this.pipeline.echo("generateTestDashboard: no sessions registered; skipping.")
-            return
-        }
-
-        // Baseline: collect ALL tests (no filters) so uncovered tests still appear as rows
-        def allTestsList = this.collectTests()  // already an ordered List
-
-        // Collect per-session test sets (one pytest --collect-only run per session)
-        def uidToTests = [:]
-        allSessions.each { session ->
-            uidToTests[session.uid] = this.collectTests(session)
-            // Union: add any newly discovered tests while preserving insertion order
-            uidToTests[session.uid].each { test ->
-                if (!allTestsList.contains(test)) allTestsList << test
+        try {
+            def allSessions = []
+            this.registeredGroups.each { name, group ->
+                group.sessions.each { session -> allSessions << session }
             }
-        }
+            if (allSessions.isEmpty()) {
+                this.pipeline.echo("generateTestDashboard: no sessions registered; skipping.")
+                return
+            }
 
-        def html = this.buildDashboardHtml(allTestsList, uidToTests)
+            // Baseline: collect ALL tests (no filters) so uncovered tests still appear as rows
+            def allTestsList = this.collectTests()  // already an ordered List
 
-        def reportDir  = 'test_dashboard'
-        def reportFile = 'index.html'
-        if (this.venvManager.isUnixNode()) {
-            this.pipeline.sh "rm -rf ${reportDir} && mkdir -p ${reportDir}"
-        } else {
-            this.pipeline.bat "if exist ${reportDir} rmdir /s /q ${reportDir} && mkdir ${reportDir}"
+            // Collect per-session test sets (one pytest --collect-only run per session)
+            def uidToTests = [:]
+            allSessions.each { session ->
+                uidToTests[session.uid] = this.collectTests(session)
+                // Union: add any newly discovered tests while preserving insertion order
+                uidToTests[session.uid].each { test ->
+                    if (!allTestsList.contains(test)) allTestsList << test
+                }
+            }
+
+            this.pipeline.echo("generateTestDashboard: building HTML (${allTestsList.size()} tests, ${allSessions.size()} sessions)...")
+            def html = this.buildDashboardHtml(allTestsList, uidToTests)
+            this.pipeline.echo("generateTestDashboard: HTML built (${html.size()} chars), writing file...")
+
+            def reportDir  = 'test_dashboard'
+            def reportFile = 'index.html'
+            if (this.venvManager.isUnixNode()) {
+                this.pipeline.sh "rm -rf ${reportDir} && mkdir -p ${reportDir}"
+            } else {
+                this.pipeline.bat "if exist ${reportDir} rmdir /s /q ${reportDir} && mkdir ${reportDir}"
+            }
+            this.pipeline.writeFile(file: "${reportDir}/${reportFile}", text: html, encoding: 'UTF-8')
+            this.pipeline.echo("generateTestDashboard: writeFile done, calling publishHTML...")
+            this.pipeline.publishHTML([
+                allowMissing         : false,
+                alwaysLinkToLastBuild: true,
+                keepAll              : true,
+                reportDir            : reportDir,
+                reportFiles          : reportFile,
+                reportName           : 'Test Coverage Dashboard',
+                reportTitles         : ''
+            ])
+            this.pipeline.echo("generateTestDashboard: complete.")
+        } catch (Exception e) {
+            this.pipeline.echo("generateTestDashboard FAILED: ${e.getClass().getName()}: ${e.getMessage()}")
+            throw e
         }
-        this.pipeline.writeFile(file: "${reportDir}/${reportFile}", text: html, encoding: 'UTF-8')
-        this.pipeline.publishHTML([
-            allowMissing         : false,
-            alwaysLinkToLastBuild: true,
-            keepAll              : true,
-            reportDir            : reportDir,
-            reportFiles          : reportFile,
-            reportName           : 'Test Coverage Dashboard',
-            reportTitles         : ''
-        ])
     }
 }
 
