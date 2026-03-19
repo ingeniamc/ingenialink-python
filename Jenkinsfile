@@ -1241,15 +1241,20 @@ class PyTestManager {
                             } else {
                                 venv.run("${session.runTestBaseCommand} ${testArgsStr}")
                             }
+                        } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
+                            // Build was cancelled or a timeout expired — re-throw so Jenkins marks
+                            // the build as ABORTED instead of UNSTABLE, and skip publishing.
+                            throw e
                         } catch (err) {
                             this.pipeline.unstable(message: "Tests failed")
-                        } finally {
-                            this.publishAndCleanupJunitReports()
-                            if (firstIteration && session.useCoverage) {
-                                this.stashCoverageFile(session.uid, venv.name)
-                            }
-                            firstIteration = false
                         }
+                        // Only reached on success or after a caught test failure.
+                        // Skipped entirely if FlowInterruptedException was re-thrown above.
+                        this.publishAndCleanupJunitReports()
+                        if (firstIteration && session.useCoverage) {
+                            this.stashCoverageFile(session.uid, venv.name)
+                        }
+                        firstIteration = false
                     }
                 }
             }
