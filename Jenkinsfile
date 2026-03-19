@@ -1394,7 +1394,7 @@ class PyTestManager {
         }
     }
 
-    // ─── Test Dashboard ──────────────────────────────────────────────────────
+    // --- Test Dashboard ---
 
     /**
      * Run pytest --collect-only and return the list of selected test node IDs.
@@ -1409,9 +1409,6 @@ class PyTestManager {
      * @return Ordered list of test node IDs (e.g. "tests/test_servo.py::test_connect")
      */
     private List<String> collectTests(TestSession session = null) {
-        // Always write to the Jenkins workspace so readFile can access it without restrictions.
-        // pytest --collect-only still runs with cwd = workingFolder (via venv.run → runInWorkingFolder),
-        // so test discovery is unaffected.
         def outputFile = "${this.pipeline.env.WORKSPACE}/.collect_output.txt"
 
         this.venvManager.withPython(this.venvManager.default_python_version) { venv ->
@@ -1427,6 +1424,54 @@ class PyTestManager {
         }.collect { it.trim() }
     }
 
+    /** Collect test data and delegate HTML generation to TestDashboardBuilder. */
+    def generateTestDashboard() {
+        try {
+            def allSessions = []
+            this.registeredGroups.each { name, group ->
+                group.sessions.each { session -> allSessions << session }
+            }
+            if (allSessions.isEmpty()) {
+                this.pipeline.echo("generateTestDashboard: no sessions registered; skipping.")
+                return
+            }
+
+            // Baseline: collect ALL tests (no filters) so uncovered tests still appear as rows
+            def allTestsList = this.collectTests()
+
+            // Collect per-session test sets (one pytest --collect-only run per session)
+            def uidToTests = [:]
+            allSessions.each { session ->
+                uidToTests[session.uid] = this.collectTests(session)
+                uidToTests[session.uid].each { test ->
+                    if (!allTestsList.contains(test)) allTestsList << test
+                }
+            }
+
+            this.pipeline.echo("generateTestDashboard: building HTML (${allTestsList.size()} tests, ${allSessions.size()} sessions)...")
+            new TestDashboardBuilder(this.pipeline, this.registeredGroups)
+                .buildAndPublish(allTestsList, uidToTests)
+            this.pipeline.echo("generateTestDashboard: complete.")
+        } catch (Exception e) {
+            this.pipeline.echo("generateTestDashboard FAILED: ${e.getClass().getName()}: ${e.getMessage()}")
+            throw e
+        }
+    }
+}
+
+// TestDashboardBuilder - Generates an HTML test-coverage dashboard
+
+class TestDashboardBuilder {
+    private def pipeline
+    private Map registeredGroups
+
+    TestDashboardBuilder(def pipeline, Map registeredGroups) {
+        this.pipeline = pipeline
+        this.registeredGroups = registeredGroups
+    }
+
+    // --- Policy helpers ---
+
     /**
      * Map a policy tag to a CSS class name for the dashboard table.
      */
@@ -1440,6 +1485,8 @@ class PyTestManager {
     private static Map policyLetterMap() {
         return [always: '&#x2705;', nightly: '&#x1F319;', weekends: '&#x1F31E;', never: '&#x274C;']
     }
+
+    // --- UID trie helpers ---
 
     /**
      * Build a trie from session UIDs split on '_'.
@@ -1532,56 +1579,33 @@ class PyTestManager {
         }
     }
 
-    /**
-     * Build the HTML content for the test coverage dashboard.
-     *
-     * Group structure is derived from this.registeredGroups (insertion order preserved).
-     * The table has hierarchical header rows: TestGroup names at the top, then
-     * session UID parts split on '_' are displayed as a multi-level trie so that
-     * common prefixes (e.g. 'ethercat', 'everest') share a single header cell.
-     * Includes a filter input and click-to-sort columns via vanilla JS.
-     *
-     * @param allTests    Ordered list of all pytest node IDs (row headers)
-     * @param uidToTests  Map from session uid → list of matching test node IDs
-     * @return HTML string
-     */
+    // --- HTML builder helpers ---
+
+    /** CSS styles for the dashboard. */
     @NonCPS
-    private String buildDashboardHtml(List<String> allTests, Map uidToTests) {
-        // Build ordered list of [groupName, sessions] pairs (preserves createGroup() order)
-        def groupedSessions = []
-        this.registeredGroups.each { groupName, group ->
-            if (!group.sessions.isEmpty()) {
-                groupedSessions << [groupName, group.sessions]
-            }
-        }
-        def allSessions = []
-        groupedSessions.each { pair -> pair[1].each { s -> allSessions << s } }
-
-        // Pre-compute per-session test lists for membership checks
-        def sessionTestSets = [:]
-        allSessions.each { session ->
-            sessionTestSets[session.uid] = uidToTests[session.uid] ?: []
-        }
-
-        def sb = new StringBuilder()
-        sb.append('''\
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Test Coverage Dashboard</title>
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css">
+    private static String buildCssStyles() {
+        return '''\
   <style>
     body { font-family: monospace; font-size: 11px; margin: 20px; }
     h1   { font-size: 16px; }
-    table.dataTable { border-collapse: collapse !important; }
-    thead th { white-space: nowrap; position: sticky; top: 0; z-index: 10; background: #fff; }
+    .table-wrap { overflow: auto; max-width: 100%; max-height: 85vh; }
+    table#dashboard { border-collapse: collapse; }
+    .search-box { margin: 8px 0; }
+    .search-box input { padding: 4px 8px; font-size: 12px; width: 300px; }
+    thead th { white-space: nowrap; position: sticky; z-index: 10; background: #fff; }
+    thead th.sortable { cursor: pointer; user-select: none; }
+    thead th.sortable:hover { background: #eef3fa; }
+    thead th .sort-arrow { font-size: 9px; margin-left: 2px; color: #999; }
     thead tr.group-row th { background: #dde8f5 !important; font-weight: bold; text-align: center; }
     thead tr.session-row th { white-space: normal; text-align: center; min-width: 40px; max-width: 80px; font-size: 10px; }
     tbody tr:nth-child(even) td { background-color: #f9f9f9; }
+    tbody tr:nth-child(even) td.test-name { background-color: #f9f9f9; }
     tbody tr:hover td { filter: brightness(0.92); }
-    td.test-name { text-align: left; white-space: nowrap; max-width: 400px;
+    td.test-name, th.test-name { position: sticky; left: 0; z-index: 5; background: #fff;
+                   text-align: left; white-space: nowrap; max-width: 400px;
                    overflow: hidden; text-overflow: ellipsis; }
+    thead th.test-name { z-index: 20; background: #fff; }
+    thead tr.group-row th.test-name { background: #dde8f5 !important; }
     tr.file-group td { font-weight: bold; background: #eee !important; border-bottom: 1px solid #ccc; padding: 4px 6px; }
     th.skipped { color: #888; font-style: italic; }
     td.policy-cell { text-align: center; font-weight: bold; font-size: 12px; }
@@ -1594,37 +1618,35 @@ class PyTestManager {
     .legend-item { display: inline-block; margin-right: 8px;
                    padding: 2px 10px; border: 1px solid #ccc; }
     .policy-none     { background: #ffc7ce; }
-  </style>
-</head>
-<body>
-  <h1>Test Coverage Dashboard</h1>
-''')
-        sb.append("  <p>${allTests.size()} test(s) &nbsp;|&nbsp; ${allSessions.size()} session(s)</p>\n")
+  </style>'''
+    }
+
+    /** Summary line and policy legend HTML. */
+    @NonCPS
+    private static String buildLegendHtml(int testCount, int sessionCount) {
+        def sb = new StringBuilder()
+        sb.append("  <p>${testCount} test(s) &nbsp;|&nbsp; ${sessionCount} session(s)</p>\n")
         sb.append('  <div class="legend">\n')
         def letters = policyLetterMap()
-        ['always', 'nightly', 'weekends', 'never'].each { label ->
-            def letter = letters.getOrDefault(label, '&#x2753;')
+        List labels = ['always', 'nightly', 'weekends', 'never']
+        for (int i = 0; i < labels.size(); i++) {
+            String label = (String) labels.get(i)
+            String letter = (String) letters.getOrDefault(label, '&#x2753;')
             sb.append("    <span class=\"legend-item policy-${label}\">${letter} = ${label}</span>\n")
         }
         sb.append('    <span class="legend-item policy-none">&#x1F6AB; = not covered</span>\n')
         sb.append('  </div>\n')
+        sb.append('  <div class="search-box"><input id="search" type="text" placeholder="Filter tests..."></div>\n')
+        return sb.toString()
+    }
 
-        sb.append('  <div style="overflow-x: auto; max-width: 100%;">')
-        sb.append('  <table id="dashboard">\n    <thead>\n')
+    /** Table header: group name row + hierarchical UID trie rows. */
+    @NonCPS
+    private static String buildTableHeaderHtml(List groupedSessions, List groupTries, int maxTrieDepth) {
+        def sb = new StringBuilder()
+        int totalHeaderRows = maxTrieDepth + 1
 
-        // Build a UID trie per group and compute the max depth across all groups
-        List groupTries = []
-        int maxTrieDepth = 0
-        for (int gi = 0; gi < groupedSessions.size(); gi++) {
-            List pair = (List) groupedSessions.get(gi)
-            Map trie = buildUidTrie((List) pair.get(1))
-            int depth = trieDepth(trie)
-            if (depth > maxTrieDepth) maxTrieDepth = depth
-            groupTries.add(trie)
-        }
-        int totalHeaderRows = maxTrieDepth + 1  // +1 for the group name row
-
-        // ── Row 1: group headers ─────────────────────────────────
+        // Row 1: group headers
         sb.append('      <tr class="group-row">\n')
         sb.append("        <th rowspan=\"${totalHeaderRows}\" class=\"test-name\">Test Node ID</th>\n")
         sb.append("        <th rowspan=\"${totalHeaderRows}\">Best</th>\n")
@@ -1636,7 +1658,7 @@ class PyTestManager {
         }
         sb.append('      </tr>\n')
 
-        // ── Rows 2..N: hierarchical UID headers ──────────────────
+        // Rows 2..N: hierarchical UID headers
         List allTrieRows = []
         for (int gi = 0; gi < groupTries.size(); gi++) {
             allTrieRows.add(collectTrieHeaderCells((Map) groupTries.get(gi), maxTrieDepth))
@@ -1653,7 +1675,6 @@ class PyTestManager {
                     int rowspanVal = (int) cell.get('rowspan')
                     if (colspanVal > 1) attrs.add("colspan=\"${colspanVal}\"")
                     if (rowspanVal > 1) attrs.add("rowspan=\"${rowspanVal}\"")
-                    // Leaf cells carry session info for tooltips
                     def cellSession = cell.get('session')
                     if (cellSession != null) {
                         if (!cellSession.shouldRun) attrs.add('class="skipped"')
@@ -1672,43 +1693,50 @@ class PyTestManager {
             }
             sb.append('      </tr>\n')
         }
-        sb.append('    </thead>\n    <tbody>\n')
+        return sb.toString()
+    }
 
-        // Policy priority: always > weekends > nightly > never (lower index = runs more often)
-        def policyPriority = ['always', 'weekends', 'nightly', 'never']
+    /** Table body: one row per test with best-policy and per-session indicator cells. */
+    @NonCPS
+    private static String buildTableBodyHtml(List<String> allTests, List allSessions, Map sessionTestSets) {
+        def sb = new StringBuilder()
+        List policyPriority = ['always', 'weekends', 'nightly', 'never']
 
-        // ── Body rows ─────────────────────────────────────────────
-        allTests.each { testId ->
+        for (int ti = 0; ti < allTests.size(); ti++) {
+            String testId = (String) allTests.get(ti)
             sb.append('      <tr>\n')
-            def displayName = testId.startsWith('tests/') ? testId.substring(6) : testId
+            String displayName = testId.startsWith('tests/') ? testId.substring(6) : testId
             sb.append("        <td class=\"test-name\">${displayName.replace('&', '&amp;').replace('<', '&lt;')}</td>\n")
 
-            // Compute the best (most frequent) policy across all sessions for this test
+            // Best policy across all sessions for this test
             int bestIdx = policyPriority.size()
-            allSessions.each { session ->
-                if (sessionTestSets[session.uid]?.contains(testId)) {
-                    def policyTag = session.policy ?: 'always'
+            for (int si = 0; si < allSessions.size(); si++) {
+                def session = allSessions.get(si)
+                List tests = (List) sessionTestSets.get(session.uid)
+                if (tests != null && tests.contains(testId)) {
+                    String policyTag = session.policy ?: 'always'
                     int idx = policyPriority.indexOf(policyTag)
                     if (idx >= 0 && idx < bestIdx) { bestIdx = idx }
                 }
             }
-            // Output best-policy summary cell (2nd column)
             if (bestIdx < policyPriority.size()) {
-                def bestPolicy = policyPriority[bestIdx]
-                def bestClass = policyCssClass(bestPolicy)
-                def bestLetter = policyLetterMap().getOrDefault(bestPolicy, '&#x2753;')
+                String bestPolicy = (String) policyPriority.get(bestIdx)
+                String bestClass = policyCssClass(bestPolicy)
+                String bestLetter = (String) policyLetterMap().getOrDefault(bestPolicy, '&#x2753;')
                 sb.append("        <td class=\"${bestClass} policy-cell\" title=\"${bestPolicy}\">${bestLetter}</td>\n")
             } else {
                 sb.append('        <td class="policy-none policy-cell" title="not covered">&#x1F6AB;</td>\n')
             }
 
-            // Output per-session cells
-            allSessions.each { session ->
-                if (sessionTestSets[session.uid]?.contains(testId)) {
-                    def policyClass = policyCssClass(session.policy ?: 'always')
-                    def policyTag = session.policy ?: 'always'
-                    def policyLabel = policyTag.replace('"', '&quot;')
-                    def policyLetter = policyLetterMap().getOrDefault(policyTag, '&#x2753;')
+            // Per-session cells
+            for (int si = 0; si < allSessions.size(); si++) {
+                def session = allSessions.get(si)
+                List tests = (List) sessionTestSets.get(session.uid)
+                if (tests != null && tests.contains(testId)) {
+                    String policyClass = policyCssClass(session.policy ?: 'always')
+                    String policyTag = session.policy ?: 'always'
+                    String policyLabel = policyTag.replace('"', '&quot;')
+                    String policyLetter = (String) policyLetterMap().getOrDefault(policyTag, '&#x2753;')
                     sb.append("        <td class=\"${policyClass} policy-cell\" title=\"${policyLabel}\">${policyLetter}</td>\n")
                 } else {
                     sb.append('        <td></td>\n')
@@ -1716,23 +1744,82 @@ class PyTestManager {
             }
             sb.append('      </tr>\n')
         }
-        sb.append('    </tbody>\n  </table>\n  </div>\n')
+        return sb.toString()
+    }
 
-        sb.append('''\
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    /** Client-side JavaScript: search filter, sticky headers, file-group rows. */
+    @NonCPS
+    private static String buildScriptHtml() {
+        return '''\
   <script>
-    $(document).ready(function () {
-      $('#dashboard').DataTable({
-        paging:        false,
-        orderCellsTop: false
-      });
+    (function () {
+      // Sticky header row offsets: cascade each row below the previous
+      var hrows = document.querySelectorAll('#dashboard thead tr');
+      var offset = 0;
+      for (var r = 0; r < hrows.length; r++) {
+        var ths = hrows[r].querySelectorAll('th');
+        for (var t = 0; t < ths.length; t++) { ths[t].style.top = offset + 'px'; }
+        offset += hrows[r].offsetHeight;
+      }
+      // Search filter
+      var input = document.getElementById('search');
+      if (input) {
+        input.addEventListener('input', function() {
+          var term = this.value.toLowerCase();
+          var rows = document.querySelectorAll('#dashboard tbody tr');
+          for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            if (row.classList.contains('file-group')) { row.style.display = 'none'; continue; }
+            var td = row.querySelector('td.test-name');
+            var text = td ? (td.title || td.textContent).toLowerCase() : '';
+            row.style.display = text.indexOf(term) >= 0 ? '' : 'none';
+          }
+          // Re-show file-group rows that have visible siblings after them
+          var allRows = document.querySelectorAll('#dashboard tbody tr');
+          for (var i = 0; i < allRows.length; i++) {
+            if (!allRows[i].classList.contains('file-group')) continue;
+            for (var j = i + 1; j < allRows.length; j++) {
+              if (allRows[j].classList.contains('file-group')) break;
+              if (allRows[j].style.display !== 'none') { allRows[i].style.display = ''; break; }
+            }
+          }
+        });
+      }
       // Group tests by file: insert file header rows and shorten test names
+      function rebuildFileGroups() {
+        var tbody = document.querySelector('#dashboard tbody');
+        // Remove existing file-group rows
+        var existing = tbody.querySelectorAll('tr.file-group');
+        for (var i = 0; i < existing.length; i++) existing[i].remove();
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        var lastFile = '';
+        var totalCols = rows.length > 0 ? rows[0].children.length : 1;
+        rows.forEach(function(row) {
+          var td = row.querySelector('td.test-name');
+          if (!td) return;
+          var text = td.title || td.textContent;
+          var idx = text.indexOf('::');
+          if (idx < 0) return;
+          var file = text.substring(0, idx);
+          if (file !== lastFile) {
+            var groupRow = document.createElement('tr');
+            groupRow.className = 'file-group';
+            var fileTd = document.createElement('td');
+            fileTd.className = 'test-name';
+            fileTd.colSpan = totalCols;
+            fileTd.textContent = file;
+            groupRow.appendChild(fileTd);
+            row.parentNode.insertBefore(groupRow, row);
+            lastFile = file;
+          }
+        });
+      }
+      // Initial file-group build + shorten test names
       (function() {
         var tbody = document.querySelector('#dashboard tbody');
         var rows = Array.from(tbody.querySelectorAll('tr'));
         var lastFile = '';
-        var totalCols = document.querySelector('#dashboard thead tr').children.length;
+        var totalCols = rows.length > 0 ? rows[0].children.length : 1;
         rows.forEach(function(row) {
           var td = row.querySelector('td.test-name');
           if (!td) return;
@@ -1756,83 +1843,173 @@ class PyTestManager {
           td.title = text;
         });
       })();
+      // Column sorting
+      (function() {
+        var policyOrder = {'\u2705':0, '\uD83C\uDF1E':1, '\uD83C\uDF19':2, '\u274C':3, '\uD83D\uDEAB':4};
+        var sortCol = -1, sortAsc = true;
+        // Collect leaf header cells (bottom row + any rowspan cells reaching it)
+        var thead = document.querySelector('#dashboard thead');
+        var headerRows = thead.querySelectorAll('tr');
+        var numHeaderRows = headerRows.length;
+        var leafHeaders = [];
+        for (var r = 0; r < numHeaderRows; r++) {
+          var ths = headerRows[r].querySelectorAll('th');
+          for (var t = 0; t < ths.length; t++) {
+            var rs = parseInt(ths[t].getAttribute('rowspan')) || 1;
+            if (r + rs >= numHeaderRows) {
+              leafHeaders.push(ths[t]);
+            }
+          }
+        }
+        // Compute visual column index for each leaf header
+        var colIdx = 0;
+        leafHeaders.forEach(function(th, i) {
+          th.dataset.colIdx = colIdx;
+          var cs = parseInt(th.getAttribute('colspan')) || 1;
+          if (cs === 1) {
+            th.classList.add('sortable');
+            th.innerHTML += ' <span class="sort-arrow"></span>';
+            th.addEventListener('click', function() { doSort(parseInt(this.dataset.colIdx)); });
+          }
+          colIdx += cs;
+        });
+        function doSort(ci) {
+          if (sortCol === ci) { sortAsc = !sortAsc; } else { sortCol = ci; sortAsc = true; }
+          var tbody = document.querySelector('#dashboard tbody');
+          // Remove file-group rows before sorting
+          var fgs = tbody.querySelectorAll('tr.file-group');
+          for (var i = 0; i < fgs.length; i++) fgs[i].remove();
+          var rows = Array.from(tbody.querySelectorAll('tr'));
+          rows.sort(function(a, b) {
+            var ac = a.cells[ci], bc = b.cells[ci];
+            var at = ac ? ac.textContent.trim() : '', bt = bc ? bc.textContent.trim() : '';
+            // Policy cells: sort by priority
+            var ap = policyOrder[at], bp = policyOrder[bt];
+            if (ap !== undefined || bp !== undefined) {
+              var av = ap !== undefined ? ap : 5, bv = bp !== undefined ? bp : 5;
+              return sortAsc ? av - bv : bv - av;
+            }
+            // Text: sort alphabetically, empties last
+            if (!at && bt) return 1;
+            if (at && !bt) return -1;
+            var cmp = at.localeCompare(bt);
+            return sortAsc ? cmp : -cmp;
+          });
+          rows.forEach(function(row) { tbody.appendChild(row); });
+          rebuildFileGroups();
+          // Update sort arrows
+          leafHeaders.forEach(function(th) {
+            var arrow = th.querySelector('.sort-arrow');
+            if (!arrow) return;
+            var ci2 = parseInt(th.dataset.colIdx);
+            arrow.textContent = ci2 === sortCol ? (sortAsc ? '\u25B2' : '\u25BC') : '';
+          });
+        }
+      })();
       // Hide Jenkins HTML Publisher "back to" wrapper link if present
       try { if (window.parent) {
         var wrapper = window.parent.document.querySelector('.htmlpublisher-wrapper a[href*="Back"]');
         if (wrapper) wrapper.style.display = 'none';
       }} catch(e) {}
-    });
-  </script>
-</body>
-</html>
-''')
+    })();
+  </script>'''
+    }
+
+    // --- HTML builder (orchestrator) ---
+
+    /**
+     * Assemble the full HTML dashboard document.
+     *
+     * @param allTests    Ordered list of all pytest node IDs (row headers)
+     * @param uidToTests  Map from session uid to list of matching test node IDs
+     * @return Complete HTML string
+     */
+    @NonCPS
+    private String buildDashboardHtml(List<String> allTests, Map uidToTests) {
+        // Collect sessions from registered groups (preserves insertion order)
+        List groupedSessions = []
+        List groupNames = []
+        groupNames.addAll(this.registeredGroups.keySet())
+        for (int gi = 0; gi < groupNames.size(); gi++) {
+            String groupName = (String) groupNames.get(gi)
+            def group = this.registeredGroups.get(groupName)
+            if (!group.sessions.isEmpty()) {
+                groupedSessions.add([groupName, group.sessions])
+            }
+        }
+        List allSessions = []
+        for (int gi = 0; gi < groupedSessions.size(); gi++) {
+            List pair = (List) groupedSessions.get(gi)
+            List sessions = (List) pair.get(1)
+            for (int si = 0; si < sessions.size(); si++) {
+                allSessions.add(sessions.get(si))
+            }
+        }
+
+        // Pre-compute per-session test sets
+        Map sessionTestSets = [:]
+        for (int si = 0; si < allSessions.size(); si++) {
+            def session = allSessions.get(si)
+            sessionTestSets.put(session.uid, uidToTests.get(session.uid) ?: [])
+        }
+
+        // Build UID tries and compute max depth across all groups
+        List groupTries = []
+        int maxTrieDepth = 0
+        for (int gi = 0; gi < groupedSessions.size(); gi++) {
+            List pair = (List) groupedSessions.get(gi)
+            Map trie = buildUidTrie((List) pair.get(1))
+            int depth = trieDepth(trie)
+            if (depth > maxTrieDepth) maxTrieDepth = depth
+            groupTries.add(trie)
+        }
+
+        // Assemble the complete HTML document
+        def sb = new StringBuilder()
+        sb.append('<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n')
+        sb.append('  <title>Test Coverage Dashboard</title>\n')
+        sb.append(buildCssStyles())
+        sb.append('\n</head>\n<body>\n  <h1>Test Coverage Dashboard</h1>\n')
+        sb.append(buildLegendHtml(allTests.size(), allSessions.size()))
+        sb.append('  <div class="table-wrap">\n')
+        sb.append('  <table id="dashboard">\n    <thead>\n')
+        sb.append(buildTableHeaderHtml(groupedSessions, groupTries, maxTrieDepth))
+        sb.append('    </thead>\n    <tbody>\n')
+        sb.append(buildTableBodyHtml(allTests, allSessions, sessionTestSets))
+        sb.append('    </tbody>\n  </table>\n  </div>\n')
+        sb.append(buildScriptHtml())
+        sb.append('\n</body>\n</html>\n')
         return sb.toString()
     }
 
 
+    // --- Build and publish ---
+
     /**
-     * Collect tests for every registered session (using getTestArgs to mirror the actual
-     * run), build an HTML coverage matrix, and publish it as a Jenkins HTML report
-     * named "Test Coverage Dashboard".
+     * Build the HTML dashboard and publish it as a Jenkins HTML report.
      *
-     * Must be called after buildTestSessions() and any manual addSession() calls,
-     * while still on the preparation node (requires an active venv).
+     * @param allTests   Ordered list of all pytest node IDs (row headers)
+     * @param uidToTests Map from session uid to list of matching test node IDs
      */
-    def generateTestDashboard() {
-        try {
-            def allSessions = []
-            this.registeredGroups.each { name, group ->
-                group.sessions.each { session -> allSessions << session }
-            }
-            if (allSessions.isEmpty()) {
-                this.pipeline.echo("generateTestDashboard: no sessions registered; skipping.")
-                return
-            }
+    def buildAndPublish(List<String> allTests, Map uidToTests) {
+        def html = this.buildDashboardHtml(allTests, uidToTests)
+        this.pipeline.echo("generateTestDashboard: HTML built (${html.size()} chars), writing file...")
 
-            // Baseline: collect ALL tests (no filters) so uncovered tests still appear as rows
-            def allTestsList = this.collectTests()  // already an ordered List
-
-            // Collect per-session test sets (one pytest --collect-only run per session)
-            def uidToTests = [:]
-            allSessions.each { session ->
-                uidToTests[session.uid] = this.collectTests(session)
-                // Union: add any newly discovered tests while preserving insertion order
-                uidToTests[session.uid].each { test ->
-                    if (!allTestsList.contains(test)) allTestsList << test
-                }
-            }
-
-            this.pipeline.echo("generateTestDashboard: building HTML (${allTestsList.size()} tests, ${allSessions.size()} sessions)...")
-            def html = this.buildDashboardHtml(allTestsList, uidToTests)
-            this.pipeline.echo("generateTestDashboard: HTML built (${html.size()} chars), writing file...")
-
-            def reportDir  = 'test_dashboard'
-            def reportFile = 'index.html'
-            if (this.venvManager.isUnixNode()) {
-                // Use absolute WORKSPACE path so the sh step (cwd may differ) always
-                // cleans the correct directory, then chmod 777 so Jenkins remoting can write.
-                def wsReportDir = "${this.pipeline.env.WORKSPACE}/${reportDir}"
-                this.pipeline.sh "rm -rf '${wsReportDir}' && mkdir -p '${wsReportDir}' && chmod 777 '${wsReportDir}'"
-            } else {
-                this.pipeline.bat "if exist ${reportDir} rmdir /s /q ${reportDir} && mkdir ${reportDir}"
-            }
-            this.pipeline.writeFile(file: "${reportDir}/${reportFile}", text: html, encoding: 'UTF-8')
-            this.pipeline.echo("generateTestDashboard: writeFile done, calling publishHTML...")
-            this.pipeline.publishHTML([
-                allowMissing         : false,
-                alwaysLinkToLastBuild: true,
-                keepAll              : true,
-                reportDir            : reportDir,
-                reportFiles          : reportFile,
-                reportName           : 'Test Coverage Dashboard',
-                reportTitles         : ''
-            ])
-            this.pipeline.echo("generateTestDashboard: complete.")
-        } catch (Exception e) {
-            this.pipeline.echo("generateTestDashboard FAILED: ${e.getClass().getName()}: ${e.getMessage()}")
-            throw e
-        }
+        def reportDir  = 'test_dashboard'
+        def reportFile = 'index.html'
+        this.pipeline.writeFile(file: "${reportDir}/${reportFile}", text: html, encoding: 'UTF-8')
+        this.pipeline.echo("generateTestDashboard: writeFile done, calling publishHTML...")
+        this.pipeline.publishHTML([
+            allowMissing         : false,
+            alwaysLinkToLastBuild: true,
+            keepAll              : true,
+            reportDir            : reportDir,
+            reportFiles          : reportFile,
+            reportName           : 'Test Coverage Dashboard',
+            reportTitles         : ''
+        ])
     }
+
 }
 
 VEnvManager venvManager = new VEnvManager(
