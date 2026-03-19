@@ -1580,9 +1580,9 @@ class PyTestManager {
     thead tr.session-row th { white-space: normal; text-align: center; min-width: 40px; max-width: 80px; font-size: 10px; }
     tbody tr:nth-child(even) td { background-color: #f9f9f9; }
     tbody tr:hover td { filter: brightness(0.92); }
-    td.test-name { text-align: left; max-width: 400px; overflow: hidden;
-                   text-overflow: ellipsis; white-space: nowrap; }
-    td.test-name:hover { white-space: normal; word-break: break-all; overflow: visible; }
+    td.test-name { text-align: left; white-space: nowrap; max-width: 400px;
+                   overflow: hidden; text-overflow: ellipsis; }
+    tr.file-group td { font-weight: bold; background: #eee !important; border-bottom: 1px solid #ccc; padding: 4px 6px; }
     th.skipped { color: #888; font-style: italic; }
     td.policy-cell { text-align: center; font-weight: bold; font-size: 12px; }
     .policy-always   { background: #c6efce; }
@@ -1609,6 +1609,7 @@ class PyTestManager {
         sb.append('    <span class="legend-item policy-none">&#x1F6AB; = not covered</span>\n')
         sb.append('  </div>\n')
 
+        sb.append('  <div style="overflow-x: auto; max-width: 100%;">')
         sb.append('  <table id="dashboard">\n    <thead>\n')
 
         // Build a UID trie per group and compute the max depth across all groups
@@ -1715,7 +1716,7 @@ class PyTestManager {
             }
             sb.append('      </tr>\n')
         }
-        sb.append('    </tbody>\n  </table>\n')
+        sb.append('    </tbody>\n  </table>\n  </div>\n')
 
         sb.append('''\
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -1724,9 +1725,37 @@ class PyTestManager {
     $(document).ready(function () {
       $('#dashboard').DataTable({
         paging:        false,
-        orderCellsTop: false,
-        scrollX:       true
+        orderCellsTop: false
       });
+      // Group tests by file: insert file header rows and shorten test names
+      (function() {
+        var tbody = document.querySelector('#dashboard tbody');
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        var lastFile = '';
+        var totalCols = document.querySelector('#dashboard thead tr').children.length;
+        rows.forEach(function(row) {
+          var td = row.querySelector('td.test-name');
+          if (!td) return;
+          var text = td.textContent;
+          var idx = text.indexOf('::');
+          if (idx < 0) return;
+          var file = text.substring(0, idx);
+          var func = text.substring(idx + 2);
+          if (file !== lastFile) {
+            var groupRow = document.createElement('tr');
+            groupRow.className = 'file-group';
+            var fileTd = document.createElement('td');
+            fileTd.className = 'test-name';
+            fileTd.colSpan = totalCols;
+            fileTd.textContent = file;
+            groupRow.appendChild(fileTd);
+            row.parentNode.insertBefore(groupRow, row);
+            lastFile = file;
+          }
+          td.textContent = func;
+          td.title = text;
+        });
+      })();
       // Hide Jenkins HTML Publisher "back to" wrapper link if present
       try { if (window.parent) {
         var wrapper = window.parent.document.querySelector('.htmlpublisher-wrapper a[href*="Back"]');
