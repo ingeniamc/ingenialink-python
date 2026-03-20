@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [7.6.0] - 2026-03-20
 ### Added
 - Add support for tables for XDF and XCF and CSV export. XCF version has been updated to 2.2
 - Added context-like behaviour to EtherCAT network
