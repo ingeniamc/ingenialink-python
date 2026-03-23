@@ -121,7 +121,7 @@ optional = true
 [tool.poetry.group.tests.dependencies]
 pytest = "==8.4.1"
 pytest-env = "==1.1.5"
-pytest-cov = "==7.0.0"
+pytest-cov = "==7.1.0"
 pytest-mock = "==3.15.1"
 pytest-console-scripts = "==1.4.1"
 twisted = "==25.5.0"
