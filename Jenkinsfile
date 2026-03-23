@@ -1372,7 +1372,7 @@ class PyTestManager {
 VEnvManager venvManager = new VEnvManager(
   pipeline: this,
   default_python_version: DEFAULT_PYTHON_VERSION,
-  poetry_default_install_command: "poetry sync --no-root --all-groups --extras virtual_drive"
+  poetry_default_install_command: "poetry sync --no-root --all-groups"
 )
 
 PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvManager)
