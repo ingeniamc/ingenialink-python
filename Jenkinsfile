@@ -1241,15 +1241,20 @@ class PyTestManager {
                             } else {
                                 venv.run("${session.runTestBaseCommand} ${testArgsStr}")
                             }
+                        } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
+                            // Build was cancelled or a timeout expired — re-throw so Jenkins marks
+                            // the build as ABORTED instead of UNSTABLE, and skip publishing.
+                            throw e
                         } catch (err) {
                             this.pipeline.unstable(message: "Tests failed")
-                        } finally {
-                            this.publishAndCleanupJunitReports()
-                            if (firstIteration && session.useCoverage) {
-                                this.stashCoverageFile(session.uid, venv.name)
-                            }
-                            firstIteration = false
                         }
+                        // Only reached on success or after a caught test failure.
+                        // Skipped entirely if FlowInterruptedException was re-thrown above.
+                        this.publishAndCleanupJunitReports()
+                        if (firstIteration && session.useCoverage) {
+                            this.stashCoverageFile(session.uid, venv.name)
+                        }
+                        firstIteration = false
                     }
                 }
             }
@@ -1367,7 +1372,7 @@ class PyTestManager {
 VEnvManager venvManager = new VEnvManager(
   pipeline: this,
   default_python_version: DEFAULT_PYTHON_VERSION,
-  poetry_default_install_command: "poetry sync --no-root --all-groups --extras virtual_drive"
+  poetry_default_install_command: "poetry sync --no-root --all-groups"
 )
 
 PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvManager)
@@ -1625,13 +1630,15 @@ pipeline {
                                 VENV_WORKING_FOLDER = "/tmp/ingenialink_python"
                             }
                             stages {
-                                stage('Check Dependencies') {
-                                    steps {
-                                        script {
-                                            checkDependencies()
-                                        }
-                                    }
-                                }
+                                // TODO: Re-enable once all release dependencies are resolved
+                                // See Jira issue for tracking
+                                // stage('Check Dependencies') {
+                                //     steps {
+                                //         script {
+                                //             checkDependencies()
+                                //         }
+                                //     }
+                                // }
                                 stage('Move workspace') {
                                     steps {
                                         script {

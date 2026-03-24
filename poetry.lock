@@ -2087,7 +2087,7 @@ version = "2.0.2"
 description = "Fundamental package for array computing in Python"
 optional = false
 python-versions = ">=3.9"
-groups = ["main"]
+groups = ["main", "tests"]
 files = [
     {file = "numpy-2.0.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:51129a29dbe56f9ca83438b706e2e69a39892b5eda6cedcb6b0c9fdc9b0d3ece"},
     {file = "numpy-2.0.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:f15975dfec0cf2239224d80e32c3170b1d168335eaedee69da84fbe9f1f9cd04"},
@@ -2640,14 +2640,14 @@ pytest = ">=4.0.0"
 
 [[package]]
 name = "pytest-cov"
-version = "7.0.0"
+version = "7.1.0"
 description = "Pytest plugin for measuring coverage."
 optional = false
 python-versions = ">=3.9"
 groups = ["tests"]
 files = [
-    {file = "pytest_cov-7.0.0-py3-none-any.whl", hash = "sha256:3b8e9558b16cc1479da72058bdecf8073661c7f57f7d3c5f22a1c23507f2d861"},
-    {file = "pytest_cov-7.0.0.tar.gz", hash = "sha256:33c97eda2e049a0c5298e91f519302a1334c26ac65c1a483d6206fd458361af1"},
+    {file = "pytest_cov-7.1.0-py3-none-any.whl", hash = "sha256:a0461110b7865f9a271aa1b51e516c9a95de9d696734a2f71e3e78f46e1d4678"},
+    {file = "pytest_cov-7.1.0.tar.gz", hash = "sha256:30674f2b5f6351aa09702a9c8c364f6a01c27aae0c1366ae8016160d1efc56b2"},
 ]
 
 [package.dependencies]
@@ -3388,10 +3388,9 @@ files = [
 name = "scipy"
 version = "1.13.1"
 description = "Fundamental algorithms for scientific computing in Python"
-optional = true
+optional = false
 python-versions = ">=3.9"
-groups = ["main"]
-markers = "extra == \"virtual-drive\""
+groups = ["tests"]
 files = [
     {file = "scipy-1.13.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:20335853b85e9a49ff7572ab453794298bcf0354d8068c5f6775a0eabf350aca"},
     {file = "scipy-1.13.1-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:d605e9c23906d1994f55ace80e0125c587f96c020037ea6aa98d01b4bd2e222f"},
@@ -3721,13 +3720,13 @@ test = ["pytest"]
 
 [[package]]
 name = "summit-testing-framework"
-version = "0.2.0.post232+develop.4b9deb4"
+version = "0.2.0.post234+develop.74cb3cf"
 description = "Testing framework for Novanta drives"
 optional = false
 python-versions = ">=3.9"
 groups = ["tests"]
 files = [
-    {file = "summit_testing_framework-0.2.0.post232+develop.4b9deb4-py3-none-any.whl", hash = "sha256:99aee653fb6258f17449f91980243f5032f1d1b9517b7b2a7119c67913009cd2"},
+    {file = "summit_testing_framework-0.2.0.post234+develop.74cb3cf-py3-none-any.whl", hash = "sha256:4e94a89929c6c1f9d4a10e1ea2142974667a2dcc9b89ce5f39f8adee4dcaa4dc"},
 ]
 
 [package.dependencies]
@@ -3970,14 +3969,13 @@ zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "virtual-drive"
-version = "0.0.post531+mot3.5320.connection.permanently.7bd83e7"
+version = "0.0+g8bc818283"
 description = "Emulates a Summit drive for development and testing purposes."
-optional = true
+optional = false
 python-versions = ">=3.9"
-groups = ["main"]
-markers = "extra == \"virtual-drive\""
+groups = ["tests"]
 files = [
-    {file = "virtual_drive-0.0.post531+mot3.5320.connection.permanently.7bd83e7-py3-none-any.whl", hash = "sha256:c0d90c0a2f313a2f234f21fa1b9f241573ac784bc78f8304417b825347a1ad03"},
+    {file = "virtual_drive-0.0+g8bc818283-py3-none-any.whl", hash = "sha256:c5878d01f833644f2ef67582c58a634bf0655158799c01c44ada3580c282219b"},
 ]
 
 [package.dependencies]
@@ -4392,10 +4390,7 @@ cffi = {version = ">=1.11", markers = "platform_python_implementation == \"PyPy\
 [package.extras]
 cffi = ["cffi (>=1.11)"]
 
-[extras]
-virtual-drive = ["virtual_drive"]
-
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "a3a683822c8cfb97cf4592e11055859007f8ed70985ae6c78db80b8eed556aba"
+content-hash = "647a173c5c6b67b8d35566434ab368cd21c8074f1f0200ba571914e36d171959"
