@@ -1,5 +1,5 @@
 def test_exported_comms_symbols():
-    import ingenialink
+    import ingenialink  # noqa: PLC0415
 
     expected_attrs = []
 

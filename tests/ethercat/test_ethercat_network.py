@@ -7,6 +7,7 @@ with contextlib.suppress(ImportError):
 import random
 import threading
 import time
+from collections.abc import Generator
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
@@ -22,13 +23,17 @@ from ingenialink.ethercat.network import (
     EthercatNetwork,
     GilReleaseConfig,
     release_network_reference,
+    set_network_reference,
 )
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetState
 from ingenialink.pdo import PDOMap, RPDOMap, TPDOMap
 
 if TYPE_CHECKING:
+    from pytest import FixtureRequest
     from pytest_mock import MockerFixture
+    from summit_testing_framework.setup_fixtures import ConnectionWrapper
+    from summit_testing_framework.setups.descriptors import DriveEcatSetup
 
     from ingenialink.ethercat.servo import EthercatServo
 
@@ -44,16 +49,16 @@ def mocked_network_for_firmware_loading(mocker):
     mock_slave = mocker.Mock()
     net._ecat_master.slaves = [mock_slave]
     net._EthercatNetwork__last_init_nodes = {1}
-    yield net, mock_slave
-    net.close_ecat_master()
+    with net.running():
+        yield net, mock_slave
 
 
-@pytest.mark.docker
+@pytest.mark.no_pcap
 def test_raise_exception_if_not_winpcap():
     try:
-        import pysoem  # noqa: F401
+        import pysoem  # noqa: F401,PLC0415
 
-        pytest.skip("WinPcap is installed")
+        pytest.fail("WinPcap appears to be installed and thus the test cannot be executed.")
     except ImportError:
         pass
     previous_networks = ETHERCAT_NETWORK_REFERENCES.copy()
@@ -64,7 +69,7 @@ def test_raise_exception_if_not_winpcap():
         release_network_reference(net)
 
 
-@pytest.mark.no_connection
+@pytest.mark.pcap
 def test_load_firmware_file_not_found_error():
     net = EthercatNetwork("fake_interface")
     with pytest.raises(FileNotFoundError):
@@ -72,7 +77,7 @@ def test_load_firmware_file_not_found_error():
     net.close_ecat_master()
 
 
-@pytest.mark.no_connection
+@pytest.mark.pcap
 def test_load_firmware_no_slave_detected_error(mocked_network_for_firmware_loading):
     net, _ = mocked_network_for_firmware_loading
     slave_id = 23
@@ -84,7 +89,7 @@ def test_load_firmware_no_slave_detected_error(mocked_network_for_firmware_loadi
 
 
 @pytest.mark.ethercat
-def test_find_adapters(setup_descriptor):
+def test_find_adapters(setup_descriptor: "DriveEcatSetup") -> None:
     """Test that find_adapters returns a list of EtherCATNetwork instances."""
     adapter_found = False
     ifname = setup_descriptor.ifname
@@ -97,8 +102,10 @@ def test_find_adapters(setup_descriptor):
     assert adapter_found is True
 
 
-@pytest.mark.no_connection
-def test_load_firmware_boot_state_failure(mocker, mocked_network_for_firmware_loading):
+@pytest.mark.pcap
+def test_load_firmware_boot_state_failure(
+    mocker: "MockerFixture", mocked_network_for_firmware_loading
+):
     net, _ = mocked_network_for_firmware_loading
     mocker.patch.object(net, "_switch_to_boot_state", side_effect=[True, False])
     mocker.patch.object(net, "_write_foe", return_value=-5)
@@ -111,8 +118,10 @@ def test_load_firmware_boot_state_failure(mocker, mocked_network_for_firmware_lo
         net.load_firmware("dummy_file.sfu", False, slave_id=1)
 
 
-@pytest.mark.no_connection
-def test_load_firmware_foe_write_failure(mocker, mocked_network_for_firmware_loading):
+@pytest.mark.pcap
+def test_load_firmware_foe_write_failure(
+    mocker: "MockerFixture", mocked_network_for_firmware_loading
+):
     net, _ = mocked_network_for_firmware_loading
     mocker.patch("os.path.isfile", return_value=True)
     mocker.patch.object(net, "_switch_to_boot_state", return_value=True)
@@ -125,8 +134,10 @@ def test_load_firmware_foe_write_failure(mocker, mocked_network_for_firmware_loa
         net.load_firmware("dummy_file.sfu", False, slave_id=1)
 
 
-@pytest.mark.no_connection
-def test_load_firmware_success_after_retry(mocker, mocked_network_for_firmware_loading):
+@pytest.mark.pcap
+def test_load_firmware_success_after_retry(
+    mocker: "MockerFixture", mocked_network_for_firmware_loading
+):
     net, slave = mocked_network_for_firmware_loading
     mocker.patch.object(net, "_switch_to_boot_state", side_effect=[False, True])
     mocker.patch.object(net, "_write_foe", return_value=1)
@@ -135,7 +146,7 @@ def test_load_firmware_success_after_retry(mocker, mocked_network_for_firmware_l
     net.load_firmware("dummy_file.sfu", False, slave_id=1)
 
 
-@pytest.mark.no_connection
+@pytest.mark.pcap
 def test_wrong_interface_name_error():
     net = EthercatNetwork("fake_interface")
     slave_id = 1
@@ -147,32 +158,46 @@ def test_wrong_interface_name_error():
 
 @pytest.mark.ethercat
 @pytest.mark.parametrize("slave_id", [-1, "one", None])
-def test_connect_to_slave_invalid_id(setup_descriptor, slave_id):
-    net = EthercatNetwork(setup_descriptor.ifname)
+def test_connect_to_slave_invalid_id(
+    net: "EthercatNetwork",
+    servo_with_reconnect: "ConnectionWrapper",
+    setup_descriptor: "DriveEcatSetup",
+    slave_id,
+) -> None:
+    servo_with_reconnect.disconnect()
     with pytest.raises(ValueError):
         net.connect_to_slave(slave_id, setup_descriptor.dictionary)
-    net.close_ecat_master()
 
 
 @pytest.mark.ethercat
-def test_connect_to_no_detected_slave(setup_descriptor):
-    net = EthercatNetwork(setup_descriptor.ifname)
+def test_connect_to_no_detected_slave(
+    net: "EthercatNetwork",
+    setup_descriptor: "DriveEcatSetup",
+    servo_with_reconnect: "ConnectionWrapper",
+) -> None:
+    servo_with_reconnect.disconnect()
+    assert servo_with_reconnect.is_connected() is False
+
     slaves = net.scan_slaves()
     slave_id = slaves[-1] + 1
 
     with pytest.raises(ILError):
         net.connect_to_slave(slave_id, setup_descriptor.dictionary)
-    net.close_ecat_master()
 
 
 @pytest.mark.ethercat
-def test_connect_to_slave_with_callback(setup_descriptor):
+def test_connect_to_slave_with_callback(
+    setup_descriptor: "DriveEcatSetup",
+    net: "EthercatNetwork",
+    servo_with_reconnect: "ConnectionWrapper",
+) -> None:
+    servo_with_reconnect.disconnect()
+
     disconnected_servos = []
 
     def dummy_callback(servo):
         disconnected_servos.append(servo.slave_id)
 
-    net = EthercatNetwork(setup_descriptor.ifname)
     servo = net.connect_to_slave(
         setup_descriptor.slave,
         setup_descriptor.dictionary,
@@ -189,7 +214,9 @@ def test_connect_to_slave_with_callback(setup_descriptor):
 
 
 @pytest.mark.ethercat
-def test_scan_slaves_raises_exception_if_drive_is_already_connected(servo, net):
+def test_scan_slaves_raises_exception_if_drive_is_already_connected(
+    servo: "EthercatServo", net: "EthercatNetwork"
+) -> None:
     net._ecat_master.read_state()
     assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
     with pytest.raises(ILError):
@@ -198,24 +225,26 @@ def test_scan_slaves_raises_exception_if_drive_is_already_connected(servo, net):
 
 
 @pytest.mark.ethercat
-def test_scan_slaves_info(setup_specifier, setup_descriptor, request):
-    if not isinstance(
-        setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)
-    ):
-        pytest.skip("Only available for rack specifiers.")
-    net = EthercatNetwork(setup_descriptor.ifname)
+def test_scan_slaves_info(
+    setup_specifier,
+    servo_with_reconnect: "ConnectionWrapper",
+    setup_descriptor: "DriveEcatSetup",
+    request: "FixtureRequest",
+) -> None:
+    servo_with_reconnect.disconnect()
+    net = servo_with_reconnect.get_net()
     slaves_info = net.scan_slaves_info()
-
-    drive = request.getfixturevalue("get_drive_configuration_from_rack_service")
 
     assert len(slaves_info) > 0
     assert setup_descriptor.slave in slaves_info
-    assert slaves_info[setup_descriptor.slave].product_code == drive.product_code
-    net.close_ecat_master()
+
+    if isinstance(setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)):
+        drive = request.getfixturevalue("get_drive_configuration_from_rack_service")
+        assert slaves_info[setup_descriptor.slave].product_code == drive.product_code
 
 
 @pytest.mark.ethercat
-def test_update_sdo_timeout(net):
+def test_update_sdo_timeout(net: "EthercatNetwork") -> None:
     read_timeout = 10
     write_timeout = 100
     net.update_sdo_timeout(read_timeout, write_timeout)
@@ -228,7 +257,7 @@ def test_update_sdo_timeout(net):
 
 
 @pytest.mark.ethercat
-def test_update_pysoem_timeouts(net):
+def test_update_pysoem_timeouts(net: "EthercatNetwork") -> None:
     old_ret = pysoem.settings.timeouts.ret
     old_safe = pysoem.settings.timeouts.safe
     old_eeprom = pysoem.settings.timeouts.eeprom
@@ -254,14 +283,14 @@ def test_update_pysoem_timeouts(net):
 
 
 @pytest.mark.ethercat
-def test_check_node_state(servo, net):
+def test_check_node_state(servo: "EthercatServo", net: "EthercatNetwork") -> None:
     # True when list is not empty
     assert net._check_node_state(servo, pysoem.PREOP_STATE)
     # False when list is not empty
     assert not net._check_node_state([], pysoem.PREOP_STATE)
 
 
-@pytest.mark.no_connection
+@pytest.mark.pcap
 def test_check_node_state_with_non_existent_slave(pysoem_mock_network):
     """Test that _check_node_state handles slaves with slave_exists=False.
 
@@ -302,7 +331,7 @@ def test_check_node_state_with_non_existent_slave(pysoem_mock_network):
     net.close_ecat_master()
 
 
-@pytest.mark.no_connection
+@pytest.mark.pcap
 def test_change_nodes_state_with_non_existent_slave(pysoem_mock_network):
     """Test that _change_nodes_state handles slaves with slave_exists=False.
 
@@ -373,7 +402,7 @@ def test_change_nodes_state_with_non_existent_slave(pysoem_mock_network):
     net.close_ecat_master()
 
 
-@pytest.mark.no_connection
+@pytest.mark.pcap
 def test_disconnect_from_slave_with_non_existent_slave(pysoem_mock_network):
     """Test that disconnect_from_slave works when the slave doesn't exist.
 
@@ -436,7 +465,6 @@ def test_disconnect_from_slave_with_non_existent_slave(pysoem_mock_network):
     assert net._EthercatNetwork__is_master_running is False
 
 
-@pytest.mark.no_connection
 def test_gil_configuration():
     gil_config_1 = GilReleaseConfig.always()
     assert all([
@@ -464,7 +492,6 @@ def test_gil_configuration():
     assert gil_config_3.always_release is False
 
 
-@pytest.mark.no_connection
 def test_release_network_reference_raises_error_if_wrong_network():
     class DummyEthercatNetwork:
         pass
@@ -474,7 +501,7 @@ def test_release_network_reference_raises_error_if_wrong_network():
 
 
 @pytest.mark.ethercat
-def test_master_reference_is_kept_while_network_is_alive(mocker):
+def test_master_reference_is_kept_while_network_is_alive(mocker) -> None:
     set_network_reference_spy = mocker.spy(ingenialink.ethercat.network, "set_network_reference")
     release_network_reference_spy = mocker.spy(
         ingenialink.ethercat.network, "release_network_reference"
@@ -515,24 +542,46 @@ def test_master_reference_is_kept_while_network_is_alive(mocker):
 
 
 @pytest.mark.ethercat
-def test_master_reference_is_kept_after_scan(setup_descriptor):
+def test_master_reference_is_not_kept_after_scan(
+    setup_descriptor: "DriveEcatSetup",
+    servo_with_reconnect: "ConnectionWrapper",
+    mocker: "MockerFixture",
+) -> None:
+    """Scan slaves should use the network context, so the reference is not kept after the call."""
+    servo_with_reconnect.disconnect()
     previous_networks = ETHERCAT_NETWORK_REFERENCES.copy()
     net_1 = EthercatNetwork(setup_descriptor.ifname, gil_release_config=GilReleaseConfig.always())
     assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks) + 1
     assert net_1 in ETHERCAT_NETWORK_REFERENCES
 
-    net_1.scan_slaves()
+    # Spy on the actual methods that context manager calls to verify behavior
+    start_master_spy = mocker.spy(net_1, "_start_master")
+    close_master_spy = mocker.spy(net_1, "close_ecat_master")
 
-    assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks) + 1
-    assert net_1 in ETHERCAT_NETWORK_REFERENCES
+    slaves = net_1.scan_slaves()
 
-    net_1.close_ecat_master()
+    # Verify context manager behavior: master was started and then closed
+    assert start_master_spy.call_count == 1, (
+        "Context manager should start master during scan_slaves"
+    )
+    assert close_master_spy.call_count == 1, "Context manager should close master after scan_slaves"
 
+    # Verify we got the slave list before the context closed
+    assert len(slaves) > 0, "Should have detected slaves"
+
+    # Reference should NOT be present after scan - context started and stopped the master,
+    # so it released the reference on exit
     assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks)
+    assert net_1 not in ETHERCAT_NETWORK_REFERENCES
+    assert net_1._EthercatNetwork__is_master_running is False
 
 
 @pytest.mark.ethercat
-def test_network_reference_is_added_back_if_servo_connected_after_close(setup_descriptor):
+def test_network_reference_is_added_back_if_servo_connected_after_close(
+    setup_descriptor: "DriveEcatSetup", servo_with_reconnect: "ConnectionWrapper"
+) -> None:
+    servo_with_reconnect.disconnect()
+
     previous_networks = ETHERCAT_NETWORK_REFERENCES.copy()
     net = EthercatNetwork(setup_descriptor.ifname, gil_release_config=GilReleaseConfig.always())
     assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks) + 1
@@ -563,7 +612,9 @@ def test_network_reference_is_added_back_if_servo_connected_after_close(setup_de
 
 
 @pytest.mark.ethercat
-def test_network_is_not_released_if_gil_operation_ongoing(mocker, setup_descriptor):
+def test_network_is_not_released_if_gil_operation_ongoing(
+    mocker: "MockerFixture", setup_descriptor: "DriveEcatSetup"
+) -> None:
     blocking_time = 5
 
     def dummy_config_init(usetable=False, *, release_gil=None):  # noqa: ARG001
@@ -609,7 +660,7 @@ def test_network_is_not_released_if_gil_operation_ongoing(mocker, setup_descript
     assert len(ETHERCAT_NETWORK_REFERENCES) == len(previous_networks)
 
 
-@pytest.mark.no_connection
+@pytest.mark.pcap
 def test_slave_update_on_config_init(pysoem_mock_network):  # noqa: ARG001
     net = EthercatNetwork("dummy_ifname")
 
@@ -633,7 +684,7 @@ def test_slave_update_on_config_init(pysoem_mock_network):  # noqa: ARG001
     assert original_slave._emcy_callbacks[0] == servo._on_emcy
 
 
-@pytest.mark.no_connection
+@pytest.mark.pcap
 def test_slave_reference_set_to_none_when_not_in_init_nodes(pysoem_mock_network):
     """Test that servo's slave reference is set to None when slave_id is not in __last_init_nodes.
 
@@ -677,7 +728,7 @@ def test_slave_reference_set_to_none_when_not_in_init_nodes(pysoem_mock_network)
     net.close_ecat_master()
 
 
-@pytest.mark.no_connection
+@pytest.mark.pcap
 def test_net_status_listener_handles_none_slave_reference(pysoem_mock_network, mocker):  # noqa: ARG001
     """Test that NetStatusListener doesn't crash when servo.slave is None.
 
@@ -714,7 +765,7 @@ def test_net_status_listener_handles_none_slave_reference(pysoem_mock_network, m
     net.close_ecat_master()
 
 
-@pytest.mark.no_connection
+@pytest.mark.pcap
 def test_net_status_listener_detects_slave_removal(pysoem_mock_network, mocker):  # noqa: ARG001
     """Test that NetStatusListener properly detects when a slave is removed.
 
@@ -759,7 +810,7 @@ def test_net_status_listener_detects_slave_removal(pysoem_mock_network, mocker):
     net.close_ecat_master()
 
 
-@pytest.mark.no_connection
+@pytest.mark.pcap
 def test_net_status_listener_detects_slave_reconnection(pysoem_mock_network, mocker):
     """Test that NetStatusListener properly detects when a slave reconnects.
 
@@ -772,8 +823,8 @@ def test_net_status_listener_detects_slave_reconnection(pysoem_mock_network, moc
     def status_callback(event: NetDevEvt):
         events_detected.append(event)
 
-    # Mock _recover_from_disconnection to return True
-    mocker.patch.object(EthercatNetwork, "_recover_from_disconnection", return_value=True)
+    # Mock recover_from_disconnection to return True
+    mocker.patch.object(EthercatNetwork, "recover_from_disconnection", return_value=True)
 
     net = EthercatNetwork("dummy_ifname")
 
@@ -870,3 +921,188 @@ def test_slave_is_in_preop_state_if_exception_in_pdo_thread(
     # Net should restore servos to PREOP state
     assert servo.slave is not None
     assert servo.slave.state is pysoem.PREOP_STATE
+
+
+@pytest.mark.ethercat
+def test_recover_from_disconnection(net: "EthercatNetwork", servo: "EthercatServo", caplog) -> None:
+    """Test that recover_from_disconnection properly rediscovers slaves after disconnection.
+
+    This test uses a real EtherCAT drive and simulates a disconnection scenario by setting
+    the slave reference to None. The recover_from_disconnection method should call
+    __init_nodes() to rediscover the physical drive and restore communication.
+    """
+    # Verify initial state - servo is connected and in PREOP state
+    assert servo.slave_exists is True
+    assert servo.slave.state == pysoem.PREOP_STATE, "Servo should be in PREOP state initially"
+
+    # Verify that recover_from_disconnection returns True when servo is properly connected
+    assert net.recover_from_disconnection() is True
+
+    # Simulate slave disconnection by changing state to INIT
+    net._change_nodes_state(servo, pysoem.INIT_STATE)
+    assert servo.slave.state == pysoem.INIT_STATE, (
+        "Servo should be in INIT state after disconnection"
+    )
+    caplog.clear()
+    with caplog.at_level("WARNING"):
+        result = net.recover_from_disconnection()
+        assert result is True, "recover_from_disconnection should rediscover the physical slave"
+        assert "CoE communication recovered." in caplog.text, "Should log recovery success message"
+
+    assert servo.slave.state == pysoem.PREOP_STATE, "Servo should be in PREOP state after recovery"
+
+
+@pytest.mark.pcap
+def test_ensure_network_reference_method():
+    """Test the _ensure_network_reference helper method.
+
+    If the network is not in ETHERCAT_NETWORK_REFERENCES, calling this method
+    should add it back. If it is already present, calling the method should have no effect.
+    """
+    net = EthercatNetwork("fake_interface")
+
+    # Remove from references
+    if net in ETHERCAT_NETWORK_REFERENCES:
+        ETHERCAT_NETWORK_REFERENCES.remove(net)
+
+    assert net not in ETHERCAT_NETWORK_REFERENCES
+
+    # Call the method
+    net._EthercatNetwork__ensure_network_reference()
+
+    assert net in ETHERCAT_NETWORK_REFERENCES
+
+    # Call again - should not duplicate
+    previous_count = len(ETHERCAT_NETWORK_REFERENCES)
+    net._EthercatNetwork__ensure_network_reference()
+    assert net in ETHERCAT_NETWORK_REFERENCES
+    assert len(ETHERCAT_NETWORK_REFERENCES) == previous_count
+
+    # Cleanup
+    release_network_reference(net)
+
+
+class TestEthercatNetworkContextManager:
+    """Tests for the EthercatNetwork context manager functionality."""
+
+    @pytest.fixture
+    def net_mocker(self, mocker) -> Generator[EthercatNetwork, None, None]:
+        net = EthercatNetwork("fake_interface")
+        mocker.patch.object(net, "_start_master")
+        mocker.patch.object(net, "close_ecat_master")
+
+        yield net
+
+        if net in ETHERCAT_NETWORK_REFERENCES:
+            release_network_reference(network=net)
+
+    @pytest.mark.pcap
+    def test_context_manager_starts_and_stops_master(self, net_mocker: "EthercatNetwork") -> None:
+        """Test that context manager starts master if not running and closes it on exit."""
+        assert net_mocker._EthercatNetwork__is_master_running is False
+
+        with net_mocker.running():
+            net_mocker._start_master.assert_called_once()
+            # Simulate master running
+            net_mocker._EthercatNetwork__is_master_running = True
+
+        net_mocker.close_ecat_master.assert_called_once_with(release_reference=True)
+
+    @pytest.mark.pcap
+    def test_context_manager_does_not_close_already_running_master(
+        self, net_mocker: "EthercatNetwork"
+    ) -> None:
+        """Test that context manager doesn't close master that was already running."""
+
+        # Simulate master already running
+        net_mocker._EthercatNetwork__is_master_running = True
+
+        with net_mocker.running():
+            net_mocker._start_master.assert_not_called()
+
+        net_mocker.close_ecat_master.assert_not_called()
+
+    @pytest.mark.pcap
+    def test_context_manager_ensures_network_reference(self, net_mocker: "EthercatNetwork") -> None:
+        """Test that context manager ensures network reference is set."""
+        # Remove network from references (added when net is created)
+        assert net_mocker in ETHERCAT_NETWORK_REFERENCES
+        if net_mocker in ETHERCAT_NETWORK_REFERENCES:
+            release_network_reference(network=net_mocker)
+        assert net_mocker not in ETHERCAT_NETWORK_REFERENCES
+
+        with net_mocker.running():
+            assert net_mocker in ETHERCAT_NETWORK_REFERENCES
+
+        assert net_mocker not in ETHERCAT_NETWORK_REFERENCES
+
+    @pytest.mark.pcap
+    def test_context_manager_handles_exceptions(self, net_mocker: "EthercatNetwork") -> None:
+        """Test that context manager properly closes master even when exception occurs."""
+        with pytest.raises(ValueError, match="test exception"), net_mocker.running():
+            # Simulate master running
+            net_mocker._EthercatNetwork__is_master_running = True
+            raise ValueError("test exception")
+
+        # Master should still be closed despite exception
+        net_mocker.close_ecat_master.assert_called_once_with(release_reference=True)
+
+    @pytest.mark.pcap
+    def test_context_manager_reusable(self, net_mocker: "EthercatNetwork") -> None:
+        """Test that context manager can be used multiple times on same network."""
+        # Remove network from references (added when net is created)
+        assert net_mocker in ETHERCAT_NETWORK_REFERENCES
+        if net_mocker in ETHERCAT_NETWORK_REFERENCES:
+            release_network_reference(network=net_mocker)
+        assert net_mocker not in ETHERCAT_NETWORK_REFERENCES
+
+        # First usage should add the reference and release it
+        with net_mocker.running():
+            assert net_mocker in ETHERCAT_NETWORK_REFERENCES
+        assert net_mocker not in ETHERCAT_NETWORK_REFERENCES
+
+        # Manually add the reference (simulate master already running)
+        set_network_reference(network=net_mocker)
+        net_mocker._EthercatNetwork__is_master_running = True
+
+        # Second usage should not close the master since it was already running
+        # and the reference should remain after context
+        assert net_mocker in ETHERCAT_NETWORK_REFERENCES
+        with net_mocker.running():
+            assert net_mocker in ETHERCAT_NETWORK_REFERENCES
+        assert net_mocker in ETHERCAT_NETWORK_REFERENCES
+
+    @pytest.mark.ethercat
+    def test_context_manager_nested_contexts(
+        self, net: "EthercatNetwork", servo_with_reconnect: "ConnectionWrapper"
+    ) -> None:
+        """Test that nested context managers work correctly."""
+        servo_with_reconnect.disconnect()
+
+        # Network reference has been released with the disconnect, no master running
+        assert net not in ETHERCAT_NETWORK_REFERENCES
+        assert net._EthercatNetwork__is_master_running is False
+
+        n_networks = len(ETHERCAT_NETWORK_REFERENCES)
+
+        # Outer context starts the master
+        with net.running():
+            assert net._EthercatNetwork__is_master_running is True
+            assert net in ETHERCAT_NETWORK_REFERENCES
+            assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks + 1
+
+            with net.running():
+                assert net._EthercatNetwork__is_master_running is True
+                assert net in ETHERCAT_NETWORK_REFERENCES
+                assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks + 1
+
+            # Master should still be running after nested scan_slaves()
+            # (because outer context started it, not the internal scan_slaves() context)
+            assert net._EthercatNetwork__is_master_running is True
+            assert net in ETHERCAT_NETWORK_REFERENCES
+            assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks + 1
+
+        # After outer context exits, master should be closed and reference released
+        assert net._EthercatNetwork__is_master_running is False
+        assert net not in ETHERCAT_NETWORK_REFERENCES
+        assert len(ETHERCAT_NETWORK_REFERENCES) == n_networks

@@ -2,6 +2,7 @@ import re
 import threading
 import time
 from abc import abstractmethod
+from collections.abc import Iterator
 from enum import Enum, auto
 from typing import Any, Callable, Optional, Union
 from xml.etree import ElementTree
@@ -12,7 +13,10 @@ import numpy as np
 from ingenialink.bitfield import BitField
 from ingenialink.canopen.dictionary import CanopenDictionaryV2, CanopenDictionaryV3
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.configuration_file import ConfigRegister, ConfigurationFile
+from ingenialink.configuration_file import (
+    ConfigRegister,
+    ConfigurationFile,
+)
 from ingenialink.constants import (
     DEFAULT_DRIVE_NAME,
     DEFAULT_PDS_TIMEOUT,
@@ -25,6 +29,7 @@ from ingenialink.dictionary import (
     CanOpenObject,
     Dictionary,
     DictionaryDescriptor,
+    DictionaryDescriptors,
     DictionaryError,
     DictionaryV2,
     DictionaryV3,
@@ -52,8 +57,10 @@ from ingenialink.exceptions import (
     ILValueError,
 )
 from ingenialink.register import Register
-from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
-from ingenialink.virtual.dictionary import VirtualDictionaryV2, VirtualDictionaryV3
+from ingenialink.table import Table
+from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, weak_lru
+from ingenialink.utils.event import create_event
+from ingenialink.utils.timeout import Timeout
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -107,8 +114,6 @@ class DictionaryFactory:
                 return EoEDictionaryV3(dictionary_path)
             if interface == Interface.ETH:
                 return EthernetDictionaryV3(dictionary_path)
-            if interface == Interface.VIRTUAL:
-                return VirtualDictionaryV3(dictionary_path)
         if major_version == 2:
             if interface == Interface.CAN:
                 return CanopenDictionaryV2(dictionary_path)
@@ -116,8 +121,6 @@ class DictionaryFactory:
                 return EthercatDictionaryV2(dictionary_path)
             if interface in [Interface.ETH, Interface.EoE]:
                 return EthernetDictionaryV2(dictionary_path)
-            if interface == Interface.VIRTUAL:
-                return VirtualDictionaryV2(dictionary_path)
         raise NotImplementedError(
             f"Dictionary version {major_version} is not supported for interface {interface.name}"
         )
@@ -143,6 +146,26 @@ class DictionaryFactory:
             return DictionaryV3.get_description(dictionary_path, interface)
         if major_version == 2:
             return DictionaryV2.get_description(dictionary_path, interface)
+        raise NotImplementedError(f"Dictionary version {major_version} is not supported")
+
+    @classmethod
+    def get_all_dictionary_descriptions(cls, dictionary_path: str) -> DictionaryDescriptors:
+        """Quick function to get all target dictionary descriptions.
+
+        Args:
+            dictionary_path: target dictionary path
+
+        Returns:
+            Target dictionary description
+
+        Raises:
+            NotImplementedError: Dictionary version is not supported.
+        """
+        major_version, _ = cls.__get_dictionary_version(dictionary_path)
+        if major_version == 3:
+            return DictionaryV3.get_description_for_all_interfaces(dictionary_path)
+        if major_version == 2:
+            return DictionaryV2.get_description_for_any_interface(dictionary_path)
         raise NotImplementedError(f"Dictionary version {major_version} is not supported")
 
     @classmethod
@@ -218,6 +241,138 @@ class ServoStatusListener(threading.Thread):
         self.__stop = True
 
 
+class StoreRestoreManager:
+    """Manages the store/restore operations of a servo."""
+
+    STORE_STATUS_MOCO = "DRV_STORE_STATUS_MOCO"
+    STORE_STATUS_COCO = "DRV_STORE_STATUS_COCO"
+
+    __DEFAULT_STORE_RECOVERY_TIMEOUT_S = 4
+    __DEFAULT_RESTORE_RECOVERY_TIMEOUT_S = 1.5
+
+    class StoreStatus(Enum):
+        """Store status, used by the store status registers."""
+
+        IDLE = 0
+        IN_PROGRESS = 1
+
+    def __init__(self, servo: "Servo"):
+        self._servo = servo
+
+    def __status_registers(self) -> Iterator["Register"]:
+        """Get all store status registers from communications core and all axis.
+
+        Yields:
+            Register: store status registers.
+        """
+        yield from self._servo._dictionary.get_registers(self.STORE_STATUS_COCO)
+        yield from self._servo._dictionary.get_registers(self.STORE_STATUS_MOCO)
+
+    @weak_lru()
+    def __status_subnode_map(self) -> dict[int, "Register"]:
+        """Get a map of store status registers by subnode.
+
+        Returns:
+            A dictionary mapping subnode to store status register.
+        """
+        return {reg.subnode: reg for reg in self.__status_registers()}
+
+    def __read_register_evr_906_patch(self) -> None:
+        """Read a register to avoid errors after store/restore operations.
+
+        Patch for issue EVR-906.
+        """
+        try:
+            self._servo.read(self._servo.STATUS_WORD_REGISTERS)
+        except ILError:
+            logger.error(
+                "Error reading register after store/restore operation."
+                " EVR-906 bug is present and has been eluded."
+            )
+
+    def __recovery_with_time(self, recovery_time: float) -> None:
+        """Wait until the drive recovers from a store/restore operation.
+
+        Implemented by waiting a fixed time measured experimentally.
+        Needed for drives that do not implement store/restore status registers.
+
+        Args:
+            recovery_time: how many seconds to wait for the drive.
+
+        """
+        time.sleep(recovery_time)
+        self.__read_register_evr_906_patch()
+
+    def __recovery_by_polling_status(
+        self, status_regs: list["Register"], polling_rate: float = 0.1, timeout: float = 30.0
+    ) -> None:
+        """Wait until the drive recovers from a store/restore operation.
+
+        This method actively polls the given store/restore status registers until
+        each of them reports :attr:`StoreStatus.IDLE`. The call blocks until all
+        provided status registers indicate that the operation is complete.
+
+        Args:
+            status_regs: List of status registers to monitor. Each register is
+                expected to return a value compatible with :class:`StoreStatus`
+                (for example, :attr:`StoreStatus.IN_PROGRESS` or
+                :attr:`StoreStatus.IDLE`).
+            polling_rate: Time in seconds to sleep between consecutive polls of
+                each status register.
+            timeout: Maximum time in seconds to wait for all status registers to
+                report :attr:`StoreStatus.IDLE`. If this time is exceeded, an
+                :class:`ILTimeoutError` is raised.
+
+        Raises:
+            ILTimeoutError: If the timeout is exceeded before all status
+                registers report :attr:`StoreStatus.IDLE`.
+        """
+        with Timeout(timeout) as tim:
+            for status_reg in status_regs:
+                if tim.has_expired:
+                    break
+                status = self.StoreStatus.IN_PROGRESS
+                while status != self.StoreStatus.IDLE:
+                    if tim.has_expired:
+                        break
+                    try:
+                        status_raw = self._servo.read(status_reg)
+                    except ILError:
+                        logger.error("Could not read store/restore status register.")
+                        continue
+                    try:
+                        status = self.StoreStatus(status_raw)
+                    except ValueError:
+                        logger.error(
+                            "Invalid value read from store/restore status register: %s",
+                            status_raw,
+                        )
+                        continue
+                    time.sleep(polling_rate)
+
+            if tim.has_expired:
+                raise ILTimeoutError("Timeout waiting for store/restore operation to complete.")
+
+    def recover_after_restore(self) -> None:
+        """Wait until the drive recovers from a restore operation."""
+        self.__recovery_with_time(self.__DEFAULT_RESTORE_RECOVERY_TIMEOUT_S)
+
+    def recover_after_store(self, subnode: Optional[int] = None) -> None:
+        """Wait until the drive recovers from a store operation."""
+        if isinstance(subnode, int):
+            # Subnode was specified, use the status from the subnode
+            status_reg = self.__status_subnode_map().get(subnode, None)
+            status_regs = [status_reg] if status_reg is not None else []
+        else:
+            # No subnode was specified, wait for all subnodes to come to idle
+            status_regs = list(self.__status_subnode_map().values())
+
+        if len(status_regs) == 0:
+            self.__recovery_with_time(self.__DEFAULT_STORE_RECOVERY_TIMEOUT_S)
+        else:
+            self.__recovery_by_polling_status(status_regs)
+
+
 class Servo:
     """Declaration of a general Servo object.
 
@@ -245,6 +400,7 @@ class Servo:
     RESTORE_MOCO_ALL_REGISTERS = "DRV_RESTORE_MOCO_ALL"
     STORE_COCO_ALL = "DRV_STORE_COCO_ALL"
     STORE_MOCO_ALL_REGISTERS = "DRV_STORE_MOCO_ALL"
+
     CONTROL_WORD_REGISTERS = "DRV_STATE_CONTROL"
     CONTROL_WORD_SWITCH_ON = "SWITCH_ON"
     CONTROL_WORD_VOLTAGE_ENABLE = "VOLTAGE_ENABLE"
@@ -281,9 +437,6 @@ class Servo:
 
     DICTIONARY_INTERFACE_ATTR_CAN = "CAN"
     DICTIONARY_INTERFACE_ATTR_ETH = "ETH"
-
-    __DEFAULT_STORE_RECOVERY_TIMEOUT_S = 4
-    __DEFAULT_RESTORE_RECOVERY_TIMEOUT_S = 1.5
 
     interface: Interface
 
@@ -334,11 +487,19 @@ class Servo:
                 None,
             ]
         ] = []
+        # Event and publisher for disconnection events, emitted after the servo is disconnected
+        self.disconnect_event, self._disconnect_event_publisher = create_event(Servo)  # type: ignore[type-abstract]
         if servo_status_listener:
             self.start_status_listener()
         else:
             self.stop_status_listener()
-        self._disconnect_callback: Optional[Callable[[Servo], None]] = disconnect_callback
+        if disconnect_callback is not None:
+            self.disconnect_event.subscribe(disconnect_callback)
+
+    @property
+    @weak_lru()
+    def __store_restore_manager(self) -> StoreRestoreManager:
+        return StoreRestoreManager(self)
 
     def start_status_listener(self) -> None:
         """Start listening for servo status events (ServoState)."""
@@ -389,29 +550,63 @@ class Servo:
         if subnode == 0 and not xcf_instance.contains_node(subnode):
             raise ValueError(f"Cannot check {config_file} at subnode {subnode}")
         registers_errored: list[str] = []
-        for register in xcf_instance.registers:
+        for config_reg in xcf_instance.registers:
             try:
-                stored_data = self.read(register.uid, register.subnode)
+                target_reg = self._get_reg(config_reg.uid, subnode=config_reg.subnode)
+                stored_data = self.read(target_reg, config_reg.subnode)
             except ILError as e:  # noqa: PERF203
-                il_error = f"{register.uid} -- {e}"
+                il_error = f"{config_reg.uid} -- {e}"
                 logger.error(
                     "Exception during check_configuration, register %s: %s",
-                    register.uid,
+                    config_reg.uid,
                     e,
                 )
                 registers_errored.append(il_error)
             else:
                 compare_conf: Union[int, float, str, bytes, bool, np.float32] = (
-                    self._adapt_configuration_file_storage_value(xcf_instance, register)
+                    convert_bytes_to_dtype(
+                        self._adapt_configuration_file_storage_value(
+                            xcf_instance, config_reg, target_reg
+                        ),
+                        target_reg.dtype,
+                    )
                 )
                 compare_drive: Union[int, float, str, bytes, bool, np.float32] = stored_data
                 if isinstance(stored_data, float):
                     compare_drive = np.float32(stored_data)
-                    compare_conf = np.float32(register.storage)
+                    compare_conf = np.float32(config_reg.storage)
                 if compare_conf != compare_drive:
                     registers_errored.append(
-                        f"{register.uid} --- Expected: {compare_conf} | Found: {compare_drive}\n"  # type: ignore[str-bytes-safe]
+                        f"{config_reg.uid} --- Expected: {compare_conf} | Found: {compare_drive}\n"  # type: ignore[str-bytes-safe]
                     )
+
+        # Check tables
+        for config_table in xcf_instance.tables:
+            try:
+                dict_table = self.dictionary.get_table(config_table.uid, axis=config_table.subnode)
+            except (KeyError, ValueError):
+                logger.error(
+                    "Exception during check_configuration, table %s: Table not found in dictionary",
+                    config_table.uid,
+                )
+                registers_errored.append(
+                    f"Table {config_table.uid} --- Table not found in dictionary"
+                )
+                continue
+
+            try:
+                table_helper = Table(self, dict_table)
+            except Exception as e:  # noqa: PERF203
+                logger.error(
+                    "Exception during check_configuration creating Table %s: %s",
+                    config_table.uid,
+                    e,
+                )
+                registers_errored.append(f"Table {config_table.uid} --- {e}")
+                continue
+
+            mismatches = table_helper.compare_with_config_table(config_table)
+            registers_errored.extend(mismatches)
 
         if registers_errored:
             error_message = "Configuration check failed for the following registers:\n"
@@ -422,21 +617,27 @@ class Servo:
     def _adapt_configuration_file_storage_value(
         self,
         configuration_file: ConfigurationFile,  # noqa: ARG002
-        register: ConfigRegister,
-    ) -> Union[int, float, str, bytes]:
+        config_register: ConfigRegister,
+        target_register: Register,
+    ) -> bytes:
         """Adapt storage value to the current servo.
 
-        This function performs no action unless the register is a CanOpen subitem
-        that depend on the Node ID, and the XCF file indicates it.
+        If the XCF `Register` contains a `data` attribute it will be preferred
+        and returned as-is (bytes). Otherwise, the `storage` attribute will be
+        converted to bytes using the provided `target_register.dtype`
 
         Args:
             configuration_file: target configuration file
-            register: target register
+            config_register: target register
+            target_register: register to write
 
         Returns:
-            Adapted storage value
+            Adapted storage value as bytes
         """
-        return register.storage
+        if config_register.data is not None:
+            return config_register.data
+        else:
+            return convert_dtype_to_bytes(config_register.storage, target_register.dtype)
 
     def load_configuration(
         self, config_file: str, subnode: Optional[int] = None, strict: bool = False
@@ -464,17 +665,43 @@ class Servo:
 
         if subnode == 0 and not xcf_instance.contains_node(subnode):
             raise ValueError(f"Cannot load {config_file} to subnode {subnode}")
-        for register in xcf_instance.registers:
+        for config_register in xcf_instance.registers:
             try:
-                storage = self._adapt_configuration_file_storage_value(xcf_instance, register)
-                self.write(
-                    register.uid,
-                    storage,
-                    subnode=register.subnode,
+                target_register = self._get_reg(
+                    config_register.uid, subnode=config_register.subnode
                 )
+                data = self._adapt_configuration_file_storage_value(
+                    xcf_instance, config_register, target_register
+                )
+                self._write_raw(target_register, data)
             except ILError as e:  # noqa: PERF203
                 exception_message = (
-                    f"Exception during load_configuration, register {register.uid}: {e}"
+                    f"Exception during load_configuration, register {config_register.uid}: {e}"
+                )
+                if strict:
+                    raise ILError(exception_message)
+                logger.error(exception_message)
+
+        for config_table in xcf_instance.tables:
+            # Get table from dictionary
+            try:
+                dict_table = self.dictionary.get_table(config_table.uid, axis=config_table.subnode)
+            except (KeyError, ValueError) as ex:
+                exception_message = (
+                    f"Exception during load_configuration, table {config_table.uid}: Table not"
+                    " found in dictionary"
+                )
+                if strict:
+                    raise ILError(exception_message) from ex
+                logger.error(exception_message)
+                continue
+
+            # Load values of the table
+            try:
+                Table(self, dict_table).load_from_config_table(config_table)
+            except ILError as e:  # noqa: PERF203
+                exception_message = (
+                    f"Exception during load_configuration, table {config_table.uid}: {e}"
                 )
                 if strict:
                     raise ILError(exception_message)
@@ -535,6 +762,14 @@ class Servo:
                         str(configuration_register.identifier),
                         e,
                     )
+
+        for dict_table in self.dictionary.all_tables():
+            try:
+                config_table = Table(self, dict_table).to_config_table()
+                xcf_instance.add_config_table(config_table)
+            except Exception as e:  # noqa: PERF203
+                logger.error(f"Exception during save_configuration, table {dict_table.id}: {e}")
+
         xcf_instance.save_to_xcf(config_file)
 
     def save_configuration_csv(self, config_file: str, subnode: Optional[int] = None) -> None:
@@ -620,7 +855,7 @@ class Servo:
                 f"The drive's configuration cannot be restored. The subnode value: {subnode} is"
                 " invalid."
             )
-        self._wait_for_drive_to_recover(self.__DEFAULT_RESTORE_RECOVERY_TIMEOUT_S)
+        self.__store_restore_manager.recover_after_restore()
 
     def store_parameters(self, subnode: Optional[int] = None) -> None:
         """Store all the current parameters of the target subnode.
@@ -663,20 +898,7 @@ class Servo:
                 f"The drive's configuration cannot be stored. The subnode value: {subnode} is"
                 " invalid."
             )
-        self._wait_for_drive_to_recover(self.__DEFAULT_STORE_RECOVERY_TIMEOUT_S)
-
-    def _wait_for_drive_to_recover(self, recovery_time: float) -> None:
-        """Wait until the drive recovers from a store/restore operation.
-
-        Args:
-            recovery_time: how many seconds to wait for the drive.
-
-        """
-        time.sleep(recovery_time)
-        # To avoid an error on the first read/write after the drive is
-        # recovered, we try to read the status word register.
-        # Check issue EVR-906.
-        self.is_alive()
+        self.__store_restore_manager.recover_after_store(subnode)
 
     def _get_drive_identification(
         self,
@@ -1104,20 +1326,32 @@ class Servo:
             return
         self.__observers_servo_state.remove(callback)
 
-    def is_alive(self) -> bool:
+    def is_alive(self, attemps: int = 1) -> bool:
         """Checks if the servo responds to a reading a register.
+
+        Args:
+            attemps: Number of attemps to check if the servo is alive.
+                Defaults to 1.
 
         Returns:
             Return code with the result of the read.
-
         """
-        _is_alive = True
-        try:
-            self.read(self.STATUS_WORD_REGISTERS)
-        except ILError as e:
-            _is_alive = False
-            logger.error(e)
-        return _is_alive
+
+        def _is_servo_alive() -> bool:
+            try:
+                self.read(self.STATUS_WORD_REGISTERS)
+                return True
+            except ILError:
+                return False
+
+        unsuccessful_attemps = 0
+        while unsuccessful_attemps < attemps:
+            if not _is_servo_alive():
+                unsuccessful_attemps += 1
+            else:
+                return True
+        logger.error("Servo is not alive after %d attempts", attemps)
+        return False
 
     def reload_errors(self, dictionary: str) -> None:
         """Force to reload all dictionary errors.
@@ -1407,7 +1641,7 @@ class Servo:
             buffer_size: Size of the buffer to read.
 
         Raises:
-            ValueError: if buffer size is not specified or cannot be detected
+            ValueError: if buffer size is not specified or cannot be detected for EthercatRegister.
             TypeError: if the register is not a CanopenRegister or EthercatRegister.
 
         Returns:
@@ -1421,14 +1655,17 @@ class Servo:
             _reg = reg.registers[0]
             buffer_size = reg.byte_length
 
-        if buffer_size is None:
-            raise ValueError(
-                "Buffer size must be specified for complete access read."
-                "Alternatively, use a CanOpenObject to infer the size required "
-                "automatically."
-            )
+        if isinstance(_reg, EthercatRegister):
+            if buffer_size is None:
+                raise ValueError(
+                    "Buffer size must be specified for complete access read."
+                    "Alternatively, use a CanOpenObject to infer the size required "
+                    "automatically."
+                )
+            value = self._read_raw(reg=_reg, buffer_size=buffer_size, complete_access=True)
+        else:
+            value = self._read_raw(reg=_reg)
 
-        value = self._read_raw(_reg, buffer_size=buffer_size, complete_access=True)
         self._notify_register_update_complete_access(
             _reg, value, operation=RegisterAccessOperation.READ
         )
@@ -1752,6 +1989,25 @@ class Servo:
     def dictionary(self, dictionary: Dictionary) -> None:
         """Sets the dictionary object."""
         self._dictionary = dictionary
+
+    def get_table(self, uid: str, axis: Optional[int] = None) -> Table:
+        """Get a table from the dictionary.
+
+        Args:
+            uid: Table uid.
+            axis: Axis. Should be specified if multiaxis, None otherwise.
+
+        Returns:
+            Table: The requested table object.
+
+        Raises:
+            KeyError: If the specified axis does not exist.
+            KeyError: If the table is not present in the specified axis.
+            ValueError: If the table is not found in any axis, if axis is not provided.
+            ValueError: If the table is found in multiple axes, if axis is not provided.
+
+        """
+        return Table(self, self.dictionary.get_table(uid, axis=axis))
 
     @property
     def full_name(self) -> str:

@@ -40,6 +40,7 @@ select = [
     "RUF027", # Missing f-string syntax
     "RUF012", # Mutable class default
     "B006", # Mutable-argument-default
+    "PLC0415", # Import outside top-level
 ]
 
 ignore = [
@@ -54,4 +55,8 @@ ignore = [
 [lint.per-file-ignores]
 "tests/*" = [
     "D", # Docstring rules
+    "DOC501", # Missing documentation of raises. Conflicts with use of pytest.raises.
+]
+"examples/*" = [
+    "T20", # flake8 prints
 ]

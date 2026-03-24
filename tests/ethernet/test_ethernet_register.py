@@ -1,17 +1,14 @@
-import pytest
-
 from ingenialink.ethernet.register import EthernetRegister
 from ingenialink.register import RegAccess, RegAddressType, RegDtype, RegPhy
 
 
-@pytest.mark.no_connection
 def test_getters_ethernet_register():
     reg_address = 0x58F0
     reg_dtype = RegDtype.U32
     reg_access = RegAccess.RW
     reg_kwargs = {
         "identifier": "MON_CFG_SOC_TYPE",
-        "units": "none",
+        "units": None,
         "pdo_access": "CONFIG",
         "phy": RegPhy.NONE,
         "subnode": 0,

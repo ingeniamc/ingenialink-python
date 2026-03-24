@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 import pytest
 
 from ingenialink.canopen.register import (
@@ -10,8 +12,11 @@ from ingenialink.canopen.register import (
 )
 from ingenialink.dictionary import Dictionary
 
+if TYPE_CHECKING:
+    from ingenialink.canopen.network import CanopenNetwork
+    from ingenialink.canopen.servo import CanopenServo
 
-@pytest.mark.no_connection
+
 def test_getters_canopen_register():
     reg_idx = 0x58F0
     reg_subidx = 0x00
@@ -19,7 +24,7 @@ def test_getters_canopen_register():
     reg_access = RegAccess.RW
     reg_kwargs = {
         "identifier": "MON_CFG_SOC_TYPE",
-        "units": "none",
+        "units": None,
         "pdo_access": RegCyclicType.CONFIG,
         "phy": RegPhy.NONE,
         "subnode": 0,
@@ -64,8 +69,9 @@ def test_getters_canopen_register():
     assert register.is_node_id_dependent is True
 
 
-@pytest.mark.canopen
-def test_canopen_connection_register(servo, net):
+def _canopen_connection_register_assertions(
+    servo: "CanopenServo", net: "CanopenNetwork"
+) -> "CanopenRegister":
     assert servo is not None and net is not None
 
     assert isinstance(servo.dictionary, Dictionary)
@@ -79,7 +85,6 @@ def test_canopen_connection_register(servo, net):
     assert isinstance(register, CanopenRegister)
 
     assert register.identifier == "DRV_OP_CMD"
-    assert register.units == "-"
     assert register.pdo_access == RegCyclicType.RX
     assert register.dtype == RegDtype.U16
     assert register.access, RegAccess.RW
@@ -97,3 +102,24 @@ def test_canopen_connection_register(servo, net):
     assert register.scat_id is None
     assert register.internal_use == 0
     assert register.is_node_id_dependent is False
+
+    return register
+
+
+@pytest.mark.canopen
+@pytest.mark.valid_versions_for_standard_comocos(max="2.7.9")
+def test_canopen_connection_register_old_firmware(
+    servo: "CanopenServo", net: "CanopenNetwork"
+) -> None:
+    """Old firmware versions represented None units with '-'."""
+    register = _canopen_connection_register_assertions(servo=servo, net=net)
+    assert register.units == "-"
+
+
+@pytest.mark.canopen
+@pytest.mark.valid_versions_for_standard_comocos(min="2.8.0")
+@pytest.mark.not_valid_for_standard_cocomoco()  # CoCo-MoCos units have never been cleaned
+def test_canopen_connection_register(servo: "CanopenServo", net: "CanopenNetwork") -> None:
+    """New firmware versions represent None units with None, not '-'."""
+    register = _canopen_connection_register_assertions(servo=servo, net=net)
+    assert register.units is None

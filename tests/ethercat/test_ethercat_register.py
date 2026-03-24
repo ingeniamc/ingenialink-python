@@ -1,10 +1,7 @@
-import pytest
-
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.register import RegAccess, RegAddressType, RegDtype, RegPhy
 
 
-@pytest.mark.no_connection
 def test_getters_ethercat_register():
     reg_idx = 0x58F0
     reg_subidx = 0x00
@@ -12,7 +9,7 @@ def test_getters_ethercat_register():
     reg_access = RegAccess.RW
     reg_kwargs = {
         "identifier": "MON_CFG_SOC_TYPE",
-        "units": "none",
+        "units": None,
         "pdo_access": "CONFIG",
         "phy": RegPhy.NONE,
         "subnode": 0,

@@ -17,9 +17,10 @@ import ingenialogger
 from can import CanError
 from can.interfaces.kvaser.canlib import __get_canlib_function as get_canlib_function
 from can.interfaces.pcan.pcan import PcanCanOperationError
+from typing_extensions import override
 
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.canopen.servo import CANOPEN_SDO_RESPONSE_TIMEOUT, CanopenServo
+from ingenialink.canopen.servo import CanopenServo
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
@@ -31,7 +32,12 @@ if platform.system() == "Windows":
     with DisableLogger():
         from can.interfaces.ixxat.exceptions import VCIError
 else:
-    VCIError = None  # type: ignore  # noqa: PGH003
+
+    class _VCIErrorPlaceholderError(Exception):
+        """Placeholder for IXXAT VCIError on non-Windows platforms."""
+
+    VCIError = _VCIErrorPlaceholderError  # type: ignore[assignment,misc]
+
 from canopen import Network as NetworkLib
 
 KVASER_DRIVER_INSTALLED = True
@@ -43,6 +49,11 @@ try:
     )
 except ImportError:
     KVASER_DRIVER_INSTALLED = False
+
+    class _KvaserPlaceholderError(Exception):
+        """Placeholder error used when Kvaser CANLIB is not available."""
+
+    CANLIBError = CANLIBOperationError = _KvaserPlaceholderError  # type: ignore[assignment,misc]
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -174,37 +185,61 @@ class NetStatusListener(Thread):
         self.__network = network
         self.__stop = False
 
+    def process(self, timestamps: dict[int, float]) -> dict[int, float]:
+        """Process network status for all servos.
+
+        This method checks the status of all servos in the network and notifies
+        subscribers of any state changes (connection/disconnection).
+
+        Args:
+            timestamps: Dictionary mapping node IDs to their last known timestamps.
+
+        Returns:
+            Updated timestamps dictionary.
+        """
+        if self.__network._connection is None:
+            return timestamps
+        for node_id, node in list(self.__network._connection.nodes.items()):
+            sleep(1.5)
+            current_timestamp = node.nmt.timestamp
+            if node_id not in timestamps:
+                timestamps[node_id] = current_timestamp
+                continue
+            is_alive = current_timestamp != timestamps[node_id]
+            servo_state = self.__network.get_servo_state(node_id)
+            if is_alive:
+                if servo_state != NetState.CONNECTED:
+                    self.__network._notify_status(node_id, NetDevEvt.ADDED)
+                    self.__network._set_servo_state(node_id, NetState.CONNECTED)
+                timestamps[node_id] = node.nmt.timestamp
+            elif servo_state == NetState.DISCONNECTED:
+                self.__network.recover_from_disconnection()
+            else:
+                self.__network._notify_status(node_id, NetDevEvt.REMOVED)
+                self.__network._set_servo_state(node_id, NetState.DISCONNECTED)
+        return timestamps
+
     def run(self) -> None:
         """Check the network status."""
-        timestamps = {}
         if self.__network._connection is None:
             return
+        timestamps: dict[int, float] = {}
         while not self.__stop:
-            for node_id, node in list(self.__network._connection.nodes.items()):
-                sleep(1.5)
-                current_timestamp = node.nmt.timestamp
-                if node_id not in timestamps:
-                    timestamps[node_id] = current_timestamp
-                    continue
-                is_alive = current_timestamp != timestamps[node_id]
-                servo_state = self.__network.get_servo_state(node_id)
-                if is_alive:
-                    if servo_state != NetState.CONNECTED:
-                        self.__network._notify_status(node_id, NetDevEvt.ADDED)
-                        self.__network._set_servo_state(node_id, NetState.CONNECTED)
-                    timestamps[node_id] = node.nmt.timestamp
-                elif servo_state == NetState.DISCONNECTED:
-                    self.__network._reset_connection()
-                else:
-                    self.__network._notify_status(node_id, NetDevEvt.REMOVED)
-                    self.__network._set_servo_state(node_id, NetState.DISCONNECTED)
+            try:
+                timestamps = self.process(timestamps)
+            except Exception as e:  # noqa: PERF203
+                logger.exception(f"Exception occurred while processing network status: {e}")
 
     def stop(self) -> None:
         """Stop the listener."""
         self.__stop = True
 
 
-class CanopenNetwork(Network):
+class CanopenNetworkBase(Network):
+    """Base class for CANopen network communications."""
+
+
+class CanopenNetwork(CanopenNetworkBase):
     """Network of the CANopen communication.
 
     Args:
@@ -218,6 +253,7 @@ class CanopenNetwork(Network):
     PRODUCT_CODE_SUB_IX = 2
     REVISION_NUMBER_SUB_IX = 3
     NODE_GUARDING_PERIOD_S = 1
+    MAX_NUMBER_SERVO_ALIVE_ATTEMPTS = 5
 
     def __init__(
         self,
@@ -317,11 +353,11 @@ class CanopenNetwork(Network):
             return slave_info
 
         for slave_id in slaves:
-            if slave_id not in connected_slaves:
-                node = self._connection.add_node(slave_id)
-            else:
-                node = connected_slaves[slave_id]
             try:
+                if slave_id not in connected_slaves:
+                    node = self._connection.add_node(slave_id)
+                else:
+                    node = connected_slaves[slave_id]
                 product_code = convert_bytes_to_dtype(
                     node.sdo.upload(self.DRIVE_INFO_INDEX, self.PRODUCT_CODE_SUB_IX), RegDtype.U32
                 )
@@ -329,11 +365,20 @@ class CanopenNetwork(Network):
                     node.sdo.upload(self.DRIVE_INFO_INDEX, self.REVISION_NUMBER_SUB_IX),
                     RegDtype.U32,
                 )
-            except canopen.sdo.exceptions.SdoError as e:
+            except canopen.sdo.exceptions.SdoError as e:  # noqa: PERF203
                 logger.warning(
                     f"The information of the node {slave_id} cannot be retrieved. "
                     f"{type(e).__name__}: {e}"
                 )
+                slave_info[slave_id] = SlaveInfo()
+            except (CanError, CANLIBOperationError, PcanCanOperationError, VCIError) as e:
+                logger.warning(
+                    f"CAN bus error while reading node {slave_id} information. "
+                    f"{type(e).__name__}: {e}"
+                )
+                with contextlib.suppress(Exception):
+                    if self._connection is not None and self._connection.bus is not None:
+                        self._connection.bus.reset()
                 slave_info[slave_id] = SlaveInfo()
             else:
                 slave_info[slave_id] = SlaveInfo(int(product_code), int(revision_number))
@@ -421,8 +466,7 @@ class CanopenNetwork(Network):
         if not self.servos:
             self._teardown_connection()
         # Notify that disconnect_from_slave has been called
-        if servo._disconnect_callback:
-            servo._disconnect_callback(servo)
+        servo._disconnect_event_publisher.notify(servo)
 
     def _setup_connection(self) -> None:
         """Creates a network interface object.
@@ -846,26 +890,25 @@ class CanopenNetwork(Network):
             callback_progress: Subscribed callback function for the live progress.
         """
         total_file_size = os.path.getsize(fw_file) / BOOTLOADER_MSG_SIZE
-        servo._change_sdo_timeout(CANOPEN_SEND_FW_SDO_RESPONSE_TIMEOUT)
-        logger.info("Downloading firmware")
-        if callback_status_msg:
-            callback_status_msg("Downloading firmware")
-        counter = 0
-        progress = 0
-        with open(fw_file, "rb") as image:
-            byte = image.read(BOOTLOADER_MSG_SIZE)
-            while byte:
-                servo.write(PROG_DL_1, byte, subnode=0)
-                counter += 1
-                new_progress = int(counter * 100 / total_file_size)
-                if progress != new_progress:
-                    progress = new_progress
-                    logger.info(f"Download firmware in progress: {progress}%")
-                    if callback_progress:
-                        callback_progress(progress)
+        with servo._minimum_sdo_timeout(CANOPEN_SEND_FW_SDO_RESPONSE_TIMEOUT):
+            logger.info("Downloading firmware")
+            if callback_status_msg:
+                callback_status_msg("Downloading firmware")
+            counter = 0
+            progress = 0
+            with open(fw_file, "rb") as image:
                 byte = image.read(BOOTLOADER_MSG_SIZE)
-        logger.info("Download Finished!")
-        servo._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
+                while byte:
+                    servo.write(PROG_DL_1, byte, subnode=0)
+                    counter += 1
+                    new_progress = int(counter * 100 / total_file_size)
+                    if progress != new_progress:
+                        progress = new_progress
+                        logger.info(f"Download firmware in progress: {progress}%")
+                        if callback_progress:
+                            callback_progress(progress)
+                    byte = image.read(BOOTLOADER_MSG_SIZE)
+            logger.info("Download Finished!")
 
     def change_baudrate(
         self,
@@ -1091,6 +1134,37 @@ class CanopenNetwork(Network):
     def protocol(self) -> NetProt:
         """Obtain network protocol."""
         return NetProt.CAN
+
+    @override
+    def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:
+        """Recover the CANopen communication with a servo after a disconnection.
+
+        This method attempts to re-establish communication by resetting the entire
+        CANopen network connection and re-adding all servos.
+
+        Args:
+            servo: not used in this implementation but kept for interface consistency.
+
+        Returns:
+            True if communication is recovered, False otherwise.
+        """
+        try:
+            self._reset_connection()
+            for attempt in range(self.MAX_NUMBER_SERVO_ALIVE_ATTEMPTS):
+                all_servos_alive = all(s.is_alive() for s in self.servos)
+                if all_servos_alive:
+                    break
+                sleep(0.1)
+                if attempt == self.MAX_NUMBER_SERVO_ALIVE_ATTEMPTS - 1:
+                    logger.warning(
+                        "CANopen communication recovered, but some servos are still disconnected."
+                    )
+                    return False
+            logger.info("CANopen communication recovered.")
+            return True
+        except Exception as e:
+            logger.warning(f"Failed to recover CANopen communication: {e}")
+            return False
 
     def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
         """Get the state of a servo that's a part of network.

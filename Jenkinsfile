@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.16') _
+@Library('cicd-lib@0.20') _
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -6,30 +6,25 @@ def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
-LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.6"
-WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.7"
+def LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.6"
+def WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.7"
 def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
 
-DEFAULT_PYTHON_VERSION = "3.9"
+def DEFAULT_PYTHON_VERSION = "3.9"
 
-ALL_PYTHON_VERSIONS = "3.9,3.10,3.11,3.12"
-RUN_PYTHON_VERSIONS = ""
-PYTHON_VERSION_MIN = "3.9"
-PYTHON_VERSION_MAX = "3.12"
+def ALL_PYTHON_VERSIONS = ["3.9", "3.10", "3.11", "3.12"] as Set
+def PYTHON_VERSION_MIN = "3.9"
+def PYTHON_VERSION_MAX = "3.12"
 
 def BRANCH_NAME_MASTER = "master"
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
-def RACK_SPECIFIERS_PATH = "tests.setups.rack_specifiers"
 
-WIN_DOCKER_TMP_PATH = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
-LIN_DOCKER_TMP_PATH = "/tmp/ingenialink_python"
 
-WIRESHARK_DIR = "wireshark"
-USE_WIRESHARK_LOGGING = ""
-START_WIRESHARK_TIMEOUT_S = 10.0
+@groovy.transform.Field
+List wheel_stashes = []
 
-wheel_stashes = []
-coverage_stashes = []
+/* List of markers that require hardware */
+def HARDWARE_MARKERS = ["ethernet", "ethercat", "canopen", "multislave", "fsoe", "eoe"]
 
 def reassignFilePermissions() {
     if (isUnix()) {
@@ -37,118 +32,1383 @@ def reassignFilePermissions() {
     }
 }
 
-def clearWiresharkLogs() {
-    bat(script: 'del /f "%WIRESHARK_DIR%\\*.pcap"', returnStatus: true)
-}
 
-def clearCoverageFiles() {
-    bat(script: 'del /f "*.coverage*"', returnStatus: true)
-}
+/**
+ * VirtualEnvironment - Represents an activated Python virtual environment.
+ *
+ * Instances are created and registered by VEnvManager.createVirtualEnvironment().
+ * Retrieve them via VEnvManager.withVirtualEnv() and call venv.run(cmd) to
+ * execute commands inside the activated environment.
+ */
+class VirtualEnvironment implements Serializable {
+    /** Virtual environment directory name (e.g. ".venv3.9", ".venv-without-x-lib") */
+    final String name
+    /** Python version string (e.g. "3.9") */
+    final String version
+    /** True when running on a Unix agent */
+    final boolean isUnix
 
-def runPython(command, py_version = DEFAULT_PYTHON_VERSION) {
-    if (isUnix()) {
-        sh "python${py_version} -I -m ${command}"
-    } else {
-        bat "py -${py_version} -I -m ${command}"
+    private final VEnvManager _manager
+
+    VirtualEnvironment(String name, String version, boolean isUnix, VEnvManager manager) {
+        this.name = name
+        this.version = version
+        this.isUnix = isUnix
+        this._manager = manager
+    }
+
+    /** Execute a shell command inside this virtual environment. */
+    def run(String cmd) {
+        def activateCmd = isUnix
+            ? ". ${name}/bin/activate\n "
+            : "call ${name}\\Scripts\\activate\n "
+        _manager.runInWorkingFolder(activateCmd + cmd)
     }
 }
 
-def archiveWiresharkLogs() {
-    archiveArtifacts artifacts: "${WIRESHARK_DIR}\\*.pcap", allowEmptyArchive: true
-}
+/**
+ * VEnvManager - Manages Python virtual environments across Jenkins nodes
+ * 
+ * This class provides a centralized way to create, manage, and execute code within
+ * Python virtual environments in Jenkins pipelines. It handles platform differences
+ * (Windows/Linux), maintains per-node virtual environment registries, and supports
+ * both standard venv and Poetry-based environments.
+ * 
+ * Key features:
+ * - Creates and tracks virtual environments per node and workspace
+ * - Platform-agnostic path handling and command execution
+ * - Poetry integration for dependency management
+ * - Support for multiple Python versions in parallel
+ * - Workspace isolation with working folder support
+ */
+class VEnvManager {
+    def pipeline
+    String default_python_version
+    String poetry_default_install_command
 
-def createVirtualEnvironments(boolean installWheel = true, String workingDir = null, String pythonVersionList = "") {
-    def versions = pythonVersionList?.trim() ? pythonVersionList : RUN_PYTHON_VERSIONS
-    def pythonVersions = versions.split(',')
-    // Ensure DEFAULT_PYTHON_VERSION is included if not already present
-    if (!pythonVersions.contains(DEFAULT_PYTHON_VERSION)) {
-        pythonVersions = pythonVersions + [DEFAULT_PYTHON_VERSION]
+    /**
+    * Map of node names to workspace paths to their virtual environments.
+    * Structure: {
+    *   nodeName1: {
+    *     workspacePath1: {
+    *       venvName1: VirtualEnvironment,
+    *       venvName2: VirtualEnvironment,
+    *       ...
+    *     },
+    *   },
+    */
+    Map venvs = [:]
+
+    /**
+    * Cache for OS type per node.
+    * Structure: {
+    *   nodeName1: true/false (true = Unix, false = Windows),
+    *   ...
+    * }
+    */
+    Map osCache = [:]
+
+    /**
+    * Constructor
+    * Arguments:
+    *   pipeline: The pipeline script context (this)
+    *   default_python_version: Default Python version to use when creating venvs
+    *   poetry_default_install_command: Default command to install dependencies with Poetry
+    */
+    VEnvManager(Map args = [pipeline: null, default_python_version: null, poetry_default_install_command: "poetry sync --all-groups"]) {
+        this.pipeline = args.pipeline
+        this.default_python_version = args.default_python_version
+        this.poetry_default_install_command = args.poetry_default_install_command
     }
-    pythonVersions.each { version ->
-        def venvName = ".venv${version}"
-        def cdCmd = workingDir ? "cd ${workingDir}" : ""
-        if (isUnix()) {
-            sh """
-                ${cdCmd}
-                python${version} -m venv --without-pip ${venvName}
-                . ${venvName}/bin/activate
-                poetry sync --no-root --all-groups
-                deactivate
-            """
+
+    /**
+    * Generate the default virtual environment name for a given Python version
+    * Convention: .venv{pythonVersion} (e.g., ".venv3.9", ".venv3.10")
+    * Arguments:
+    *   pythonVersion: Python version string (e.g., "3.9", "3.10")
+    * Returns: Default venv name following the convention
+    */
+    private def pythonVersionDefaultVenvName(String pythonVersion) {
+        return ".venv${pythonVersion}"
+    }
+
+    /**
+    * Convert multiple Python versions to their corresponding virtual environment names.
+    * Uses the convention: .venv{pythonVersion} (e.g., ".venv3.9")
+    * 
+    * Arguments:
+    *   pythonVersions: Iterable of Python version strings (e.g., ["3.9", "3.10"])
+    * Returns: Set of virtual environment names (e.g., [".venv3.9", ".venv3.10"])
+    */
+    def pythonVersionsToDefaultVenvNames(Iterable pythonVersions) {
+        return pythonVersions.collect { version ->
+            this.pythonVersionDefaultVenvName(version)
+        } as Set
+    }
+
+    /**
+    * Convert a set of virtual environment names back to their Python versions.
+    * Reverses the convention: .venv{pythonVersion} → pythonVersion
+    * 
+    * This is useful when you need to extract Python versions from venv names
+    * for operations like createPoetryEnvironments that require version strings.
+    * 
+    * Arguments:
+    *   venvNames: Iterable of virtual environment names (e.g., [".venv3.9", ".venv3.10"])
+    * Returns: Set of Python version strings (e.g., ["3.9", "3.10"])
+    */
+    def defaultVenvNamesToVersion(Iterable venvNames) {
+        return venvNames.collect { it.replaceAll('^.venv', '') } as Set
+    }
+
+    /**
+    * Get the current node name from the environment
+    * Returns: Node name string
+    * Throws: Error if NODE_NAME is not set (not running on a node)
+    */
+    private def getNodeName() {
+        def nodeName = this.pipeline.env.NODE_NAME
+        if (!nodeName) {
+            this.pipeline.error("NODE_NAME environment variable is not set. Virtual environments must be created inside a Jenkins node.")
+        }
+        return nodeName
+    }
+
+    /**
+    * Check if the current node is running Unix (cached)
+    * Returns: true if Unix, false if Windows
+    */
+    def isUnixNode() {
+        def nodeName = this.getNodeName()
+        if (!this.osCache.containsKey(nodeName)) {
+            this.osCache[nodeName] = this.pipeline.isUnix()
+        }
+        return this.osCache[nodeName]
+    }
+
+    /**
+    * Join path segments into a single path string
+    * 
+    * Intelligently combines path segments while preserving absolute paths and
+    * adapting to the platform (Unix vs Windows).
+    * 
+    * Arguments:
+    *   parts: N number of path segments
+    * 
+    * Returns: Platform-specific path string ('/' on Linux, '\' on Windows)
+    * 
+    * Examples:
+    *   joinPath("/tmp", "mydir", "file.txt") → "/tmp/mydir/file.txt" (Linux)
+    *   joinPath("C:\\Users", "admin", "file.txt") → "C:\\Users\\admin\\file.txt" (Windows)
+    *   joinPath("/base/", "/subdir/", "file") → "/base/subdir/file"
+    *   joinPath("workspace", "dist/") → "workspace/dist/" (trailing slash preserved)
+    */
+    private def joinPath(String... parts) {
+        // Filter out empty strings
+        def partsList = (parts as List)
+            .collect { it.trim() }
+            .findAll { it }
+        
+        if (partsList.isEmpty()) {
+            return ""
+        }
+
+        // First segment: keep as-is (preserves /absolute/paths and C:\drive\paths), only strip trailing slashes
+        def first = partsList[0].replaceAll('[\\\\/]+$', '')
+        
+        // Remaining segments: strip leading and trailing slashes
+        def rest = partsList.size() > 1 
+            ? partsList[1..-1].collect { it.replaceAll('^[\\\\/]+', '').replaceAll('[\\\\/]+$', '') }
+            : []
+
+        // Join with / and convert to platform-specific separators
+        def joined = ([first] + rest).join('/')
+        return this.isUnixNode() ? joined : joined.replace('/', '\\')
+    }
+
+    /**
+    * Run a single command in the working folder
+    * Arguments:
+    *   cmd: Command to execute
+    */
+    def runInWorkingFolder(String cmd) {
+        def workingFolder = this.getWorkingFolder()
+        // Change directory. Avoid changing directory if working folder is workspace
+        def fullCmd = (workingFolder == this.pipeline.env.WORKSPACE) ? cmd : "cd ${workingFolder}\n${cmd}"
+        if (this.isUnixNode()) {
+            this.pipeline.sh fullCmd
         } else {
-            def installWheelCmd = installWheel ? "poetry run poe install-wheel" : ""
-            bat """
-                ${cdCmd}
-                py -${version} -m venv ${venvName}
-                call ${venvName}/Scripts/activate
-                poetry sync --no-root --all-groups
-                ${installWheelCmd}
-                deactivate
-            """
+            this.pipeline.bat fullCmd
+        }
+    }
+
+    /**
+    * Copy workspace content to working directory
+    * Copies all files from WORKSPACE to VENV_WORKING_FOLDER
+    * 
+    * Jenkins runs steps in WORKSPACE by default, but some operations
+    * may require a separate working directory due to problems with docker mounts 
+    * and symbolic links or permissions.
+    */
+    def copyToWorkingFolder() {
+        def workingFolder = this.getWorkingFolder()
+        if (workingFolder == this.pipeline.env.WORKSPACE) {
+            throw new IllegalStateException("copyToWorkingFolder called but VENV_WORKING_FOLDER is not set or equals WORKSPACE. VENV_WORKING_FOLDER must be a separate working directory.")
+        }
+        if (this.isUnixNode()) {
+            this.pipeline.sh "mkdir -p ${workingFolder}"
+            this.pipeline.sh "cp -r ${this.pipeline.env.WORKSPACE}/. ${workingFolder}"
+        } else {
+            this.pipeline.bat "XCOPY ${this.pipeline.env.WORKSPACE} ${workingFolder} /s /i /y /e /h"
+        }
+    }
+
+    /**
+    * Get the working folder from environment
+    * Returns: Working folder path. Prefers VENV_WORKING_FOLDER if set; falls back to WORKSPACE.
+    *
+    */
+    private def getWorkingFolder() {
+        def v = this.pipeline.env.VENV_WORKING_FOLDER
+        if (v) {
+            return v
+        }
+        // Fallback to workspace when VENV_WORKING_FOLDER is not defined
+        return this.pipeline.env.WORKSPACE
+    }
+
+    /**
+    * Copy files/directories from working directory back to workspace
+    * Arguments:
+    *   source: Source path relative to VENV_WORKING_FOLDER (e.g., "dist/", "pytest_reports/")
+    *   dest: Destination path relative to WORKSPACE (optional, defaults to source)
+    *
+    * Convention: dest MUST end with '/' if it's a directory
+    *   - Directory: copyFromWorkingFolder("dist/") - trailing slash required
+    *   - File: copyFromWorkingFolder(".coverage", "coverage.xml") - no trailing slash
+    */
+    def copyFromWorkingFolder(String source, String dest = null) {
+        def workingFolder = this.getWorkingFolder()
+        if (workingFolder == this.pipeline.env.WORKSPACE) {
+            throw new IllegalStateException("copyFromWorkingFolder cannot be used when VENV_WORKING_FOLDER is not defined and working folder equals WORKSPACE. Set env.VENV_WORKING_FOLDER to a separate directory to use this method.")
+        }
+        if (dest == null) {
+            dest = source
+        }
+        def sourcePath = this.joinPath(workingFolder, source)
+        def destPath = this.joinPath(this.pipeline.env.WORKSPACE, dest)
+        
+        if (this.isUnixNode()) {
+            if (dest.endsWith('/')) {
+                // Directory: create it
+                this.pipeline.sh "mkdir -p \"${destPath}\""
+                // Copy contents of source directory into destination, not the directory itself
+                this.pipeline.sh "cp -r ${sourcePath}/. ${destPath}"
+            } else {
+                // File: create parent directory and copy the file
+                this.pipeline.sh "mkdir -p \$(dirname \"${destPath}\")"
+                this.pipeline.sh "cp -r ${sourcePath} ${destPath}"
+            }
+        } else {
+            if (dest.endsWith('/')) {
+                // Directory: XCOPY requires source to end with \* to copy contents, not the folder itself
+                // If source already contains wildcard, don't add another one
+                def xcopySource = source.contains('*') ? sourcePath : "${sourcePath}\\*"
+                this.pipeline.bat "XCOPY \"${xcopySource}\" \"${destPath}\" /s /y /e /h /i"
+            } else {
+                // File: use simple COPY command
+                this.pipeline.bat "COPY /Y \"${sourcePath}\" \"${destPath}\""
+            }
+        }
+    }
+
+    /**
+    * Look up the VirtualEnvironment stored at creation time for a given venv name.
+    * Returns null if the venv was not created via createVirtualEnvironment.
+    */
+    private def getStoredVenv(String venvName) {
+        def nodeName = this.getNodeName()
+        def workingFolder = this.getWorkingFolder()
+        return this.venvs.get(nodeName)?.get(workingFolder)?.get(venvName)
+    }
+
+    /**
+    * Retrieve a registered virtual environment and execute code within it.
+    * Arguments:
+    *   venvName: Name of the virtual environment (must have been created via createVirtualEnvironment)
+    *   body: Closure to execute, receives the VirtualEnvironment as its argument
+    */
+    def withVirtualEnv(String venvName, Closure body) {
+        def venv = this.getStoredVenv(venvName)
+        if (venv == null) {
+            this.pipeline.error("Virtual environment '${venvName}' has not been registered. Call createVirtualEnvironment() first.")
+        }
+        body(venv)
+    }
+
+    /**
+    * Create a virtual environment
+    * Arguments (as Map):
+    *   venvName: Name of the virtual environment to create
+    *   pythonVersion: Python version to use (e.g., "3.9"). If null, uses default_python_version
+    * Returns: Path to the created virtual environment
+    * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
+    */
+    def createVirtualEnvironment(Map args = [venvName: null, pythonVersion: null]) {
+        def workingFolder = this.getWorkingFolder()
+        // Use default python version if not specified
+        def pythonVersion = args.pythonVersion ?: this.default_python_version
+        // Use default venv name if not specified
+        def venvName = args.venvName ?: this.pythonVersionDefaultVenvName(pythonVersion)
+
+        // Create the virtual environment using pipeline context
+        this.runInWorkingFolder("py -${pythonVersion} -m venv --without-pip ${venvName}")
+
+        // Register the virtual environment
+        def nodeName = this.getNodeName()
+        if (!this.venvs.containsKey(nodeName)) {
+            this.venvs[nodeName] = [:]
+        }
+        if (!this.venvs[nodeName].containsKey(workingFolder)) {
+            this.venvs[nodeName][workingFolder] = [:]
+        }
+        this.venvs[nodeName][workingFolder][venvName] = new VirtualEnvironment(venvName, pythonVersion, this.isUnixNode(), this)
+    }
+
+    /**
+    * Create multiple virtual environments
+    * Arguments:
+    *   pythonVersions: Iterable of Python versions to create venvs for (List or Set)
+    * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
+    */
+    def createVirtualEnvironments(Map args = [pythonVersions: []]) {
+        args.pythonVersions.each { version ->
+            this.createVirtualEnvironment([
+              venvName: this.pythonVersionDefaultVenvName(version),
+              pythonVersion: version
+            ])
+        }
+    }
+
+    /**
+    * Iterate over virtual environments for a specific workspace/node
+    * Arguments:
+    *   body: Closure to execute for each venv. Receives the venv context as argument
+    * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
+    */
+    def forEachEnvironment(Closure body) {
+        def nodeName = this.getNodeName()
+        def workingFolder = this.getWorkingFolder()
+        def nodeVenvs = this.venvs.get(nodeName)
+        if (!nodeVenvs) {
+            this.pipeline.error("No virtual environments found for node: ${nodeName}")
+        }
+        def venvMap = nodeVenvs.get(workingFolder)
+        if (!venvMap) {
+            this.pipeline.error("No virtual environments found for workingFolder: ${workingFolder} on node: ${nodeName}")
+        }
+        if (venvMap.isEmpty()) {
+            this.pipeline.error("Virtual environments map is empty for workingFolder: ${workingFolder} on node: ${nodeName}")
+        }
+        venvMap.each { venvName, venv ->
+            body(venv)
+        }
+    }
+
+    /**
+     * Execute code within a Python virtual environment
+     * Arguments:
+     *   pythonVersion: Python version to use (required)
+     *   body: Closure to execute inside the venv
+     * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
+     */
+    def withPython(String pythonVersion, Closure body) {
+        def venvName = this.pythonVersionDefaultVenvName(pythonVersion)
+        this.withVirtualEnv(venvName, body)
+    }
+
+
+    /**
+    * Iterate over specific virtual environments for a specific workspace/node
+    * Arguments:
+    *   pythonVersions: Iterable of Python versions to iterate venvs for (List or Set)
+    *   body: Closure to execute for each venv. Receives the venv context
+    * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
+    */
+
+    def forPythons(Iterable pythonVersions, Closure body) {
+        pythonVersions.each { version ->
+            this.withPython(version) { venv ->
+                body(venv)
+            }
+        }
+    }
+
+    /**
+    * Iterate over specific virtual environments by their venv names
+    * Arguments:
+    *   venvNames: Iterable of virtual environment names (List or Set)
+    *   body: Closure to execute for each venv. Receives the venv context
+    * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
+    */
+    def forVirtualEnvs(Iterable venvNames, Closure body) {
+        venvNames.each { venvName ->
+            this.withVirtualEnv(venvName) { venv ->
+                body(venv)
+            }
+        }
+    }
+
+    /**
+    * Create a Poetry virtual environment and install dependencies
+    * Arguments (as Map):
+    *  pythonVersion: Python version to use (e.g., "3.9"). If null, uses default_python_version
+    *  installCommand: Command to install dependencies with Poetry. If null, uses poetry_default_install_command
+    *  additionalCommands: List of additional commands to run inside the venv after installation
+    * Note: Virtual environment is created using default naming convention .venv{pythonVersion}
+    * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
+    */
+    def createPoetryEnvironment(Map args = [pythonVersion: null, installCommand: null, additionalCommands: []]) {
+        def version = args.pythonVersion ?: this.default_python_version
+        def venvName = this.pythonVersionDefaultVenvName(version)
+        def installCmd = args.installCommand ?: this.poetry_default_install_command
+        def additionalCmds = args.additionalCommands ?: []
+
+        this.createVirtualEnvironment([venvName: venvName, pythonVersion: version])
+        this.withVirtualEnv(venvName) { venv ->
+            venv.run(installCmd)
+            additionalCmds.each { cmd ->
+                venv.run(cmd)
+            }
+        }
+    }
+
+    /**
+    * Create multiple Poetry virtual environments
+    * Arguments: (as Map):
+    *   pythonVersions: Iterable of Python versions to create venvs for (List or Set)
+    *   installCommand: Command to install dependencies with Poetry. If null, uses poetry_default_install_command
+    *   additionalCommands: List of additional commands to run inside each venv after installation
+    * Note: Uses env.VENV_WORKING_FOLDER if set, otherwise env.WORKSPACE
+    */
+    def createPoetryEnvironments(Map args = [pythonVersions: [], installCommand: null, additionalCommands: []]) {
+        args.pythonVersions.each { version ->
+            this.createPoetryEnvironment(
+              pythonVersion: version,
+              installCommand: args.installCommand,
+              additionalCommands: args.additionalCommands
+            )
         }
     }
 }
 
-def buildWheel(py_version) {
-     echo "Running build for Python ${py_version} in Docker environment"
-    if (isUnix()) {
-        sh """
-            cd ${LIN_DOCKER_TMP_PATH}
-            . .venv${py_version}/bin/activate
-            poetry run poe build-wheel
-            deactivate
-        """
-    } else {
-        bat """
-            cd ${WIN_DOCKER_TMP_PATH}
-            call .venv${py_version}/Scripts/activate
-            poetry run poe build-wheel
-            deactivate
-        """
+
+/**
+ * TestSession - Configuration for a test session
+ * 
+ * This class encapsulates the configuration options for a test session,
+ * including pytest markers, setup configurations, Wireshark logging options,
+ * Python versions to test against, and coverage settings.
+ * 
+ * It supports cascading/inheriting properties to child sessions, allowing
+ * for hierarchical test session definitions.
+ */
+class TestSession implements Serializable {
+
+    /**
+    * Parent session (if any)
+    * Ancestor from which the session was created via override()
+    */
+    private TestSession parent = null
+
+    /**
+     * Child sessions
+     * Offspring sessions created via override()
+     * Used to propagate configuration changes via setAttributeInCascade()
+     */
+    private List<TestSession> children = []
+    
+    /**
+     * List of configuration attributes that can be set and cascaded to children.
+     */
+    private static final List<String> CONFIG_ATTRS = [
+        'uid',
+        'shouldRun',
+        'skipReason',
+        'runInVirtualEnvs',
+        'markers',
+        'testTimeoutMinutes',
+        'runTestBaseCommand',
+        'importMode',
+        'logCli',
+        'useCoverage',
+        'covPackageName',
+        'setup',
+        'useWiresharkLogging',
+        'wiresharkScope',
+        'wiresharkDir',
+        'clearSuccessfulWiresharkLogs',
+        'startWiresharkTimeoutS',
+        'jobName',
+        'setAttApiToken',
+        'enableFirmwareVersionCheck',
+        'stageName'
+    ]
+
+    /**
+     * Unique identifier for this test session.
+     * Used for identifying stashes, logs, and reports (e.g., "ethercat_everest", "ethernet_pcap")
+     * Default: null
+     */
+    String uid = null
+
+    /**
+     * Display name for the Jenkins stage generated for this session.
+     * Used by runTestStages() as the stage label.
+     * Default: null
+     */
+    String stageName = null
+
+    /**
+     * Whether this session should be executed.
+     * Set to false when a policy or uid-regex check determines the session should be skipped.
+     * Default: true
+     */
+    Boolean shouldRun = true
+
+    /**
+     * Human-readable reason why this session is skipped (null when shouldRun is true).
+     * Default: null
+     */
+    String skipReason = null
+
+    /**
+     * Virtual environment names to run tests against.
+     * Default: null
+     * Example: [".venv3.9", ".venv3.10"] as Set
+     */
+    Set runInVirtualEnvs = null
+
+    /**
+     * Pytest marker expression used to select tests.
+     * Default: null
+     * Example: "ethercat and canopen"
+     */
+    String markers = null
+
+    /**
+     * Timeout for a test session in minutes.
+     * Default: 60
+     */
+    Integer testTimeoutMinutes = 60
+
+    /**
+     * Base command used to run tests inside the virtualenv. The test arguments
+     * from `getTestArgs` are appended to this base command.
+     * Default: 'poetry run poe tests'
+     */
+    String runTestBaseCommand = 'poetry run poe tests'
+
+    /**
+     * Pytest import mode passed as `--import-mode`.
+     * Default: null (commonly set to 'importlib')
+     */
+    String importMode = null
+
+    /**
+     * Enables pytest's `log_cli` option to stream logs to the console.
+     * Default: false
+     */
+    Boolean logCli = false
+
+    /**
+     * Coverage-related options
+     * `useCoverage`: whether to collect coverage for this session
+     * Default: true
+     */
+    Boolean useCoverage = true
+
+    /**
+     * Package name to measure coverage for. Used to build the `--cov` path.
+     * Default: null
+     * Example: "my_library"
+     */
+    String covPackageName = null
+
+    
+    ///// Summit Testing Framework options /////
+
+    /**
+     * Fully-qualified name of the test setup to use.
+     * Default: null
+     * Examples: 
+        "tests.setups.rack_specifiers.ECAT_EVE_SETUP"
+        "tests.setups.rack_specifiers.ECAT_SETUP@EVE_NET@2.0.0"
+     */
+    String setup = null
+
+    /**
+     * Wireshark capture options
+     * `useWiresharkLogging`: enable capture during tests
+     * `wiresharkScope`: 'function' | 'module' | 'session'
+     * `wiresharkDir`: directory where pcaps are written (relative to workspace)
+     * `clearSuccessfulWiresharkLogs`: if true, remove pcaps on success
+     * `startWiresharkTimeoutS`: seconds to wait for Wireshark to start
+     */
+    Boolean useWiresharkLogging = false
+    String wiresharkScope = "session"
+    String wiresharkDir = "wireshark"
+    Boolean clearSuccessfulWiresharkLogs = true
+    BigDecimal startWiresharkTimeoutS = 10.0
+
+    /**
+     * Job name. Used to identify the job in test reports, infrastructure, logs...
+     * Example: "my-project@my_branch#2",
+     */
+    String jobName = null
+
+    /**
+     * Whether to set ATT_API_KEY from Jenkins credentials.
+     * Default: false
+     */
+    Boolean setAttApiToken = false
+
+
+    /**
+     * Firmware version check option
+     * `enableFirmwareVersionCheck`: if true, enables firmware version check during tests
+     * Filters test selection according to firmware version markers
+     * Default: true
+     */
+    Boolean enableFirmwareVersionCheck = true
+
+    TestSession(Map args = [:]) {
+        // Validate arguments against whitelist
+        def invalidArgs = args.keySet().findAll { !CONFIG_ATTRS.contains(it) }
+        if (invalidArgs) {
+            throw new IllegalArgumentException("Invalid arguments passed to TestSession constructor: ${invalidArgs}. Allowed properties: ${CONFIG_ATTRS}")
+        }
+
+        args.each { name, value ->
+            this."$name" = value
+        }
+    }
+
+    /**
+     * Set attributes on this session and propagate the values to all descendants.
+     * This ensures that the values set here are cascaded to all children.
+     * 
+     * @param attributes Map of property names and values to set
+     */
+    void setAttributeInCascade(Map attributes) {
+        // Validate arguments against whitelist
+        def invalidArgs = attributes.keySet().findAll { !CONFIG_ATTRS.contains(it) }
+        if (invalidArgs) {
+            throw new IllegalArgumentException("Invalid arguments passed to setAttributeInCascade(): ${invalidArgs}. Allowed properties: ${CONFIG_ATTRS}")
+        }
+
+        // Set attributes on this session
+        attributes.each { name, value ->
+            this."$name" = value
+        }
+        
+        // Propagate to children
+        children.each { child ->
+            child.setAttributeInCascade(attributes)
+        }
+    }
+
+    /**
+     * Generate the list of environment variables for the test session.
+     * 
+     * @return List of environment variables in 'KEY=VALUE' format
+     */
+    List<String> getEnvVars() {
+        def envList = []
+        if (this.useWiresharkLogging) {
+            if (this.wiresharkScope) {
+                envList.add("WIRESHARK_SCOPE=${this.wiresharkScope}")
+            }
+            if (this.clearSuccessfulWiresharkLogs) {
+                envList.add("CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${this.clearSuccessfulWiresharkLogs}")
+            }
+            if (this.startWiresharkTimeoutS) {
+                envList.add("START_WIRESHARK_TIMEOUT_S=${this.startWiresharkTimeoutS}")
+            }
+        }
+        return envList
+    }
+
+    /**
+     * Generate the list of credentials specifications for the test session.
+     * 
+     * @param pipeline The pipeline object to use for creating credential bindings
+     * @return List of credential bindings suitable for withCredentials
+     */
+    List getCredentialsSpec(def pipeline) {
+        def credentials = []
+        if (this.setAttApiToken) {
+            credentials.add(pipeline.string(credentialsId: 'ATT_api_token', variable: 'ATT_API_KEY'))
+        }
+        return credentials
+    }
+    
+    /**
+     * Generate the list of arguments for the pytest command.
+     * 
+     * @param venv The virtual environment to run tests in
+     * @return List of arguments as strings
+     */
+    List<String> getTestArgs(VirtualEnvironment venv) {
+        def args = []
+
+        if (this.useCoverage) {
+            if (!this.covPackageName) {
+                throw new IllegalStateException("covPackageName must be set when useCoverage is true")
+            }
+            def covPath
+            if (venv.isUnix) {
+                covPath = "${venv.name}/lib/python${venv.version}/site-packages/${this.covPackageName}"
+            } else {
+                covPath = "${venv.name}\\lib\\site-packages\\${this.covPackageName}"
+            }
+            args.add("--cov=${covPath}")
+        }
+
+        if (this.importMode) {
+            args.add("--import-mode=${this.importMode}")
+        }
+        args.add("--junitxml=pytest_reports/junit-${venv.version}.xml")
+        if (this.markers) {
+            args.add("-m \"${this.markers}\"")
+        }
+        if (this.jobName) {
+            if (this.setup) {
+                args.add("--job_name=\"${this.jobName}-${this.setup}-${venv.version}\"")
+            } else {
+                args.add("--job_name=\"${this.jobName}-${venv.version}\"")
+            }
+        }
+        
+        if (this.setup) {
+            args.add("--setup=${this.setup}")
+        }
+        if (this.useWiresharkLogging) {
+            args.add("--run_wireshark")
+        }
+        if (this.logCli) {
+            args.add("-o log_cli=True")
+        }
+        if (this.enableFirmwareVersionCheck) {
+            args.add("--enable_firmware_version_check")
+        }
+        
+        return args
+    }
+
+    /**
+     * Create a child session that inherits from this one.
+     * Properties specified in args override the parent's values.
+     * 
+     * @param args Map of properties to override
+     * @return New child TestSession
+     */
+    TestSession override(Map args = [:]) {
+        // Validate arguments against whitelist
+        def invalidArgs = args.keySet().findAll { !CONFIG_ATTRS.contains(it) }
+        if (invalidArgs) {
+            throw new IllegalArgumentException("Invalid arguments passed to override(): ${invalidArgs}. Allowed properties: ${CONFIG_ATTRS}")
+        }
+
+        TestSession child = new TestSession()
+        child.parent = this
+        this.children.add(child)
+        
+        // Copy allowed properties from parent or args
+        CONFIG_ATTRS.each { name ->
+            child."$name" = args.containsKey(name) ? args[name] : this."$name"
+        }
+        
+        return child
+    }
+
+    /**
+     * Return a map with the current configuration attributes and their values.
+     * Useful for debugging and printing session configuration in pipeline logs.
+     */
+    Map getConfigMap() {
+        def m = [:]
+        CONFIG_ATTRS.each { name ->
+            m[name] = this."$name"
+        }
+        return m
+    }
+
+    /**
+     * Summary of session configuration.
+     */
+    String configSummary() {
+        // Preserve CONFIG_ATTRS ordering and emit one key=value per line
+        return CONFIG_ATTRS.collect { name -> "${name}=${this."$name"}" }.join('\n')
+    }
+
+
+}
+
+/**
+ * TestGroup - Named container for a set of TestSession objects that share a base configuration.
+ *
+ * A TestGroup ties together:
+ *  - A logical name that matches the key used in rack_specifiers test_configs
+ *    (e.g. "ECAT_TEST_SESSIONS", "CAN_TEST_SESSIONS", "ETH_TEST_SESSIONS").
+ *  - A base TestSession whose attributes are inherited by every session in the group.
+ *  - A list of TestSession objects (populated by PyTestManager.buildTestSessions() and
+ *    optionally extended manually for sessions not covered by rack_specifiers).
+ *
+ * Usage pattern:
+ *   1. Declare the group via the test manager (registers it for buildTestSessions):
+ *        TestGroup ECAT_TESTS = testManager.createGroup("ECAT_TEST_SESSIONS", HW_TEST_SESSIONS.override())
+ *   2. Export and populate sessions from the specifier module:
+ *        testManager.buildTestSessions("tests.setups.rack_specifiers")
+ *   3. Optionally append manually-managed sessions via addSession():
+ *        ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
+ *   4. Gate the hardware node on the group and run all sessions:
+ *        when { expression { ECAT_TESTS.anyShouldRun() } }
+ *        testManager.runTestStages(ECAT_TESTS)
+ */
+class TestGroup {
+    /** Key used to look up this group in rack_specifiers test_configs (e.g. "ECAT_TEST_SESSIONS"). */
+    final String name
+    /** Template session; every session in this group is derived via baseTestSession.override(). */
+    final TestSession baseTestSession
+    /** Ordered list of sessions to run; populated by buildTestSessions() and manual appends. */
+    List<TestSession> sessions
+    /** Back-reference to the PyTestManager that created this group */
+    private final PyTestManager manager
+
+    TestGroup(String name, TestSession baseTestSession, PyTestManager manager) {
+        this.name = name
+        this.baseTestSession = baseTestSession
+        this.sessions = []
+        this.manager = manager
+    }
+
+    /**
+     * Add a new session to this group, by creating a session from the baseTestSession and overriding it with the given attributes.   
+     *
+     * The 'overrides' map uses the same keys as TestSession.override() (e.g. uid, markers, setup,
+     * stageName, shouldRun, skipReason). Policy evaluation in buildTestSessions() is encoded
+     * by including shouldRun/skipReason in the map before calling this method.
+     *
+     * Usage examples:
+     *   // Manual session (always runs when uid matches):
+     *   ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
+     *
+     *   // Session with policy already evaluated (used by buildTestSessions()):
+     *   group.addSession(uid: ..., ..., shouldRun: false, skipReason: "...")
+     *
+     * @param overrides  Map of TestSession attribute overrides (must include at least 'uid')
+     */
+    void addSession(Map overrides) {
+        if (!overrides.containsKey('uid') || !overrides.uid) {
+            throw new IllegalArgumentException("addSession() requires a non-null 'uid' in overrides. Got: ${overrides}")
+        }
+        if (!overrides.containsKey('stageName') || !overrides.stageName) {
+            throw new IllegalArgumentException("addSession() requires a non-null 'stageName' in overrides. Got: ${overrides}")
+        }
+        def session = this.baseTestSession.override(overrides)
+        def testSessionFilter = this.manager.testSessionFilter
+        if (!(session.uid ==~ testSessionFilter)) {
+            session.shouldRun = false
+            session.skipReason = "uid '${session.uid}' does not match test_session_filter '${testSessionFilter}'"
+        }
+        this.sessions << session
+    }
+
+    /**
+     * Returns true if at least one session in this group has shouldRun == true.
+     * Used as the gate condition for allocating the hardware node.
+     */
+    boolean anyShouldRun() {
+        return this.sessions.any { it.shouldRun }
+    }
+
+    /**
+     * Returns a human-readable summary of the group and all its sessions.
+     * Includes run/skip status and the skip reason for excluded sessions.
+     */
+    String configSummary() {
+        def runCount = this.sessions.count { it.shouldRun }
+        def lines = ["TestGroup '${this.name}': ${this.sessions.size()} session(s), ${runCount} to run"]
+        this.sessions.each { session ->
+            def status = session.shouldRun ? 'run ' : 'skip'
+            def reason = session.shouldRun ? '' : " (${session.skipReason})"
+            lines << "  [${status}] ${session.stageName} [uid=${session.uid}]${reason}"
+        }
+        return lines.join('\n')
     }
 }
 
-def runTestHW(markers, setup_name, extra_args = "") {
-    try {
-        timeout(time: 1, unit: 'HOURS') {
-            clearCoverageFiles()
-            def firstIteration = true
-            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-            pythonVersions.each { version ->
-                withEnv(["WIRESHARK_SCOPE=${params.WIRESHARK_LOGGING_SCOPE}", "CLEAR_WIRESHARK_LOG_IF_SUCCESSFUL=${params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS}", "START_WIRESHARK_TIMEOUT_S=${START_WIRESHARK_TIMEOUT_S}"]) {
-                    try {
-                        def setupArg = setup_name ? "--setup ${setup_name} " : ""
-                        def venvName = ".venv${version}"
-                        bat """
-                            call ${venvName}/Scripts/activate
-                            poetry run poe tests --import-mode=importlib --cov=${venvName}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-${version}.xml --junit-prefix=${version} -m \"${markers}\" ${setupArg} --job_name=\"${env.JOB_NAME}-#${env.BUILD_NUMBER}-${setup_name}\" -o log_cli=True ${extra_args}"
-                            deactivate
-                        """
-                    } catch (err) {
-                        unstable(message: "Tests failed")
-                    } finally {
-                        junit "pytest_reports\\*.xml"
-                        // Delete the junit after publishing it so it not re-published on the next stage
-                        bat "del /S /Q pytest_reports\\*.xml"
-                        if (firstIteration) {
-                            def coverage_stash = ".coverage_${setup_name}"
-                            bat "move .coverage ${coverage_stash}"
-                            stash includes: coverage_stash, name: coverage_stash
-                            coverage_stashes.add(coverage_stash)
-                            firstIteration = false
+class PyTestManager {
+    private VEnvManager venvManager
+    private def pipeline
+    /**
+     * Set of active run-policy tags for this build (e.g. "nightly", "weekends").
+     * Populated from pipeline boolean parameters (RUN_POLICY_NIGHTLY, RUN_POLICY_WEEKEND).
+     * Used by shouldRunPolicy() for tag-based test gating.
+     */
+    Set<String> runPolicyTags = [] as Set
+    private List coverageStashes = []
+    /** All TestGroups registered via createGroup(), keyed by group name; */
+    private Map registeredGroups = [:]
+    /** Regex pattern used to filter which test sessions run; matched against each session's uid. */
+    String testSessionFilter = '.*'
+
+    PyTestManager(Map args = [pipeline: null, venvManager: null]) {
+        this.venvManager = args.venvManager
+        this.pipeline = args.pipeline
+    }
+
+    /**
+     * Check if tests should run based on the given policy key.
+     * "always" and "never" are reserved; everything else is a tag lookup against runPolicyTags.
+     * @param policyKey Policy key to evaluate
+     * @return Map [result: boolean, reason: String]
+     */
+    Map shouldRunPolicy(String policyKey) {
+        if (policyKey == "always") {
+            return [result: true, reason: "Policy 'always' is always enabled"]
+        }
+        if (policyKey == "never") {
+            return [result: false, reason: "Policy 'never' is always disabled"]
+        }
+        def hasTag = this.runPolicyTags.contains(policyKey)
+        def reason = hasTag
+            ? "Policy '${policyKey}': tag is present (runPolicyTags=${this.runPolicyTags})"
+            : "Policy '${policyKey}': tag is not present (runPolicyTags=${this.runPolicyTags})"
+        return [result: hasTag, reason: reason]
+    }
+
+    /**
+     * Create a TestGroup, register it for use by buildTestSessions(), and return it.
+     *
+     * All groups created this way are automatically considered when buildTestSessions() is
+     * called
+     *
+     * @param name            Key matching the session name in the specifier JSON (e.g. "ECAT_TEST_SESSIONS")
+     * @param baseTestSession Template session whose attributes are inherited by every session in the group
+     * @return The newly created TestGroup
+     */
+    TestGroup createGroup(String name, TestSession baseTestSession) {
+        def group = new TestGroup(name, baseTestSession, this)
+        this.registeredGroups[name] = group
+        return group
+    }
+
+    /**
+     * Echo a configSummary() for every registered TestGroup.
+     * Useful at the end of session preparation to give a readable overview of what will run.
+     */
+    void echoTestGroupsSummary() {
+        this.registeredGroups.each { name, group ->
+            this.pipeline.echo(group.configSummary())
+        }
+    }
+
+    /**
+     * Export specifiers to JSON file and return parsed data.
+     *
+     * The output filename is derived from the last segment of specifierModule
+     * (e.g. "tests.setups.rack_specifiers" → "rack_specifiers.json") and the
+     * file is always stored under tests/setups/specifiers_json/ in the working folder.
+     * The file is copied back to the workspace if needed, archived as a build
+     * artifact, and the parsed map is returned. Always overwrites an existing file.
+     *
+     * @param specifierModule Specifier module to export (e.g., "tests.setups.rack_specifiers")
+     * @return Map of parsed specifiers
+     */
+    private Map exportSpecifiersModule(String specifierModule) {
+        def outputFileName = specifierModule.tokenize('.').last() + '.json'
+        // Always save in tests/setups/specifiers_json/ subdirectory of working folder
+        def workingFolder = this.venvManager.getWorkingFolder()
+        def workingOutputFile = this.venvManager.joinPath(workingFolder, "tests", "setups", "specifiers_json", outputFileName)
+
+        // Export specifiers (always override)
+        this.venvManager.withPython(this.venvManager.default_python_version) { venv ->
+            venv.run("poetry run poe export_specifier_module -- --specifier_module ${specifierModule} --output_file ${workingOutputFile} --root_dir ${workingFolder} --override")
+        }
+
+        // Copy from working folder to workspace if they're different
+        if (workingFolder != this.pipeline.env.WORKSPACE) {
+            this.venvManager.copyFromWorkingFolder("tests/setups/specifiers_json/${outputFileName}")
+        }
+
+        // Archive the artifact from workspace
+        this.pipeline.archiveArtifacts artifacts: "tests/setups/specifiers_json/${outputFileName}", allowEmptyArchive: true
+
+        // Load and return the parsed specifiers
+        return this.loadSpecifiers("${this.pipeline.env.WORKSPACE}/tests/setups/specifiers_json/${outputFileName}")
+    }
+    
+    /**
+     * Load specifiers from a JSON file.
+     * 
+     * @param jsonPath Path to the specifiers JSON file
+     * @return Map of parsed specifiers
+     */
+    private Map loadSpecifiers(String jsonPath) {
+        if (!this.pipeline.fileExists(jsonPath)) {
+            throw new Exception("Specifiers JSON file not found at ${jsonPath}. Cannot load specifiers.")
+        }
+        
+        def jsonText = this.pipeline.readFile(file: jsonPath)
+        def specifiers = this.pipeline.readJSON(text: jsonText)
+        return specifiers
+    }
+    
+    /**
+     * Unstashes all coverage files.
+     * 
+     * @return Set of coverage file stash names
+     */
+    def getCoverageFiles() {
+        this.coverageStashes.each { stash ->
+             this.pipeline.unstash stash
+        }
+        return this.coverageStashes as Set
+    }
+
+    /**
+     * Checks if there are any coverage files available.
+     * 
+     * @return true if coverage files have been stashed, false otherwise
+     */
+    def hasCoverageFiles() {
+        return !this.coverageStashes.isEmpty()
+    }
+
+    /**
+     * Build an exclusion string for pytest markers.
+     * Converts a list of marker names into a pytest-compatible exclusion string.
+     * 
+     * @param excludes List of marker names to exclude
+     * @return A string like 'not marker1 and not marker2' suitable for pytest -m option
+     */
+    static def markersExcludeString(excludes) {
+        return excludes.collect { "not ${it}" }.join(' and ')
+    }
+
+    /**
+     * Archive Wireshark log files as Jenkins artifacts.
+     * Archives all .pcap files from the specified directory.
+     * 
+     * @param wiresharkDir Directory containing Wireshark log files
+     */
+    private def archiveWiresharkLogs(String wiresharkDir) {
+        if (this.venvManager.isUnixNode()) {
+            this.pipeline.archiveArtifacts artifacts: "${wiresharkDir}/*.pcap", allowEmptyArchive: true
+        } else {
+            this.pipeline.archiveArtifacts artifacts: "${wiresharkDir}\\*.pcap", allowEmptyArchive: true
+        }
+    }
+
+    /**
+     * Clear Wireshark log files from the specified directory.
+     * Removes all .pcap files to prepare for new test runs.
+     * 
+     * @param wiresharkDir Directory containing Wireshark log files to clear
+     */
+    private def clearWiresharkLogs(String wiresharkDir) {
+        if (this.venvManager.isUnixNode()) {
+            this.pipeline.sh(script: "rm -f ${wiresharkDir}/*.pcap", returnStatus: true)
+        } else {
+            this.pipeline.bat(script: "del /f \"${wiresharkDir}\\\\*.pcap\"", returnStatus: true)
+        }
+    }
+
+    /**
+     * Clear coverage files from the current directory.
+     * Removes all .coverage* files to prepare for new test runs.
+     */
+    private def clearCoverageFiles() {
+        if (this.venvManager.isUnixNode()) {
+            this.pipeline.sh(script: 'rm -f *.coverage*', returnStatus: true)
+        } else {
+            this.pipeline.bat(script: 'del /f "*.coverage*"', returnStatus: true)
+        }
+    }
+
+    /**
+     * Stash coverage file for later merging.
+     * Moves the coverage file to a unique stash name to avoid collisions and stashes it.
+     * 
+     * @param uid Unique identifier of the test session
+     * @param venvName Name of the virtual environment (e.g., '.venv3.9')
+     */
+    private def stashCoverageFile(String uid, String venvName) {
+        def workingFolder = this.venvManager.getWorkingFolder()
+        // Copy coverage file back from working folder if it differs from workspace
+        if (workingFolder != this.pipeline.env.WORKSPACE) {
+            this.venvManager.copyFromWorkingFolder(".coverage")
+        }
+
+        // Build stash name with uid and venv name to ensure uniqueness
+        def base_stash_name = ".coverage_${uid}_${venvName}"
+        
+        // Handle stash name collision by appending index as fallback
+        def coverage_stash = base_stash_name
+        int index = 1
+        while (this.coverageStashes.contains(coverage_stash)) {
+            coverage_stash = "${base_stash_name}_${index}"
+            index++
+        }
+        
+        // Rename coverage file to unique stash name
+        if (this.venvManager.isUnixNode()) {
+            this.pipeline.sh "mv .coverage ${coverage_stash}"
+        } else {
+            this.pipeline.bat "move .coverage ${coverage_stash}"
+        }
+        
+        // Stash coverage file and record it for later merging
+        this.pipeline.stash includes: coverage_stash, name: coverage_stash
+        this.coverageStashes.add(coverage_stash)
+    }
+
+    /**
+     * Publish JUnit reports and clean them up.
+     * Copies reports from working folder if necessary, publishes them, and then deletes them
+     * to prevent re-publishing in subsequent stages.
+     */
+    private def publishAndCleanupJunitReports() {
+        def workingFolder = this.venvManager.getWorkingFolder()
+        
+        // Copy junit reports back from working folder to workspace if they're separate
+        if (workingFolder != this.pipeline.env.WORKSPACE) {
+            this.venvManager.copyFromWorkingFolder("pytest_reports/")
+        }
+        
+        // Publish junit reports
+        this.pipeline.junit "pytest_reports/*.xml"
+        
+        // Delete the junit after publishing it so it is not re-published on the next stage
+        if (this.venvManager.isUnixNode()) {
+            this.pipeline.sh "rm -f pytest_reports/*.xml"
+        } else {
+            this.pipeline.bat "del /S /Q pytest_reports\\*.xml"
+        }
+    }
+
+    /**
+     * Run a test session for the configured Python versions.
+     * 
+     * Executes pytest with the specified markers and setup configuration across all 
+     * configured Python versions. Handles environment setup, Wireshark logging (if enabled),
+     * coverage collection, and results publishing.
+     * 
+     * @param session TestSession configuration object
+     */
+    def runTestSession(TestSession session) {
+        // Validate that uid is set
+        if (!session.uid) {
+            throw new IllegalArgumentException("TestSession uid must be set before running tests")
+        }
+        
+        try {
+            this.pipeline.echo("Starting test session with config:\n${session.configSummary()}")
+            this.pipeline.timeout(time: session.testTimeoutMinutes, unit: 'MINUTES') {
+                if (session.useWiresharkLogging) {
+                    this.clearWiresharkLogs(session.wiresharkDir)
+                }
+                if (session.useCoverage) {
+                    this.clearCoverageFiles()
+                }
+                def firstIteration = true
+                if (session.runInVirtualEnvs == null) {
+                    throw new IllegalArgumentException("runInVirtualEnvs must be set in the TestSession to specify which virtual environments to run tests against.")
+                }
+                this.venvManager.forVirtualEnvs(session.runInVirtualEnvs) { venv ->
+                    this.pipeline.withEnv(session.getEnvVars()) {
+                        try {
+                            def testArgs = session.getTestArgs(venv)
+                            def testArgsStr = testArgs.join(' ')
+
+                            def credentials = session.getCredentialsSpec(this.pipeline)
+                            if (credentials) {
+                                this.pipeline.withCredentials(credentials) {
+                                    venv.run("${session.runTestBaseCommand} ${testArgsStr}")
+                                }
+                            } else {
+                                venv.run("${session.runTestBaseCommand} ${testArgsStr}")
+                            }
+                        } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException e) {
+                            // Build was cancelled or a timeout expired — re-throw so Jenkins marks
+                            // the build as ABORTED instead of UNSTABLE, and skip publishing.
+                            throw e
+                        } catch (err) {
+                            this.pipeline.unstable(message: "Tests failed")
                         }
+                        // Only reached on success or after a caught test failure.
+                        // Skipped entirely if FlowInterruptedException was re-thrown above.
+                        this.publishAndCleanupJunitReports()
+                        if (firstIteration && session.useCoverage) {
+                            this.stashCoverageFile(session.uid, venv.name)
+                        }
+                        firstIteration = false
+                    }
+                }
+            }
+        } finally {
+            if (session.useWiresharkLogging) {
+                this.archiveWiresharkLogs(session.wiresharkDir)
+                this.clearWiresharkLogs(session.wiresharkDir)
+            }
+            if (session.useCoverage) {
+                this.clearCoverageFiles()
+            }
+        }
+    }
+
+    /**
+     * Export and parse a specifier module, then populate test sessions into all registered TestGroups.
+     *
+     * Exports the specifier module to a JSON artifact (filename derived from the module
+     * path's last segment), then creates TestSession objects eagerly before any hardware
+     * node runs. Policy and uid-regex checks are evaluated immediately; every entry
+     * (including sessions that will be skipped) is retained so runTestStages() can mark
+     * them correctly. Only registered groups (created via createGroup()) are considered;
+     * additional sessions can be appended via group.addSession() after this call.
+     *
+     * @param specifierModule  Python module path to export
+     *                         (e.g. "tests.setups.rack_specifiers").    
+     */
+    void buildTestSessions(String specifierModule) {
+        def exportedSpecifiers = this.exportSpecifiersModule(specifierModule)
+
+        exportedSpecifiers.each { setupKey, specifiers ->
+            // A SpecifierContainer wraps multiple part numbers; a direct specifier exposes one.
+            // This determines the pytest --setup path format:
+            //   Container:         SETUP@PART_NUMBER@VERSION
+            //   Direct specifier:  SETUP@VERSION  (no part-number segment)
+            boolean isContainer = specifiers.size() > 1
+
+            specifiers.each { specifierName, specifierData ->
+                // Normalise no-version specifiers (extra_data at the specifier level, no version key)
+                // to version "" so the loop below works uniformly for both versioned and unversioned.
+                // https://novantamotion.atlassian.net/browse/CIT-612
+                def versionedData = specifierData.containsKey("extra_data") ? ["": specifierData] : specifierData
+
+                versionedData.each { version, versionData ->
+                    // "" and "latest" both mean no version suffix.
+                    // "" covers unversioned specifiers (e.g. Multislave, where extra_data
+                    // sits directly under the specifier and gets normalised to version="").
+                    // "latest" covers virtual-drive specifiers whose JSON always carries a
+                    // "latest" key even though there is no real version to pin; appending
+                    // "@latest" to the setup path would produce an invalid import path.
+                    // https://novantamotion.atlassian.net/browse/CIT-612
+                    def versionTag = (version && version != "latest") ? "@${version}" : ""
+                    def setupPath = isContainer
+                        ? "${specifierModule}.${setupKey}@${specifierName}${versionTag}"
+                        : "${specifierModule}.${setupKey}${versionTag}"
+                    def executionPolicy = versionData?.extra_data?.execution_policy
+
+                    def testConfigs = versionData?.extra_data?.test_configs
+                    if (!testConfigs) {
+                        this.pipeline.error(
+                            "Missing 'extra_data.test_configs' for specifier '${specifierName}' "
+                            + "(version='${version}') in setup '${setupKey}'. "
+                            + "Ensure the specifier JSON contains extra_data with test_configs."
+                        )
+                    }
+
+                    testConfigs.each { sessionName, testConfig ->
+                        def group = this.registeredGroups[sessionName]
+                        if (!group) {
+                            this.pipeline.error("No TestGroup found for session name '${sessionName}'. Available groups: ${this.registeredGroups.keySet()}")
+                        }
+                        def overrides = [
+                            uid: testConfig.run_test_stage_uid,
+                            markers: testConfig.markers,
+                            setup: setupPath,
+                            stageName: testConfig.stage_name
+                        ]
+                        if (executionPolicy) {
+                            def policyResult = this.shouldRunPolicy(executionPolicy)
+                            if (!policyResult.result) {
+                                overrides.shouldRun = false
+                                overrides.skipReason = policyResult.reason
+                            }
+                        }
+                        group.addSession(overrides)
                     }
                 }
             }
         }
-    } finally {
-        archiveWiresharkLogs()
-        clearWiresharkLogs()
+    }
+
+    /**
+     * Run hardware test stages from pre-built TestSession objects.
+     *
+     * Each session produces exactly one Jenkins stage. Sessions with shouldRun==false
+     * are marked with Utils.markStageSkippedForConditional() so they appear grey
+     * (skipped) in the Jenkins UI rather than green (passed).
+     *
+     * @param group  TestGroup whose sessions will be run
+     */
+    def runTestStages(TestGroup group) {
+        group.sessions.each { session ->
+            this.pipeline.stage(session.stageName) {
+                if (session.shouldRun) {
+                    this.runTestSession(session)
+                } else {
+                    this.pipeline.echo "Skipped: ${session.skipReason}"
+                    org.jenkinsci.plugins.pipeline.modeldefinition.Utils.markStageSkippedForConditional(session.stageName)
+                }
+            }
+        }
     }
 }
 
-/* Build develop everyday 3 times starting at 19:00 UTC (21:00 Barcelona Time), running all tests */
-CRON_SETTINGS = BRANCH_NAME == "develop" ? '''0 19,21,23 * * * % PYTHON_VERSIONS=All''' : ""
+VEnvManager venvManager = new VEnvManager(
+  pipeline: this,
+  default_python_version: DEFAULT_PYTHON_VERSION,
+  poetry_default_install_command: "poetry sync --no-root --all-groups"
+)
+
+PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvManager)
+
+/* Define default base test sessions to be used/overridden in stages */
+TestSession TEST_SESSIONS = new TestSession(
+    covPackageName: "ingenialink",
+    wiresharkScope: null, // Set later based on parameter
+    wiresharkDir: "wireshark",
+    startWiresharkTimeoutS: 10.0,
+    importMode: "importlib",
+    logCli: true,
+    setAttApiToken: true
+)
+TestSession HW_TEST_SESSIONS = TEST_SESSIONS.override()
+TestGroup CAN_TESTS = testManager.createGroup("CAN_TEST_SESSIONS", HW_TEST_SESSIONS.override())
+TestGroup ETH_TESTS = testManager.createGroup("ETH_TEST_SESSIONS", HW_TEST_SESSIONS.override()) // Wireshark logging is injected later based on parameter
+TestGroup ECAT_TESTS = testManager.createGroup("ECAT_TEST_SESSIONS", HW_TEST_SESSIONS.override()) // Wireshark logging is injected later based on parameter
+TestGroup LINUX_DOCKER_TESTS = testManager.createGroup("LINUX_DOCKER_TEST_SESSIONS", TEST_SESSIONS.override())
+
+
+/*
+ * Cron schedules for the develop branch:
+ *
+ * Nightly builds (every day):
+ *   19:00, 21:00, 23:00 UTC (21:00, 23:00, 01:00 Barcelona Time)
+ *   → Sets RUN_POLICY_NIGHTLY=true so that tests gated on the 'nightly' policy will run.
+ *
+ * Weekend extra builds (Saturday & Sunday only):
+ *   08:00, 14:00 UTC (10:00, 16:00 Barcelona Time)
+ *   → Sets RUN_POLICY_NIGHTLY=true and RUN_POLICY_WEEKEND=true so that tests gated on
+ *     either 'nightly' or 'weekends' policy will run.
+ */
+def NIGHTLY_CRON   = '0 19,21,23 * * * % PYTHON_VERSIONS=All;RUN_POLICY_NIGHTLY=true'
+def WEEKEND_CRON   = '0 8,14 * * 6-7 % PYTHON_VERSIONS=All;RUN_POLICY_NIGHTLY=true;RUN_POLICY_WEEKEND=true'
+def CRON_SETTINGS  = BRANCH_NAME == "develop" ? "${NIGHTLY_CRON}\n${WEEKEND_CRON}" : ""
 
 pipeline {
     agent none
@@ -163,40 +1423,87 @@ pipeline {
                 choices: ['MIN', 'MAX', 'MIN_MAX', 'All'],
                 name: 'PYTHON_VERSIONS'
         )
+        choice(
+            choices: [
+                '.*',
+                'virtual_drive_tests',
+                'no_pcap',
+                'pcap',
+                'ethercat.*',
+                'ethercat_everest',
+                'ethercat_capitan',
+                'ethercat_multislave',
+                'fsoe.*',
+                'fsoe_phase1',
+                'fsoe_phase2',
+                'canopen.*',
+                'canopen_everest',
+                'canopen_capitan',
+                'ethernet.*',
+                'ethernet_everest',
+                'ethernet_capitan',
+            ],
+            name: 'test_session_filter',
+            description: 'Regex pattern for which test sessions to run (e.g. "fsoe.*", "ethercat_everest", ".*" for all)'
+        )
         booleanParam(name: 'WIRESHARK_LOGGING', defaultValue: false, description: 'Enable Wireshark logging')
         choice(
                 choices: ['function', 'module', 'session'],
                 name: 'WIRESHARK_LOGGING_SCOPE'
         )
         booleanParam(name: 'CLEAR_SUCCESSFUL_WIRESHARK_LOGS', defaultValue: true, description: 'Clears Wireshark logs if the test passed')
+        booleanParam(name: 'RUN_POLICY_NIGHTLY', defaultValue: false, description: 'Tag this build as a nightly build (set automatically by cron triggers)')
+        booleanParam(name: 'RUN_POLICY_WEEKEND', defaultValue: false, description: 'Tag this build as a weekend build (set automatically by weekend cron triggers)')
     }
     stages {
         stage("Set env") {
             steps {
                 script {
+                    // Determine which Python versions to run tests against based on branch and parameters
+                    Set pythonVersions
                     if (env.BRANCH_NAME == 'master') {
-                        RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
+                        pythonVersions = ALL_PYTHON_VERSIONS
                     } else if (env.BRANCH_NAME.startsWith('release/')) {
-                        RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
+                        pythonVersions = ALL_PYTHON_VERSIONS
                     } else {
                         if (env.PYTHON_VERSIONS == "MIN_MAX") {
-                            RUN_PYTHON_VERSIONS = "${PYTHON_VERSION_MIN},${PYTHON_VERSION_MAX}"
+                            pythonVersions = [PYTHON_VERSION_MIN, PYTHON_VERSION_MAX] as Set
                         } else if (env.PYTHON_VERSIONS == "MIN") {
-                            RUN_PYTHON_VERSIONS = PYTHON_VERSION_MIN
+                            pythonVersions = [PYTHON_VERSION_MIN] as Set
                         } else if (env.PYTHON_VERSIONS == "MAX") {
-                            RUN_PYTHON_VERSIONS = PYTHON_VERSION_MAX
+                            pythonVersions = [PYTHON_VERSION_MAX] as Set
                         } else if (env.PYTHON_VERSIONS == "All") {
-                            RUN_PYTHON_VERSIONS = ALL_PYTHON_VERSIONS
+                            pythonVersions = ALL_PYTHON_VERSIONS
                         } else { // Branch-indexing
-                            RUN_PYTHON_VERSIONS = PYTHON_VERSION_MIN
+                            pythonVersions = [PYTHON_VERSION_MIN] as Set
                         }
                     }
 
-                    if (params.WIRESHARK_LOGGING) {
-                        USE_WIRESHARK_LOGGING = "--run_wireshark"
-                    } else {
-                        USE_WIRESHARK_LOGGING = ""
-                    }
+                    // Set dynamic properties according to job and parameters
+                    TEST_SESSIONS.setAttributeInCascade(
+                        runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames(pythonVersions),
+                        jobName: "${env.JOB_NAME}-#${env.BUILD_NUMBER}",
+                        wiresharkScope: params.WIRESHARK_LOGGING_SCOPE,
+                        clearSuccessfulWiresharkLogs: params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS,
+                    )
+
+                    // Configure if ECAT and ETH sessions use Wireshark logging based on parameter
+                    ECAT_TESTS.baseTestSession.setAttributeInCascade(
+                        useWiresharkLogging: params.WIRESHARK_LOGGING,
+                    )
+                    ETH_TESTS.baseTestSession.setAttributeInCascade(
+                        useWiresharkLogging: params.WIRESHARK_LOGGING,
+                    )
+
+                    testManager.testSessionFilter = params.test_session_filter
+
+                    // Parse run policy tags from boolean parameters
+                    def runPolicyTags = [] as Set
+                    if (params.RUN_POLICY_NIGHTLY) { runPolicyTags.add("nightly") }
+                    if (params.RUN_POLICY_WEEKEND) { runPolicyTags.add("weekends") }
+                    testManager.runPolicyTags = runPolicyTags
+
+                    echo("Test sessions have been configured to run with the following base configuration:\n${TEST_SESSIONS.configSummary()}")
                 }
             }
         }
@@ -212,16 +1519,23 @@ pipeline {
                                     image WIN_DOCKER_IMAGE
                                 }
                             }
+                            environment {
+                                VENV_WORKING_FOLDER = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
+                            }
                             stages {
                                 stage('Move workspace') {
                                     steps {
-                                        bat "XCOPY ${env.WORKSPACE} ${WIN_DOCKER_TMP_PATH} /s /i /y /e /h"
+                                        script {
+                                            venvManager.copyToWorkingFolder()
+                                        }
                                     }
                                 }
                                 stage('Create virtual environments') {
                                     steps {
                                         script {
-                                            createVirtualEnvironments(false, WIN_DOCKER_TMP_PATH, ALL_PYTHON_VERSIONS)
+                                            venvManager.createPoetryEnvironments(
+                                              pythonVersions: ALL_PYTHON_VERSIONS
+                                            )
                                         }
                                     }
                                 }
@@ -231,36 +1545,32 @@ pipeline {
                                     }
                                     steps {
                                         script {
-                                            def pythonVersions = ALL_PYTHON_VERSIONS.split(',')
-                                            pythonVersions.each { version ->
-                                                buildWheel(version)
+                                            venvManager.forEachEnvironment() { venv ->
+                                                venv.run("poetry run poe build-wheel")
+                                                venv.run("poetry run poe check-wheels")
                                             }
+                                            venvManager.copyFromWorkingFolder("ingenialink/_version.py")
+                                            venvManager.copyFromWorkingFolder("dist/")
+
                                         }
-                                        bat """
-                                            cd ${WIN_DOCKER_TMP_PATH}
-                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
-                                            poetry run poe check-wheels
-                                            COPY ingenialink\\_version.py ${env.WORKSPACE}\\ingenialink\\_version.py
-                                            XCOPY dist ${env.WORKSPACE}\\dist /s /i
-                                        """
                                     }
                                 }
                                 stage('Make a static type analysis') {
                                     steps {
-                                        bat """
-                                            cd ${WIN_DOCKER_TMP_PATH}
-                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
-                                            poetry run poe type
-                                        """
+                                        script {
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                venv.run("poetry run poe type")
+                                            }
+                                        }
                                     }
                                 }
                                 stage('Check formatting') {
                                     steps {
-                                        bat """
-                                            cd ${WIN_DOCKER_TMP_PATH}
-                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
-                                            poetry run poe format
-                                        """
+                                        script {
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                venv.run("poetry run poe format")
+                                            }
+                                        }
                                     }
                                 }
                                 stage('Archive artifacts') {
@@ -275,50 +1585,37 @@ pipeline {
                                 }
                                 stage('Generate documentation') {
                                     steps {
-                                        bat """
-                                            cd ${WIN_DOCKER_TMP_PATH}
-                                            call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
-                                            poetry run poe install-wheel
-                                            poetry run poe docs
-                                        """
+                                        script {
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                venv.run("poetry run poe install-wheel")
+                                                venv.run("poetry run poe docs")
+                                            }
+                                        }
                                     }
                                     post {
                                         success {
-                                            bat """
-                                                cd ${WIN_DOCKER_TMP_PATH}
-                                                "C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256
-                                                XCOPY docs.zip ${env.WORKSPACE}
-                                            """
+                                            script {
+                                                venvManager.runInWorkingFolder('"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256')
+                                                venvManager.copyFromWorkingFolder("docs.zip")
+                                            }
                                             stash includes: 'docs.zip', name: 'docs'
                                         }
                                     }
                                 }
-                                stage('Run no-connection tests on docker') {
-                                    steps {
-                                        script {
-                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-                                            pythonVersions.each { version ->
-                                                bat """
-                                                    cd ${WIN_DOCKER_TMP_PATH}
-                                                    call .venv${version}/Scripts/activate
-                                                    poetry run poe install-wheel
-                                                    poetry run poe tests --import-mode=importlib --cov=.venv${version}\\lib\\site-packages\\ingenialink --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m docker -o log_cli=True
-                                                """
-                                            }
+                                stage('Run unit tests (no-pcap) tests on docker') {
+                                    when {
+                                        expression {
+                                            "no_pcap" ==~ params.test_session_filter
                                         }
                                     }
-                                    post {
-                                        always {
-                                            bat """
-                                                mkdir -p pytest_reports
-                                                XCOPY ${WIN_DOCKER_TMP_PATH}\\pytest_reports\\* pytest_reports\\ /s /i /y /e /h
-                                                move ${WIN_DOCKER_TMP_PATH}\\.coverage .coverage_docker
-                                            """
-                                            junit 'pytest_reports/*.xml'
-                                            stash includes: '.coverage_docker', name: '.coverage_docker'
-                                            script {
-                                                coverage_stashes.add(".coverage_docker")
+                                    steps {
+                                        script {
+                                            /* Windows docker does not have npcap/winpcap installed so runs no_pcap tests */
+                                            def win_marker = PyTestManager.markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
+                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
+                                                venv.run("poetry run poe install-wheel")
                                             }
+                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "no_pcap", markers: win_marker))
                                         }
                                     }
                                 }
@@ -327,25 +1624,38 @@ pipeline {
                         stage('Build Linux') {
                             agent {
                                 docker {
-                                    label 'worker'
+                                    label 'lin-worker'
                                     image LIN_DOCKER_IMAGE
                                     args '-u root:root'
                                 }
                             }
+                            environment {
+                                VENV_WORKING_FOLDER = "/tmp/ingenialink_python"
+                            }
                             stages {
+                                // TODO: Re-enable once all release dependencies are resolved
+                                // See Jira issue for tracking
+                                // stage('Check Dependencies') {
+                                //     steps {
+                                //         script {
+                                //             checkDependencies()
+                                //         }
+                                //     }
+                                // }
                                 stage('Move workspace') {
                                     steps {
                                         script {
-                                            sh """
-                                                mkdir -p ${LIN_DOCKER_TMP_PATH}
-                                                cp -r ${env.WORKSPACE}/. ${LIN_DOCKER_TMP_PATH}
-                                            """
+                                            venvManager.copyToWorkingFolder()
                                         }
                                     }
                                 }
                                 stage('Create virtual environments') {
                                     steps {
-                                        createVirtualEnvironments(false, LIN_DOCKER_TMP_PATH)
+                                        script {
+                                            venvManager.createPoetryEnvironments(
+                                              pythonVersions: ([DEFAULT_PYTHON_VERSION] as Set) + venvManager.defaultVenvNamesToVersion(TEST_SESSIONS.runInVirtualEnvs)
+                                            )
+                                        }
                                     }
                                 }
                                 stage('Build wheels') {
@@ -354,15 +1664,13 @@ pipeline {
                                     }
                                     steps {
                                         script {
-                                            buildWheel(DEFAULT_PYTHON_VERSION)
-                                            sh """
-                                                cd ${LIN_DOCKER_TMP_PATH}
-                                                . .venv${DEFAULT_PYTHON_VERSION}/bin/activate
-                                                poetry run poe check-wheels
-                                                deactivate
-                                                mkdir -p ${env.WORKSPACE}/dist
-                                                cp dist/* ${env.WORKSPACE}/dist/
-                                            """
+                                            // Linux for now does not contain compiled code
+                                            // so building on one python version is enough
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                venv.run("poetry run poe build-wheel")
+                                                venv.run("poetry run poe check-wheels")
+                                            }
+                                            venvManager.copyFromWorkingFolder("dist/")
                                         }
                                     }
                                 }
@@ -376,53 +1684,47 @@ pipeline {
                                         }
                                     }
                                 }
-                                stage('Run no-connection tests on docker') {
+                                stage('Prepare test sessions') {
                                     steps {
                                         script {
-                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-                                            pythonVersions.each { version ->
-                                                sh """
-                                                    cd ${LIN_DOCKER_TMP_PATH}
-                                                    . .venv${version}/bin/activate
-                                                    poetry run poe install-wheel
-                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m no_connection -o log_cli=True
-                                                    deactivate
-                                                """
+                                            // Install wheel first (needed for summit_testing_framework to import ingenialink)
+                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
+                                                venv.run("poetry run poe install-wheel")
                                             }
-                                        }
-                                    }
-                                    post {
-                                        always {
-                                            sh """
-                                                mkdir -p pytest_reports
-                                                cp ${LIN_DOCKER_TMP_PATH}/pytest_reports/* pytest_reports/
-                                            """
-                                            junit 'pytest_reports/*.xml'
+                                            
+                                            // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here)
+                                            testManager.buildTestSessions("tests.setups.rack_specifiers")
+                                            testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
+
+                                            // Pcap tests run on the EtherCAT machine — add manually since they're not in rack_specifiers
+                                            ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
+
+                                            // Linux pcap tests: runs pcap-marked tests that don't need hardware
+                                            LINUX_DOCKER_TESTS.addSession(
+                                                uid: "pcap",
+                                                markers: "pcap",
+                                                stageName: "Pcap Tests (Linux)")
+
+                                            // Linux unit tests: everything that does not have a marker
+                                            LINUX_DOCKER_TESTS.addSession(
+                                                uid: "no_pcap",
+                                                markers: PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "pcap", "no_pcap"]),
+                                                stageName: "Unit Tests (Linux)")
+
+                                            testManager.echoTestGroupsSummary()
                                         }
                                     }
                                 }
-                                stage('Run virtual drive tests on docker') {
+                                stage('Run Linux Docker tests') {
+                                    when {
+                                        expression { LINUX_DOCKER_TESTS.anyShouldRun() }
+                                    }
                                     steps {
                                         script {
-                                            def pythonVersions = RUN_PYTHON_VERSIONS.split(',')
-                                            pythonVersions.each { version ->
-                                                sh """
-                                                    cd ${LIN_DOCKER_TMP_PATH}
-                                                    . .venv${version}/bin/activate
-                                                    poetry run poe install-wheel
-                                                    poetry run poe tests --junitxml=pytest_reports/junit-tests-${version}.xml --junit-prefix=${version} -m virtual --setup summit_testing_framework.setups.virtual_drive.TESTS_SETUP -o log_cli=True
-                                                    deactivate
-                                                """
+                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
+                                                venv.run("poetry run poe install-wheel")
                                             }
-                                        }
-                                    }
-                                    post {
-                                        always {
-                                            sh """
-                                                mkdir -p pytest_reports
-                                                cp ${LIN_DOCKER_TMP_PATH}/pytest_reports/* pytest_reports/
-                                            """
-                                            junit 'pytest_reports/*.xml'
+                                            testManager.runTestStages(LINUX_DOCKER_TESTS)
                                         }
                                     }
                                 }
@@ -441,7 +1743,7 @@ pipeline {
                         branch BRANCH_NAME_MASTER
                     }
                     agent {
-                        label 'worker'
+                        label 'lin-worker'
                     }
                     steps {
                         unstash 'docs'
@@ -452,7 +1754,7 @@ pipeline {
                 stage('Publish wheels') {
                     agent {
                         docker {
-                            label 'worker'
+                            label 'lin-worker'
                             image PUBLISHER_DOCKER_IMAGE
                         }
                     }
@@ -488,6 +1790,13 @@ pipeline {
         stage('Tests') {
             parallel {
                 stage('EtherCAT/No Connection - Tests') {
+                    when {
+                        beforeOptions true
+                        beforeAgent true
+                        expression {
+                            ECAT_TESTS.anyShouldRun()
+                        }
+                    }
                     options {
                         lock(ECAT_NODE_LOCK)
                     }
@@ -495,11 +1804,6 @@ pipeline {
                         label ECAT_NODE
                     }
                     stages {
-                        stage ("Clear Wireshark logs") {
-                            steps {
-                                clearWiresharkLogs()
-                            }
-                        }
                         stage('Unstash')
                         {
                             steps {
@@ -513,43 +1817,30 @@ pipeline {
                         stage('Create virtual environments') {
                             steps {
                                 script {
-                                    createVirtualEnvironments()
+                                    venvManager.createPoetryEnvironments(
+                                        pythonVersions: venvManager.defaultVenvNamesToVersion(ECAT_TESTS.baseTestSession.runInVirtualEnvs),
+                                        additionalCommands: ["poetry run poe install-wheel"]
+                                    )
                                 }
                             }
                         }
-                        stage('EtherCAT Everest') {
+                        stage('Run EtherCAT Tests') {
                             steps {
-                                runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_EVE_SETUP", USE_WIRESHARK_LOGGING)
-                            }
-                        }
-                        stage('EtherCAT Capitan') {
-                            steps {
-                                runTestHW("ethercat", "${RACK_SPECIFIERS_PATH}.ECAT_CAP_SETUP", USE_WIRESHARK_LOGGING)
-                            }
-                        }
-                        stage('EtherCAT Multislave') {
-                            steps {
-                                runTestHW("multislave", "${RACK_SPECIFIERS_PATH}.ECAT_MULTISLAVE_SETUP", USE_WIRESHARK_LOGGING)
-                            }
-                        }
-                        stage("Safety Denali Phase I") {
-                            steps {
-                                runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE1_SETUP", USE_WIRESHARK_LOGGING)
-                            }
-                        }
-                        stage("Safety Denali Phase II") {
-                            steps {
-                                runTestHW("fsoe", "${RACK_SPECIFIERS_PATH}.ECAT_DEN_S_PHASE2_SETUP", USE_WIRESHARK_LOGGING)
-                            }
-                        }
-                        stage('Run no-connection tests') {
-                            steps {
-                                runTestHW("no_connection", null)
+                                script {
+                                    testManager.runTestStages(ECAT_TESTS)
+                                }
                             }
                         }
                     }
                 }
                 stage('CANopen/Ethernet - Tests') {
+                    when {
+                        beforeOptions true
+                        beforeAgent true
+                        expression {
+                            CAN_TESTS.anyShouldRun() || ETH_TESTS.anyShouldRun()
+                        }
+                    }
                     options {
                         lock(CAN_NODE_LOCK)
                     }
@@ -570,28 +1861,19 @@ pipeline {
                         stage('Create virtual environments') {
                             steps {
                                 script {
-                                    createVirtualEnvironments()
+                                    venvManager.createPoetryEnvironments(
+                                        pythonVersions: venvManager.defaultVenvNamesToVersion(HW_TEST_SESSIONS.runInVirtualEnvs),
+                                        additionalCommands: ["poetry run poe install-wheel"]
+                                    )
                                 }
                             }
                         }
-                        stage('CANopen Everest') {
+                        stage('Run CANopen/Ethernet Tests') {
                             steps {
-                                runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_EVE_SETUP")
-                            }
-                        }
-                        stage('CANopen Capitan') {
-                            steps {
-                                runTestHW("canopen", "${RACK_SPECIFIERS_PATH}.CAN_CAP_SETUP")
-                            }
-                        }
-                        stage('Ethernet Everest') {
-                            steps {
-                                runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_EVE_SETUP", USE_WIRESHARK_LOGGING)
-                            }
-                        }
-                        stage('Ethernet Capitan') {
-                            steps {
-                                runTestHW("ethernet", "${RACK_SPECIFIERS_PATH}.ETH_CAP_SETUP", USE_WIRESHARK_LOGGING)
+                                script {
+                                    testManager.runTestStages(CAN_TESTS)
+                                    testManager.runTestStages(ETH_TESTS)
+                                }
                             }
                         }
                     }
@@ -605,26 +1887,27 @@ pipeline {
                     image WIN_DOCKER_IMAGE
                 }
             }
+            when {
+                expression { testManager.hasCoverageFiles() }
+            }
+            environment {
+                VENV_WORKING_FOLDER = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
+            }
             steps {
                 script {
-                    def coverage_files = ""
-                    for (coverage_stash in coverage_stashes) {
-                        unstash coverage_stash
-                        coverage_files += " " + coverage_stash
-                    }
+                    def coverage_files = testManager.getCoverageFiles().join(" ")
                     for (stash_name in wheel_stashes) {
                         unstash stash_name
                     }
-                    bat "XCOPY ${env.WORKSPACE} ${WIN_DOCKER_TMP_PATH} /s /i /y /e /h"
-                    createVirtualEnvironments(true, WIN_DOCKER_TMP_PATH, DEFAULT_PYTHON_VERSION)
-                    bat """
-                        cd ${WIN_DOCKER_TMP_PATH}
-                        call .venv${DEFAULT_PYTHON_VERSION}/Scripts/activate
-                        poetry run poe cov-combine --${coverage_files}
-                        poetry run poe cov-report
-                        XCOPY coverage.xml ${env.WORKSPACE}
-                        deactivate
-                    """
+                    venvManager.copyToWorkingFolder()
+                    venvManager.createPoetryEnvironment(
+                      additionalCommands: ["poetry run poe install-wheel"]
+                    )
+                    venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                        venv.run("poetry run poe cov-combine -- ${coverage_files}")
+                        venv.run("poetry run poe cov-report")
+                    }
+                    venvManager.copyFromWorkingFolder("coverage.xml")
                     recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
                     archiveArtifacts artifacts: '*.xml'
                 }
@@ -632,3 +1915,4 @@ pipeline {
         }
     }
 }
+

@@ -1,6 +1,7 @@
 import os
+from abc import ABC
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Optional, Union
+from typing import TYPE_CHECKING, Callable, Optional, Union, cast
 
 import ingenialogger
 from typing_extensions import override
@@ -10,6 +11,7 @@ from ingenialink.constants import PASSWORD_RESTORE_SAFETY_REGS, PASSWORD_STORE_S
 from ingenialink.csv_configuration_file import CSVConfigurationFile
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.ethercat.dictionary import EthercatDictionary
+from ingenialink.table import Table
 
 try:
     import pysoem
@@ -56,7 +58,11 @@ class EthercatEmergencyMessage(EmergencyMessage):
         super().__init__(servo, emergency_msg.error_code, emergency_msg.error_reg, data)
 
 
-class EthercatServo(PDOServo):
+class EthercatServoBase(PDOServo, Servo, ABC):
+    """Declaration of the base EtherCAT servo behavior."""
+
+
+class EthercatServo(EthercatServoBase):
     """Ethercat Servo instance.
 
     Args:
@@ -407,18 +413,18 @@ class EthercatServo(PDOServo):
 
         if pdo_map.map_register_index is not None:
             # Extract the map object from the dictionary using the index
-            pdo_map.map_object = self.dictionary.get_object_by_index(pdo_map.map_register_index)
-            return pdo_map.map_object
-
-        # If map or index is not provided, use the default map
-        if isinstance(pdo_map, RPDOMap):
-            pdo_map.map_object = self.dictionary.get_object(self.DEFAULT_RPDO_MAP)
-        elif isinstance(pdo_map, TPDOMap):
-            pdo_map.map_object = self.dictionary.get_object(self.DEFAULT_TPDO_MAP)
+            map_object = self.dictionary.get_object_by_index(pdo_map.map_register_index)
         else:
-            raise NotImplementedError
+            # If map or index is not provided, use the default map
+            if isinstance(pdo_map, RPDOMap):
+                map_object = self.dictionary.get_object(self.DEFAULT_RPDO_MAP)
+            elif isinstance(pdo_map, TPDOMap):
+                map_object = self.dictionary.get_object(self.DEFAULT_TPDO_MAP)
+            else:
+                raise NotImplementedError
 
-        return pdo_map.map_object
+        pdo_map.map_object = map_object
+        return map_object
 
     @override
     def process_pdo_inputs(self) -> None:
@@ -437,6 +443,30 @@ class EthercatServo(PDOServo):
         """
         self.slave.set_watchdog(
             self.ETHERCAT_PDO_WATCHDOG, self.SECONDS_TO_MS_CONVERSION_FACTOR * timeout
+        )
+
+    def get_pdo_watchdog_time(self) -> float:
+        """Get the process data watchdog time.
+
+        Returns:
+            The watchdog time in seconds.
+
+        """
+        return cast(
+            "float",
+            self.slave.get_watchdog(self.ETHERCAT_PDO_WATCHDOG)
+            / self.SECONDS_TO_MS_CONVERSION_FACTOR,
+        )
+
+    def get_max_pdo_watchdog_time(self) -> float:
+        """Get the maximum process data watchdog time.
+
+        Returns:
+            The maximum watchdog time in seconds.
+
+        """
+        return (
+            cast("float", self.slave.get_max_watchdog_time()) / self.SECONDS_TO_MS_CONVERSION_FACTOR
         )
 
     def _read_esc_eeprom(
@@ -557,4 +587,12 @@ class EthercatServo(PDOServo):
                         str(configuration_register.identifier),
                         e,
                     )
+
+        for dict_table in self.dictionary.all_tables():
+            try:
+                table = Table(self, dict_table)
+                csv_configuration_file.add_table(table)
+            except Exception as e:  # noqa: PERF203
+                logger.error("Exception during save_configuration, table %s: %s", dict_table.id, e)
+
         csv_configuration_file.write_to_file()

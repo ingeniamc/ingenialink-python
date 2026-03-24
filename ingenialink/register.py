@@ -11,7 +11,12 @@ from ingenialink.enums.register import (
     RegDtype,
     RegPhy,
 )
-from ingenialink.utils._utils import convert_bytes_to_dtype, dtype_length_bits
+from ingenialink.utils._utils import (
+    REG_VALUE,
+    convert_bytes_to_dtype,
+    convert_dtype_to_bytes,
+    dtype_length_bits,
+)
 
 dtypes_ranges: dict[RegDtype, dict[str, Union[int, float]]] = {
     RegDtype.U8: {"max": 255, "min": 0},
@@ -317,3 +322,25 @@ class Register(ABC):
             str: String representation of the Register instance.
         """
         return f"<{self.__class__.__name__} {self.identifier} at 0x{id(self):X} >"
+
+    def value_to_bytes(self, value: REG_VALUE) -> bytes:
+        """Convert a value to bytes according to the register's data type.
+
+        Args:
+            value: The value to convert.
+
+        Returns:
+            The value converted to bytes.
+        """
+        return convert_dtype_to_bytes(value, self.dtype)
+
+    def bytes_to_value(self, data: bytes) -> REG_VALUE:
+        """Convert bytes to a value according to the register's data type.
+
+        Args:
+            data: The bytes to convert.
+
+        Returns:
+            The bytes converted to a value.
+        """
+        return convert_bytes_to_dtype(data, self.dtype)

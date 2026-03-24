@@ -15,6 +15,7 @@ from multiping import multi_ping
 from typing_extensions import override
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
+from ingenialink.ethernet.resources import BASIC_ETHERNET_V2_XDF
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
 from ingenialink.servo import Servo
@@ -28,6 +29,7 @@ FTP_SESSION_OK_CODE = "220"
 FTP_LOGIN_OK_CODE = "230"
 FTP_FILE_TRANSFER_OK_CODE = "226"
 FTP_CLOSE_OK_CODE = "221"
+FTP_CLOSE_TIMEOUT_S = 120
 
 CMD_CHANGE_CPU = 0x67E4
 
@@ -35,10 +37,6 @@ MAX_NUM_UNSUCCESSFUL_PINGS = 3
 
 MAX_NUMBER_OF_SCAN_TRIES = 2
 SCAN_CONNECTION_TIMEOUT = 0.5
-
-VIRTUAL_DRIVE_DICTIONARY = os.path.join(
-    os.path.dirname(__file__), "..", "..", "virtual_drive", "resources", "virtual_drive.xdf"
-)
 
 
 class NetStatusListener(Thread):
@@ -49,33 +47,40 @@ class NetStatusListener(Thread):
 
     """
 
-    def __init__(self, network: "EthernetNetwork", refresh_time: float = 0.25) -> None:
+    def __init__(self, network: "EthernetNetworkBase", refresh_time: float = 0.25) -> None:
         super().__init__()
         self.__network = network
         self.__refresh_time = refresh_time
         self.__stop = False
-        self.__max_unsuccessful_pings = MAX_NUM_UNSUCCESSFUL_PINGS
+
+    def process(self) -> None:
+        """Process network status for all servos.
+
+        This method checks the status of all servos in the network and notifies
+        subscribers of any state changes (connection/disconnection).
+        """
+        for servo in self.__network.servos:
+            servo_ip = servo.ip_address
+            servo_state = self.__network.get_servo_state(servo_ip)
+            is_servo_alive = servo.is_alive(attemps=MAX_NUM_UNSUCCESSFUL_PINGS)
+            if servo_state == NetState.CONNECTED and not is_servo_alive:
+                self.__network._notify_status(servo_ip, NetDevEvt.REMOVED)
+                self.__network._set_servo_state(servo_ip, NetState.DISCONNECTED)
+            if (
+                servo_state == NetState.DISCONNECTED
+                and is_servo_alive
+                and self.__network.recover_from_disconnection(servo)
+            ):
+                self.__network._notify_status(servo_ip, NetDevEvt.ADDED)
+                self.__network._set_servo_state(servo_ip, NetState.CONNECTED)
 
     def run(self) -> None:
         """Check the network status."""
         while not self.__stop:
-            for servo in self.__network.servos:
-                unsuccessful_pings = 0
-                servo_ip = servo.ip_address
-                servo_state = self.__network.get_servo_state(servo_ip)
-                while unsuccessful_pings < self.__max_unsuccessful_pings:
-                    response = servo.is_alive()
-                    if not response:
-                        unsuccessful_pings += 1
-                    else:
-                        break
-                ping_response = unsuccessful_pings != self.__max_unsuccessful_pings
-                if servo_state == NetState.CONNECTED and not ping_response:
-                    self.__network._notify_status(servo_ip, NetDevEvt.REMOVED)
-                    self.__network._set_servo_state(servo_ip, NetState.DISCONNECTED)
-                if servo_state == NetState.DISCONNECTED and ping_response:
-                    self.__network._notify_status(servo_ip, NetDevEvt.ADDED)
-                    self.__network._set_servo_state(servo_ip, NetState.CONNECTED)
+            try:
+                self.process()
+            except Exception as e:
+                logger.exception(f"Exception occurred while processing network status: {e}")
             time.sleep(self.__refresh_time)
 
     def stop(self) -> None:
@@ -83,7 +88,7 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-class EthernetNetwork(Network):
+class EthernetNetworkBase(Network):
     """Network for all Ethernet communications.
 
     Args:
@@ -159,6 +164,8 @@ class EthernetNetwork(Network):
             logger.info(ftp_output)
             if FTP_FILE_TRANSFER_OK_CODE not in ftp_output:
                 raise ILFirmwareLoadError("Unable to load the FW file through FTP")
+            if ftp.sock is not None:
+                ftp.sock.settimeout(FTP_CLOSE_TIMEOUT_S)  # Avoid quit/close getting stuck
         logger.info("FTP session closed.")
 
     @staticmethod
@@ -279,11 +286,14 @@ class EthernetNetwork(Network):
         Returns:
             EthernetServo: Instance of the servo connected.
         """
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(connection_timeout)
-        sock.connect((target, port))
         servo = EthernetServo(
-            sock, dictionary, servo_status_listener, is_eoe, disconnect_callback=disconnect_callback
+            target,
+            dictionary,
+            port,
+            connection_timeout,
+            servo_status_listener,
+            is_eoe,
+            disconnect_callback=disconnect_callback,
         )
         try:
             servo.get_state()
@@ -313,8 +323,7 @@ class EthernetNetwork(Network):
         if len(self.servos) == 0:
             self.stop_status_listener()
         # Notify that disconnect_from_slave has been called
-        if servo._disconnect_callback:
-            servo._disconnect_callback(servo)
+        servo._disconnect_event_publisher.notify(servo)
 
     @staticmethod
     def close_socket(sock: socket.socket) -> None:
@@ -340,6 +349,33 @@ class EthernetNetwork(Network):
         """Notify subscribers of a network state change."""
         for callback in self.__observers_net_state[ip]:
             callback(status)
+
+    @override
+    def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:
+        """Recover the communication with a servo after a disconnection.
+
+        This method attempts to re-establish communication with a servo
+        that has been previously disconnected. It checks if the servo
+        is responding again.
+
+        Args:
+            servo: The servo to recover communication with.
+
+        Raises:
+            ValueError: If the servo argument is None.
+
+        Returns:
+            True if communication with the servo is recovered, False otherwise.
+        """
+        if servo is None or not isinstance(servo, EthernetServo):
+            raise ValueError("Ethernet Servo instance must be provided for recovery.")
+
+        if servo.is_alive(attemps=MAX_NUM_UNSUCCESSFUL_PINGS):
+            logger.info(f"Communication with servo at IP {servo.ip_address} recovered.")
+            return True
+        else:
+            logger.warning(f"Failed to recover communication with servo at IP {servo.ip_address}.")
+            return False
 
     def subscribe_to_status(self, ip: str, callback: Callable[[NetDevEvt], Any]) -> None:  # type: ignore [override]
         """Subscribe to network state changes.
@@ -407,7 +443,7 @@ class EthernetNetwork(Network):
             product code and revision number.
         """
         servo = self.connect_to_slave(
-            ip_address, VIRTUAL_DRIVE_DICTIONARY, connection_timeout=SCAN_CONNECTION_TIMEOUT
+            ip_address, BASIC_ETHERNET_V2_XDF, connection_timeout=SCAN_CONNECTION_TIMEOUT
         )
         try:
             product_code = servo.read("DRV_ID_PRODUCT_CODE_COCO", subnode=0)
@@ -432,3 +468,7 @@ class EthernetNetwork(Network):
     def protocol(self) -> NetProt:
         """Obtain network protocol."""
         return NetProt.ETH
+
+
+class EthernetNetwork(EthernetNetworkBase):
+    """Network for all Ethernet communications."""

@@ -27,12 +27,11 @@ dependencies = [
     "canopen==2.2.0",
     "python-can==4.4.2",
     "ingenialogger>=0.2.1",
-    "ping3==4.0.3",
-    "pysoem>=1.1.11, <1.2.0",
-    "numpy>=1.26.0",
-    "scipy==1.12.0",
-    "bitarray==2.9.2",
+    "ping3==5.1.5",
+    "pysoem>=1.1.13, <1.2.0",
+    "bitarray==3.8.0",
     "multiping==1.1.2",
+    "numpy>=1.26.0",
 ]
 
 [project.urls]
@@ -41,7 +40,7 @@ Documentation = "https://distext.ingeniamc.com/doc/ingenialink-python/latest/"
 Source = "https://github.com/ingeniamc/ingenialink-python"
 
 [tool.poetry]
-version = "7.5.1"  # base version
+version = "7.6.0"  # base version
 
 [[tool.poetry.source]]
 name = "PyPI"
@@ -54,59 +53,64 @@ priority = "supplemental"
 
 
 [build-system]
-requires = ["setuptools==75.6.0", "setuptools_scm[toml]>=8", "wheel==0.42.0", "Cython==3.0.11"]
+requires = [
+  "setuptools==75.6.0", 
+  "setuptools_scm[toml]>=8", 
+  "wheel==0.42.0", 
+  "Cython==3.0.11",
+  "setuptools_scm_policies @ http://pypi.novanta.com/packages/setuptools_scm_policies-0.1.0-py3-none-any.whl"
+]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
-version_scheme = "only-version"
-local_scheme = "node-and-date"
+version_scheme = "nm_version_scheme"
+local_scheme = "nm_local_scheme"
 write_to = "ingenialink/_version.py"
 
 [tool.setuptools]
 include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["ingenialink", "virtual_drive"]
+include = ["ingenialink"]
 
 [tool.setuptools.package-data]
 ingenialink = ["py.typed", "*.pyd"]
-virtual_drive = ["py.typed", "resources/*"]
 
 # Dependencies to run poe tasks
 [tool.poetry.group.dev]
 optional = true
 [tool.poetry.group.dev.dependencies]
 poethepoet = {extras = ["poetry-plugin"], version = "^0.35.0"}
-Cython  = "==3.0.11"
+Cython  = "==3.2.4"
 
 # Dependencies for build wheel tasks
 [tool.poetry.group.build]
 optional = true
 [tool.poetry.group.build.dependencies]
-twine = "==6.1.0"
+twine = "==6.2.0"
 
 # Dependencies for format task
 [tool.poetry.group.format]
 optional = true
 [tool.poetry.group.format.dependencies]
-ruff = "==0.9.2"
+ruff = "==0.15.2"
 
 # Dependencies for type task
 [tool.poetry.group.type]
 optional = true
 [tool.poetry.group.type.dependencies]
-mypy = "==1.10.0"
+mypy = "==1.19.1"
 
 # Dependencies for docs task
 [tool.poetry.group.docs]
 optional = true
 [tool.poetry.group.docs.dependencies]
-sphinx = "==7.3.7"
-sphinx-rtd-theme = "==2.0.0"
+sphinx = "==7.4.7"
+sphinx-rtd-theme = "==3.1.0"
 sphinxcontrib-bibtex = "==2.6.2"
-nbsphinx = "==0.9.4"
+nbsphinx = "==0.9.8"
 m2r2 = "==0.3.4"
-jinja2 = "==3.1.4"
+jinja2 = "==3.1.6"
 
 # Dependencies for tests task
 [tool.poetry.group.tests]
@@ -114,11 +118,12 @@ optional = true
 [tool.poetry.group.tests.dependencies]
 pytest = "==8.4.1"
 pytest-env = "==1.1.5"
-pytest-cov = "==2.12.1"
-pytest-mock = "==3.6.1"
+pytest-cov = "==7.0.0"
+pytest-mock = "==3.15.1"
 pytest-console-scripts = "==1.4.1"
-twisted = "==24.11.0"
-summit-testing-framework = {extras = ["ingeniamotion"], version = "==0.1.5+pr50b26"} 
+twisted = "==25.5.0"
+summit-testing-framework = {version = "==0.2.0.post234+develop.74cb3cf"}
+virtual_drive = {version = "==0.0+g8bc818283"}
 
 # -----------------------------------------------------------------------
 #                                   TASKS
@@ -140,11 +145,11 @@ cmd = "python setup.py build_ext --inplace"
 # ----------------------------- Ruff format -----------------------------
 [tool.poe.tasks.ruff-format-check]
 help = "Format check with ruff"
-cmd = "ruff format --check ingenialink tests virtual_drive"
+cmd = "ruff format --check ingenialink tests examples"
 
 [tool.poe.tasks.ruff-check]
 help = "Check with ruff"
-cmd = "ruff check ingenialink tests virtual_drive"
+cmd = "ruff check ingenialink tests examples"
 
 [tool.poe.tasks.format]
 help     = "Check format"
@@ -153,11 +158,11 @@ sequence = ["ruff-format-check", "ruff-check"]
 # ----------------------------- Ruff reformat -----------------------------
 [tool.poe.tasks.ruff-format]
 help = "Format files with ruff"
-cmd = "ruff format ingenialink tests virtual_drive"
+cmd = "ruff format ingenialink tests examples"
 
 [tool.poe.tasks.ruff-check-fix]
 help = "Fix lint errors"
-cmd = "ruff check --fix ingenialink tests virtual_drive"
+cmd = "ruff check --fix ingenialink tests examples"
 
 [tool.poe.tasks.reformat]
 help     = "Reformat files and fix lint errors"
@@ -166,7 +171,7 @@ sequence = ["ruff-format", "ruff-check-fix"]
 # ----------------------------- Mypy -----------------------------
 [tool.poe.tasks.type]
 help = "Run type checks"
-cmd = "mypy ingenialink virtual_drive examples"
+cmd = "mypy ingenialink examples"
 
 # ----------------------------- Documentation -----------------------------
 [tool.poe.tasks.docs]
@@ -188,3 +193,8 @@ cmd = "python -I -m coverage combine"
 # ----------------------------- Coverage report -----------------------------
 [tool.poe.tasks.cov-report]
 cmd = "python -I -m coverage xml"
+
+# ----------------------------- Export tests specifiers -----------------------------
+[tool.poe.tasks.export_specifier_module]
+help="Export an specifier to JSON file"
+cmd = "python -I -m summit_testing_framework.helpers.export_specifier_module"

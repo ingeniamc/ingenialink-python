@@ -15,14 +15,14 @@ from ingenialink.servo import Servo
 
 # Canopen
 from .canopen.dictionary import CanopenDictionary, CanopenDictionaryV2, CanopenDictionaryV3
-from .canopen.network import CanBaudrate, CanDevice, CanopenNetwork
+from .canopen.network import CanBaudrate, CanDevice, CanopenNetwork, CanopenNetworkBase
 from .canopen.register import CanopenRegister
 from .canopen.servo import CanopenServo
 from .dictionary import Dictionary, DictionaryV2, DictionaryV3
 
 # Ethercat
 from .ethercat.dictionary import EthercatDictionary, EthercatDictionaryV2, EthercatDictionaryV3
-from .ethercat.network import EthercatNetwork, GilReleaseConfig
+from .ethercat.network import EthercatNetwork, EthercatNetworkBase, GilReleaseConfig
 from .ethercat.register import EthercatRegister
 from .ethercat.servo import EthercatServo
 
@@ -37,7 +37,7 @@ from .network import NetDevEvt, NetProt, NetState, Network
 from .register import Register
 
 try:
-    from ._version import __version__  # noqa: F401
+    from ._version import __version__  # noqa: F401 # type: ignore[import-not-found]
 except ModuleNotFoundError:
     __version__ = "development"
 
@@ -63,6 +63,7 @@ __all__ = [
     "RegAccess",
     "RegPhy",
     "EthercatNetwork",
+    "EthercatNetworkBase",
     "EthercatServo",
     "EthercatDictionary",
     "EthercatDictionaryV2",
@@ -76,6 +77,7 @@ __all__ = [
     "EthernetRegister",
     "EthernetNetwork",
     "CanopenNetwork",
+    "CanopenNetworkBase",
     "CanopenDictionary",
     "CanopenDictionaryV2",
     "CanopenDictionaryV3",

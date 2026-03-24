@@ -1,3 +1,6 @@
+import contextlib
+from abc import ABC
+from collections.abc import Iterator
 from typing import Callable, Optional, Union
 
 import canopen
@@ -14,6 +17,7 @@ from ingenialink.emcy import EmergencyMessage
 from ingenialink.exceptions import ILIOError
 from ingenialink.register import Register
 from ingenialink.servo import Servo
+from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -32,7 +36,11 @@ class CanopenEmergencyMessage(EmergencyMessage):
         super().__init__(servo, emergency_msg.code, emergency_msg.register, emergency_msg.data)
 
 
-class CanopenServo(Servo):
+class CanopenServoBase(Servo, ABC):
+    """Declaration of the base CANopen servo behavior."""
+
+
+class CanopenServo(CanopenServoBase):
     """CANopen Servo instance.
 
     Args:
@@ -86,10 +94,11 @@ class CanopenServo(Servo):
         Args:
             subnode: Subnode of the axis. `None` by default which stores all the parameters.
             sdo_timeout: Timeout value for each SDO response.
+                Drive takes longer to respond while storing parameters.
+                The value is temporarily set to this value and then rolled back to the original one.
         """
-        self._change_sdo_timeout(sdo_timeout)
-        super().store_parameters(subnode)
-        self._change_sdo_timeout(CANOPEN_SDO_RESPONSE_TIMEOUT)
+        with self._minimum_sdo_timeout(sdo_timeout):
+            super().store_parameters(subnode)
 
     def _write_raw(self, reg: CanopenRegister, data: bytes) -> None:  # type: ignore [override]
         try:
@@ -152,6 +161,34 @@ class CanopenServo(Servo):
         """Changes the SDO timeout of the node."""
         self.__node.sdo.RESPONSE_TIMEOUT = value
 
+    @contextlib.contextmanager
+    def _minimum_sdo_timeout(self, value: float) -> Iterator[None]:
+        """Context manager to ensure a minimum SDO timeout for the node.
+
+        This context manager will only increase the current SDO timeout; it will
+        never decrease it. If the existing timeout is already greater than the
+        requested ``value``, no change is made. When the context exits, the
+        original timeout is always restored.
+
+        Args:
+            value: Minimum SDO timeout to enforce while inside the context.
+        """
+        old_timeout = self.__node.sdo.RESPONSE_TIMEOUT
+
+        if old_timeout > value:
+            # The current timeout is already higher than the requested one
+            yield
+            return
+
+        # Temporarily change the SDO timeout
+        try:
+            # Apply the temporary timeout
+            self._change_sdo_timeout(value)
+            yield
+        finally:
+            # Always roll back to the old timeout
+            self._change_sdo_timeout(old_timeout)
+
     def _is_register_valid_for_configuration_file(self, register: Register) -> bool:
         is_register_valid = super()._is_register_valid_for_configuration_file(register)
         if not is_register_valid:
@@ -164,25 +201,61 @@ class CanopenServo(Servo):
         )
 
     def _adapt_configuration_file_storage_value(
-        self, configuration_file: ConfigurationFile, register: ConfigRegister
-    ) -> Union[int, float, str, bytes]:
-        target_register = self.dictionary.registers(register.subnode).get(register.uid)
+        self,
+        configuration_file: ConfigurationFile,
+        config_register: ConfigRegister,
+        target_register: Register,
+    ) -> bytes:
+        """Adapt storage value to the current servo.
+
+        If the register is node ID dependent, the value will be adjusted
+        according to the servo node ID.
+
+        If the XCF `Register` contains a `data` attribute it will be preferred
+        and returned as-is (bytes). Otherwise, the `storage` attribute will be
+        converted to bytes using the provided `target_register.dtype`
+
+        Args:
+            configuration_file: Configuration file instance.
+            config_register: Configuration file register instance.
+            target_register: Target register instance.
+
+        Raises:
+            ValueError: If the value is not compatible with the register dtype.
+
+        Returns:
+            Adapted storage value as bytes.
+        """
+        data = super()._adapt_configuration_file_storage_value(
+            configuration_file, config_register, target_register
+        )
+
+        reg_dtype = target_register.dtype
 
         if (
             configuration_file.device.node_id is not None
             and target_register is not None
             and isinstance(target_register, CanopenRegister)
-            and target_register.dtype != RegDtype.STR
+            and reg_dtype != RegDtype.STR
             and target_register.is_node_id_dependent
         ):
-            if not isinstance(register.storage, str):
-                return register.storage - configuration_file.device.node_id + int(self.target)
-            else:
+            # Convert bytes to value
+            value = convert_bytes_to_dtype(data, reg_dtype)
+            if not isinstance(value, (int, float)):
                 raise ValueError(
-                    f"Illegal value for register with ID {register.uid}"
-                    f" and dtype {target_register.dtype}: {register.storage} is an string"
+                    f"Illegal value for register with ID {config_register.uid}"
+                    f" and dtype {target_register.dtype}: {config_register.storage}"
                 )
-        return register.storage
+
+            # Adjust value according to node ID
+            value = value - configuration_file.device.node_id + int(self.target)
+            # Convert value back to bytes
+            data = convert_dtype_to_bytes(
+                value,
+                reg_dtype,
+            )
+
+        return data
 
     @property
     def node(self) -> canopen.RemoteNode:

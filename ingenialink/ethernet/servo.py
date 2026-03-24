@@ -1,10 +1,12 @@
 import ipaddress
 import socket
+from abc import ABC
 from typing import Callable, Optional
 
 import ingenialogger
 
 from ingenialink.constants import (
+    DEFAULT_ETH_CONNECTION_TIMEOUT,
     ETH_BUF_SIZE,
     ETH_MAX_WRITE_SIZE,
     MCB_CMD_READ,
@@ -21,7 +23,11 @@ from ingenialink.utils.mcb import MCB
 logger = ingenialogger.get_logger(__name__)
 
 
-class EthernetServo(Servo):
+class EthernetServoBase(Servo, ABC):
+    """Declaration of the base Ethernet servo behavior."""
+
+
+class EthernetServo(EthernetServoBase):
     """Servo object for all the Ethernet slave functionalities.
 
     Args:
@@ -44,16 +50,21 @@ class EthernetServo(Servo):
 
     def __init__(
         self,
-        socket: socket.socket,
+        target: str,
         dictionary_path: str,
+        port: int = 1061,
+        connection_timeout: float = DEFAULT_ETH_CONNECTION_TIMEOUT,
         servo_status_listener: bool = False,
         is_eoe: bool = False,
         disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ) -> None:
         if is_eoe:
             self.interface = Interface.EoE
-        self.socket = socket
-        self.ip_address, self.port = self.socket.getpeername()
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.settimeout(connection_timeout)
+        self.socket.connect((target, port))
+        self.ip_address = target
+        self.port = port
         super().__init__(
             self.ip_address,
             dictionary_path,

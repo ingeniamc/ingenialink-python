@@ -4,8 +4,11 @@ from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 
 
 def store_restore_example(args: argparse.Namespace) -> None:
-    """Connects to the first scanned drive and store and restores the
-    current configuration."""
+    """Connects to the first scanned drive and store and restores the current configuration.
+
+    Args:
+        args: Command line arguments.
+    """
     can_device = CanDevice(args.transceiver)
     can_baudrate = CanBaudrate(args.baudrate)
     net = CanopenNetwork(device=can_device, channel=args.channel, baudrate=can_baudrate)
@@ -45,6 +48,11 @@ def store_restore_example(args: argparse.Namespace) -> None:
 
 
 def setup_command() -> argparse.Namespace:
+    """Parse input arguments.
+
+    Returns:
+        Parsed arguments.
+    """
     parser = argparse.ArgumentParser(description="Canopen example")
     parser.add_argument("-d", "--dictionary_path", help="Path to drive dictionary", required=True)
     parser.add_argument("-n", "--node_id", default=32, type=int, help="Node ID")

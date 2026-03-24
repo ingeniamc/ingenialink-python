@@ -1,17 +1,17 @@
-import os
 import re
 import shutil
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 from xml.etree import ElementTree
 
 import pytest
 from packaging import version
-from summit_testing_framework.rack_service_client import PartNumber
-from summit_testing_framework.setups import DriveCanOpenSetup, DriveEthernetSetup
+from summit_testing_framework.product_constants import PartNumber
 from summit_testing_framework.setups.specifiers import (
     RackServiceConfigSpecifier,
 )
+from virtual_drive import resources as virtual_drive_resources
 
 import tests.resources
 from ingenialink import RegAccess
@@ -27,8 +27,12 @@ from ingenialink.exceptions import (
     ILValueError,
 )
 from ingenialink.register import RegAddressType
-from ingenialink.servo import Servo, ServoState
-from virtual_drive import resources as virtual_drive_resources
+from ingenialink.servo import Servo, ServoState, StoreRestoreManager
+from ingenialink.utils._utils import convert_bytes_to_dtype
+
+if TYPE_CHECKING:
+    from summit_testing_framework.environment import Environment
+
 
 MONITORING_CH_DATA_SIZE = 4
 MONITORING_NUM_SAMPLES = 100
@@ -47,27 +51,6 @@ class RegisterUpdateTest:
         self.register = register
         self.value = value
         self.call_count += 1
-
-
-def _clean(filename):
-    if os.path.isfile(filename):
-        os.remove(filename)
-
-
-def _get_reg_address(register, descriptor):
-    if isinstance(descriptor, DriveEthernetSetup):
-        return register.address
-    elif isinstance(descriptor, DriveCanOpenSetup):
-        return register.idx
-    raise ValueError
-
-
-def wait_until_alive(servo, timeout=None):
-    init_time = time.time()
-    while not servo.is_alive():
-        if timeout is not None and (init_time + timeout) < time.time():
-            pytest.fail("The drive is unresponsive after the recovery timeout.")
-        time.sleep(1)
 
 
 def skip_if_monitoring_is_not_available(servo):
@@ -91,8 +74,8 @@ class SDOReadTimeoutManager:
         self.__net._ecat_master.sdo_read_timeout = self.__initial_value
 
 
-@pytest.fixture()
-def create_monitoring(servo, net):
+@pytest.fixture
+def create_monitoring(servo):
     skip_if_monitoring_is_not_available(servo)
     servo.monitoring_disable()
     servo.monitoring_remove_all_mapped_registers()
@@ -103,12 +86,12 @@ def create_monitoring(servo, net):
     servo.write("MON_DIST_FREQ_DIV", divisor, subnode=0)
     servo.write("MON_CFG_SOC_TYPE", 0, subnode=0)
     servo.write("MON_CFG_WINDOW_SAMP", MONITORING_NUM_SAMPLES, subnode=0)
-    yield servo, net
+    yield servo
     servo.monitoring_disable()
 
 
 @pytest.fixture()
-def create_disturbance(servo, net):
+def create_disturbance(servo):
     skip_if_monitoring_is_not_available(servo)
     data = list(range(DISTURBANCE_NUM_SAMPLES))
     servo.disturbance_disable()
@@ -117,23 +100,21 @@ def create_disturbance(servo, net):
         channel=0, uid="CL_POS_SET_POINT_VALUE", size=DISTURBANCE_CH_DATA_SIZE
     )
     servo.disturbance_write_data(0, RegDtype.S32, data)
-    yield servo, net
+    yield servo
     servo.disturbance_disable()
 
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_save_configuration(servo, net):
-    assert servo is not None and net is not None
+def test_save_configuration(servo, tmp_path) -> None:
+    filename = tmp_path / "temp_config"
 
-    filename = "temp_config"
+    servo.save_configuration(str(filename))
 
-    servo.save_configuration(filename)
+    assert filename.is_file()
 
-    assert os.path.isfile(filename)
-
-    config_file = ConfigurationFile.load_from_xcf(filename)
+    config_file = ConfigurationFile.load_from_xcf(str(filename))
 
     prod_code, rev_number = servo._get_drive_identification()
     assert config_file.device.product_code == prod_code
@@ -162,20 +143,17 @@ def test_save_configuration(servo, net):
         assert saved_register.access == RegAccess.RW
         assert registers[reg_id].address_type != RegAddressType.NVM_NONE
 
-    _clean(filename)
 
-
-@pytest.mark.no_connection
-def test_check_configuration(virtual_drive):
+def test_check_configuration(virtual_drive, tmp_path):
     server, servo = virtual_drive
 
     assert servo is not None and server is not None
 
-    filename = "temp_config"
+    filename = tmp_path / "temp_config"
 
     # Load the configuration, the subsequent check should not raise an error.
-    servo.save_configuration(filename)
-    servo.check_configuration(filename)
+    servo.save_configuration(str(filename))
+    servo.check_configuration(str(filename))
 
     # Change a random register
     register = "DRV_PROT_USER_OVER_VOLT"
@@ -193,26 +171,23 @@ def test_check_configuration(virtual_drive):
         + r" --- Expected: \d*\.\d+ | Found: "
         + str(new_value),
     ):
-        servo.check_configuration(filename)
+        servo.check_configuration(str(filename))
 
     # Load the configuration again to reset the changes we just made
     # The subsequent check should no longer raise an error.
-    servo.load_configuration(filename)
-    servo.check_configuration(filename)
-
-    _clean(filename)
+    servo.load_configuration(str(filename))
+    servo.check_configuration(str(filename))
 
 
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_load_configuration(servo, net):
-    assert servo is not None and net is not None
-    filename = "temp_config"
-    servo.save_configuration(filename)
-    assert os.path.isfile(filename)
-    servo.load_configuration(filename)
-    config_file = ConfigurationFile.load_from_xcf(filename)
+def test_load_configuration(servo, tmp_path) -> None:
+    filename = tmp_path / "temp_config"
+    servo.save_configuration(str(filename))
+    assert filename.is_file()
+    servo.load_configuration(str(filename))
+    config_file = ConfigurationFile.load_from_xcf(str(filename))
 
     for register in config_file.registers:
         # Check if the register exists in the drive
@@ -224,15 +199,16 @@ def test_load_configuration(servo, net):
             assert value == pytest.approx(register.storage, 0.0001)
         else:
             assert value == register.storage
-    _clean(filename)
 
 
-@pytest.mark.no_connection
 def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: F811
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
-    _, _, servo = virtual_drive_custom_dict(dictionary)
+    _, _, servo = virtual_drive_custom_dict(dictionary, Interface.ETH)
     test_file = tests.resources.TEST_CONFIG_FILE
-    mocker.patch("ingenialink.servo.Servo.write", side_effect=ILError("Error writing"))
+    mocker.patch(
+        "ingenialink.virtual.ethernet.servo.VirtualEthernetServo._write_raw",
+        side_effect=ILError("Error writing"),
+    )
     with pytest.raises(ILError) as exc_info:
         servo.load_configuration(test_file, strict=True)
     assert (
@@ -244,9 +220,7 @@ def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: 
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_load_configuration_file_not_found(servo, net):
-    assert servo is not None and net is not None
-
+def test_load_configuration_file_not_found(servo) -> None:
     filename = "can_config.xdf"
     with pytest.raises(FileNotFoundError):
         servo.load_configuration(filename)
@@ -256,9 +230,7 @@ def test_load_configuration_file_not_found(servo, net):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_load_configuration_invalid_subnode(setup_descriptor, servo, net, subnode):
-    assert servo is not None and net is not None
-
+def test_load_configuration_invalid_subnode(setup_descriptor, servo, subnode) -> None:
     filename = setup_descriptor.config_file
     with pytest.raises(ValueError):
         servo.load_configuration(filename, subnode=subnode)
@@ -267,14 +239,10 @@ def test_load_configuration_invalid_subnode(setup_descriptor, servo, net, subnod
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_load_configuration_to_subnode_zero(setup_descriptor, servo, net):
-    assert servo is not None and net is not None
-
+def test_load_configuration_to_subnode_zero(setup_descriptor, servo, tmp_path) -> None:
     path = setup_descriptor.config_file
     assert isinstance(path, Path)
-    filename = path.as_posix()
-    file = filename.split("/")[-1]
-    modified_path = Path(filename.replace(file, "config_0_test.xdf"))
+    modified_path = tmp_path / "config_0_test.xdf"
     shutil.copy(path, modified_path)
     with open(modified_path, encoding="utf-8") as xml_file:
         tree = ElementTree.parse(xml_file)
@@ -296,7 +264,49 @@ def test_load_configuration_to_subnode_zero(setup_descriptor, servo, net):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_store_parameters(servo, environment):
+@pytest.mark.valid_versions_for_standard_comocos(max="2.8.9")
+@pytest.mark.valid_versions_for_standard_cocomoco(max="2.8.9")
+def test_store_parameters_timed_recovery(servo, environment: "Environment", mocker) -> None:
+    user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
+
+    # This drive does not have any status register for store operation
+    assert len(list(servo.dictionary.get_registers(StoreRestoreManager.STORE_STATUS_MOCO))) == 0
+    assert len(list(servo.dictionary.get_registers(StoreRestoreManager.STORE_STATUS_COCO))) == 0
+
+    initial_user_over_voltage_value = servo.read(user_over_voltage_register)
+    new_user_over_voltage_value = initial_user_over_voltage_value + 5
+
+    servo.write(user_over_voltage_register, new_user_over_voltage_value)
+
+    assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
+
+    recovery_with_time_spy = mocker.spy(
+        servo._Servo__store_restore_manager, "_StoreRestoreManager__recovery_with_time"
+    )
+
+    servo.store_parameters()
+
+    # Assert the time-based recovery was invoked once.
+    recovery_with_time_spy.assert_called_once()
+
+    assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
+
+    drives_reconnected = environment.power_cycle(
+        wait_for_drives=False, reconnect_drives=True, reconnect_timeout=20
+    )
+    assert drives_reconnected is True, "The drive is unresponsive after the recovery timeout."
+
+    assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
+
+
+@pytest.mark.ethercat
+@pytest.mark.valid_versions_for_standard_comocos(min="2.9.0")
+@pytest.mark.valid_versions_for_standard_cocomoco(min="2.9.0")
+def test_store_parameters_polling_status(servo, environment: "Environment", mocker) -> None:
+    # Both registers exist in this dictionary
+    servo.dictionary.get_register("DRV_STORE_STATUS_MOCO")
+    servo.dictionary.get_register("DRV_STORE_STATUS_COCO")
+
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
     initial_user_over_voltage_value = servo.read(user_over_voltage_register)
@@ -306,19 +316,25 @@ def test_store_parameters(servo, environment):
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
+    polling_status_spy = mocker.spy(
+        servo._Servo__store_restore_manager, "_StoreRestoreManager__recovery_by_polling_status"
+    )
+
     servo.store_parameters()
 
-    assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
+    # Assert the polling-based recovery path was invoked
+    polling_status_spy.assert_called_once()
 
-    environment.power_cycle(wait_for_drives=False)
-
-    wait_until_alive(servo, timeout=20)
+    drives_reconnected = environment.power_cycle(
+        wait_for_drives=False, reconnect_drives=True, reconnect_timeout=20
+    )
+    assert drives_reconnected is True, "The drive is unresponsive after the recovery timeout."
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
 
 @pytest.mark.fsoe
-def test_store_safe_parameters(servo, environment):
+def test_store_safe_parameters(servo, environment: "Environment") -> None:
     ss1_time_to_sto_register = "FSOE_SS1_TIME_TO_STO_1"
     # Change the value of a safe parameter
     initial_register_value = servo.read(ss1_time_to_sto_register)
@@ -330,9 +346,10 @@ def test_store_safe_parameters(servo, environment):
     # Store the parameters
     servo.store_parameters()
     # Power cycle the drive
-    environment.power_cycle(wait_for_drives=False)
-    # Wait until the drive recovers from the power cycle
-    wait_until_alive(servo, timeout=20)
+    drives_reconnected = environment.power_cycle(
+        wait_for_drives=False, reconnect_drives=True, reconnect_timeout=20
+    )
+    assert drives_reconnected is True, "The drive is unresponsive after the recovery timeout."
     # Verify that the value is retained after power cycling
     assert servo.read(ss1_time_to_sto_register) == new_register_value
 
@@ -340,7 +357,10 @@ def test_store_safe_parameters(servo, environment):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_restore_parameters(servo, environment):
+@pytest.mark.valid_versions_for_standard_comocos(
+    max="2.8.0"
+)  # Pending investigation of failure with 2.9.0 https://novantamotion.atlassian.net/browse/INGK-1251
+def test_restore_parameters(servo, environment: "Environment") -> None:
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
     new_user_over_voltage_value = servo.read(user_over_voltage_register) + 5
@@ -353,15 +373,16 @@ def test_restore_parameters(servo, environment):
 
     assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
-    environment.power_cycle(wait_for_drives=False)
-
-    wait_until_alive(servo, timeout=20)
+    drives_reconnected = environment.power_cycle(
+        wait_for_drives=False, reconnect_drives=True, reconnect_timeout=20
+    )
+    assert drives_reconnected is True, "The drive is unresponsive after the recovery timeout."
 
     assert servo.read(user_over_voltage_register) != new_user_over_voltage_value
 
 
 @pytest.mark.fsoe
-def test_restore_safe_parameters(servo, environment):
+def test_restore_safe_parameters(servo, environment: "Environment") -> None:
     ss1_time_to_sto_register = "FSOE_SS1_TIME_TO_STO_1"
     # Change the value of a safe parameter
     initial_register_value = servo.read(ss1_time_to_sto_register)
@@ -373,9 +394,10 @@ def test_restore_safe_parameters(servo, environment):
     # Restore parameters
     servo.restore_parameters()
     # Power cycle the drive
-    environment.power_cycle(wait_for_drives=False)
-    # Wait until the drive recovers from the power cycle
-    wait_until_alive(servo, timeout=20)
+    drives_reconnected = environment.power_cycle(
+        wait_for_drives=False, reconnect_drives=True, reconnect_timeout=20
+    )
+    assert drives_reconnected is True, "The drive is unresponsive after the recovery timeout."
     # Verify that the value is restored to the default value after power cycling
     assert servo.read(ss1_time_to_sto_register) != new_register_value
 
@@ -383,9 +405,7 @@ def test_restore_safe_parameters(servo, environment):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_read(servo, net):
-    assert servo is not None and net is not None
-
+def test_read(servo) -> None:
     value = servo.read("DRV_STATE_STATUS")
     assert value is not None
 
@@ -393,9 +413,7 @@ def test_read(servo, net):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_write(servo, net):
-    assert servo is not None and net is not None
-
+def test_write(servo) -> None:
     reg = "CL_AUX_FBK_SENSOR"
     value = 4
 
@@ -423,7 +441,7 @@ def test_monitoring_enable_disable(servo):
 @pytest.mark.canopen
 @pytest.mark.ethercat
 def test_monitoring_remove_data(create_monitoring):
-    servo, _ = create_monitoring
+    servo = create_monitoring
     servo.monitoring_enable()
     servo.write("MON_CMD_FORCE_TRIGGER", 1, subnode=0)
     assert servo.read("MON_CFG_BYTES_VALUE", subnode=0) > 0
@@ -458,7 +476,7 @@ def test_monitoring_map_register(servo):
 @pytest.mark.canopen
 @pytest.mark.ethercat
 def test_monitoring_data_size(create_monitoring):
-    servo, _ = create_monitoring
+    servo = create_monitoring
     servo.monitoring_enable()
     servo.write("MON_CMD_FORCE_TRIGGER", 1, subnode=0)
     assert servo.monitoring_get_bytes_per_block() == MONITORING_CH_DATA_SIZE
@@ -471,7 +489,7 @@ def test_monitoring_data_size(create_monitoring):
 @pytest.mark.canopen
 @pytest.mark.ethercat
 def test_monitoring_read_data(create_monitoring):
-    servo, _ = create_monitoring
+    servo = create_monitoring
     servo.monitoring_enable()
     servo.write("MON_CMD_FORCE_TRIGGER", 1, subnode=0)
     time.sleep(1)
@@ -500,7 +518,7 @@ def test_disturbance_enable_disable(servo):
 @pytest.mark.canopen
 @pytest.mark.ethercat
 def test_disturbance_remove_data(create_disturbance):
-    servo, _ = create_disturbance
+    servo = create_disturbance
     servo.disturbance_enable()
     assert (
         servo.read("DIST_CFG_BYTES", subnode=0)
@@ -537,7 +555,7 @@ def test_disturbance_map_register(servo):
 @pytest.mark.canopen
 @pytest.mark.ethercat
 def test_disturbance_data_size(create_disturbance):
-    servo, _ = create_disturbance
+    servo = create_disturbance
     servo.disturbance_enable()
     assert servo.disturbance_data_size == DISTURBANCE_CH_DATA_SIZE * DISTURBANCE_NUM_SAMPLES
     servo.disturbance_remove_data()
@@ -626,13 +644,12 @@ def test_disturbance_overflow(servo):
         servo.disturbance_write_data(0, RegDtype.U16, data)
 
 
-@pytest.mark.no_connection
 def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
     user_over_voltage_uid = "DRV_PROT_USER_OVER_VOLT"
     register_update_callback = RegisterUpdateTest()
 
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
-    _, _, servo = virtual_drive_custom_dict(dictionary)
+    _, _, servo = virtual_drive_custom_dict(dictionary, Interface.ETH)
     servo.register_update_subscribe(register_update_callback.register_update_test)
 
     previous_reg_value = servo.read(user_over_voltage_uid, subnode=1)
@@ -653,7 +670,34 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
     servo.write(user_over_voltage_uid, data=previous_reg_value, subnode=1)
 
 
-@pytest.mark.no_connection
+@pytest.mark.virtual
+def test_subscribe_disconnection(virtual_drive_custom_dict):  # noqa: F811
+    class DisconnectionTest:
+        def __init__(self):
+            self.call_count = 0
+            self.servo = None
+
+        def disconnection_callback(self, servo):
+            self.call_count += 1
+            self.servo = servo
+
+    disconnection_callback = DisconnectionTest()
+
+    dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
+    _, net, servo = virtual_drive_custom_dict(dictionary, Interface.ETH)
+    servo.disconnect_event.subscribe(disconnection_callback.disconnection_callback)
+
+    # Initially not called
+    assert disconnection_callback.call_count == 0
+
+    # Disconnect the servo
+    net.disconnect_from_slave(servo)
+
+    # Callback should have been called
+    assert disconnection_callback.call_count == 1
+    assert disconnection_callback.servo == servo
+
+
 @pytest.mark.parametrize(
     "status_word, state",
     [
@@ -807,9 +851,12 @@ def test__adapt_configuration_file_storage_value(servo, uid, subnode, value, nod
     node_id_reg = servo.dictionary.registers(subnode)[uid]
     node_id_reg._CanopenRegister__is_node_id_dependent = dependent
     conf_file.add_register(node_id_reg, value)
-    adapted_register = servo._adapt_configuration_file_storage_value(
-        conf_file, conf_file.registers[0]
+    adapted_register_bytes = servo._adapt_configuration_file_storage_value(
+        configuration_file=conf_file,
+        config_register=conf_file.registers[0],
+        target_register=node_id_reg,
     )
+    adapted_register = convert_bytes_to_dtype(adapted_register_bytes, node_id_reg.dtype)
     if dependent:
         assert adapted_register == (value - node_id + servo.target)
     else:

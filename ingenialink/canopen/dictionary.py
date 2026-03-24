@@ -94,7 +94,7 @@ class CanopenDictionaryV2(CanopenDictionary, DictionaryV2):
             registers=[
                 CanopenRegister(
                     identifier="MON_DATA_VALUE",
-                    units="none",
+                    units=None,
                     idx=0x58B2,
                     subidx=0x00,
                     pdo_access=RegCyclicType.CONFIG,
@@ -113,7 +113,7 @@ class CanopenDictionaryV2(CanopenDictionary, DictionaryV2):
             registers=[
                 CanopenRegister(
                     identifier="DIST_DATA_VALUE",
-                    units="none",
+                    units=None,
                     idx=0x58B4,
                     subidx=0x00,
                     pdo_access=RegCyclicType.CONFIG,

@@ -23,6 +23,7 @@ def test_pdos_min_refresh_rate(net: "EthercatNetwork"):
 
 
 @pytest.mark.ethercat
+@pytest.mark.usefixtures("servo")
 def test_pdos_watchdog_exception_auto(net: "EthercatNetwork"):
     exceptions = []
 
@@ -36,10 +37,11 @@ def test_pdos_watchdog_exception_auto(net: "EthercatNetwork"):
     net.pdo_manager.unsubscribe_to_exceptions(exception_callback)
     assert len(exceptions) > 0
     exception = exceptions[0]
-    assert str(exception) == "The sampling time is too high. The max sampling time is 3276.75 ms."
+    assert str(exception) == "The sampling time is too high. The max sampling time is 3.27675 s."
 
 
 @pytest.mark.ethercat
+@pytest.mark.usefixtures("servo")
 def test_pdos_watchdog_exception_manual(net: "EthercatNetwork"):
     exceptions = []
 
@@ -54,7 +56,7 @@ def test_pdos_watchdog_exception_manual(net: "EthercatNetwork"):
     assert len(exceptions) > 0
     exception = exceptions[0]
     assert (
-        str(exception) == "The watchdog timeout is too high. The max watchdog timeout is 6553.5 ms."
+        str(exception) == "The watchdog timeout is too high. The max watchdog timeout is 6.5535 s."
     )
 
 

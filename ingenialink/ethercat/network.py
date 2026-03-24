@@ -4,11 +4,14 @@ import re
 import threading
 import time
 from collections import OrderedDict, defaultdict
+from collections.abc import Generator
+from contextlib import contextmanager
 from enum import Enum
 from threading import Thread
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union, cast
+from typing import TYPE_CHECKING, Callable, Optional, Union, cast
 
 import ingenialogger
+from typing_extensions import override
 
 from ingenialink.pdo_network_manager import PDONetworkManager
 from ingenialink.servo import Servo
@@ -150,7 +153,7 @@ class NetStatusListener(Thread):
             if (
                 is_servo_alive
                 and servo_state == NetState.DISCONNECTED
-                and self.__network._recover_from_disconnection()
+                and self.__network.recover_from_disconnection()
             ):
                 self.__network._notify_status(slave_id, NetDevEvt.ADDED)
                 self.__network._set_servo_state(slave_id, NetState.CONNECTED)
@@ -169,7 +172,79 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-class EthercatNetwork(Network):
+class EthercatNetworkBase(Network):
+    """Base class for EtherCAT network communications."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._observers_net_state: dict[Union[int, str], list[Callable[[NetDevEvt], None]]] = (
+            defaultdict(list)
+        )
+
+    def subscribe_to_status(
+        self, target: Union[int, str], callback: Callable[[NetDevEvt], None]
+    ) -> None:
+        """Subscribe to network state changes.
+
+        Args:
+            target: Target slave ID.
+            callback: Callback function to execute on state changes.
+
+        """
+        if callback in self._observers_net_state[target]:
+            logger.info("Callback already subscribed.")
+            return
+        self._observers_net_state[target].append(callback)
+
+    def unsubscribe_from_status(
+        self, target: Union[int, str], callback: Callable[[NetDevEvt], None]
+    ) -> None:
+        """Unsubscribe from network state changes.
+
+        Args:
+            target: Target slave ID.
+            callback: Callback function previously subscribed.
+
+        """
+        if callback not in self._observers_net_state[target]:
+            logger.info("Callback not subscribed.")
+            return
+        self._observers_net_state[target].remove(callback)
+
+    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
+        """Get the state of a servo in the network.
+
+        Args:
+            servo_id: Servo ID.
+
+        Returns:
+            Current state of the servo.
+
+        """
+        return self._servos_state[servo_id]
+
+    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
+        """Set the state of a servo in the network.
+
+        Args:
+            servo_id: Servo ID.
+            state: New servo state.
+
+        """
+        self._servos_state[servo_id] = state
+
+    def _notify_status(self, target: Union[int, str], status: NetDevEvt) -> None:
+        """Notify subscribers of a network state change."""
+        for callback in self._observers_net_state[target]:
+            callback(status)
+
+    @property
+    def protocol(self) -> NetProt:
+        """Obtain network protocol."""
+        return NetProt.ECAT
+
+
+class EthercatNetwork(EthercatNetworkBase):
     """Network for all EtherCAT communications.
 
     Args:
@@ -217,7 +292,6 @@ class EthercatNetwork(Network):
         self.interface_name: str = interface_name
         self.servos: list[EthercatServo] = []
         self.__listener_net_status: Optional[NetStatusListener] = None
-        self.__observers_net_state: dict[int, list[Any]] = defaultdict(list)
         self._ecat_master: pysoem.CdefMaster = pysoem.Master()
         self.__gil_release_config = gil_release_config
         self._ecat_master.always_release_gil = self.__gil_release_config.always_release
@@ -424,13 +498,10 @@ class EthercatNetwork(Network):
         """
         if self.servos:
             raise ILError("Some slaves are already connected")
-        is_master_running_before_scan = self.__is_master_running
-        if not is_master_running_before_scan:
-            self._start_master()
-        self.__init_nodes()
-        slaves_found = self.__last_init_nodes
-        if not is_master_running_before_scan:
-            self.close_ecat_master(release_reference=False)
+        with self.running():
+            self.__init_nodes()
+            # Check the slaves before exiting context (which may clear __last_init_nodes)
+            slaves_found = self.__last_init_nodes
         return slaves_found
 
     def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
@@ -459,6 +530,9 @@ class EthercatNetwork(Network):
                 True to release the GIL, False otherwise.
                 If not specified, default GIL release configuration will be used.
         """
+        # Ensure network reference is set when master is running (important for no-GIL operations)
+        self.__ensure_network_reference()
+
         if release_gil is None:
             release_gil = self.__gil_release_config.config_init
         self._lock.acquire()
@@ -514,8 +588,7 @@ class EthercatNetwork(Network):
             raise ValueError("Invalid slave ID value")
         if not self.__is_master_running:
             self._start_master()
-            if self not in ETHERCAT_NETWORK_REFERENCES:
-                set_network_reference(network=self)
+            self.__ensure_network_reference()
         if slave_id not in self.__last_init_nodes:
             self.__init_nodes()
         if len(self.__last_init_nodes) == 0:
@@ -573,8 +646,7 @@ class EthercatNetwork(Network):
             self.stop_status_listener()
             self.close_ecat_master()
         # Notify that disconnect_from_slave has been called
-        if servo._disconnect_callback:
-            servo._disconnect_callback(servo)
+        servo._disconnect_event_publisher.notify(servo)
 
     def config_pdo_maps(self) -> None:
         """Configure the PDO maps.
@@ -595,7 +667,10 @@ class EthercatNetwork(Network):
 
         Raises:
             ILStateError: If slaves can not reach SafeOp or Op state.
+            RuntimeError: If EtherCAT master is not running.
         """
+        if not self.__is_master_running:
+            raise RuntimeError("EtherCAT master is not running.")
         op_servo_list = [servo for servo in self.servos if servo._rpdo_maps or servo._tpdo_maps]
         if not op_servo_list:
             logger.warning("There are no PDOs assigned to any connected slave.")
@@ -620,6 +695,9 @@ class EthercatNetwork(Network):
 
     def stop_pdos(self) -> None:
         """For all slaves not in PreOp state, set state to PreOp."""
+        if not self.__is_master_running:
+            logger.warning("EtherCAT master is not running, no PDOs to stop.")
+            return
         self._ecat_master.read_state()
         restore_servos_list = [
             servo for servo in self.servos if servo.slave.state != pysoem.PREOP_STATE
@@ -645,13 +723,16 @@ class EthercatNetwork(Network):
             ILWrongWorkingCountError: If processdata working count is wrong
 
         """
+        # Ensure network reference is set before releasing GIL
+        self.__ensure_network_reference()
+
         if release_gil is None:
             release_gil = self.__gil_release_config.send_receive_processdata
         for servo in self.servos:
             servo.generate_pdo_outputs()
         self._lock.acquire()
         if self._overlapping_io_map:
-            self._ecat_master.send_overlap_processdata()
+            self._ecat_master.send_overlap_processdata(release_gil=release_gil)
         else:
             self._ecat_master.send_processdata(release_gil=release_gil)
         processdata_wkc = self._ecat_master.receive_processdata(
@@ -723,36 +804,6 @@ class EthercatNetwork(Network):
             for drive in node_list
         )
 
-    def subscribe_to_status(  # type: ignore [override]
-        self, slave_id: int, callback: Callable[[NetDevEvt], None]
-    ) -> None:
-        """Subscribe to network state changes.
-
-        Args:
-            slave_id: Slave ID of the drive to subscribe.
-            callback: Callback function.
-
-        """
-        if callback in self.__observers_net_state[slave_id]:
-            logger.info("Callback already subscribed.")
-            return
-        self.__observers_net_state[slave_id].append(callback)
-
-    def unsubscribe_from_status(  # type: ignore [override]
-        self, slave_id: int, callback: Callable[[str, NetDevEvt], None]
-    ) -> None:
-        """Unsubscribe from network state changes.
-
-        Args:
-            slave_id: Slave ID of the drive to subscribe.
-            callback: Callback function.
-
-        """
-        if callback not in self.__observers_net_state[slave_id]:
-            logger.info("Callback not subscribed.")
-            return
-        self.__observers_net_state[slave_id].remove(callback)
-
     def start_status_listener(self) -> None:
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
         if self.__listener_net_status is None:
@@ -799,58 +850,56 @@ class EthercatNetwork(Network):
 
         if not isinstance(slave_id, int) or slave_id < 0:
             raise ValueError("Invalid slave ID value")
-        is_master_running_before_loading_firmware = self.__is_master_running
-        if not is_master_running_before_loading_firmware:
-            self._start_master()
+        with self.running():
             self.__init_nodes()
-        if len(self.__last_init_nodes) == 0:
-            raise ILError("Could not find any slaves in the network.")
-        if slave_id not in self.__last_init_nodes:
-            raise ILError(f"Slave {slave_id} was not found.")
+            if len(self.__last_init_nodes) == 0:
+                raise ILError("Could not find any slaves in the network.")
+            if slave_id not in self.__last_init_nodes:
+                raise ILError(f"Slave {slave_id} was not found.")
 
-        slave = self._ecat_master.slaves[slave_id - 1]
-        error_messages: list[str] = []
-        for iteration in range(self.__MAX_FOE_TRIES):
-            if not boot_in_app:
-                self._force_boot_mode(slave)
-            if not self._switch_to_boot_state(slave):
-                error_message = f"Attempt {iteration + 1}: The slave cannot reach the Boot state."
-                logger.info(error_message)
+            slave = self._ecat_master.slaves[slave_id - 1]
+            error_messages: list[str] = []
+            for iteration in range(self.__MAX_FOE_TRIES):
+                if not boot_in_app:
+                    self._force_boot_mode(slave)
+                if not self._switch_to_boot_state(slave):
+                    error_message = (
+                        f"Attempt {iteration + 1}: The slave cannot reach the Boot state."
+                    )
+                    logger.info(error_message)
+                    error_messages.append(error_message)
+                    continue
+                foe_write_result = self._write_foe(slave, fw_file, password)
+                if foe_write_result > 0:
+                    break
+                error_message = (
+                    f"Attempt {iteration + 1}: "
+                    f"{self.__get_foe_error_message(error_code=foe_write_result)}."
+                )
+                logger.info(f"FoE write failed: {error_message}")
                 error_messages.append(error_message)
-                continue
-            foe_write_result = self._write_foe(slave, fw_file, password)
-            if foe_write_result > 0:
-                break
-            error_message = (
-                f"Attempt {iteration + 1}: "
-                f"{self.__get_foe_error_message(error_code=foe_write_result)}."
-            )
-            logger.info(f"FoE write failed: {error_message}")
-            error_messages.append(error_message)
-            self.__init_nodes()
-        else:
-            combined_errors = "\n".join(error_messages)
-            raise ILFirmwareLoadError(
-                f"The firmware file could not be loaded correctly after {self.__MAX_FOE_TRIES}"
-                f" attempts. Errors:\n{combined_errors}"
-            )
-        start_time = time.time()
-        recovered = False
-        while time.time() < (start_time + self.__FOE_RECOVERY_TIMEOUT_S) and not recovered:
-            self.__init_nodes()
-            slave.state = pysoem.PREOP_STATE
-            slave.write_state()
-            recovered = (
-                slave.state_check(pysoem.PREOP_STATE, ECAT_STATE_CHANGE_TIMEOUT_US)
-                == pysoem.PREOP_STATE
-            )
-            time.sleep(self.__FOE_RECOVERY_SLEEP_S)
-        if recovered:
-            logger.info("Firmware updated successfully")
-        else:
-            logger.info(f"The slave {slave_id} cannot reach the PreOp state.")
-        if not is_master_running_before_loading_firmware:
-            self.close_ecat_master(release_reference=False)
+                self.__init_nodes()
+            else:
+                combined_errors = "\n".join(error_messages)
+                raise ILFirmwareLoadError(
+                    f"The firmware file could not be loaded correctly after {self.__MAX_FOE_TRIES}"
+                    f" attempts. Errors:\n{combined_errors}"
+                )
+            start_time = time.time()
+            recovered = False
+            while time.time() < (start_time + self.__FOE_RECOVERY_TIMEOUT_S) and not recovered:
+                self.__init_nodes()
+                slave.state = pysoem.PREOP_STATE
+                slave.write_state()
+                recovered = (
+                    slave.state_check(pysoem.PREOP_STATE, ECAT_STATE_CHANGE_TIMEOUT_US)
+                    == pysoem.PREOP_STATE
+                )
+                time.sleep(self.__FOE_RECOVERY_SLEEP_S)
+            if recovered:
+                logger.info("Firmware updated successfully")
+            else:
+                logger.info(f"The slave {slave_id} cannot reach the PreOp state.")
 
     def _switch_to_boot_state(self, slave: "CdefSlave") -> bool:
         """Transitions the slave to the boot state.
@@ -913,6 +962,9 @@ class EthercatNetwork(Network):
             The FOE operation result.
 
         """
+        # Ensure network reference is set before releasing GIL
+        self.__ensure_network_reference()
+
         if release_gil is None:
             release_gil = self.__gil_release_config.foe_read_write
         with open(file_path, "rb") as file:
@@ -933,48 +985,70 @@ class EthercatNetwork(Network):
         self._ecat_master.open(self.interface_name)
         self.__is_master_running = True
 
-    @property
-    def protocol(self) -> NetProt:
-        """NetProt: Obtain network protocol."""
-        return NetProt.ECAT
+    def __ensure_network_reference(self) -> None:
+        """Ensure the network reference is set.
 
-    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
-        """Get the state of a servo that's a part of network.
-
-        The state indicates if the servo is connected or disconnected.
-
-        Args:
-            servo_id: The servo's slave ID.
-
-        Raises:
-            ValueError: If the servo ID is not an integer.
-
-        Returns:
-            The servo's state.
+        This is important for no-GIL operations to prevent garbage collection issues.
         """
-        if not isinstance(servo_id, int):
-            raise ValueError("The servo ID must be an int.")
-        return self._servos_state[servo_id]
+        if self not in ETHERCAT_NETWORK_REFERENCES:
+            set_network_reference(network=self)
 
-    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
-        """Set the state of a servo that's a part of network.
+    @contextmanager
+    def running(self) -> Generator["EthercatNetwork", None, None]:
+        """Context manager for the EtherCAT network.
 
-        Args:
-            servo_id: The servo's slave ID.
-            state: The servo's state.
+        Ensures the network reference is set and starts the master if it's not already running.
+        The context manager tracks whether it started the master (via local variable on the stack)
+        to decide whether to close it on exit.
 
+        This implementation uses @contextmanager decorator to naturally keep state on the stack,
+        avoiding issues with nested contexts that would occur with instance variables.
+
+        Yields:
+            The network instance.
         """
-        self._servos_state[servo_id] = state
+        # Track if we need to start the master (local variable, naturally stack-based)
+        context_opened_master = self.__is_master_running is False
 
-    def _notify_status(self, slave_id: int, status: NetDevEvt) -> None:
-        """Notify subscribers of a network state change."""
-        for callback in self.__observers_net_state[slave_id]:
-            callback(status)
+        # Start the master if it's not already running
+        if context_opened_master:
+            self._start_master()
 
-    def _recover_from_disconnection(self) -> bool:
+        # Ensure network reference is set (might have been released previously)
+        self.__ensure_network_reference()
+
+        exception = None
+        try:
+            yield self
+        except Exception as e:
+            exception = e
+        finally:
+            # Only close and release if this context opened the master
+            if not context_opened_master:
+                if exception is not None:
+                    raise exception
+                return
+
+            if self.__is_master_running:
+                try:
+                    self.close_ecat_master(release_reference=True)
+                except Exception as e:
+                    logger.error(f"Error cleaning up EtherCAT network in context manager: {e}")
+                    raise e
+            elif self in ETHERCAT_NETWORK_REFERENCES:
+                release_network_reference(network=self)
+
+            if exception is not None:
+                raise exception
+
+    @override
+    def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:
         """Recover the CoE communication after a disconnection.
 
         All the connected slaves need to transitioned to the PreOp state.
+
+        Args:
+            servo: not used in this implementation but kept for interface consistency.
 
         Returns:
             True if all the connected slaves reach the PreOp state.

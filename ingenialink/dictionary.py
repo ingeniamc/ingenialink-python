@@ -73,8 +73,6 @@ class Interface(enum.Enum):
     """EtherCAT"""
     EoE = enum.auto()
     """Ethernet over EtherCAT"""
-    VIRTUAL = enum.auto()
-    """Virtual Drive"""
 
 
 class SubnodeType(enum.Enum):
@@ -270,8 +268,25 @@ class DictionaryError:
 
 
 @dataclass
+class DictionaryTable:
+    """Class to store a dictionary table."""
+
+    id: str
+    """Table ID."""
+
+    axis: Optional[int]
+    """Axis the table belongs to. None if belongs to non-multiaxis register."""
+
+    id_index: str
+    """The uid of the register used to access the table index."""
+
+    id_value: str
+    """The uid of the register used to read/write the table value"""
+
+
+@dataclass
 class DictionaryDescriptor:
-    """Class to store a dictionary error."""
+    """Class to store a dictionary descriptor."""
 
     firmware_version: Optional[str] = None
     """Firmware version declared in the dictionary."""
@@ -281,6 +296,20 @@ class DictionaryDescriptor:
     """Part number declared in the dictionary."""
     revision_number: Optional[int] = None
     """Revision number declared in the dictionary."""
+    interface: Optional[Interface] = None
+    """Interface declared in the dictionary."""
+
+
+@dataclass
+class DictionaryDescriptors:
+    """Class to store dictionary descriptors for all interfaces."""
+
+    major_version: Optional[int] = None
+    """Major version declared in the dictionary."""
+    image: Optional[str] = None
+    """Drive's image as str."""
+    interface_descriptor: Optional[list[DictionaryDescriptor]] = None
+    """List of interface descriptors declared in the dictionary."""
 
 
 class XMLBase(ABC):
@@ -386,6 +415,7 @@ class Dictionary(XMLBase, ABC):
         self.safety_modules = {}
         self._registers = {}
         self.subnodes = {}
+        self._tables = dict[int, dict[str, DictionaryTable]]()
         self.path = dictionary_path
         """Path of the dictionary."""
         self.interface = interface
@@ -478,6 +508,7 @@ class Dictionary(XMLBase, ABC):
         other_dict_copy = copy.deepcopy(other_dict)
         self_dict_copy._merge_registers(other_dict_copy)
         self_dict_copy._merge_errors(other_dict_copy)
+        self_dict_copy._merge_tables(other_dict_copy)
         self_dict_copy._merge_attributes(other_dict_copy)
         self_dict_copy._set_image(other_dict_copy)
         return self_dict_copy
@@ -500,8 +531,17 @@ class Dictionary(XMLBase, ABC):
         Yields:
             Register
         """
-        for subnode in self._registers.values():
-            yield from subnode.values()
+        for subnode_registers in self._registers.values():
+            yield from subnode_registers.values()
+
+    def all_tables(self) -> Iterator[DictionaryTable]:
+        """Iterator for all tables.
+
+        Yields:
+            Table
+        """
+        for subnode_tables in self._tables.values():
+            yield from subnode_tables.values()
 
     def all_objs(self) -> Iterator[CanOpenObject]:
         """Iterator for all items.
@@ -511,6 +551,20 @@ class Dictionary(XMLBase, ABC):
         """
         for subnode in self.items.values():
             yield from subnode.values()
+
+    def get_registers(self, uid: str) -> Iterator[Register]:
+        """Gets all registers with the targeted uid.
+
+        Args:
+            uid: register uid.
+
+        Yields:
+            Registers with the targeted uid.
+        """
+        for axis in self.subnodes:
+            axis_registers = self.registers(axis)
+            if uid in axis_registers:
+                yield axis_registers[uid]
 
     @weak_lru()
     def get_register(self, uid: str, axis: Optional[int] = None) -> Register:
@@ -537,11 +591,7 @@ class Dictionary(XMLBase, ABC):
                 raise KeyError(f"Register {uid} not present in {axis=}")
             return registers[uid]
 
-        matching_registers: list[Register] = []
-        for axis in self.subnodes:
-            axis_registers = self.registers(axis)
-            if uid in axis_registers:
-                matching_registers.append(axis_registers[uid])
+        matching_registers = list(self.get_registers(uid))
 
         if len(matching_registers) == 0:
             raise ValueError(f"Register {uid} not found.")
@@ -549,6 +599,41 @@ class Dictionary(XMLBase, ABC):
             raise ValueError(f"Register {uid} found in multiple axis. Axis should be specified.")
 
         return matching_registers[0]
+
+    @weak_lru()
+    def get_table(self, uid: str, axis: Optional[int] = None) -> DictionaryTable:
+        """Gets the targeted table.
+
+        Args:
+            uid: table uid.
+            axis: axis. Should be specified if multiaxis, None otherwise.
+
+        Raises:
+            KeyError: if the specified axis does not exist.
+            KeyError: if the table is not present in the specified axis.
+            ValueError: if the table is not found in any axis, if axis is not provided.
+            ValueError: if the table is found in multiple axis, if axis is provided.
+
+        Returns:
+            table.
+        """
+        if axis is not None:
+            if axis not in self._tables:
+                raise KeyError(f"{axis=} does not exist.")
+            if uid not in self._tables[axis]:
+                raise KeyError(f"Table {uid} not present in {axis=}")
+            return self._tables[axis][uid]
+
+        matching_tables: list[DictionaryTable] = [
+            self._tables[axis][uid] for axis in self._tables if uid in self._tables[axis]
+        ]
+
+        if len(matching_tables) == 0:
+            raise ValueError(f"Table {uid} not found.")
+        if len(matching_tables) > 1:
+            raise ValueError(f"Table {uid} found in multiple axis. Axis should be specified.")
+
+        return matching_tables[0]
 
     @abstractmethod
     def read_dictionary(self) -> None:
@@ -653,6 +738,18 @@ class Dictionary(XMLBase, ABC):
 
         """
         self.errors.update(other_dict.errors)
+
+    def _merge_tables(self, other_dict: "Dictionary") -> None:
+        """Add the tables from another dictionary to the dictionary instance.
+
+        Args:
+            other_dict: The other dictionary instance.
+
+        """
+        for axis, tables in other_dict._tables.items():
+            if axis not in self._tables:
+                self._tables[axis] = {}
+            self._tables[axis].update(tables)
 
     def _set_image(self, other_dict: "Dictionary") -> None:
         """Set the image attribute.
@@ -795,6 +892,13 @@ class DictionaryV3(Dictionary):
     __ERRORS_ELEMENT = "Errors"
     __ERROR_ELEMENT = "Error"
 
+    __TABLES_ELEMENT = "Tables"
+    __TABLE_ELEMENT = "Table"
+    __TABLE_ID_ATTR = "id"
+    __TABLE_AXIS_ATTR = "axis"
+    __TABLE_ID_INDEX_ATTR = "id_index"
+    __TABLE_ID_VALUE_ATTR = "id_value"
+
     __LABELS_ELEMENT = "Labels"
     __LABEL_ELEMENT = "Label"
     __LABEL_LANG_ATTR = "lang"
@@ -881,6 +985,29 @@ class DictionaryV3(Dictionary):
         raise ILDictionaryParseError(f"{interface=} has no device element associated.")
 
     @staticmethod
+    def _device_element_to_interface(interface: str) -> Interface:
+        """Returns the interface associated to the device element.
+
+        Args:
+            interface: Interface element.
+
+        Raises:
+            ILDictionaryParseError: if the interface element doesn't have any interface associated.
+
+        Returns:
+            Interface element.
+        """
+        if interface == "CANDevice":
+            return Interface.CAN
+        if interface == "ETHDevice":
+            return Interface.ETH
+        if interface == "ECATDevice":
+            return Interface.ECAT
+        if interface == "EoEDevice":
+            return Interface.EoE
+        raise ILDictionaryParseError(f"{interface=} element has no interface associated.")
+
+    @staticmethod
     def _get_canopen_object_data_type_options(data_type: str) -> CanOpenObjectType:
         """Returns the `CanOpenObjectType` corresponding to a data type string.
 
@@ -924,6 +1051,92 @@ class DictionaryV3(Dictionary):
         part_number = device.attrib[cls.__DEVICE_PART_NUMBER_ATTR]
         revision_number = int(device.attrib[cls.DEVICE_REVISION_NUMBER_ATTR])
         return DictionaryDescriptor(firmware_version, product_code, part_number, revision_number)
+
+    @classmethod
+    def get_description_for_all_interfaces(cls, dictionary_path: str) -> DictionaryDescriptors:
+        """Obtain the description for all interfaces in the dictionary.
+
+        Args:
+            dictionary_path: Path to the dictionary file.
+
+        Raises:
+            FileNotFoundError: If the dictionary file does not exist.
+            ILDictionaryParseError: Raised if the dictionary does not contain the searched
+                interface.
+
+        Returns:
+            Descriptor of all interfaces in the dictionary.
+        """
+        try:
+            with open(dictionary_path, encoding="utf-8") as xdf_file:
+                tree = ElementTree.parse(xdf_file)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(
+                f"There is not any xdf file in the path: {dictionary_path}"
+            ) from e
+        root = tree.getroot()
+
+        interfaces_descriptors: list[DictionaryDescriptor] = []
+        for interface in cls.get_interfaces(dictionary_path):
+            device_path = (
+                f"{cls.__BODY_ELEMENT}/{cls.__DEVICES_ELEMENT}/"
+                f"{DictionaryV3._interface_to_device_element(interface)}"
+            )
+            device = root.find(device_path)
+            if device is None:
+                raise ILDictionaryParseError(
+                    f"Dictionary does not contain communication type: {interface.name}"
+                )
+            firmware_version = device.attrib[cls.__DEVICE_FW_VERSION_ATTR]
+            product_code = int(device.attrib[cls.__DEVICE_PRODUCT_CODE_ATTR])
+            part_number = device.attrib[cls.__DEVICE_PART_NUMBER_ATTR]
+            revision_number = int(device.attrib[cls.DEVICE_REVISION_NUMBER_ATTR])
+
+            interfaces_descriptors.append(
+                DictionaryDescriptor(
+                    firmware_version, product_code, part_number, revision_number, interface
+                )
+            )
+        image = root.find(cls.__DRIVE_IMAGE_ELEMENT)
+        if image is not None and image.text is not None and image.text.strip():
+            image_txt = image.text.strip()
+        else:
+            image_txt = ""
+
+        return DictionaryDescriptors(3, image_txt, interfaces_descriptors)
+
+    @classmethod
+    def get_interfaces(cls, dictionary_path: str) -> list[Interface]:
+        """Obtain all interfaces in the dictionary.
+
+        Args:
+            dictionary_path: Path to the dictionary file.
+
+        Raises:
+            FileNotFoundError: If the dictionary file does not exist.
+
+        Returns:
+            List of interfaces in the dictionary.
+
+        """
+        try:
+            with open(dictionary_path, encoding="utf-8") as xdf_file:
+                tree = ElementTree.parse(xdf_file)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(
+                f"There is not any xdf file in the path: {dictionary_path}"
+            ) from e
+        root = tree.getroot()
+        devices_element = cls._find_and_check(root, f"{cls.__BODY_ELEMENT}/{cls.__DEVICES_ELEMENT}")
+        interfaces = []
+        for device in devices_element:
+            try:
+                interface = cls._device_element_to_interface(device.tag)
+            except ILDictionaryParseError:
+                continue
+            interfaces.append(interface)
+
+        return list(set(interfaces))
 
     @override
     def read_dictionary(self) -> None:
@@ -1008,15 +1221,7 @@ class DictionaryV3(Dictionary):
         Raises:
             ILDictionaryParseError: If the dictionary cannot be used for the chosen communication.
         """
-        if self.interface == Interface.VIRTUAL:
-            device_element = root.find(DictionaryV3._interface_to_device_element(Interface.ETH))
-            if device_element is None:
-                device_element = root.find(DictionaryV3._interface_to_device_element(Interface.EoE))
-                self.interface = Interface.EoE
-            else:
-                self.interface = Interface.ETH
-        else:
-            device_element = root.find(DictionaryV3._interface_to_device_element(self.interface))
+        device_element = root.find(DictionaryV3._interface_to_device_element(self.interface))
         if device_element is None:
             raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
         self.__read_device_attributes(device_element)
@@ -1062,6 +1267,7 @@ class DictionaryV3(Dictionary):
             self.__read_mcb_register(register_element)
         errors_element = self._find_and_check(root, self.__ERRORS_ELEMENT)
         self._read_errors(errors_element, self.__ERROR_ELEMENT)
+        self._read_tables(root)
 
     def __read_device_ecat(self, root: ElementTree.Element) -> None:
         """Process ECATDevice element.
@@ -1078,6 +1284,7 @@ class DictionaryV3(Dictionary):
             self.__read_canopen_object(register_element)
         errors_element = self._find_and_check(root, self.__ERRORS_ELEMENT)
         self._read_errors(errors_element, self.__ERROR_ELEMENT)
+        self._read_tables(root)
         safety_pdos_element = root.find(self.__SAFETY_PDOS_ELEMENT)
         if safety_pdos_element is not None:
             self.__read_safety_pdos(safety_pdos_element)
@@ -1100,6 +1307,7 @@ class DictionaryV3(Dictionary):
             self.__read_canopen_object(register_element)
         errors_element = self._find_and_check(root, self.__ERRORS_ELEMENT)
         self._read_errors(errors_element, self.__ERROR_ELEMENT)
+        self._read_tables(root)
 
     def __read_subnodes(self, root: ElementTree.Element) -> None:
         """Process Subnodes element and fill subnodes.
@@ -1276,6 +1484,8 @@ class DictionaryV3(Dictionary):
         default = bytes.fromhex(register.attrib[self.__DEFAULT_ATTR])
         cat_id = register.attrib[self.__CAT_ID_ATTR]
         units = register.attrib.get(self.__UNITS_ATTR)
+        if units == "none":
+            units = None
         # Labels
         labels_element = self._find_and_check(register, self.__LABELS_ELEMENT)
         labels = self.__read_labels(labels_element)
@@ -1368,6 +1578,8 @@ class DictionaryV3(Dictionary):
         default = bytes.fromhex(subitem.attrib[self.__DEFAULT_ATTR])
         cat_id = subitem.attrib[self.__CAT_ID_ATTR]
         units = subitem.attrib.get(self.__UNITS_ATTR)
+        if units == "none":
+            units = None
         is_node_id_dependent = (
             subitem.attrib.get(self.__IS_NODE_ID_DEPENDENT_ATTR)
             == self.__IS_NODE_ID_DEPENDENT_TRUE_ATTR_VALUE
@@ -1519,6 +1731,36 @@ class DictionaryV3(Dictionary):
             application_parameters=application_parameters,
         )
 
+    def _read_tables(self, root: ElementTree.Element) -> None:
+        """Process Tables element.
+
+        Args:
+            root: Root parent element where the <Tables> element is located.
+
+        """
+        tables_element = root.find(self.__TABLES_ELEMENT)
+        if tables_element is None:
+            # Element not mandatory
+            return
+
+        table_elements = tables_element.findall(self.__TABLE_ELEMENT)
+        for table_element in table_elements:
+            uid = str(table_element.attrib.get(self.__TABLE_ID_ATTR))
+            _axis = table_element.attrib.get(self.__TABLE_AXIS_ATTR)
+            axis = int(_axis) if _axis is not None else 0
+            id_index = str(table_element.attrib.get(self.__TABLE_ID_INDEX_ATTR))
+            id_value = str(table_element.attrib.get(self.__TABLE_ID_VALUE_ATTR))
+
+            table = DictionaryTable(
+                id=uid,
+                axis=axis if _axis is not None else None,
+                id_index=id_index,
+                id_value=id_value,
+            )
+            if axis not in self._tables:
+                self._tables[axis] = {}
+            self._tables[axis][uid] = table
+
 
 class DictionaryV2(Dictionary):
     """Class to represent a Dictionary V2."""
@@ -1576,6 +1818,25 @@ class DictionaryV2(Dictionary):
         if interface in [Interface.ECAT, Interface.EoE, Interface.ETH]:
             return "ETH"
         raise ILDictionaryParseError(f"{interface=} has no string associated.")
+
+    @staticmethod
+    def _device_element_to_interface(interface: str) -> Interface:
+        """Returns the interface associated to the device element.
+
+        Args:
+            interface: Interface name.
+
+        Raises:
+            ILDictionaryParseError: if the interface element doesn't have any interface associated.
+
+        Returns:
+            Interface element.
+        """
+        if interface == "CAN":
+            return Interface.CAN
+        if interface == "ETH":
+            return Interface.ETH
+        raise ILDictionaryParseError(f"{interface=} element has no interface associated.")
 
     @cached_property
     def __drv_state_status_known_bitfields(self) -> dict[str, BitField]:
@@ -1692,18 +1953,79 @@ class DictionaryV2(Dictionary):
         ):
             raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
         firmware_version = device.attrib.get("firmwareVersion")
-        product_code = device.attrib.get("ProductCode")
-        if product_code is not None and product_code.isdecimal():
-            product_code = int(product_code)
-        else:
-            product_code = None
+        product_code_str = device.attrib.get("ProductCode")
+        product_code: Optional[int] = None
+        if product_code_str is not None and product_code_str.isdecimal():
+            product_code = int(product_code_str)
         part_number = device.attrib.get("PartNumber")
-        revision_number = device.attrib.get("RevisionNumber")
-        if revision_number is not None and revision_number.isdecimal():
-            revision_number = int(revision_number)
-        else:
-            revision_number = None
+        revision_number_str = device.attrib.get("RevisionNumber")
+        revision_number: Optional[int] = None
+        if revision_number_str is not None and revision_number_str.isdecimal():
+            revision_number = int(revision_number_str)
         return DictionaryDescriptor(firmware_version, product_code, part_number, revision_number)
+
+    @classmethod
+    def get_description_for_any_interface(cls, dictionary_path: str) -> DictionaryDescriptors:
+        """Obtain the description for the interface in the dictionary.
+
+        V2 Dictionaries only support one interface, so the returned
+        Descriptor will contain only one interface.
+
+        Args:
+            dictionary_path: Path to the dictionary file.
+
+        Raises:
+            FileNotFoundError: If the dictionary file does not exist.
+            ILDictionaryParseError: Raised if the dictionary is missing information.
+
+        Returns:
+            Descriptor of all interfaces in the dictionary.
+        """
+        try:
+            with open(dictionary_path, encoding="utf-8") as xdf_file:
+                tree = ElementTree.parse(xdf_file)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(
+                f"There is not any xdf file in the path: {dictionary_path}"
+            ) from e
+        root = tree.getroot()
+        device = root.find(cls.__DICT_ROOT_DEVICE)
+        if device is None:
+            raise ILDictionaryParseError(
+                f"Could not load the dictionary {dictionary_path}. Device information is missing"
+            )
+        interface = device.attrib.get("Interface")
+        if interface is None:
+            raise ILDictionaryParseError(
+                f"Could not load the dictionary {dictionary_path}. Device interface is missing"
+            )
+        firmware_version = device.attrib.get("firmwareVersion")
+        product_code_str = device.attrib.get("ProductCode")
+        product_code: Optional[int] = None
+        if product_code_str is not None and (
+            product_code_str.isdecimal() or product_code_str == "-1"
+        ):
+            product_code = int(product_code_str)
+        part_number = device.attrib.get("PartNumber")
+        revision_number_str = device.attrib.get("RevisionNumber")
+        revision_number: Optional[int] = None
+        if revision_number_str is not None and revision_number_str.isdecimal():
+            revision_number = int(revision_number_str)
+
+        interface_descriptor = DictionaryDescriptor(
+            firmware_version,
+            product_code,
+            part_number,
+            revision_number,
+            DictionaryV2._device_element_to_interface(interface),
+        )
+        image = root.find("DriveImage")
+        if image is not None and image.text is not None and image.text.strip():
+            image_txt = image.text.strip()
+        else:
+            image_txt = ""
+
+        return DictionaryDescriptors(2, image_txt, [interface_descriptor])
 
     @override
     def read_dictionary(self) -> None:
@@ -1754,8 +2076,7 @@ class DictionaryV2(Dictionary):
             self.revision_number = int(revision_number)
         self.dict_interface = device.attrib.get("Interface")
         if (
-            self.interface != Interface.VIRTUAL
-            and DictionaryV2._interface_to_str(self.interface) != self.dict_interface
+            DictionaryV2._interface_to_str(self.interface) != self.dict_interface
             and self.dict_interface is not None
         ):
             raise ILDictionaryParseError("Dictionary cannot be used for the chosen communication")
@@ -1803,7 +2124,9 @@ class DictionaryV2(Dictionary):
             return None
 
         try:
-            units = register.attrib["units"]
+            units: Optional[str] = register.attrib["units"]
+            if units == "none":
+                units = None
             pdo_access = RegCyclicType(register.attrib.get("cyclic", "CONFIG"))
 
             # Data type
@@ -1894,8 +2217,8 @@ class DictionaryV2(Dictionary):
         if identifier is None:
             return
         # Check category
-        register.cat_id = register.cat_id or "UNCATEGORIZED"
-        category = register.cat_id
+        category: str = register.cat_id or "UNCATEGORIZED"
+        register.cat_id = category
         if category not in self.categories.category_ids:
             self.categories._cat_ids.append(category)
             self.categories._categories[category] = {"en_US": category.capitalize()}

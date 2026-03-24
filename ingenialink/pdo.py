@@ -21,7 +21,6 @@ if TYPE_CHECKING:
     from ingenialink.dictionary import CanOpenObject, Dictionary
 
 BIT_ENDIAN: Literal["little"] = "little"
-bitarray._set_default_endian(BIT_ENDIAN)
 
 PADDING_REGISTER_IDENTIFIER = "PADDING"
 
@@ -115,7 +114,7 @@ class PDOMapItem:
     def raw_data_bits(self, data: bitarray.bitarray) -> None:
         if len(data) != self.size_bits:
             raise ILError(f"Wrong size. Expected {self.size_bits}, obtained {len(data)}")
-        if data.endian() != BIT_ENDIAN:
+        if data.endian != BIT_ENDIAN:
             raise ILError("Bitarray should be little endian.")
         self._raw_data_bits = data
 
@@ -678,7 +677,6 @@ class PDOMap:
 
         Args:
             items: List of PDOMapItems.
-            dictionary: Canopen dictionary to retrieve the registers.
 
         Returns:
             PDOMap instance.
