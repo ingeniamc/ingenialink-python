@@ -3969,24 +3969,19 @@ zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "virtual-drive"
-version = "0.0+g8bc818283"
+version = "0.1.0"
 description = "Emulates a Summit drive for development and testing purposes."
 optional = false
 python-versions = ">=3.9"
 groups = ["tests"]
 files = [
-    {file = "virtual_drive-0.0+g8bc818283-py3-none-any.whl", hash = "sha256:c5878d01f833644f2ef67582c58a634bf0655158799c01c44ada3580c282219b"},
+    {file = "virtual_drive-0.1.0-py3-none-any.whl", hash = "sha256:c84dda1b7808b5eeebfa7243a7d8b1607ecf9c75fd3c9b88f638bbe2e70c19fe"},
 ]
 
 [package.dependencies]
-ingenialink = ">=7.5.2"
+ingenialink = ">=7.6.0"
 numpy = ">=1.26.0"
 scipy = ">=1.12.0"
-
-[package.source]
-type = "legacy"
-url = "http://pypi.novanta.com/simple"
-reference = "novanta"
 
 [[package]]
 name = "virtualenv"
@@ -4393,4 +4388,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "647a173c5c6b67b8d35566434ab368cd21c8074f1f0200ba571914e36d171959"
+content-hash = "a0e4e48fb6e28ca712684df99590203b63058ab79738e2bd0c5c49039775e10f"
