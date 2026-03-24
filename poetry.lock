@@ -2087,7 +2087,7 @@ version = "2.0.2"
 description = "Fundamental package for array computing in Python"
 optional = false
 python-versions = ">=3.9"
-groups = ["main"]
+groups = ["main", "tests"]
 files = [
     {file = "numpy-2.0.2-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:51129a29dbe56f9ca83438b706e2e69a39892b5eda6cedcb6b0c9fdc9b0d3ece"},
     {file = "numpy-2.0.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:f15975dfec0cf2239224d80e32c3170b1d168335eaedee69da84fbe9f1f9cd04"},
@@ -3388,10 +3388,9 @@ files = [
 name = "scipy"
 version = "1.13.1"
 description = "Fundamental algorithms for scientific computing in Python"
-optional = true
+optional = false
 python-versions = ">=3.9"
-groups = ["main"]
-markers = "extra == \"virtual-drive\""
+groups = ["tests"]
 files = [
     {file = "scipy-1.13.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:20335853b85e9a49ff7572ab453794298bcf0354d8068c5f6775a0eabf350aca"},
     {file = "scipy-1.13.1-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:d605e9c23906d1994f55ace80e0125c587f96c020037ea6aa98d01b4bd2e222f"},
@@ -3970,14 +3969,13 @@ zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "virtual-drive"
-version = "0.0+g331cf1c3d"
+version = "0.0+g8bc818283"
 description = "Emulates a Summit drive for development and testing purposes."
-optional = true
+optional = false
 python-versions = ">=3.9"
-groups = ["main"]
-markers = "extra == \"virtual-drive\""
+groups = ["tests"]
 files = [
-    {file = "virtual_drive-0.0+g331cf1c3d-py3-none-any.whl", hash = "sha256:879f203ee5af07325760e2038c29fa67cab905d253d7688fa51d8c87f67c3e96"},
+    {file = "virtual_drive-0.0+g8bc818283-py3-none-any.whl", hash = "sha256:c5878d01f833644f2ef67582c58a634bf0655158799c01c44ada3580c282219b"},
 ]
 
 [package.dependencies]
@@ -4392,10 +4390,7 @@ cffi = {version = ">=1.11", markers = "platform_python_implementation == \"PyPy\
 [package.extras]
 cffi = ["cffi (>=1.11)"]
 
-[extras]
-virtual-drive = ["virtual_drive"]
-
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "a8b7ed4e7461b472910257daa6658f67cb2764cb6cff35af57bfac9ec3834ca3"
+content-hash = "647a173c5c6b67b8d35566434ab368cd21c8074f1f0200ba571914e36d171959"

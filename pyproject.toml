@@ -40,10 +40,7 @@ Documentation = "https://distext.ingeniamc.com/doc/ingenialink-python/latest/"
 Source = "https://github.com/ingeniamc/ingenialink-python"
 
 [tool.poetry]
-version = "7.5.2"  # base version
-
-[project.optional-dependencies]
-virtual_drive = ["virtual_drive==0.0.0+g331cf1c3d"]
+version = "7.6.0"  # base version
 
 [[tool.poetry.source]]
 name = "PyPI"
@@ -126,6 +123,7 @@ pytest-mock = "==3.15.1"
 pytest-console-scripts = "==1.4.1"
 twisted = "==25.5.0"
 summit-testing-framework = {version = "==0.2.0.post234+develop.74cb3cf"}
+virtual_drive = {version = "==0.0+g8bc818283"}
 
 # -----------------------------------------------------------------------
 #                                   TASKS
