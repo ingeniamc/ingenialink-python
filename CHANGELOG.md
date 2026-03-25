@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+### Fixed
+- Fix issues of servo status listener of ethercat drives when the drive is on operational state
+
 ## [7.6.0] - 2026-03-20
 ### Added
 - Add support for tables for XDF and XCF and CSV export. XCF version has been updated to 2.2
@@ -10,7 +14,6 @@
 
 ### Fixed
 - Fix sdo timeout rollback issue during store and firmware loading operations.
-- Fix issues of servo status listener of ethercat drives when the drive is on operational state
 
 ## [7.5.2] - 2025-11-24
 ### Added
