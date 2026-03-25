@@ -124,6 +124,11 @@ class SlaveState(Enum):
 class NetStatusListener(Thread):
     """Network status listener thread to check if the drive is alive.
 
+    Processing is skipped while the PDO exchange thread is running
+    (``network.pdo_manager.is_active`` is ``True``) because the PDO thread already
+    acts as the authoritative "is the bus alive" signal via WKC errors.  Having
+    both active at the same time is redundant.
+
     Args:
         network: Network instance of the EtherCAT communication.
 
@@ -141,8 +146,22 @@ class NetStatusListener(Thread):
 
         This method checks the status of all servos in the network and notifies
         subscribers of any state changes (connection/disconnection).
+
+        The method is split into four phases:
+
+        1. Detect newly disconnected slaves and emit REMOVED events.
+        2. Check whether any slave still needs recovery; return early if not.
+        3. Attempt a single network-wide recovery (avoid redundant config_init calls).
+        4. Emit ADDED for each slave that is actually alive after the recovery.
+
+        Separating detection from recovery ensures that recovery is retried even
+        when a previous failed attempt left slave references cleared
+        (``slave_exists=False``), because the gate is ``servo_state==DISCONNECTED``
+        rather than ``is_servo_alive``.
         """
         self._ecat_master.read_state()
+
+        # Phase 1: per-slave disconnection detection
         for servo in self.__network.servos:
             slave_id = servo.slave_id
             servo_state = self.__network.get_servo_state(slave_id)
@@ -150,19 +169,37 @@ class NetStatusListener(Thread):
             if not is_servo_alive and servo_state == NetState.CONNECTED:
                 self.__network._notify_status(slave_id, NetDevEvt.REMOVED)
                 self.__network._set_servo_state(slave_id, NetState.DISCONNECTED)
-            if (
-                is_servo_alive
-                and servo_state == NetState.DISCONNECTED
-                and self.__network.recover_from_disconnection()
-            ):
+
+        # Phase 2: skip recovery if every slave is already connected
+        if not any(
+            self.__network.get_servo_state(servo.slave_id) == NetState.DISCONNECTED
+            for servo in self.__network.servos
+        ):
+            return
+
+        # Phase 3: network-wide recovery attempt
+        if not self.__network.recover_from_disconnection():
+            return
+
+        # Phase 4: emit ADDED only for slaves that are actually alive after recovery
+        for servo in self.__network.servos:
+            slave_id = servo.slave_id
+            servo_state = self.__network.get_servo_state(slave_id)
+            is_servo_alive = servo.slave_exists and (servo.slave.state != pysoem.NONE_STATE)
+            if is_servo_alive and servo_state == NetState.DISCONNECTED:
                 self.__network._notify_status(slave_id, NetDevEvt.ADDED)
                 self.__network._set_servo_state(slave_id, NetState.CONNECTED)
 
     def run(self) -> None:
-        """Check the network status continuously."""
+        """Check the network status continuously.
+
+        Skips :py:meth:`process` while ``pdo_manager.is_active`` is ``True``
+        because the PDO thread already signals bus health via WKC errors.
+        """
         while not self.__stop:
             try:
-                self.process()
+                if not self.__network.pdo_manager.is_active:
+                    self.process()
             except Exception as e:
                 logger.exception(f"Exception occurred while processing network status: {e}")
             time.sleep(self.__refresh_time)
@@ -700,7 +737,10 @@ class EthercatNetwork(EthercatNetworkBase):
             return
         self._ecat_master.read_state()
         restore_servos_list = [
-            servo for servo in self.servos if servo.slave.state != pysoem.PREOP_STATE
+            servo
+            for servo in self.servos
+            if servo.slave_exists
+            and servo.slave.state not in (pysoem.PREOP_STATE, pysoem.NONE_STATE)
         ]
         if len(restore_servos_list) == 0:
             return
@@ -1055,8 +1095,20 @@ class EthercatNetwork(EthercatNetworkBase):
 
         """
         self._ecat_master.read_state()
-        if self._ecat_master.state == pysoem.PREOP_STATE:
+        all_servos_have_refs = all(s.slave_exists for s in self.servos)
+        if self._ecat_master.state == pysoem.PREOP_STATE and all_servos_have_refs:
             return True
+
+        # Clean start the master to try to recover the CoE communication.
+        # This is needed to avoid the master state machine to be stuck in a wrong
+        # state after a disconnection.
+        self._lock.acquire()
+        try:
+            self._ecat_master.close()
+            self._ecat_master.open(self.interface_name)
+        finally:
+            self._lock.release()
+
         self.__init_nodes()
         if not self.servos:
             log_message = (

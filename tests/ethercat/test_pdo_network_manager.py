@@ -6,12 +6,13 @@ from typing import TYPE_CHECKING
 import pytest
 from summit_testing_framework.setups.descriptors import EthercatMultiSlaveSetup
 
+from ingenialink.ethercat.network import EthercatNetwork
 from ingenialink.exceptions import ILError, ILWrongWorkingCountError
 from ingenialink.pdo import PDOMap, RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.pdo_network_manager import PDONetworkManager
+from ingenialink.utils.timeout import Timeout
 
 if TYPE_CHECKING:
-    from ingenialink.ethercat.network import EthercatNetwork
     from ingenialink.ethercat.servo import EthercatServo
 
 
@@ -134,37 +135,31 @@ def test_stop_pdos_exception(net: "EthercatNetwork") -> None:
 
 @pytest.mark.ethercat
 def test_subscribe_exceptions(net: "EthercatNetwork", mocker) -> None:
+    """Test that if an exception is raised in the PDO thread, the exception subscribers
+    are notified and `EthercatNetwork.stop_pdos()` is called."""
     error_msg = "Test error"
+    received_exceptions: list[ILError] = []
 
     def start_pdos(*_):
         raise ILWrongWorkingCountError(error_msg)
 
-    mocker.patch("ingenialink.ethercat.network.EthercatNetwork.stop_pdos")
+    stop_pdos_mock = mocker.patch("ingenialink.ethercat.network.EthercatNetwork.stop_pdos")
     mocker.patch(
         "ingenialink.ethercat.network.EthercatNetwork.start_pdos",
         new=start_pdos,
     )
-    patch_callback = mocker.patch(
-        "ingenialink.pdo_network_manager.PDONetworkManager._notify_exceptions"
-    )
 
-    net.pdo_manager.subscribe_to_exceptions(patch_callback)
+    net.pdo_manager.subscribe_to_exceptions(received_exceptions.append)
     net.activate_pdos()
 
-    t = time.time()
-    timeout = 1
-    while not net.pdo_manager._pdo_thread._pd_thread_stop_event.is_set() and (
-        (time.time() - t) < timeout
-    ):
-        pass
+    with Timeout(1) as t:
+        while (len(received_exceptions) == 0 or net.pdo_manager.is_active) and not t.has_expired:
+            pass
 
-    assert net.pdo_manager._pdo_thread._pd_thread_stop_event.is_set()
-    patch_callback.assert_called_once()
-    assert (
-        str(patch_callback.call_args_list[0][0][0])
-        == f"Stopping the PDO thread due to the following exception: {error_msg} "
-    )
-    net.deactivate_pdos()
+    assert not net.pdo_manager.is_active
+    assert len(received_exceptions) == 1
+    assert str(received_exceptions[0]) == f"PDO exchange error (wrong working count): {error_msg} "
+    stop_pdos_mock.assert_called_once()
 
 
 @pytest.mark.ethercat
@@ -315,3 +310,22 @@ def test_start_pdos_in_safe_drive_without_safe_pdos_mapped_triggers_error(
         "The PDO exchange has been stopped due to a wrong PDO configuration in a safe drive. "
         "Please, check that the safe PDOs are correctly mapped."
     ) in str(exceptions[0])
+
+
+@pytest.mark.pcap
+def test_notify_exceptions_calls_all_subscribers_even_if_one_raises() -> None:
+    """All exception subscribers are notified even if an earlier one raises."""
+    net = EthercatNetwork("fake_interface")
+    second_called: list[ILError] = []
+
+    def raising_callback(_exc: ILError) -> None:
+        raise RuntimeError
+
+    net.pdo_manager.subscribe_to_exceptions(raising_callback)
+    net.pdo_manager.subscribe_to_exceptions(second_called.append)
+
+    error = ILError("test")
+    net.pdo_manager._notify_exceptions(error)
+
+    assert second_called == [error]
+    net.close_ecat_master()
