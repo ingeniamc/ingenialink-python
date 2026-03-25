@@ -3720,13 +3720,13 @@ test = ["pytest"]
 
 [[package]]
 name = "summit-testing-framework"
-version = "0.2.0.post234+develop.74cb3cf"
+version = "0.3.0"
 description = "Testing framework for Novanta drives"
 optional = false
 python-versions = ">=3.9"
 groups = ["tests"]
 files = [
-    {file = "summit_testing_framework-0.2.0.post234+develop.74cb3cf-py3-none-any.whl", hash = "sha256:4e94a89929c6c1f9d4a10e1ea2142974667a2dcc9b89ce5f39f8adee4dcaa4dc"},
+    {file = "summit_testing_framework-0.3.0-py3-none-any.whl", hash = "sha256:c0708c704c5e06f97bfa33fcc065c27ebc95db10c76f39feb1b97c257d8bef24"},
 ]
 
 [package.dependencies]
@@ -3735,10 +3735,11 @@ ingenialogger = ">=0.2.1"
 pytest = ">=8.4.1,<9.0.0"
 pytest-env = ">=1.1.5"
 rpyc = "6.0.0"
+virtual_drive = ">=0.1.0"
 
 [package.extras]
-ingenialink = ["ingenialink (>=7.5.2)"]
-ingeniamotion = ["ingeniamotion[fsoe] (>=0.10.1)"]
+ingenialink = ["ingenialink (>=7.6.0)"]
+ingeniamotion = ["ingeniamotion[fsoe] (>=0.10.2)"]
 
 [package.source]
 type = "legacy"
@@ -4388,4 +4389,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "a0e4e48fb6e28ca712684df99590203b63058ab79738e2bd0c5c49039775e10f"
+content-hash = "3d259bcf613c09329e960b2a23c9d827bfcc6ea511ac7c589ea108a20a58b3f7"
