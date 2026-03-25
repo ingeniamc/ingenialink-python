@@ -122,7 +122,7 @@ pytest-cov = "==7.1.0"
 pytest-mock = "==3.15.1"
 pytest-console-scripts = "==1.4.1"
 twisted = "==25.5.0"
-summit-testing-framework = {version = "==0.2.0.post234+develop.74cb3cf"}
+summit-testing-framework = {version = "==0.3.0"}
 virtual_drive = {version = "==0.1.0"}
 
 # -----------------------------------------------------------------------
