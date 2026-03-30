@@ -6,7 +6,7 @@ from can.interfaces.pcan.pcan import PcanCanOperationError
 from canopen.network import RemoteNode
 
 from ingenialink.canopen.servo import CanopenServo
-from ingenialink.exceptions import ILIOError
+from ingenialink.exceptions import ILIOError, ILRegisterAccessError
 
 RAW_IO_REGISTER = SimpleNamespace(idx=0x1018, subidx=0x02, identifier="DRV_ID_PRODUCT_CODE")
 
@@ -120,3 +120,27 @@ class TestRawReadWriteBusOffHandling:
             servo._read_raw(RAW_IO_REGISTER)
 
         assert str(exc_info.value) == "Error reading DRV_ID_PRODUCT_CODE"
+
+    def test_write_raw_raises_il_register_access_error(self) -> None:
+        cause = PcanCanOperationError("Bus error: the CAN controller is in bus-off state.")
+        servo = self._build_servo_with_failing_sdo("download")
+
+        with pytest.raises(ILRegisterAccessError) as exc_info:
+            servo._write_raw(RAW_IO_REGISTER, b"\x00")
+
+        error = exc_info.value
+        assert error.reg is RAW_IO_REGISTER
+        assert isinstance(error.base_exception, PcanCanOperationError)
+        assert error.root_cause == str(cause)
+
+    def test_read_raw_raises_il_register_access_error(self) -> None:
+        cause = PcanCanOperationError("Bus error: the CAN controller is in bus-off state.")
+        servo = self._build_servo_with_failing_sdo("upload")
+
+        with pytest.raises(ILRegisterAccessError) as exc_info:
+            servo._read_raw(RAW_IO_REGISTER)
+
+        error = exc_info.value
+        assert error.reg is RAW_IO_REGISTER
+        assert isinstance(error.base_exception, PcanCanOperationError)
+        assert error.root_cause == str(cause)

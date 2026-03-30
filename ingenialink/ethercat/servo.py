@@ -28,7 +28,7 @@ from ingenialink.constants import (
 )
 from ingenialink.dictionary import CanOpenObject, Interface
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.exceptions import ILEcatStateError, ILError, ILIOError
+from ingenialink.exceptions import ILEcatStateError, ILError, ILIOError, ILRegisterAccessError
 from ingenialink.pdo import PDOMap, PDOServo, RPDOMap, TPDOMap
 
 logger = ingenialogger.get_logger(__name__)
@@ -249,9 +249,9 @@ class EthercatServo(EthercatServoBase):
             exception: The exception that occurred while reading or writing.
 
         Raises:
-            ILIOError: If the register cannot be read or written.
-            ILIOError: If the slave fails to acknowledge the command.
-            ILIOError: If the working counter value is wrong.
+            ILRegisterAccessError: If the register cannot be read or written.
+            ILRegisterAccessError: If the slave fails to acknowledge the command.
+            ILRegisterAccessError: If the working counter value is wrong.
         """
         default_error_msg = f"Error {operation_msg.value} {reg.identifier}"
         if isinstance(exception, pysoem.WkcError):
@@ -272,7 +272,9 @@ class EthercatServo(EthercatServoBase):
             reason += error_description
         else:
             reason = str(exception)
-        raise ILIOError(f"{default_error_msg}. {reason}") from exception
+        raise ILRegisterAccessError(
+            f"{default_error_msg}. {reason}", reg, exception, reason
+        ) from exception
 
     def _monitoring_read_data(self) -> bytes:
         """Read monitoring data frame.

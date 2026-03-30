@@ -34,6 +34,22 @@ class ILIOError(ILError):
     """IngeniaLink I/O error."""
 
 
+class ILRegisterAccessError(ILIOError):
+    """IngeniaLink register access error raised when a register read or write is aborted.
+
+    Attributes:
+        reg: The register that was being accessed when the failure occurred.
+        base_exception: The underlying exception that caused the failure.
+        root_cause: A message describing the specific reason for the failure.
+    """
+
+    def __init__(self, message: str, reg: object, base_exception: Exception, root_cause: str):
+        self.reg = reg
+        self.base_exception = base_exception
+        self.root_cause = root_cause
+        super().__init__(message)
+
+
 class ILWrongRegisterError(ILError):
     """IngeniaLink Wrong register error."""
 
