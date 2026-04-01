@@ -1,5 +1,6 @@
 import time
 
+import pytest
 from virtual_drive.core import VirtualDrive
 from virtual_drive.resources import VIRTUAL_DRIVE_CAN_V2_XDF
 
@@ -9,6 +10,7 @@ from ingenialink.servo import ServoState
 from ingenialink.virtual.canopen.network import VirtualCanopenNetwork
 
 
+@pytest.mark.virtual
 def test_connect_to_virtual_drive_canopen(virtual_drive_canopen):
     _, net, servo = virtual_drive_canopen
     assert servo is not None and net is not None
@@ -16,6 +18,7 @@ def test_connect_to_virtual_drive_canopen(virtual_drive_canopen):
     assert net.scan_slaves() == [servo.target]
 
 
+@pytest.mark.virtual
 def test_virtual_drive_canopen_disconnection(virtual_drive_canopen):
     _, net, servo = virtual_drive_canopen
     net.disconnect_from_slave(servo)
@@ -24,6 +27,7 @@ def test_virtual_drive_canopen_disconnection(virtual_drive_canopen):
     assert servo.socket._closed
 
 
+@pytest.mark.virtual
 def test_virtual_canopen_servo_and_network_status_listeners(mocker):
     server = VirtualDrive(dictionary_path=VIRTUAL_DRIVE_CAN_V2_XDF, protocol=Interface.CAN)
     server.start()

@@ -15,6 +15,7 @@ from ingenialink.servo import ServoState
 from ingenialink.virtual.ethernet.network import VirtualEthernetNetwork
 
 
+@pytest.mark.virtual
 def test_connect_to_virtual_drive(virtual_drive_custom_dict):
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     _, net, servo = virtual_drive_custom_dict(dictionary, Interface.ETH)
@@ -24,6 +25,7 @@ def test_connect_to_virtual_drive(virtual_drive_custom_dict):
     assert fw_version is not None and fw_version != ""
 
 
+@pytest.mark.virtual
 def test_virtual_drive_disconnection(virtual_drive_custom_dict):
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     _, net, servo = virtual_drive_custom_dict(dictionary, Interface.ETH)
@@ -33,6 +35,7 @@ def test_virtual_drive_disconnection(virtual_drive_custom_dict):
     assert servo.socket._closed
 
 
+@pytest.mark.virtual
 def test_connect_virtual_custom_dictionaries(virtual_drive_custom_dict):
     dictionaries = [
         (
@@ -76,6 +79,7 @@ def test_connect_virtual_custom_dictionaries(virtual_drive_custom_dict):
                 assert pytest.approx(value) == server.get_value_by_id(1, reg_key)
 
 
+@pytest.mark.virtual
 def test_connect_to_virtual_drive_old_disturbance(virtual_drive_custom_dict):
     dictionary = tests.resources.ethercat.TEST_DICT_ETHERCAT_OLD_DIST
     _, net, servo = virtual_drive_custom_dict(dictionary, Interface.ETH)
@@ -84,6 +88,7 @@ def test_connect_to_virtual_drive_old_disturbance(virtual_drive_custom_dict):
         servo.read("MON_DIST_STATUS", subnode=0)
 
 
+@pytest.mark.virtual
 def test_virtual_ethernet_servo_and_network_status_listeners(mocker):
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     server = VirtualDrive(dictionary_path=dictionary)

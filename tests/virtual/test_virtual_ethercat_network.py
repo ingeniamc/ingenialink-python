@@ -1,5 +1,6 @@
 import time
 
+import pytest
 from virtual_drive.core import VirtualDrive
 
 import tests.resources.ethercat
@@ -9,6 +10,7 @@ from ingenialink.servo import ServoState
 from ingenialink.virtual.ethercat.network import VirtualEthercatNetwork
 
 
+@pytest.mark.virtual
 def test_connect_to_virtual_drive_ethercat(virtual_drive_ethercat_custom_dict):
     dictionary = tests.resources.ethercat.TEST_DICT_ETHERCAT_OLD_DIST
     _, net, servo = virtual_drive_ethercat_custom_dict(dictionary)
@@ -17,6 +19,7 @@ def test_connect_to_virtual_drive_ethercat(virtual_drive_ethercat_custom_dict):
     assert net.scan_slaves() == [servo.slave_id]
 
 
+@pytest.mark.virtual
 def test_virtual_drive_ethercat_disconnection(virtual_drive_ethercat_custom_dict):
     dictionary = tests.resources.ethercat.TEST_DICT_ETHERCAT_OLD_DIST
     _, net, servo = virtual_drive_ethercat_custom_dict(dictionary)
@@ -26,6 +29,7 @@ def test_virtual_drive_ethercat_disconnection(virtual_drive_ethercat_custom_dict
     assert servo.socket._closed
 
 
+@pytest.mark.virtual
 def test_virtual_ethercat_servo_and_network_status_listeners(mocker):
     dictionary = tests.resources.ethercat.TEST_DICT_ETHERCAT_OLD_DIST
     server = VirtualDrive(dictionary_path=dictionary, protocol=Interface.ECAT)
