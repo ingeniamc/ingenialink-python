@@ -407,7 +407,7 @@ def test_restore_parameters(servo, net, environment: "Environment") -> None:
     tracer = None
     if isinstance(net, CanopenNetwork) and net._connection is not None:
         tracer = CanMessageTracer()
-        net._connection.bus.listeners.append(tracer)
+        net._connection.listeners.append(tracer)
         can_trace_logger.info("CAN message tracer attached")
 
     try:
@@ -438,7 +438,7 @@ def test_restore_parameters(servo, net, environment: "Environment") -> None:
             and net._connection is not None
             and net._connection.bus is not None
         ):
-            net._connection.bus.listeners.remove(tracer)
+            net._connection.listeners.remove(tracer)
             can_trace_logger.info("CAN message tracer detached")
 
 
