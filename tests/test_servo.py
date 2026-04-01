@@ -1,3 +1,4 @@
+import logging
 import re
 import shutil
 import time
@@ -5,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from xml.etree import ElementTree
 
+import can
 import pytest
 from packaging import version
 from summit_testing_framework.product_constants import PartNumber
@@ -15,6 +17,7 @@ from virtual_drive import resources as virtual_drive_resources
 
 import tests.resources
 from ingenialink import RegAccess
+from ingenialink.canopen.network import CanopenNetwork
 from ingenialink.configuration_file import ConfigurationFile
 from ingenialink.dictionary import Interface
 from ingenialink.ethernet.register import RegDtype
@@ -32,6 +35,46 @@ from ingenialink.utils._utils import convert_bytes_to_dtype
 
 if TYPE_CHECKING:
     from summit_testing_framework.environment import Environment
+
+can_trace_logger = logging.getLogger("can_trace")
+
+
+class CanMessageTracer(can.Listener):
+    """CAN bus listener that logs all messages for SDO protocol analysis."""
+
+    # SDO COB-ID base values (offset by node ID)
+    SDO_TX_BASE = 0x580  # SDO response (server -> client)
+    SDO_RX_BASE = 0x600  # SDO request (client -> server)
+
+    def on_message_received(self, msg: can.Message) -> None:
+        cob_id = msg.arbitration_id
+        data_hex = msg.data.hex(" ")
+        direction = ""
+        detail = ""
+
+        if self.SDO_RX_BASE <= cob_id < self.SDO_RX_BASE + 0x80:
+            node_id = cob_id - self.SDO_RX_BASE
+            direction = f"SDO_REQ->node{node_id}"
+            if len(msg.data) >= 4:
+                cmd = msg.data[0]
+                index = int.from_bytes(msg.data[1:3], "little")
+                subindex = msg.data[3]
+                detail = f" cmd=0x{cmd:02X} idx=0x{index:04X}:{subindex}"
+        elif self.SDO_TX_BASE <= cob_id < self.SDO_TX_BASE + 0x80:
+            node_id = cob_id - self.SDO_TX_BASE
+            direction = f"SDO_RSP<-node{node_id}"
+            if len(msg.data) >= 4:
+                cmd = msg.data[0]
+                index = int.from_bytes(msg.data[1:3], "little")
+                subindex = msg.data[3]
+                detail = f" cmd=0x{cmd:02X} idx=0x{index:04X}:{subindex}"
+        else:
+            direction = f"CAN cob=0x{cob_id:03X}"
+
+        can_trace_logger.info("%.6f %s [%s]%s", msg.timestamp, direction, data_hex, detail)
+
+    def on_error(self, exc: Exception) -> None:
+        can_trace_logger.error("CAN bus error: %s", exc)
 
 
 MONITORING_CH_DATA_SIZE = 4
@@ -357,25 +400,46 @@ def test_store_safe_parameters(servo, environment: "Environment") -> None:
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_restore_parameters(servo, environment: "Environment") -> None:
+def test_restore_parameters(servo, net, environment: "Environment") -> None:
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
-    new_user_over_voltage_value = servo.read(user_over_voltage_register) + 5
+    # Attach CAN bus tracer if this is a CANopen connection
+    tracer = None
+    if isinstance(net, CanopenNetwork) and net._connection is not None:
+        tracer = CanMessageTracer()
+        net._connection.bus.listeners.append(tracer)
+        can_trace_logger.info("CAN message tracer attached")
 
-    servo.write(user_over_voltage_register, new_user_over_voltage_value)
+    try:
+        new_user_over_voltage_value = servo.read(user_over_voltage_register) + 5
 
-    assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
+        servo.write(user_over_voltage_register, new_user_over_voltage_value)
 
-    servo.restore_parameters()
+        assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
-    assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
+        can_trace_logger.info("=== CALLING restore_parameters() ===")
+        servo.restore_parameters()
+        can_trace_logger.info("=== restore_parameters() DONE ===")
 
-    drives_reconnected = environment.power_cycle(
-        wait_for_drives=False, reconnect_drives=True, reconnect_timeout=20
-    )
-    assert drives_reconnected is True, "The drive is unresponsive after the recovery timeout."
+        assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
-    assert servo.read(user_over_voltage_register) != new_user_over_voltage_value
+        can_trace_logger.info("=== POWER CYCLING ===")
+        drives_reconnected = environment.power_cycle(
+            wait_for_drives=False, reconnect_drives=True, reconnect_timeout=20
+        )
+        assert drives_reconnected is True, "The drive is unresponsive after the recovery timeout."
+        can_trace_logger.info("=== POWER CYCLE COMPLETE, READING REGISTER ===")
+
+        assert servo.read(user_over_voltage_register) != new_user_over_voltage_value
+    finally:
+        if (
+            tracer is not None
+            and isinstance(net, CanopenNetwork)
+            and net._connection is not None
+            and net._connection.bus is not None
+        ):
+            net._connection.bus.listeners.remove(tracer)
+            can_trace_logger.info("CAN message tracer detached")
 
 
 @pytest.mark.fsoe
