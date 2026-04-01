@@ -2,6 +2,7 @@ import logging
 import re
 import shutil
 import time
+import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING
 from xml.etree import ElementTree
@@ -397,39 +398,157 @@ def test_store_safe_parameters(servo, environment: "Environment") -> None:
     assert servo.read(ss1_time_to_sto_register) == new_register_value
 
 
+def _install_listener_tracing(servo, net, logger):
+    """Monkey-patch start/stop status listener methods to log caller tracebacks."""
+    # Trace ServoStatusListener
+    original_servo_start = servo.start_status_listener
+    original_servo_stop = servo.stop_status_listener
+
+    def traced_servo_start():
+        tb = "".join(traceback.format_stack())
+        logger.warning(">>> servo.start_status_listener() called from:\n%s", tb)
+        return original_servo_start()
+
+    def traced_servo_stop():
+        tb = "".join(traceback.format_stack())
+        logger.warning(">>> servo.stop_status_listener() called from:\n%s", tb)
+        return original_servo_stop()
+
+    servo.start_status_listener = traced_servo_start
+    servo.stop_status_listener = traced_servo_stop
+
+    # Trace NetStatusListener (if CanopenNetwork)
+    if isinstance(net, CanopenNetwork):
+        original_net_start = net.start_status_listener
+        original_net_stop = net.stop_status_listener
+
+        def traced_net_start():
+            tb = "".join(traceback.format_stack())
+            logger.warning(">>> net.start_status_listener() called from:\n%s", tb)
+            return original_net_start()
+
+        def traced_net_stop():
+            tb = "".join(traceback.format_stack())
+            logger.warning(">>> net.stop_status_listener() called from:\n%s", tb)
+            return original_net_stop()
+
+        net.start_status_listener = traced_net_start
+        net.stop_status_listener = traced_net_stop
+
+
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
 def test_restore_parameters(servo, net, environment: "Environment") -> None:
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
-    # Attach CAN bus tracer if this is a CANopen connection
+    # Install tracing on listener start/stop methods
+    _install_listener_tracing(servo, net, can_trace_logger)
+
+    # Log current listener state BEFORE the test begins
+    can_trace_logger.warning(
+        "=== LISTENER STATE CHECK (before test) ==="
+        "\n  servo.is_listener_started() = %s"
+        "\n  servo._Servo__listener_servo_status = %s",
+        servo.is_listener_started(),
+        servo._Servo__listener_servo_status,
+    )
+    if isinstance(net, CanopenNetwork):
+        can_trace_logger.warning(
+            "  net.is_status_listener_started() = %s"
+            "\n  net._CanopenNetwork__listener_net_status = %s",
+            net.is_status_listener_started(),
+            net._CanopenNetwork__listener_net_status,
+        )
+
+    # Attach CAN bus tracer (only log SDO responses to reduce noise)
     tracer = None
+    sdo_response_count = {"count": 0}
     if isinstance(net, CanopenNetwork) and net._connection is not None:
-        tracer = CanMessageTracer()
+
+        class FilteredCanTracer(can.Listener):
+            """Only log SDO responses and summarize repeated messages."""
+
+            SDO_TX_BASE = 0x580
+
+            def on_message_received(self, msg: can.Message) -> None:
+                cob_id = msg.arbitration_id
+                if self.SDO_TX_BASE <= cob_id < self.SDO_TX_BASE + 0x80:
+                    sdo_response_count["count"] += 1
+                    node_id = cob_id - self.SDO_TX_BASE
+                    if len(msg.data) >= 4:
+                        index = int.from_bytes(msg.data[1:3], "little")
+                        subindex = msg.data[3]
+                        # Only log every 50th repeated message to reduce noise
+                        if (
+                            sdo_response_count["count"] <= 20
+                            or sdo_response_count["count"] % 50 == 0
+                        ):
+                            can_trace_logger.info(
+                                "SDO_RSP #%d <-node%d idx=0x%04X:%d data=[%s]",
+                                sdo_response_count["count"],
+                                node_id,
+                                index,
+                                subindex,
+                                msg.data.hex(" "),
+                            )
+
+            def on_error(self, exc: Exception) -> None:
+                can_trace_logger.error("CAN bus error: %s", exc)
+
+        tracer = FilteredCanTracer()
         net._connection.listeners.append(tracer)
-        can_trace_logger.info("CAN message tracer attached")
+        can_trace_logger.info("Filtered CAN tracer attached")
 
     try:
         new_user_over_voltage_value = servo.read(user_over_voltage_register) + 5
-
         servo.write(user_over_voltage_register, new_user_over_voltage_value)
-
         assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
-        can_trace_logger.info("=== CALLING restore_parameters() ===")
+        can_trace_logger.warning("=== CALLING restore_parameters() ===")
+        sdo_response_count["count"] = 0
         servo.restore_parameters()
-        can_trace_logger.info("=== restore_parameters() DONE ===")
+        can_trace_logger.warning(
+            "=== restore_parameters() DONE (SDO responses during restore: %d) ===",
+            sdo_response_count["count"],
+        )
+
+        # Check listener state after restore
+        can_trace_logger.warning(
+            "=== LISTENER STATE CHECK (after restore) ===\n  servo.is_listener_started() = %s",
+            servo.is_listener_started(),
+        )
+        if isinstance(net, CanopenNetwork):
+            can_trace_logger.warning(
+                "  net.is_status_listener_started() = %s",
+                net.is_status_listener_started(),
+            )
 
         assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
 
-        can_trace_logger.info("=== POWER CYCLING ===")
+        can_trace_logger.warning("=== POWER CYCLING ===")
+        sdo_response_count["count"] = 0
         drives_reconnected = environment.power_cycle(
             wait_for_drives=False, reconnect_drives=True, reconnect_timeout=20
         )
+        can_trace_logger.warning(
+            "=== POWER CYCLE COMPLETE (SDO responses during power_cycle: %d) ===",
+            sdo_response_count["count"],
+        )
         assert drives_reconnected is True, "The drive is unresponsive after the recovery timeout."
-        can_trace_logger.info("=== POWER CYCLE COMPLETE, READING REGISTER ===")
 
+        # Check listener state after power cycle
+        can_trace_logger.warning(
+            "=== LISTENER STATE CHECK (after power cycle) ===\n  servo.is_listener_started() = %s",
+            servo.is_listener_started(),
+        )
+        if isinstance(net, CanopenNetwork):
+            can_trace_logger.warning(
+                "  net.is_status_listener_started() = %s",
+                net.is_status_listener_started(),
+            )
+
+        can_trace_logger.warning("=== READING REGISTER ===")
         assert servo.read(user_over_voltage_register) != new_user_over_voltage_value
     finally:
         if (
@@ -439,7 +558,10 @@ def test_restore_parameters(servo, net, environment: "Environment") -> None:
             and net._connection.bus is not None
         ):
             net._connection.listeners.remove(tracer)
-            can_trace_logger.info("CAN message tracer detached")
+            can_trace_logger.warning(
+                "CAN tracer detached. Total SDO responses seen: %d",
+                sdo_response_count["count"],
+            )
 
 
 @pytest.mark.fsoe
