@@ -134,7 +134,6 @@ def test_register_range(dtype, reg_range, expected_range, reg_type):
         (True, True),
     ],
 )
-@pytest.mark.virtual
 def test_bit_register(virtual_drive, write_value, expected_read_value):
     boolean_reg_uid = "TEST_BOOLEAN"
     _, servo = virtual_drive
@@ -147,7 +146,6 @@ def test_bit_register(virtual_drive, write_value, expected_read_value):
     "write_value",
     [2, "one"],
 )
-@pytest.mark.virtual
 def test_bit_register_write_invalid_value(virtual_drive, write_value):
     _, servo = virtual_drive
     with pytest.raises(ValueError) as exc_info:

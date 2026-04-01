@@ -144,7 +144,6 @@ def test_save_configuration(servo, tmp_path) -> None:
         assert registers[reg_id].address_type != RegAddressType.NVM_NONE
 
 
-@pytest.mark.virtual
 def test_check_configuration(virtual_drive, tmp_path):
     server, servo = virtual_drive
 
@@ -202,7 +201,6 @@ def test_load_configuration(servo, tmp_path) -> None:
             assert value == register.storage
 
 
-@pytest.mark.virtual
 def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: F811
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     _, _, servo = virtual_drive_custom_dict(dictionary, Interface.ETH)
@@ -646,7 +644,6 @@ def test_disturbance_overflow(servo):
         servo.disturbance_write_data(0, RegDtype.U16, data)
 
 
-@pytest.mark.virtual
 def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
     user_over_voltage_uid = "DRV_PROT_USER_OVER_VOLT"
     register_update_callback = RegisterUpdateTest()
@@ -834,177 +831,9 @@ def test_subscribe_disconnection(virtual_drive_custom_dict):  # noqa: F811
         ),
     ],
 )
-@pytest.mark.virtual
 def test_status_word_decode(virtual_drive, status_word, state):
     _, servo = virtual_drive
     assert servo.status_word_decode(status_word) == state
-
-
-@pytest.mark.virtual
-def test_enable_disable_virtual_drive(virtual_drive):
-    _, servo = virtual_drive
-    servo.enable()
-    assert servo.status[1] == ServoState.ENABLED
-    servo.disable()
-    assert servo.status[1] == ServoState.DISABLED
-
-
-@pytest.mark.virtual
-def test_read_virtual_drive(virtual_drive):
-    _, servo = virtual_drive
-    value = servo.read("DRV_STATE_STATUS")
-    assert value is not None
-
-
-@pytest.mark.virtual
-def test_write_virtual_drive(virtual_drive):
-    reg = "CL_AUX_FBK_SENSOR"
-    value = 4
-    _, servo = virtual_drive
-
-    saved_value = servo.read(reg)
-    value = value + 1 if saved_value == value else value
-
-    servo.write(reg, value)
-    saved_value = servo.read(reg)
-
-    assert value == saved_value
-
-
-@pytest.mark.virtual
-def test_is_alive_virtual_drive(virtual_drive):
-    _, servo = virtual_drive
-    assert servo.is_alive()
-
-
-@pytest.mark.virtual
-def test_status_word_wait_change_virtual_drive(virtual_drive):
-    _, servo = virtual_drive
-    subnode = 1
-    timeout = 0.5
-    current_status_word = servo.read(servo.STATUS_WORD_REGISTERS, subnode=subnode)
-    try:
-        servo.status_word_wait_change(current_status_word, timeout, subnode)
-    except ILTimeoutError:
-        # Success. The status word did not change
-        return
-    new_status_word = servo.read(servo.STATUS_WORD_REGISTERS, subnode=subnode)
-    pytest.fail(f"The status word changed from {current_status_word} to {new_status_word}.")
-
-
-@pytest.mark.virtual
-def test_monitoring_enable_disable_virtual_drive(virtual_drive):
-    _, servo = virtual_drive
-    servo.monitoring_enable()
-    assert servo.read(servo.MONITORING_DIST_ENABLE, subnode=0) == 1
-    servo.monitoring_disable()
-    assert servo.read(servo.MONITORING_DIST_ENABLE, subnode=0) == 0
-
-
-@pytest.mark.virtual
-def test_monitoring_map_register_virtual_drive(virtual_drive):
-    _, servo = virtual_drive
-    servo.monitoring_remove_all_mapped_registers()
-    registers_key = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
-    data_size = 4
-    for idx, key in enumerate(registers_key):
-        servo.monitoring_set_mapped_register(channel=idx, uid=key, size=data_size)
-    assert servo.monitoring_number_mapped_registers == len(registers_key)
-
-    mon_cfg_regs = {"MON_CFG_REG0_MAP": 0x10200504, "MON_CFG_REG1_MAP": 0x10210804}
-    for key, value in mon_cfg_regs.items():
-        assert servo.read(key, 0) == value
-
-    assert servo.read("MON_CFG_TOTAL_MAP", 0) == len(registers_key)
-
-    servo.monitoring_remove_all_mapped_registers()
-    assert servo.monitoring_number_mapped_registers == 0
-    assert servo.read("MON_CFG_TOTAL_MAP", 0) == 0
-
-
-@pytest.mark.virtual
-def test_disturbance_enable_disable_virtual_drive(virtual_drive):
-    _, servo = virtual_drive
-    servo.disturbance_enable()
-    assert servo.read(servo.DISTURBANCE_ENABLE, subnode=0) == 1
-    servo.disturbance_disable()
-    assert servo.read(servo.DISTURBANCE_ENABLE, subnode=0) == 0
-
-
-@pytest.mark.virtual
-def test_disturbance_map_register_virtual_drive(virtual_drive):
-    _, servo = virtual_drive
-    servo.disturbance_remove_all_mapped_registers()
-    registers_key = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
-    data_size = 4
-    for idx, key in enumerate(registers_key):
-        servo.disturbance_set_mapped_register(channel=idx, uid=key, size=data_size)
-    assert servo.disturbance_number_mapped_registers == len(registers_key)
-
-    dist_cfg_regs = {"DIST_CFG_REG0_MAP": 0x10200504, "DIST_CFG_REG1_MAP": 0x10210804}
-    for key, value in dist_cfg_regs.items():
-        assert servo.read(key, 0) == value
-
-    assert servo.read("DIST_CFG_MAP_REGS", 0) == len(registers_key)
-
-    servo.disturbance_remove_all_mapped_registers()
-    assert servo.disturbance_number_mapped_registers == 0
-    assert servo.read("DIST_CFG_MAP_REGS", 0) == 0
-
-
-@pytest.mark.virtual
-def test_disturbance_overflow_virtual_drive(virtual_drive):
-    _, servo = virtual_drive
-    servo.disturbance_disable()
-    servo.disturbance_remove_all_mapped_registers()
-    servo.disturbance_set_mapped_register(
-        channel=0, uid="DRV_OP_CMD", size=DISTURBANCE_CH_DATA_SIZE
-    )
-    data = list(range(-10, 11))
-    with pytest.raises(ILValueError):
-        servo.disturbance_write_data(0, RegDtype.U16, data)
-
-
-@pytest.mark.virtual
-def test_load_configuration_file_not_found_virtual_drive(virtual_drive):
-    _, servo = virtual_drive
-    filename = "can_config.xdf"
-    with pytest.raises(FileNotFoundError):
-        servo.load_configuration(filename)
-
-
-@pytest.mark.parametrize("subnode", [-1, "1"])
-@pytest.mark.virtual
-def test_load_configuration_invalid_subnode_virtual_drive(virtual_drive, subnode, tmp_path):
-    _, servo = virtual_drive
-    filename = tmp_path / "temp_config"
-    servo.save_configuration(str(filename))
-    with pytest.raises(ValueError):
-        servo.load_configuration(str(filename), subnode=subnode)
-
-
-@pytest.mark.virtual
-def test_load_configuration_to_subnode_zero_virtual_drive(virtual_drive, tmp_path):
-    _, servo = virtual_drive
-    filename = tmp_path / "temp_config"
-    servo.save_configuration(str(filename))
-    modified_path = tmp_path / "config_0_test"
-    shutil.copy(str(filename), str(modified_path))
-    with open(str(modified_path), encoding="utf-8") as xml_file:
-        tree = ElementTree.parse(xml_file)
-        root = tree.getroot()
-        axis = tree.findall("*/Device/Axes/Axis")
-        if axis:
-            # Multiaxis
-            registers = root.findall("./Body/Device/Axes/Axis/Registers/Register")
-        else:
-            # Single axis
-            registers = root.findall("./Body/Device/Registers/Register")
-        for element in registers:
-            element.attrib["subnode"] = "1"
-        tree.write(str(modified_path))
-    with pytest.raises(ValueError):
-        servo.load_configuration(str(modified_path), subnode=0)
 
 
 @pytest.mark.parametrize(

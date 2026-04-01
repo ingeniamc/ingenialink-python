@@ -10,7 +10,6 @@ from ingenialink.virtual.ethercat.servo import VirtualEthercatServo
 from ingenialink.virtual.servo import VirtualServoBase
 
 
-@pytest.mark.virtual
 def test_virtual_servo_base_send_frame_raises_il_io_error_on_socket_error() -> None:
     socket_mock = Mock()
     socket_mock.sendall.side_effect = OSError("send failed")
@@ -20,7 +19,6 @@ def test_virtual_servo_base_send_frame_raises_il_io_error_on_socket_error() -> N
         virtual_base.send_frame(b"frame")
 
 
-@pytest.mark.virtual
 def test_virtual_servo_base_receive_frame_raises_il_timeout_error_on_timeout() -> None:
     socket_mock = Mock()
     socket_mock.recv.side_effect = socket.timeout("timeout")
@@ -30,7 +28,6 @@ def test_virtual_servo_base_receive_frame_raises_il_timeout_error_on_timeout() -
         virtual_base.receive_frame()
 
 
-@pytest.mark.virtual
 def test_virtual_ethercat_servo_exchange_sdo_frame_returns_deserialized_data() -> None:
     socket_mock = Mock()
     socket_mock.recv.return_value = serialize_sdo_frame({"data": b"data"})
@@ -42,17 +39,14 @@ def test_virtual_ethercat_servo_exchange_sdo_frame_returns_deserialized_data() -
     assert result == {"data": b"data"}
 
 
-@pytest.mark.virtual
 def test_virtual_ethercat_servo_deserialize_read_response_bytes() -> None:
     assert VirtualServoBase.deserialize_read_response(b"value") == b"value"
 
 
-@pytest.mark.virtual
 def test_virtual_ethercat_servo_deserialize_read_response_from_dict() -> None:
     assert VirtualServoBase.deserialize_read_response({"data": b"value"}) == b"value"
 
 
-@pytest.mark.virtual
 def test_virtual_ethercat_servo_deserialize_read_response_raises_on_error() -> None:
     error_code = 0x12345678
     with pytest.raises(ILIOError) as exc_info:
