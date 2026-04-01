@@ -2,6 +2,7 @@ import contextlib
 import ctypes
 import os
 import platform
+import queue
 import re
 import tempfile
 import warnings
@@ -17,7 +18,6 @@ import ingenialogger
 from can import CanError
 from can.interfaces.kvaser.canlib import __get_canlib_function as get_canlib_function
 from can.interfaces.pcan.pcan import PcanCanOperationError
-from typing_extensions import override
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import CanopenServo
@@ -1135,8 +1135,33 @@ class CanopenNetwork(CanopenNetworkBase):
         """Obtain network protocol."""
         return NetProt.CAN
 
-    @override
-    def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:
+    def _flush_sdo_responses(self) -> None:
+        """Drain stale SDO responses from all servo SDO queues.
+
+        After a reconnection, the PCAN hardware FIFO may still contain responses
+        from timed-out SDO requests made during the recovery loop. These stale
+        responses can corrupt subsequent SDO exchanges if they are not drained.
+        This method clears the SDO response queue and performs an additional
+        read to flush any in-flight response from the CAN hardware buffer.
+        """
+        for servo in self.servos:
+            self._flush_servo_sdo_responses(servo)
+
+    def _flush_servo_sdo_responses(self, servo: CanopenServo) -> None:
+        """Drain stale SDO responses for a single servo."""
+        try:
+            sdo_client = servo.node.sdo
+            # Drain any stale responses already in the queue
+            sdo_client.responses = queue.Queue()
+            # Do an extra SDO round-trip to flush any in-flight response
+            # from the CAN hardware buffer
+            servo.is_alive()
+            # Drain once more, in case the round-trip flushed additional stale responses
+            sdo_client.responses = queue.Queue()
+        except Exception as e:
+            logger.warning(f"Failed to flush SDO responses for servo {servo.target}: {e}")
+
+    def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:  # noqa: ARG002
         """Recover the CANopen communication with a servo after a disconnection.
 
         This method attempts to re-establish communication by resetting the entire
@@ -1161,6 +1186,7 @@ class CanopenNetwork(CanopenNetworkBase):
                     )
                     return False
             logger.info("CANopen communication recovered.")
+            self._flush_sdo_responses()
             return True
         except Exception as e:
             logger.warning(f"Failed to recover CANopen communication: {e}")
