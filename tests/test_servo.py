@@ -455,9 +455,8 @@ def test_restore_parameters(servo, net, environment: "Environment") -> None:
     )
     if isinstance(net, CanopenNetwork):
         can_trace_logger.warning(
-            "  net.is_status_listener_started() = %s"
-            "\n  net._CanopenNetwork__listener_net_status = %s",
-            net.is_status_listener_started(),
+            "  net.is_listener_started() = %s\n  net._CanopenNetwork__listener_net_status = %s",
+            net.is_listener_started(),
             net._CanopenNetwork__listener_net_status,
         )
 
@@ -520,8 +519,8 @@ def test_restore_parameters(servo, net, environment: "Environment") -> None:
         )
         if isinstance(net, CanopenNetwork):
             can_trace_logger.warning(
-                "  net.is_status_listener_started() = %s",
-                net.is_status_listener_started(),
+                "  net.is_listener_started() = %s",
+                net.is_listener_started(),
             )
 
         assert servo.read(user_over_voltage_register) == new_user_over_voltage_value
@@ -544,8 +543,8 @@ def test_restore_parameters(servo, net, environment: "Environment") -> None:
         )
         if isinstance(net, CanopenNetwork):
             can_trace_logger.warning(
-                "  net.is_status_listener_started() = %s",
-                net.is_status_listener_started(),
+                "  net.is_listener_started() = %s",
+                net.is_listener_started(),
             )
 
         can_trace_logger.warning("=== READING REGISTER ===")
