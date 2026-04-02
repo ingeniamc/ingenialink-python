@@ -640,12 +640,15 @@ class Servo:
             return convert_dtype_to_bytes(config_register.storage, target_register.dtype)
 
     def load_configuration(
-        self, config_file: str, subnode: Optional[int] = None, strict: bool = False
+        self,
+        config_file: Union[str, ConfigurationFile],
+        subnode: Optional[int] = None,
+        strict: bool = False,
     ) -> None:
         """Write current dictionary storage to the servo drive.
 
         Args:
-            config_file: Path to the dictionary.
+            config_file: Path to the configuration file, or a ConfigurationFile instance.
             subnode: Subnode of the axis.
             strict: Whether to raise an exception if any error occurs during the loading
             configuration process. If false, all errors will only be ignored.
@@ -661,7 +664,11 @@ class Servo:
         """
         if subnode is not None and (not isinstance(subnode, int) or subnode < 0):
             raise ValueError("Invalid subnode")
-        xcf_instance = ConfigurationFile.load_from_xcf(config_file)
+        # Accept either a pre-built ConfigurationFile object or a path to an XCF file
+        if isinstance(config_file, ConfigurationFile):
+            xcf_instance = config_file
+        else:
+            xcf_instance = ConfigurationFile.load_from_xcf(config_file)
 
         if subnode == 0 and not xcf_instance.contains_node(subnode):
             raise ValueError(f"Cannot load {config_file} to subnode {subnode}")
