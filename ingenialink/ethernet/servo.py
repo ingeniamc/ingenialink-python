@@ -171,13 +171,23 @@ class EthernetServo(EthernetServoBase):
         try:
             self._send_mcb_frame(MCB_CMD_WRITE, reg.address, reg.subnode, data)
         except ILIOError as e:
-            raise ILRegisterAccessError(f"Error writing {reg.identifier}", reg, e, str(e)) from e
+            raise ILRegisterAccessError(
+                base_message=f"Error writing {reg.identifier}",
+                reg=reg,
+                base_exception=e,
+                reason=str(e),
+            ) from e
 
     def _read_raw(self, reg: EthernetRegister) -> bytes:  # type: ignore [override]
         try:
             return self._send_mcb_frame(MCB_CMD_READ, reg.address, reg.subnode)
         except ILIOError as e:
-            raise ILRegisterAccessError(f"Error reading {reg.identifier}", reg, e, str(e)) from e
+            raise ILRegisterAccessError(
+                base_message=f"Error reading {reg.identifier}",
+                reg=reg,
+                base_exception=e,
+                reason=str(e),
+            ) from e
 
     def _send_mcb_frame(
         self, cmd: int, reg: int, subnode: int, data: Optional[bytes] = None

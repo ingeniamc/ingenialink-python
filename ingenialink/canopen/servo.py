@@ -108,7 +108,10 @@ class CanopenServo(CanopenServoBase):
             logger.error("Failed writing %s. Exception: %s", str(reg.identifier), e)
             root_cause = str(e)
             raise ILRegisterAccessError(
-                f"Error writing {reg.identifier}", reg, e, root_cause
+                base_message=f"Error writing {reg.identifier}",
+                reg=reg,
+                base_exception=e,
+                reason=root_cause,
             ) from e
         finally:
             self._lock.release()
@@ -121,7 +124,10 @@ class CanopenServo(CanopenServoBase):
             logger.error("Failed reading %s. Exception: %s", str(reg.identifier), e)
             root_cause = str(e)
             raise ILRegisterAccessError(
-                f"Error reading {reg.identifier}", reg, e, root_cause
+                base_message=f"Error reading {reg.identifier}",
+                reg=reg,
+                base_exception=e,
+                reason=root_cause,
             ) from e
         finally:
             self._lock.release()

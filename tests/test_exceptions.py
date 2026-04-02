@@ -19,19 +19,29 @@ class TestILRegisterAccessError:
         cause = ValueError("low-level failure")
         root_cause = "Abort code 0x06090011"
 
-        error = ILRegisterAccessError("Error reading MY_REG", reg, cause, root_cause)
+        error = ILRegisterAccessError(
+            base_message="Error reading MY_REG",
+            reg=reg,
+            base_exception=cause,
+            reason=root_cause,
+        )
 
-        assert str(error) == "Error reading MY_REG"
+        assert str(error) == "Error reading MY_REG. Abort code 0x06090011"
         assert error.reg is reg
         assert error.base_exception is cause
-        assert error.root_cause == root_cause
+        assert error.reason == root_cause
 
     def test_can_be_caught_as_ilioerror(self) -> None:
         reg = SimpleNamespace(identifier="MY_REG")
         cause = RuntimeError("some io failure")
 
         with pytest.raises(ILIOError):
-            raise ILRegisterAccessError("Error writing MY_REG", reg, cause, str(cause))
+            raise ILRegisterAccessError(
+                base_message="Error writing MY_REG",
+                reg=reg,
+                base_exception=cause,
+                reason=str(cause),
+            )
 
 
 class TestEthernetRawReadWriteRaisesILRegisterAccessError:

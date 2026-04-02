@@ -273,7 +273,10 @@ class EthercatServo(EthercatServoBase):
         else:
             reason = str(exception)
         raise ILRegisterAccessError(
-            f"{default_error_msg}. {reason}", reg, exception, reason
+            base_message=f"{default_error_msg}. {reason}",
+            reg=reg,
+            base_exception=exception,
+            reason=reason,
         ) from exception
 
     def _monitoring_read_data(self) -> bytes:

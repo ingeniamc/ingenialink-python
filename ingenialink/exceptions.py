@@ -1,3 +1,9 @@
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ingenialink.register import Register
+
+
 class ILError(Exception):
     """IngeniaLink generic error."""
 
@@ -40,14 +46,17 @@ class ILRegisterAccessError(ILIOError):
     Attributes:
         reg: The register that was being accessed when the failure occurred.
         base_exception: The underlying exception that caused the failure.
-        root_cause: A message describing the specific reason for the failure.
+        reason: A message describing the specific reason for the failure.
     """
 
-    def __init__(self, message: str, reg: object, base_exception: Exception, root_cause: str):
+    def __init__(
+        self, *, base_message: str, reg: "Register", base_exception: Exception, reason: str
+    ):
+        self.base_message = base_message
         self.reg = reg
         self.base_exception = base_exception
-        self.root_cause = root_cause
-        super().__init__(message)
+        self.reason = reason
+        super().__init__(f"{base_message}. {reason}")
 
 
 class ILWrongRegisterError(ILError):
@@ -66,7 +75,9 @@ class ILNACKError(ILError):
     """IngeniaLink NACK error."""
 
     def __init__(self, err_code: int):
+
         self.error_code = err_code
+
         super().__init__(f"Communications error (NACK -> 0x{err_code:08X})")
 
 
