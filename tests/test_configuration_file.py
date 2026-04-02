@@ -1,3 +1,4 @@
+import logging
 from typing import ClassVar
 from xml.etree import ElementTree
 
@@ -12,6 +13,8 @@ from ingenialink.configuration_file import (
     TableElement,
 )
 from ingenialink.dictionary import Interface
+from ingenialink.enums.register import RegAddressType
+from ingenialink.ethercat.dictionary import EthercatDictionaryV3
 from ingenialink.register import Register
 
 
@@ -207,3 +210,138 @@ def test_register_to_xcf_writes_data_as_hex():
     assert element.get("storage") == "1234"
     # data must be hex string matching the bytes
     assert element.get("data") == "aabbcc"
+
+
+class TestFromDictionaryDefaults:
+    """Tests for ConfigurationFile.from_dictionary_defaults.
+
+    Uses tests.resources.TEST_DICT_ECAT_EOE_v3 (EthercatDictionaryV3) which
+    contains exactly 6 registers: 3 qualifying (RW + NVM/NVM_CFG) with defaults,
+    2 read-only, and 1 RW non-NVM register.
+
+    Qualifying registers in that file:
+        CIA301_COMMS_RPDO1_MAP   (U8,  default=1)
+        CIA301_COMMS_RPDO1_MAP_1 (U32, default=268451936)
+        COMMU_ANGLE_SENSOR       (U16, default=4)
+    """
+
+    def test_from_dictionary_defaults(self):
+        """Only RW+NVM registers are included, with their XDF3 defaults and device metadata."""
+        dictionary = EthercatDictionaryV3(tests.resources.TEST_DICT_ECAT_EOE_v3, Interface.ECAT)
+
+        conf = ConfigurationFile.from_dictionary_defaults(dictionary)
+
+        # Only the 3 qualifying registers are present — RO and non-NVM registers are excluded
+        assert len(conf.registers) == 3
+        assert {r.uid for r in conf.registers} == {
+            "CIA301_COMMS_RPDO1_MAP",
+            "CIA301_COMMS_RPDO1_MAP_1",
+            "COMMU_ANGLE_SENSOR",
+        }
+
+        # Each register carries its declared XDF3 default value
+        reg_map = {r.uid: r.storage for r in conf.registers}
+        assert reg_map["CIA301_COMMS_RPDO1_MAP"] == 1
+        assert reg_map["CIA301_COMMS_RPDO1_MAP_1"] == 268451936
+        assert reg_map["COMMU_ANGLE_SENSOR"] == 4
+
+        # Non-qualifying registers from the dictionary must not appear in the result
+        excluded_uids = {
+            r.identifier
+            for r in dictionary.all_registers()
+            if r.access != RegAccess.RW
+            or r.address_type not in (RegAddressType.NVM_CFG, RegAddressType.NVM)
+        }
+        assert not ({r.uid for r in conf.registers} & excluded_uids)
+
+        # Device metadata is copied from the dictionary
+        assert conf.device.interface == Interface.ECAT
+        assert conf.device.part_number == dictionary.part_number
+        assert conf.device.product_code == dictionary.product_code
+        assert conf.device.revision_number == dictionary.revision_number
+        assert conf.device.firmware_version == dictionary.firmware_version
+
+
+class TestOverrideValues:
+    """Tests for ConfigurationFile.override_values."""
+
+    def test_replaces_matching_register(self):
+        """A register matching by (subnode, uid) has its value replaced."""
+        base = ConfigurationFile.create_empty_configuration(Interface.ETH, None, None, None, None)
+        base.add_config_register(
+            ConfigRegister("REG_A", subnode=1, dtype=RegDtype.U16, access=RegAccess.RW, storage=10)
+        )
+
+        override = ConfigurationFile.create_empty_configuration(
+            Interface.ETH, None, None, None, None
+        )
+        override.add_config_register(
+            ConfigRegister("REG_A", subnode=1, dtype=RegDtype.U16, access=RegAccess.RW, storage=99)
+        )
+
+        base.override_values(override)
+
+        assert len(base.registers) == 1
+        assert base.registers[0].storage == 99
+
+    def test_adds_non_matching_register_with_warning(self, caplog):
+        """A register not present in base is added, and a warning is logged."""
+        base = ConfigurationFile.create_empty_configuration(Interface.ETH, None, None, None, None)
+        base.add_config_register(
+            ConfigRegister("REG_A", subnode=1, dtype=RegDtype.U16, access=RegAccess.RW, storage=1)
+        )
+
+        override = ConfigurationFile.create_empty_configuration(
+            Interface.ETH, None, None, None, None
+        )
+        override.add_config_register(
+            ConfigRegister(
+                "REG_NEW", subnode=1, dtype=RegDtype.U16, access=RegAccess.RW, storage=77
+            )
+        )
+
+        with caplog.at_level(logging.WARNING):
+            base.override_values(override)
+
+        assert len(base.registers) == 2
+        assert base.registers[1].uid == "REG_NEW"
+        assert any("REG_NEW" in record.message for record in caplog.records)
+
+    def test_replaces_matching_table(self):
+        """A table matching by (subnode, uid) has its content replaced."""
+        base = ConfigurationFile.create_empty_configuration(Interface.ETH, None, None, None, None)
+        base.add_register(Register(RegDtype.U16, RegAccess.RW, "REG", subnode=0), 0)
+        base.add_config_table(
+            ConfigTable(uid="TABLE_A", subnode=0, elements=[TableElement(0, b"\x01")])
+        )
+
+        override = ConfigurationFile.create_empty_configuration(
+            Interface.ETH, None, None, None, None
+        )
+        override.add_config_table(
+            ConfigTable(uid="TABLE_A", subnode=0, elements=[TableElement(0, b"\xff")])
+        )
+
+        base.override_values(override)
+
+        assert len(base.tables) == 1
+        assert base.tables[0].elements[0].data == b"\xff"
+
+    def test_adds_non_matching_table_with_warning(self, caplog):
+        """A table not present in base is added, and a warning is logged."""
+        base = ConfigurationFile.create_empty_configuration(Interface.ETH, None, None, None, None)
+        base.add_register(Register(RegDtype.U16, RegAccess.RW, "REG", subnode=0), 0)
+
+        override = ConfigurationFile.create_empty_configuration(
+            Interface.ETH, None, None, None, None
+        )
+        override.add_config_table(
+            ConfigTable(uid="TABLE_NEW", subnode=0, elements=[TableElement(0, b"\xab")])
+        )
+
+        with caplog.at_level(logging.WARNING):
+            base.override_values(override)
+
+        assert len(base.tables) == 1
+        assert base.tables[0].uid == "TABLE_NEW"
+        assert any("TABLE_NEW" in record.message for record in caplog.records)

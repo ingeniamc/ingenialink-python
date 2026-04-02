@@ -10,7 +10,14 @@ import numpy as np
 from typing_extensions import Literal
 
 from ingenialink import RegAccess, RegDtype
-from ingenialink.dictionary import ACCESS_XDF_OPTIONS, DTYPE_XDF_OPTIONS, Interface, XMLBase
+from ingenialink.dictionary import (
+    ACCESS_XDF_OPTIONS,
+    DTYPE_XDF_OPTIONS,
+    DictionaryV3,
+    Interface,
+    XMLBase,
+)
+from ingenialink.enums.register import RegAddressType
 from ingenialink.exceptions import ILConfigurationFileParseError
 from ingenialink.register import Register
 
@@ -646,3 +653,93 @@ class ConfigurationFile(XMLBase, ABC):
             True if contains target subnode registers, else False
         """
         return subnode in self.__subnodes
+
+    @classmethod
+    def from_dictionary_defaults(cls, dictionary: DictionaryV3) -> "ConfigurationFile":
+        """Create a ConfigurationFile populated with default values from an XDF3 dictionary.
+
+        Iterates all registers in the dictionary, filters to those that are writable
+        (RW) and stored in NVM (NVM_CFG or NVM address type), and populates each with
+        its declared default value.
+
+        Args:
+            dictionary: XDF3 dictionary to read defaults from.
+
+        Returns:
+            ConfigurationFile with all valid registers set to their default values.
+
+        Raises:
+            ValueError: If a qualifying register has no default value or a bytes default
+                (DOMAIN dtype), which indicates the dictionary is not a valid XDF3 or
+                the register default is missing.
+        """
+        xcf_instance = cls.create_empty_configuration(
+            dictionary.interface,
+            dictionary.part_number,
+            dictionary.product_code,
+            dictionary.revision_number,
+            dictionary.firmware_version,
+        )
+        for register in dictionary.all_registers():
+            # Only NVM/NVM_CFG registers with RW access are stored in a configuration file
+            if register.access != RegAccess.RW or register.address_type not in (
+                RegAddressType.NVM_CFG,
+                RegAddressType.NVM,
+            ):
+                continue
+            default = register.default
+            # A None or bytes default indicates the XDF3 is missing the default declaration,
+            # which is not allowed in a valid V3 dictionary
+            if default is None or isinstance(default, bytes):
+                raise ValueError(
+                    f"Register {register.identifier!r} has no valid default value. "
+                    "from_dictionary_defaults requires an XDF3 dictionary where all "
+                    "NVM/NVM_CFG RW registers have a declared default value."
+                )
+            xcf_instance.add_register(register, default)
+        return xcf_instance
+
+    def override_values(self, other: "ConfigurationFile") -> None:
+        """Overlay another ConfigurationFile's values onto this one.
+
+        For each register and table in ``other``:
+
+        - If a matching entry (same subnode and uid) exists in ``self``, it is replaced.
+        - If no match is found, the entry is appended to ``self`` and a warning is logged.
+
+        Args:
+            other: ConfigurationFile whose values will be applied on top of ``self``.
+        """
+        # Build an index of existing registers keyed by (subnode, uid) for O(1) lookup
+        existing_reg_idx: dict[tuple[int, str], int] = {
+            (reg.subnode, reg.uid): i for i, reg in enumerate(self.registers)
+        }
+        for new_reg in other.registers:
+            key = (new_reg.subnode, new_reg.uid)
+            if key in existing_reg_idx:
+                # Replace the existing register with the overriding value
+                self.registers[existing_reg_idx[key]] = new_reg
+            else:
+                # Register is new (not present in base config) — add it but warn the caller
+                logger.warning(
+                    f"Register {new_reg.uid!r} (subnode {new_reg.subnode}) from the override "
+                    "configuration was not found in the target; it will be added."
+                )
+                self.add_config_register(new_reg)
+
+        # Same logic for tables, indexed by (subnode, uid)
+        existing_table_idx: dict[tuple[int, str], int] = {
+            (t.subnode, t.uid): i for i, t in enumerate(self.tables)
+        }
+        for new_table in other.tables:
+            key = (new_table.subnode, new_table.uid)
+            if key in existing_table_idx:
+                # Replace the existing table with the overriding content
+                self.tables[existing_table_idx[key]] = new_table
+            else:
+                # Table is new — add it but warn the caller
+                logger.warning(
+                    f"Table {new_table.uid!r} (subnode {new_table.subnode}) from the override "
+                    "configuration was not found in the target; it will be added."
+                )
+                self.add_config_table(new_table)
