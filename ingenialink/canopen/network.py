@@ -1138,8 +1138,7 @@ class CanopenNetwork(CanopenNetworkBase):
     # Register used for SDO flush round-trips. 0x1018:01 is the Vendor ID
     # from the CANopen Identity Object — always present and distinct from
     # DRV_STATE_STATUS (0x2011) which is the typical source of stale responses.
-    _FLUSH_SDO_INDEX = 0x1018
-    _FLUSH_SDO_SUBINDEX = 1
+    _FLUSH_SDO_REGISTERS = ((0x1018, 1), (0x1018, 2))  # Vendor ID, Product Code
     _FLUSH_MAX_ITERATIONS = 10
     _FLUSH_SETTLE_TIME_S = 0.1
 
@@ -1179,10 +1178,16 @@ class CanopenNetwork(CanopenNetworkBase):
     def _flush_servo_sdo_responses(self, servo: CanopenServo) -> None:
         """Drain stale SDO responses for a single servo.
 
-        Performs iterative drain + round-trip cycles until the queue is clean
-        after a round-trip, or the maximum number of iterations is reached.
-        Each iteration includes a settling delay to give late-arriving
-        responses time to reach the software queue from the PCAN hardware FIFO.
+        Performs iterative drain + double-read verification cycles until
+        two consecutive SDO reads succeed without stale responses, or the
+        maximum number of iterations is reached.
+
+        Algorithm per iteration:
+        1. Drain the SDO response queue.
+        2. Attempt two SDO reads using a register distinct from 0x2011.
+        3. If both succeed: the queue is clean, return.
+        4. If either fails (stale response or timeout): wait for the servo
+           to finish responding to earlier stale SDOs, then retry.
         """
         try:
             sdo_client = servo.node.sdo
@@ -1195,25 +1200,43 @@ class CanopenNetwork(CanopenNetworkBase):
                         servo.target,
                         drained,
                     )
-                # Wait for any in-flight stale responses to arrive from the hardware FIFO
-                sleep(self._FLUSH_SETTLE_TIME_S)
-                # SDO round-trip with a register that is NOT 0x2011
-                sdo_client.upload(self._FLUSH_SDO_INDEX, self._FLUSH_SDO_SUBINDEX)
-                # Check if any more stale responses arrived during the settle + round-trip
-                remaining = self._drain_sdo_queue(sdo_client)
-                if remaining == 0:
+                # Attempt two consecutive SDO reads with DIFFERENT registers to
+                # verify the queue is clean.  Using different registers ensures
+                # that a stale response for the first register cannot be silently
+                # consumed as a valid reply to the second read.
+                reads_ok = True
+                for read_idx, (index, subindex) in enumerate(self._FLUSH_SDO_REGISTERS):
+                    try:
+                        sdo_client.upload(index, subindex)
+                    except Exception as read_exc:  # noqa: PERF203
+                        logger.debug(
+                            "Flush iteration %d, read %d for node %d failed: %s",
+                            iteration,
+                            read_idx + 1,
+                            servo.target,
+                            read_exc,
+                        )
+                        reads_ok = False
+                        break
+                if reads_ok:
+                    # Both reads succeeded, check no more stale responses leaked in
+                    remaining = self._drain_sdo_queue(sdo_client)
+                    if remaining == 0:
+                        logger.debug(
+                            "SDO queue clean for node %d after %d iteration(s)",
+                            servo.target,
+                            iteration + 1,
+                        )
+                        return
                     logger.debug(
-                        "SDO queue clean for node %d after %d iteration(s)",
+                        "Flush iteration %d for node %d: %d stale responses after reads",
+                        iteration,
                         servo.target,
-                        iteration + 1,
+                        remaining,
                     )
-                    return
-                logger.debug(
-                    "Flush iteration %d for node %d: %d stale responses arrived during round-trip",
-                    iteration,
-                    servo.target,
-                    remaining,
-                )
+                # Wait for the servo to respond to outstanding stale SDOs
+                # before retrying the drain cycle.
+                sleep(self._FLUSH_SETTLE_TIME_S)
             logger.warning(
                 "SDO flush for node %d did not stabilize after %d iterations",
                 servo.target,
