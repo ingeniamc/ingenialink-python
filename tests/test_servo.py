@@ -217,7 +217,7 @@ def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: 
     )
 
 
-def test_load_configuration_accepts_configuration_file_object(virtual_drive_custom_dict):  # noqa: F811
+def test_load_configuration_accepts_configuration_file_object(virtual_drive_custom_dict):
     """load_configuration accepts a ConfigurationFile instance directly (no file path needed)."""
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     _, _, servo = virtual_drive_custom_dict(dictionary, Interface.ETH)
@@ -229,12 +229,9 @@ def test_load_configuration_accepts_configuration_file_object(virtual_drive_cust
     # Should not raise - the ConfigurationFile object is accepted directly
     servo.load_configuration(conf)
 
-    # Verify the register was written: read it back and compare
+    # Verify the registers were written: read them back and compare
     for config_register in conf.registers:
-        try:
-            value = servo.read(config_register.uid, subnode=config_register.subnode)
-        except Exception:
-            continue
+        value = servo.read(config_register.uid, subnode=config_register.subnode)
         if config_register.dtype == RegDtype.FLOAT:
             assert value == pytest.approx(config_register.storage, 0.0001)
         else:

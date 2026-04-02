@@ -3,7 +3,7 @@
 ## [Unreleased]
 ### Added
 - Create config files from DictionaryV3 defaults
-- Override configuration file values with values form another configuration file
+- Override configuration file values with values from another configuration file
 - Allow to upload configurations from configuration file class
 
 ### Fixed
