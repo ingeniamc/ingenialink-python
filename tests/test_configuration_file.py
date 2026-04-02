@@ -267,13 +267,17 @@ class TestOverrideValues:
 
     def test_replaces_matching_register(self):
         """A register matching by (subnode, uid) has its value replaced."""
-        base = ConfigurationFile.create_empty_configuration(Interface.ETH, None, None, None, None)
+        base = ConfigurationFile.create_empty_configuration(
+            interface=Interface.ETH, part_number=None, product_code=None,
+            revision_number=None, firmware_version=None,
+        )
         base.add_config_register(
             ConfigRegister("REG_A", subnode=1, dtype=RegDtype.U16, access=RegAccess.RW, storage=10)
         )
 
         override = ConfigurationFile.create_empty_configuration(
-            Interface.ETH, None, None, None, None
+            interface=Interface.ETH, part_number=None, product_code=None,
+            revision_number=None, firmware_version=None,
         )
         override.add_config_register(
             ConfigRegister("REG_A", subnode=1, dtype=RegDtype.U16, access=RegAccess.RW, storage=99)
@@ -286,13 +290,17 @@ class TestOverrideValues:
 
     def test_adds_non_matching_register_with_warning(self, caplog):
         """A register not present in base is added, and a warning is logged."""
-        base = ConfigurationFile.create_empty_configuration(Interface.ETH, None, None, None, None)
+        base = ConfigurationFile.create_empty_configuration(
+            interface=Interface.ETH, part_number=None, product_code=None,
+            revision_number=None, firmware_version=None,
+        )
         base.add_config_register(
             ConfigRegister("REG_A", subnode=1, dtype=RegDtype.U16, access=RegAccess.RW, storage=1)
         )
 
         override = ConfigurationFile.create_empty_configuration(
-            Interface.ETH, None, None, None, None
+            interface=Interface.ETH, part_number=None, product_code=None,
+            revision_number=None, firmware_version=None,
         )
         override.add_config_register(
             ConfigRegister(
@@ -309,14 +317,18 @@ class TestOverrideValues:
 
     def test_replaces_matching_table(self):
         """A table matching by (subnode, uid) has its content replaced."""
-        base = ConfigurationFile.create_empty_configuration(Interface.ETH, None, None, None, None)
+        base = ConfigurationFile.create_empty_configuration(
+            interface=Interface.ETH, part_number=None, product_code=None,
+            revision_number=None, firmware_version=None,
+        )
         base.add_register(Register(RegDtype.U16, RegAccess.RW, "REG", subnode=0), 0)
         base.add_config_table(
             ConfigTable(uid="TABLE_A", subnode=0, elements=[TableElement(0, b"\x01")])
         )
 
         override = ConfigurationFile.create_empty_configuration(
-            Interface.ETH, None, None, None, None
+            interface=Interface.ETH, part_number=None, product_code=None,
+            revision_number=None, firmware_version=None,
         )
         override.add_config_table(
             ConfigTable(uid="TABLE_A", subnode=0, elements=[TableElement(0, b"\xff")])
@@ -329,11 +341,15 @@ class TestOverrideValues:
 
     def test_adds_non_matching_table_with_warning(self, caplog):
         """A table not present in base is added, and a warning is logged."""
-        base = ConfigurationFile.create_empty_configuration(Interface.ETH, None, None, None, None)
+        base = ConfigurationFile.create_empty_configuration(
+            interface=Interface.ETH, part_number=None, product_code=None,
+            revision_number=None, firmware_version=None,
+        )
         base.add_register(Register(RegDtype.U16, RegAccess.RW, "REG", subnode=0), 0)
 
         override = ConfigurationFile.create_empty_configuration(
-            Interface.ETH, None, None, None, None
+            interface=Interface.ETH, part_number=None, product_code=None,
+            revision_number=None, firmware_version=None,
         )
         override.add_config_table(
             ConfigTable(uid="TABLE_NEW", subnode=0, elements=[TableElement(0, b"\xab")])

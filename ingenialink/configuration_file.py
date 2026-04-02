@@ -674,11 +674,11 @@ class ConfigurationFile(XMLBase, ABC):
                 the register default is missing.
         """
         xcf_instance = cls.create_empty_configuration(
-            dictionary.interface,
-            dictionary.part_number,
-            dictionary.product_code,
-            dictionary.revision_number,
-            dictionary.firmware_version,
+            interface=dictionary.interface,
+            part_number=dictionary.part_number,
+            product_code=dictionary.product_code,
+            revision_number=dictionary.revision_number,
+            firmware_version=dictionary.firmware_version,
         )
         for register in dictionary.all_registers():
             # Only NVM/NVM_CFG registers with RW access are stored in a configuration file
