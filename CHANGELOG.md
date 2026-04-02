@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- Add specialized `ILRegisterAccessError` exception for improved error handling on aborted register read/write operations
+
 ### Fixed
 - Fix issues of servo status listener of ethercat drives when the drive is on operational state
 
