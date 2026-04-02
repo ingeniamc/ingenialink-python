@@ -1583,6 +1583,20 @@ pipeline {
                                         }
                                     }
                                 }
+                                stage('Prepare test sessions') {
+                                    steps {
+                                        script {
+                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
+                                                venv.run("poetry run poe install-wheel")
+                                            }
+
+                                            testManager.buildTestSessions("tests.setups.rack_specifiers")
+                                            testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
+
+                                            testManager.echoTestGroupsSummary()
+                                        }
+                                    }
+                                }
                                 // stage('Generate documentation') {
                                 //     steps {
                                 //         script {
