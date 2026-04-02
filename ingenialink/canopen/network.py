@@ -155,10 +155,12 @@ CAN_BIT_TIMMING = {
 
 
 class CustomListener(can.Listener):
-    """Custom listener for IXXAT and KVASER connection.
+    """Custom listener to handle CAN bus errors.
 
-    It is used to ignore the exceptions that occur when
-    the error limit is reached.
+    Implementing ``on_error`` prevents the ``can.Notifier`` receive thread
+    from terminating on transient bus errors (e.g. PCAN buffer overrun,
+    IXXAT/KVASER error-limit errors).  Without this, a single overrun
+    permanently kills the notifier and all subsequent SDO operations fail.
     """
 
     def __init__(self) -> None:
@@ -169,7 +171,7 @@ class CustomListener(can.Listener):
 
     def on_error(self, exc: Exception) -> None:
         """On error callback."""
-        logger.error(f"An exception occurred with the IXXAT or KVASER connection. Exception: {exc}")
+        logger.error(f"CAN bus error (handled, notifier kept alive): {exc}")
 
 
 class NetStatusListener(Thread):
@@ -482,8 +484,7 @@ class CanopenNetwork(CanopenNetworkBase):
         """
         if self._connection is None:
             self._connection = canopen.Network()
-            if self.__device in [CanDevice.IXXAT.value, CanDevice.KVASER.value]:
-                self._connection.listeners.append(CustomListener())
+            self._connection.listeners.append(CustomListener())
             try:
                 self._connection.connect(**self.__connection_args)
             except CanError as e:
@@ -543,8 +544,7 @@ class CanopenNetwork(CanopenNetworkBase):
                 logger.info("Bus flushed")
         except Exception as e:
             logger.error(f"Could not stop guarding. Exception: {e}")
-        if self.__device in [CanDevice.IXXAT.value, CanDevice.KVASER.value]:
-            self._connection.listeners.append(CustomListener())
+        self._connection.listeners.append(CustomListener())
         try:
             self._connection.connect(**self.__connection_args)
             for servo in self.servos:
@@ -1141,6 +1141,7 @@ class CanopenNetwork(CanopenNetworkBase):
     _FLUSH_SDO_INDEX = 0x1018
     _FLUSH_SDO_SUBINDEX = 1
     _FLUSH_MAX_ITERATIONS = 10
+    _FLUSH_SETTLE_TIME_S = 0.1
 
     def _flush_sdo_responses(self) -> None:
         """Drain stale SDO responses from all servo SDO queues.
@@ -1180,6 +1181,8 @@ class CanopenNetwork(CanopenNetworkBase):
 
         Performs iterative drain + round-trip cycles until the queue is clean
         after a round-trip, or the maximum number of iterations is reached.
+        Each iteration includes a settling delay to give late-arriving
+        responses time to reach the software queue from the PCAN hardware FIFO.
         """
         try:
             sdo_client = servo.node.sdo
@@ -1192,9 +1195,11 @@ class CanopenNetwork(CanopenNetworkBase):
                         servo.target,
                         drained,
                     )
+                # Wait for any in-flight stale responses to arrive from the hardware FIFO
+                sleep(self._FLUSH_SETTLE_TIME_S)
                 # SDO round-trip with a register that is NOT 0x2011
                 sdo_client.upload(self._FLUSH_SDO_INDEX, self._FLUSH_SDO_SUBINDEX)
-                # Check if any more stale responses arrived during the round-trip
+                # Check if any more stale responses arrived during the settle + round-trip
                 remaining = self._drain_sdo_queue(sdo_client)
                 if remaining == 0:
                     logger.debug(
