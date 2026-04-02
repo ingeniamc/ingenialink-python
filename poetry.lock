@@ -3720,13 +3720,13 @@ test = ["pytest"]
 
 [[package]]
 name = "summit-testing-framework"
-version = "0.3.0.post28+cit.612.make.multidrive.88fc84f"
+version = "0.3.0.post29+cit.612.make.multidrive.42ffd1d"
 description = "Testing framework for Novanta drives"
 optional = false
 python-versions = ">=3.9"
 groups = ["tests"]
 files = [
-    {file = "summit_testing_framework-0.3.0.post28+cit.612.make.multidrive.88fc84f-py3-none-any.whl", hash = "sha256:f70c97148a81c96614fca7a5a47ebf15e8be1fe2f733019b6900069715f27e0f"},
+    {file = "summit_testing_framework-0.3.0.post29+cit.612.make.multidrive.42ffd1d-py3-none-any.whl", hash = "sha256:0407076cea3fc35d103ab91665e570105fde5a6dbb117c3d5ec6349b2d017305"},
 ]
 
 [package.dependencies]
@@ -4389,4 +4389,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "1af553dad2719e2373c57bf078ceee2b80cedc40b966ca9e4e30bde31898bddd"
+content-hash = "f5e67980da1a234cc0827139d286d4e7d61a88f7391f50597d7b6dcd816936c3"
