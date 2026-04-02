@@ -1135,31 +1135,87 @@ class CanopenNetwork(CanopenNetworkBase):
         """Obtain network protocol."""
         return NetProt.CAN
 
+    # Register used for SDO flush round-trips. 0x1018:01 is the Vendor ID
+    # from the CANopen Identity Object — always present and distinct from
+    # DRV_STATE_STATUS (0x2011) which is the typical source of stale responses.
+    _FLUSH_SDO_INDEX = 0x1018
+    _FLUSH_SDO_SUBINDEX = 1
+    _FLUSH_MAX_ITERATIONS = 10
+
     def _flush_sdo_responses(self) -> None:
         """Drain stale SDO responses from all servo SDO queues.
 
         After a reconnection, the PCAN hardware FIFO may still contain responses
         from timed-out SDO requests made during the recovery loop. These stale
         responses can corrupt subsequent SDO exchanges if they are not drained.
-        This method clears the SDO response queue and performs an additional
-        read to flush any in-flight response from the CAN hardware buffer.
+
+        For each servo, this method:
+        1. Drains the SDO response queue.
+        2. Performs an SDO round-trip using a register distinct from 0x2011
+           (which is the typical source of stale responses).
+        3. Drains again and repeats until no stale responses are found,
+           or the maximum number of iterations is reached.
         """
         for servo in self.servos:
             self._flush_servo_sdo_responses(servo)
 
+    @staticmethod
+    def _drain_sdo_queue(sdo_client: "canopen.sdo.SdoClient") -> int:
+        """Drain all pending messages from an SDO client's response queue.
+
+        Returns:
+            Number of stale messages drained.
+        """
+        drained = 0
+        while not sdo_client.responses.empty():
+            try:
+                sdo_client.responses.get_nowait()
+                drained += 1
+            except queue.Empty:  # noqa: PERF203
+                break
+        return drained
+
     def _flush_servo_sdo_responses(self, servo: CanopenServo) -> None:
-        """Drain stale SDO responses for a single servo."""
+        """Drain stale SDO responses for a single servo.
+
+        Performs iterative drain + round-trip cycles until the queue is clean
+        after a round-trip, or the maximum number of iterations is reached.
+        """
         try:
             sdo_client = servo.node.sdo
-            # Drain any stale responses already in the queue
-            sdo_client.responses = queue.Queue()
-            # Do an extra SDO round-trip to flush any in-flight response
-            # from the CAN hardware buffer
-            servo.is_alive()
-            # Drain once more, in case the round-trip flushed additional stale responses
-            sdo_client.responses = queue.Queue()
+            for iteration in range(self._FLUSH_MAX_ITERATIONS):
+                drained = self._drain_sdo_queue(sdo_client)
+                if drained > 0:
+                    logger.debug(
+                        "Flush iteration %d for node %d: drained %d stale SDO responses",
+                        iteration,
+                        servo.target,
+                        drained,
+                    )
+                # SDO round-trip with a register that is NOT 0x2011
+                sdo_client.upload(self._FLUSH_SDO_INDEX, self._FLUSH_SDO_SUBINDEX)
+                # Check if any more stale responses arrived during the round-trip
+                remaining = self._drain_sdo_queue(sdo_client)
+                if remaining == 0:
+                    logger.debug(
+                        "SDO queue clean for node %d after %d iteration(s)",
+                        servo.target,
+                        iteration + 1,
+                    )
+                    return
+                logger.debug(
+                    "Flush iteration %d for node %d: %d stale responses arrived during round-trip",
+                    iteration,
+                    servo.target,
+                    remaining,
+                )
+            logger.warning(
+                "SDO flush for node %d did not stabilize after %d iterations",
+                servo.target,
+                self._FLUSH_MAX_ITERATIONS,
+            )
         except Exception as e:
-            logger.warning(f"Failed to flush SDO responses for servo {servo.target}: {e}")
+            logger.warning("Failed to flush SDO responses for node %d: %s", servo.target, e)
 
     def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:  # noqa: ARG002
         """Recover the CANopen communication with a servo after a disconnection.
