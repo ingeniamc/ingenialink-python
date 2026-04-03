@@ -161,10 +161,18 @@ class CustomListener(can.Listener):
     from terminating on transient bus errors (e.g. PCAN buffer overrun,
     IXXAT/KVASER error-limit errors).  Without this, a single overrun
     permanently kills the notifier and all subsequent SDO operations fail.
+
+    Additionally, clears the stored ``notifier.exception`` so that
+    ``canopen.Network.check()`` (called on every ``send_message``) does
+    not re-raise an already-handled error.
+
+    Args:
+        network: The canopen.Network whose notifier exception should be cleared.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, network: canopen.Network) -> None:
         super().__init__()
+        self._network = network
 
     def on_message_received(self, msg: can.Message) -> None:
         """On message received callback."""
@@ -172,6 +180,8 @@ class CustomListener(can.Listener):
     def on_error(self, exc: Exception) -> None:
         """On error callback."""
         logger.error(f"CAN bus error (handled, notifier kept alive): {exc}")
+        if self._network.notifier is not None:
+            self._network.notifier.exception = None
 
 
 class NetStatusListener(Thread):
@@ -484,7 +494,7 @@ class CanopenNetwork(CanopenNetworkBase):
         """
         if self._connection is None:
             self._connection = canopen.Network()
-            self._connection.listeners.append(CustomListener())
+            self._connection.listeners.append(CustomListener(self._connection))
             try:
                 self._connection.connect(**self.__connection_args)
             except CanError as e:
@@ -544,7 +554,7 @@ class CanopenNetwork(CanopenNetworkBase):
                 logger.info("Bus flushed")
         except Exception as e:
             logger.error(f"Could not stop guarding. Exception: {e}")
-        self._connection.listeners.append(CustomListener())
+        self._connection.listeners.append(CustomListener(self._connection))
         try:
             self._connection.connect(**self.__connection_args)
             for servo in self.servos:
