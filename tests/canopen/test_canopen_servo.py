@@ -106,20 +106,30 @@ class TestRawReadWriteBusOffHandling:
         )
 
     def test_write_raw_translates_pcan_bus_off_to_ilioerror(self) -> None:
+        cause = PcanCanOperationError("Bus error: the CAN controller is in bus-off state.")
         servo = self._build_servo_with_failing_sdo("download")
 
         with pytest.raises(ILIOError) as exc_info:
             servo._write_raw(RAW_IO_REGISTER, b"\x00")
 
-        assert str(exc_info.value) == "Error writing DRV_ID_PRODUCT_CODE"
+        error = exc_info.value
+        assert isinstance(error, ILRegisterAccessError)
+        assert error.base_message == f"Error writing {RAW_IO_REGISTER.identifier}"
+        assert error.reason == str(cause)
+        assert str(error) == f"Error writing {RAW_IO_REGISTER.identifier}. {str(cause)}"
 
     def test_read_raw_translates_pcan_bus_off_to_ilioerror(self) -> None:
+        cause = PcanCanOperationError("Bus error: the CAN controller is in bus-off state.")
         servo = self._build_servo_with_failing_sdo("upload")
 
         with pytest.raises(ILIOError) as exc_info:
             servo._read_raw(RAW_IO_REGISTER)
 
-        assert str(exc_info.value) == "Error reading DRV_ID_PRODUCT_CODE"
+        error = exc_info.value
+        assert isinstance(error, ILRegisterAccessError)
+        assert error.base_message == f"Error reading {RAW_IO_REGISTER.identifier}"
+        assert error.reason == str(cause)
+        assert str(error) == f"Error reading {RAW_IO_REGISTER.identifier}. {str(cause)}"
 
     def test_write_raw_raises_il_register_access_error(self) -> None:
         cause = PcanCanOperationError("Bus error: the CAN controller is in bus-off state.")
