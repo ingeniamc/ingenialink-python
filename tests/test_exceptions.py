@@ -68,7 +68,9 @@ class TestEthernetRawReadWriteRaisesILRegisterAccessError:
         error = exc_info.value
         assert error.reg is self.ETH_REGISTER
         assert isinstance(error.base_exception, ILIOError)
-        assert "Error sending data." in error.root_cause
+        assert error.base_message == f"Error writing {self.ETH_REGISTER.identifier}"
+        assert error.reason == "Error sending data."
+        assert str(error) == f"Error writing {self.ETH_REGISTER.identifier}. Error sending data."
 
     def test_read_raw_raises_il_register_access_error_on_send_failure(self) -> None:
         servo = self._ServoForRawIO()
@@ -80,4 +82,6 @@ class TestEthernetRawReadWriteRaisesILRegisterAccessError:
         error = exc_info.value
         assert error.reg is self.ETH_REGISTER
         assert isinstance(error.base_exception, ILIOError)
-        assert "Error sending data." in error.root_cause
+        assert error.base_message == f"Error reading {self.ETH_REGISTER.identifier}"
+        assert error.reason == "Error sending data."
+        assert str(error) == f"Error reading {self.ETH_REGISTER.identifier}. Error sending data."

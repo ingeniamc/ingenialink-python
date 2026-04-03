@@ -131,7 +131,9 @@ class TestRawReadWriteBusOffHandling:
         error = exc_info.value
         assert error.reg is RAW_IO_REGISTER
         assert isinstance(error.base_exception, PcanCanOperationError)
-        assert error.root_cause == str(cause)
+        assert error.base_message == f"Error writing {RAW_IO_REGISTER.identifier}"
+        assert error.reason == str(cause)
+        assert str(error) == f"Error writing {RAW_IO_REGISTER.identifier}. {str(cause)}"
 
     def test_read_raw_raises_il_register_access_error(self) -> None:
         cause = PcanCanOperationError("Bus error: the CAN controller is in bus-off state.")
@@ -143,4 +145,6 @@ class TestRawReadWriteBusOffHandling:
         error = exc_info.value
         assert error.reg is RAW_IO_REGISTER
         assert isinstance(error.base_exception, PcanCanOperationError)
-        assert error.root_cause == str(cause)
+        assert error.base_message == f"Error reading {RAW_IO_REGISTER.identifier}"
+        assert error.reason == str(cause)
+        assert str(error) == f"Error reading {RAW_IO_REGISTER.identifier}. {str(cause)}"
