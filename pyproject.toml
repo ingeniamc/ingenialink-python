@@ -80,7 +80,7 @@ ingenialink = ["py.typed", "*.pyd"]
 [tool.poetry.group.dev]
 optional = true
 [tool.poetry.group.dev.dependencies]
-poethepoet = {extras = ["poetry-plugin"], version = "^0.35.0"}
+poethepoet = {extras = ["poetry-plugin"], version = "^0.44.0"}
 Cython  = "==3.2.4"
 
 # Dependencies for build wheel tasks
