@@ -182,7 +182,11 @@ class DriveContextManager:
 
                 try:
                     register_value = self.drive.read(uid, subnode=axis)
-                except ILIOError:
+                except ILIOError as e:
+                    logger.error(
+                        f"{id(self)}: Skipping {uid=} on {axis=} — register will NOT "
+                        f"be tracked for restoration. Reason: {e}"
+                    )
                     continue
                 except Exception as e:
                     logger.warning(
@@ -191,7 +195,11 @@ class DriveContextManager:
                     )
                     try:
                         register_value = self.drive.read(uid, subnode=axis)
-                    except ILIOError:
+                    except ILIOError as retry_exc:
+                        logger.error(
+                            f"{id(self)}: Skipping {uid=} on {axis=} after retry — register will "
+                            f"NOT be tracked for restoration. Reason: {retry_exc}"
+                        )
                         continue
                 register_values[(axis, uid)] = register_value
         return register_values
