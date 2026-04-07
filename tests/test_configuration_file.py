@@ -63,10 +63,11 @@ def test_from_register():
     assert conf_file.registers[0].storage == 5.5
 
 
-def test_to_xcf_fail_no_device():
-    with pytest.raises(ValueError):
-        conf = ConfigurationFile.create_empty_configuration(Interface.CAN, "a", 0, 0, "0.0.0")
-        conf.save_to_xcf("test_path")
+def test_to_xcf_allows_empty_configuration(tmp_path):
+    conf = ConfigurationFile.create_empty_configuration(Interface.CAN, "a", 0, 0, "0.0.0")
+    xcf_path = tmp_path / "test_path.xcf"
+    conf.save_to_xcf(str(xcf_path))
+    assert xcf_path.exists()
 
 
 @pytest.mark.parametrize("missing_attr", RegisterXCFElementFactory.DEFAULT_ATTRIBUTES.keys())
