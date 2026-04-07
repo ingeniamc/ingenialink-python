@@ -585,22 +585,17 @@ class ConfigurationFile(XMLBase, ABC):
 
         Args:
             xcf_path: config file target path
-
-        Raises:
-            ValueError: the configuration has no registers
-
         """
-        if not self.registers:
-            raise ValueError("registers is empty")
         tree = ElementTree.Element(self.__ROOT_ELEMENT)
         header = ElementTree.SubElement(tree, self.__HEADER_ELEMENT)
         body = ElementTree.SubElement(tree, self.__BODY_ELEMENT)
         version = ElementTree.SubElement(header, self.__VERSION_ELEMENT)
         version.text = self.version
         device = self.device.to_xcf()
-        registers_element = ElementTree.SubElement(device, self.__REGISTERS_ELEMENT)
-        for register in self.registers:
-            registers_element.append(register.to_xcf())
+        if self.registers:
+            registers_element = ElementTree.SubElement(device, self.__REGISTERS_ELEMENT)
+            for register in self.registers:
+                registers_element.append(register.to_xcf())
 
         # Add tables if present
         if self.tables:
