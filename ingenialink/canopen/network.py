@@ -4,7 +4,9 @@ import os
 import platform
 import queue
 import re
+import struct
 import tempfile
+import time as time_mod
 import warnings
 from collections import OrderedDict, defaultdict
 from enum import Enum
@@ -184,6 +186,197 @@ class CustomListener(can.Listener):
             self._network.notifier.exception = None
 
 
+class SDOTracer(can.Listener):
+    """Passive CAN listener that records all SDO request/response frames.
+
+    This is an instrumentation tool for diagnosing stale SDO response issues
+    (INGK-1251).  When attached to the CAN bus notifier, it captures every SDO
+    frame (TX: 0x580+node, RX: 0x600+node) with timestamps.  Call
+    :meth:`report` to dump a summary to the logger.
+
+    Args:
+        node_ids: Set of CANopen node IDs to trace.
+        network: Optional canopen Network to intercept ``send_message()`` for
+            capturing outgoing SDO requests.
+    """
+
+    SDO_TX_BASE = 0x580  # server → client (response)
+    SDO_RX_BASE = 0x600  # client → server (request)
+
+    def __init__(self, node_ids: set[int], network: Optional[canopen.Network] = None) -> None:
+        super().__init__()
+        self._node_ids = node_ids
+        self._tx_cobids = {self.SDO_TX_BASE + n for n in node_ids}
+        self._rx_cobids = {self.SDO_RX_BASE + n for n in node_ids}
+        self._start = time_mod.monotonic()
+        self._frames: list[tuple[float, str, int, int, int, bytes]] = []
+        self._network = network
+        self._original_send: Optional[Any] = None
+        if network is not None:
+            self._hook_send(network)
+
+    @staticmethod
+    def _is_initiate_frame(data: Union[bytes, bytearray]) -> bool:
+        """Check if an SDO frame is an initiate transfer (has index/subindex).
+
+        Segment upload/download frames do NOT contain index/subindex — their
+        data bytes are payload, not register addresses.  Only initiate frames
+        (client/server command specifiers ``0x20-0x23``, ``0x40``,
+        ``0x41-0x43``, ``0x60``) carry the index in bytes 1-2 and subindex
+        in byte 3.
+
+        Returns:
+            True if the frame is an initiate transfer.
+        """
+        if len(data) < 1:
+            return False
+        ccs = (data[0] >> 5) & 0x07  # client/server command specifier
+        # CCS 1 = initiate download request
+        # CCS 2 = initiate upload request (0x40)
+        # SCS 2 = initiate download response (0x60)
+        # SCS 3 = initiate upload response (0x41-0x43)
+        # CCS 4 = abort (0x80) — also has index/subindex
+        return ccs in (1, 2, 3, 4)
+
+    def _parse_frame(
+        self, direction: str, node_id: int, data: Union[bytes, bytearray]
+    ) -> tuple[float, str, int, int, int, bytes]:
+        """Parse an SDO frame and return a trace record.
+
+        Returns:
+            Tuple of (elapsed, direction, node_id, index, subindex, raw_data).
+        """
+        elapsed = time_mod.monotonic() - self._start
+        if self._is_initiate_frame(data) and len(data) >= 4:
+            index = struct.unpack_from("<H", data, 1)[0]
+            subindex = data[3]
+        else:
+            # Segment frame — no index/subindex; mark with -1
+            index = -1
+            subindex = -1
+        return (elapsed, direction, node_id, index, subindex, bytes(data))
+
+    def _hook_send(self, network: canopen.Network) -> None:
+        """Intercept ``network.send_message()`` to capture outgoing SDO requests."""
+        self._original_send = network.send_message
+
+        def hooked_send(can_id: int, data: bytes, remote: bool = False) -> None:
+            # Record outgoing SDO request frames
+            if can_id in self._rx_cobids and len(data) >= 4:
+                node_id = can_id - self.SDO_RX_BASE
+                self._frames.append(self._parse_frame("TX>", node_id, data))
+            if self._original_send is not None:
+                self._original_send(can_id, data, remote)
+
+        network.send_message = hooked_send
+
+    def unhook(self) -> None:
+        """Restore the original ``send_message()`` method."""
+        if self._network is not None and self._original_send is not None:
+            self._network.send_message = self._original_send
+            self._original_send = None
+
+    def on_message_received(self, msg: can.Message) -> None:
+        """Record SDO request/response frames with timestamps."""
+        if msg.arbitration_id in self._tx_cobids:
+            direction = "RX<"  # response from drive
+            node_id = msg.arbitration_id - self.SDO_TX_BASE
+        elif msg.arbitration_id in self._rx_cobids:
+            direction = "TX>"  # request to drive
+            node_id = msg.arbitration_id - self.SDO_RX_BASE
+        else:
+            return
+        self._frames.append(self._parse_frame(direction, node_id, msg.data))
+
+    def report(self) -> None:
+        """Log a summary of captured SDO traffic."""
+        if not self._frames:
+            logger.info("SDOTracer: No SDO frames captured.")
+            return
+
+        total_tx = sum(1 for f in self._frames if f[1] == "TX>")
+        total_rx = sum(1 for f in self._frames if f[1] == "RX<")
+        logger.info(
+            "SDOTracer: %d frames captured (%d requests TX>, %d responses RX<)",
+            len(self._frames),
+            total_tx,
+            total_rx,
+        )
+
+        # Detect mismatches: for each initiate TX> followed by the next
+        # initiate RX<, check if the index/subindex match.  Skip segment
+        # frames (index == -1) — they carry payload, not register addresses.
+        mismatches = 0
+        last_tx: Optional[tuple[float, str, int, int, int, bytes]] = None
+        for frame in self._frames:
+            if frame[3] == -1:
+                continue  # skip segment frames
+            if frame[1] == "TX>":
+                last_tx = frame
+            elif frame[1] == "RX<" and last_tx is not None:
+                _, _, _, tx_idx, tx_sub, _ = last_tx
+                elapsed, _, node_id, rx_idx, rx_sub, raw = frame
+                if tx_idx != rx_idx or tx_sub != rx_sub:
+                    mismatches += 1
+                    if mismatches <= 30:
+                        logger.warning(
+                            "SDOTracer MISMATCH #%d at t=%.3fs node=%d: "
+                            "sent 0x%04X:%d, got 0x%04X:%d  raw=[%s]",
+                            mismatches,
+                            elapsed,
+                            node_id,
+                            tx_idx,
+                            tx_sub,
+                            rx_idx,
+                            rx_sub,
+                            raw.hex(" "),
+                        )
+                last_tx = None
+
+        if mismatches > 30:
+            logger.warning("SDOTracer: ... and %d more mismatches", mismatches - 30)
+
+        if mismatches == 0:
+            logger.info("SDOTracer: All SDO request/response pairs matched.")
+        else:
+            logger.warning("SDOTracer: %d total mismatches detected!", mismatches)
+
+        # Check for unsolicited responses (initiate RX< without a preceding
+        # initiate TX>).  Segment frames are skipped.
+        unsolicited = 0
+        expecting_response = False
+        for frame in self._frames:
+            if frame[3] == -1:
+                continue  # skip segment frames
+            if frame[1] == "TX>":
+                expecting_response = True
+            elif frame[1] == "RX<":
+                if not expecting_response:
+                    unsolicited += 1
+                    if unsolicited <= 10:
+                        elapsed, _, node_id, idx, sub, raw = frame
+                        logger.warning(
+                            "SDOTracer UNSOLICITED response #%d at t=%.3fs node=%d: "
+                            "0x%04X:%d  raw=[%s]",
+                            unsolicited,
+                            elapsed,
+                            node_id,
+                            idx,
+                            sub,
+                            raw.hex(" "),
+                        )
+                expecting_response = False
+
+        if unsolicited > 10:
+            logger.warning("SDOTracer: ... and %d more unsolicited responses", unsolicited - 10)
+        if unsolicited > 0:
+            logger.warning(
+                "SDOTracer: %d unsolicited responses (no preceding request)!", unsolicited
+            )
+        else:
+            logger.info("SDOTracer: No unsolicited responses detected.")
+
+
 class NetStatusListener(Thread):
     """Network status listener thread to check if the drive is alive.
 
@@ -289,6 +482,7 @@ class CanopenNetwork(CanopenNetworkBase):
         }
         if self.__device == CanDevice.PCAN.value:
             self.__connection_args["auto_reset"] = True
+        self._sdo_tracer: Optional[SDOTracer] = None
 
     def scan_slaves(self) -> list[int]:
         """Scans for nodes in the network.
@@ -523,6 +717,7 @@ class CanopenNetwork(CanopenNetworkBase):
         the network interface.
 
         """
+        self._stop_sdo_tracer()
         if self._connection is None:
             logger.warning("Can not disconnect. The connection is not established yet.")
             return
@@ -533,12 +728,28 @@ class CanopenNetwork(CanopenNetworkBase):
         self._connection = None
         logger.info("Tear down connection.")
 
+    def _stop_sdo_tracer(self) -> None:
+        """Report and detach the SDO tracer if one is active."""
+        if self._sdo_tracer is not None:
+            self._sdo_tracer.report()
+            self._sdo_tracer.unhook()
+            if (
+                self._connection is not None
+                and self._connection.notifier is not None
+                and self._sdo_tracer in self._connection.notifier.listeners
+            ):
+                self._connection.notifier.listeners.remove(self._sdo_tracer)
+            self._sdo_tracer = None
+
     def _reset_connection(self) -> None:
         """Resets the established CANopen network.
 
         Raises:
             ILError: If the connection was not established yet.
         """
+        # Report and detach any active SDO tracer before resetting
+        self._stop_sdo_tracer()
+
         if self._connection is None:
             raise ILError("Can not reset connection. The connection is not established yet.")
         try:
@@ -1281,6 +1492,18 @@ class CanopenNetwork(CanopenNetworkBase):
                     return False
             logger.info("CANopen communication recovered.")
             self._flush_sdo_responses()
+
+            # Start the SDO tracer to monitor for stale responses after recovery.
+            # The tracer will be reported and removed when the next
+            # recover_from_disconnection() is called, or it can be retrieved via
+            # self._sdo_tracer for manual inspection.
+            node_ids: set[int] = {s.target for s in self.servos if isinstance(s.target, int)}
+            tracer = SDOTracer(node_ids, network=self._connection)
+            if self._connection is not None and self._connection.bus is not None:
+                self._connection.notifier.add_listener(tracer)
+                self._sdo_tracer = tracer
+                logger.info("SDOTracer attached — monitoring SDO traffic for nodes %s", node_ids)
+
             return True
         except Exception as e:
             logger.warning(f"Failed to recover CANopen communication: {e}")
