@@ -592,10 +592,9 @@ class ConfigurationFile(XMLBase, ABC):
         version = ElementTree.SubElement(header, self.__VERSION_ELEMENT)
         version.text = self.version
         device = self.device.to_xcf()
-        if self.registers:
-            registers_element = ElementTree.SubElement(device, self.__REGISTERS_ELEMENT)
-            for register in self.registers:
-                registers_element.append(register.to_xcf())
+        registers_element = ElementTree.SubElement(device, self.__REGISTERS_ELEMENT)
+        for register in self.registers:
+            registers_element.append(register.to_xcf())
 
         # Add tables if present
         if self.tables:

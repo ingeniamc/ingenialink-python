@@ -65,7 +65,7 @@ def test_from_register():
 
 def test_to_xcf_allows_empty_configuration(tmp_path):
     conf = ConfigurationFile.create_empty_configuration(Interface.CAN, "a", 0, 0, "0.0.0")
-    xcf_path = tmp_path / "test_path.xcf"
+    xcf_path = tmp_path / "test_empty_config_file.xcf"
     conf.save_to_xcf(str(xcf_path))
     assert xcf_path.exists()
 
