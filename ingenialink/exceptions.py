@@ -44,6 +44,7 @@ class ILRegisterAccessError(ILIOError):
     """IngeniaLink register access error raised when a register read or write is aborted.
 
     Attributes:
+        base_message: A general message describing the failed operation.
         reg: The register that was being accessed when the failure occurred.
         base_exception: The underlying exception that caused the failure.
         reason: A message describing the specific reason for the failure.
