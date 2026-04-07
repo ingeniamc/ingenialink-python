@@ -95,6 +95,21 @@ ECAT_SETUP = SpecifierContainer({
                     },
                 },
             ),
+            "2.10.0": VersionConfig.from_version(
+                version="2.10.0",
+                config_file=_config_files.CAP_XCR_E_CONFIG,
+                dictionary_type=DictionaryType.XDF_V2,
+                extra_data={
+                    __EXECUTION_POLICY_KEY: "nightly",
+                    __TEST_CONFIGS_KEY: {
+                        "ECAT_TEST_SESSIONS": PyTestConfig(
+                            markers="ethercat",
+                            run_test_stage_uid="ethercat_capitan",
+                            stage_name="EtherCAT Capitan - FW. 2.10.0",
+                        )
+                    },
+                },
+            ),
         },
     ),
 })
@@ -170,6 +185,21 @@ ETH_SETUP = SpecifierContainer({
                     },
                 },
             ),
+            "2.10.0": VersionConfig.from_version(
+                version="2.10.0",
+                config_file=_config_files.CAP_XCR_C_CONFIG,
+                dictionary_type=DictionaryType.XDF_V2,
+                extra_data={
+                    __EXECUTION_POLICY_KEY: "nightly",
+                    __TEST_CONFIGS_KEY: {
+                        "ETH_TEST_SESSIONS": PyTestConfig(
+                            markers="ethernet",
+                            run_test_stage_uid="ethernet_capitan",
+                            stage_name="Ethernet Capitan - FW. 2.10.0",
+                        )
+                    },
+                },
+            ),
         },
     ),
 })
@@ -241,6 +271,21 @@ CAN_SETUP = SpecifierContainer({
                             markers="canopen",
                             run_test_stage_uid="canopen_capitan",
                             stage_name="CANopen Capitan - FW. 2.9.0",
+                        )
+                    },
+                },
+            ),
+            "2.10.0": VersionConfig.from_version(
+                version="2.10.0",
+                config_file=_config_files.CAP_XCR_C_CONFIG,
+                dictionary_type=DictionaryType.XDF_V2,
+                extra_data={
+                    __EXECUTION_POLICY_KEY: "nightly",
+                    __TEST_CONFIGS_KEY: {
+                        "CAN_TEST_SESSIONS": PyTestConfig(
+                            markers="canopen",
+                            run_test_stage_uid="canopen_capitan",
+                            stage_name="CANopen Capitan - FW. 2.10.0",
                         )
                     },
                 },

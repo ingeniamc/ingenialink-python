@@ -174,6 +174,9 @@ being handled, causing `canopen.Network.check()` to re-raise it on every `send_m
 | #23 | UNSTABLE | `test_enable_disable` ×3, `test_fault_reset`. Also unrelated: CANopen Everest FW 2.8.0 (48 tests). |
 | #24 | ABORTED | Auto-triggered by SDOTracer commit, manually stopped |
 | #25 | UNSTABLE | `test_enable_disable` ×1. **SDOTracer captured 743 stale SDO responses and 253 mismatches.** See "Jenkins Build #25" section. |
+| #26 | ABORTED | Auto-triggered by logger.error commit, manually stopped |
+| #27 | **SUCCESS** | All tests passed. SDOTracer: 0 mismatches, 0 unsolicited across all 3 traces. Bug did NOT reproduce. |
+| #28 | UNSTABLE | `test_enable_disable` ×1. **SDOTracer: 494 unsolicited, 24 mismatches. `logger.error` confirmed errors in `__enter__()` of subsequent tests.** See "Jenkins Build #28" section. |
 
 ### Success Rates (builds 11–23, after all fixes)
 
@@ -471,9 +474,9 @@ The SDOTracer data definitively proves the failure mechanism:
    (PCAN USB adapter internal buffer → USB driver → OS kernel buffer) and take ~750ms
    to be delivered to the python-side Queue after the flush.
 
-3. **The stale responses are from the previous test session** — Their indices
-   (`0x1600:1-8`, `0x1601:0-1`, etc.) are sequential PDO mapping registers from the
-   bulk reads performed by `DriveContextManager.__exit__()` after `test_restore_parameters`.
+3. **The stale responses are from a previous test session** — Their indices
+   (`0x1600:1-8`, `0x1601:0-1`, etc.) are sequential PDO mapping registers from
+   bulk reads performed during previous `DriveContextManager` operations.
 
 4. **743 excess responses corrupt all subsequent SDO communication** — Each new SDO
    request picks up a stale response instead of the real one, causing index mismatches
@@ -486,6 +489,71 @@ internal buffering and USB transfer latency. The adapter collects frames in its 
 FIFO and transfers them to the PC over USB in batches. After a `disconnect()` + `connect()`
 cycle, the adapter's FIFO is NOT cleared. The 743 stale frames sit in the FIFO and are
 delivered over USB after the connection is re-established, arriving ~750ms later.
+
+---
+
+## Jenkins Build #28 — DCM Instance Analysis Confirms Error Flow (2026-04-07)
+
+### Setup
+
+- **Build**: PR-776 #28, triggered manually with same parameters as #25/#27
+- **Commit**: `c6ea9517` — Added `logger.error` for skipped registers in `_store_register_data()`
+- **Result**: UNSTABLE — `test_enable_disable` FAILED ×1
+
+### SDOTracer Output
+
+| Trace | TX | RX | Mismatches | Unsolicited | Notes |
+|-------|----|----|------------|-------------|-------|
+| 1 (test_store_parameters) | 12,003 | 12,003 | 0 | 2* | *Segment frame false positives |
+| 2 (test_enable_disable) | 10,485 | **10,977** | **24** | **494** | **492 excess RX** |
+
+### New `logger.error` Output — DCM Instance to Test Mapping
+
+Each unique DCM instance ID confirms `scope="function"` — every test gets its own DCM.
+All errors appear in `------ live log setup ------` (= `__enter__()` → `_store_register_data()`).
+
+| Time | Test (`live log setup`) | DCM Instance | Registers Skipped |
+|------|------------------------|--------------|-------------------|
+| 13:26:27.597 | `test_read` | 2646429779760 | MON_CFG_REG7-10_MAP (4) |
+| 13:26:28.401 | `test_monitoring_enable_disable` | 2646440551760 | TPDO1_3, TPDO1_5, TPDO1_6 (3) |
+| 13:26:29.657 | `test_monitoring_remove_data` | 2646430670608 | Under_temp, STO, Sync (3) |
+| 13:26:30.456 | `test_monitoring_data_size` | 2646434783584 | CL_TOR_PID_KI/MAX/MIN (3) |
+| 13:26:31.676 | `test_disturbance_enable_disable` | 2646436407376 | FBK_BISS1_SSI1_* (4) |
+| 13:26:32.890 | `test_disturbance_map_register` | 2646440500912 | DRV_STATE_CONTROL, DRV_OP_CMD, CL_VOL_Q (3) |
+| **13:26:33.740** | **`test_enable_disable`** | 2646438749520 | TPDO1_MAP_1-3 (3) |
+| 13:26:35.150 | `test_enable_disable` **body** | — | DRV_STATE_CONTROL → got 0x2011 → **FAILED** |
+| 13:26:35.978 | `test_fault_reset` | 2646439630400 | MEM_USR_ADDR (1, SDO timeout + PCAN overrun) |
+
+**Total**: 8 consecutive test setups affected, 24 registers skipped, 1 test body read corrupted.
+After `test_fault_reset`, stale responses are exhausted — all subsequent tests pass.
+
+### Mismatch Timing Distribution (vs Build #25)
+
+Unlike build #25 (all mismatches at t=0.750s in one burst), build #28 shows mismatches
+spread across **~8 seconds** at ~1s intervals:
+
+```
+t=0.812s:  4 mismatches  (test_read setup)
+t=1.859s:  3 mismatches  (test_monitoring_enable_disable setup)
+t=2.906s:  3 mismatches  (test_monitoring_remove_data setup)
+t=3.953s:  3 mismatches  (test_monitoring_data_size setup)
+t=5.000s:  4 mismatches  (test_disturbance_enable_disable setup)
+t=6.047s:  3 mismatches  (test_disturbance_map_register setup)
+t=7.094s:  3 mismatches  (test_enable_disable setup)
+t=8.187s:  1 mismatch    (test_enable_disable body → failure)
+```
+
+Each ~1s interval = ~500ms for `_store_register_data()` bulk read + ~400ms SDO timeout
+when a stale response consumes the slot of a legitimate read.
+
+### Key Confirmation
+
+1. **Zero errors in `force_restore()`** — It completes before stale responses arrive
+   (`force_restore()` runs at ~13:26:27.0, stale responses start at 13:26:27.597 = 812ms
+   after SDOTracer attachment at 13:26:26.786)
+2. **All errors in `__enter__()`** — Every `Skipping uid=` log is under `live log setup`
+3. **Different DCM instances per test** — 8 unique IDs across 8 test setups
+4. **Stale responses trickle, don't burst** — 494 unsolicited over 8s vs 743 over <1s in #25
 
 ### False Positive in SDOTracer (Minor Bug)
 
@@ -533,28 +601,43 @@ sequenceDiagram
 
     Test->>Test: test_restore_parameters PASSES ✅
 
-    FW-->>PCAN: Stream of ~220 stale SDO responses begins
+    Note over DCM: force_restore() runs in teardown
+    DCM->>SDO: _store_register_data() (bulk read ~500 regs, ~500ms)
+    Note over SDO: Completes before stale responses arrive
+
+    FW-->>PCAN: ~494 stale SDO responses buffered in PCAN FIFO
     Note over FW: FW 2.9.0 replays SDO responses (sequential register order)
-    DCM->>SDO: __exit__() → read register A
-    Note over SDO: Queue cleared, request sent, blocks...
-    FW-->>SDO: Stale response (wrong index) arrives first
-    SDO-->>DCM: SdoCommunicationError-
-    Note over SDO: Correct response to A arrives → discarded by next queue clear
-    DCM->>SDO: read register B (queue cleared again)
-    FW-->>SDO: Next stale response arrives first
-    SDO-->>DCM: SdoCommunicationError (×220 total)
 
-    PCAN-->>Notifier: PCAN_ERROR_OVERRUN (bus flooded)
-    Notifier->>CL: on_error(exc)
-    CL->>Notifier: notifier.exception = None (cleared ✅)
+    Note over DCM: Next test (test_read) fixture setup begins
+    DCM->>SDO: __enter__() → _store_register_data()
+    Note over PCAN: ~812ms after flush: stale responses start arriving
+    FW-->>SDO: Stale response (wrong index) arrives
+    SDO-->>DCM: SdoCommunicationError → ILIOError
+    DCM->>DCM: logger.error("Skipping uid=...") → continue
+    Note over DCM: 4 registers skipped in test_read setup
 
-    Note over FW: Stale response stream ends
-    Test->>SDO: test_enable_disable → servo.enable()
-    FW-->>SDO: Still a few stale responses left
-    SDO-->>Test: ILIOError: Error reading DRV_STATE_STATUS
+    Note over DCM: test_monitoring setup (new DCM instance)
+    DCM->>SDO: __enter__() → _store_register_data()
+    FW-->>SDO: More stale responses
+    Note over DCM: 3 registers skipped
+
+    Note over DCM: ... pattern repeats across 8 test setups ...
+
+    Note over DCM: test_enable_disable setup (DCM 2646438749520)
+    DCM->>SDO: __enter__() → _store_register_data()
+    FW-->>SDO: Stale responses still arriving
+    Note over DCM: 3 registers skipped (TPDO1_MAP_1-3)
+
+    Test->>SDO: test_enable_disable body → servo.enable()
+    SDO->>FW: read DRV_STATE_CONTROL
+    FW-->>SDO: Stale response for 0x2011:0
+    SDO-->>Test: ILIOError: got 0x2011:0 instead
     Note over Test: FAILS ❌
 
-    Test->>SDO: test_fault_reset
-    Note over SDO: Stale stream fully drained by now
-    Test->>Test: PASSES ✅
+    Note over DCM: test_fault_reset setup
+    PCAN-->>Notifier: PCAN_ERROR_OVERRUN
+    Notifier->>CL: on_error(exc)
+    CL->>Notifier: notifier.exception = None (cleared ✅)
+    Note over DCM: 1 register skipped (MEM_USR_ADDR) — last stale response
+    Test->>Test: test_fault_reset PASSES ✅ (stale stream exhausted)
 ```
