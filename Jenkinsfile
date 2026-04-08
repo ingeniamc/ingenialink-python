@@ -552,7 +552,8 @@ class TestSession implements Serializable {
         'jobName',
         'setAttApiToken',
         'enableFirmwareVersionCheck',
-        'stageName'
+        'stageName',
+        'policy'
     ]
 
     /**
@@ -681,6 +682,12 @@ class TestSession implements Serializable {
      * Default: true
      */
     Boolean enableFirmwareVersionCheck = true
+
+    /**
+     * Execution policy tag for this session (e.g. 'always', 'nightly', 'weekends').
+     * Default: null
+     */
+    String policy = null
 
     TestSession(Map args = [:]) {
         // Validate arguments against whitelist
@@ -874,23 +881,32 @@ class TestSession implements Serializable {
  *        ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
  *   4. Gate the hardware node on the group and run all sessions:
  *        when { expression { ECAT_TESTS.anyShouldRun() } }
- *        testManager.runTestStages(ECAT_TESTS)
+ *        ECAT_TESTS.runTestStages()
  */
 class TestGroup {
     /** Key used to look up this group in rack_specifiers test_configs (e.g. "ECAT_TEST_SESSIONS"). */
     final String name
     /** Template session; every session in this group is derived via baseTestSession.override(). */
     final TestSession baseTestSession
-    /** Ordered list of sessions to run; populated by buildTestSessions() and manual appends. */
-    List<TestSession> sessions
+    /** Ordered list of sessions to run; populated by buildTestSessions() and addSession(). */
+    private List<TestSession> _sessions
     /** Back-reference to the PyTestManager that created this group */
     private final PyTestManager manager
+    /** When true, addSession() will throw. Set automatically by runTestStages() to prevent
+     *  concurrent modifications from parallel branches. */
+    private boolean locked = false
 
     TestGroup(String name, TestSession baseTestSession, PyTestManager manager) {
         this.name = name
         this.baseTestSession = baseTestSession
-        this.sessions = []
+        this._sessions = []
         this.manager = manager
+    }
+
+    /** Read-only access to the sessions list. */
+    @NonCPS
+    List<TestSession> getSessions() {
+        return this._sessions
     }
 
     /**
@@ -910,6 +926,12 @@ class TestGroup {
      * @param overrides  Map of TestSession attribute overrides (must include at least 'uid')
      */
     void addSession(Map overrides) {
+        if (this.locked) {
+            throw new IllegalStateException(
+                "Cannot add session to locked group '${this.name}'. "
+                + "The group was locked by runTestStages() to prevent concurrent modifications from parallel branches."
+            )
+        }
         if (!overrides.containsKey('uid') || !overrides.uid) {
             throw new IllegalArgumentException("addSession() requires a non-null 'uid' in overrides. Got: ${overrides}")
         }
@@ -922,7 +944,7 @@ class TestGroup {
             session.shouldRun = false
             session.skipReason = "uid '${session.uid}' does not match test_session_filter '${testSessionFilter}'"
         }
-        this.sessions << session
+        this._sessions << session
     }
 
     /**
@@ -930,7 +952,7 @@ class TestGroup {
      * Used as the gate condition for allocating the hardware node.
      */
     boolean anyShouldRun() {
-        return this.sessions.any { it.shouldRun }
+        return this._sessions.any { it.shouldRun }
     }
 
     /**
@@ -938,14 +960,36 @@ class TestGroup {
      * Includes run/skip status and the skip reason for excluded sessions.
      */
     String configSummary() {
-        def runCount = this.sessions.count { it.shouldRun }
-        def lines = ["TestGroup '${this.name}': ${this.sessions.size()} session(s), ${runCount} to run"]
-        this.sessions.each { session ->
+        def runCount = this._sessions.count { it.shouldRun }
+        def lines = ["TestGroup '${this.name}': ${this._sessions.size()} session(s), ${runCount} to run"]
+        this._sessions.each { session ->
             def status = session.shouldRun ? 'run ' : 'skip'
             def reason = session.shouldRun ? '' : " (${session.skipReason})"
             lines << "  [${status}] ${session.stageName} [uid=${session.uid}]${reason}"
         }
         return lines.join('\n')
+    }
+
+    /**
+     * Run test stages from pre-built TestSession objects.
+     *
+     * Locks the group to prevent concurrent modifications, then runs each session
+     * as a Jenkins stage. Sessions with shouldRun==false are marked with
+     * Utils.markStageSkippedForConditional() so they appear grey (skipped) in the
+     * Jenkins UI rather than green (passed).
+     */
+    def runTestStages() {
+        this.locked = true
+        this._sessions.each { session ->
+            this.manager.pipeline.stage(session.stageName) {
+                if (session.shouldRun) {
+                    this.manager.runTestSession(session)
+                } else {
+                    this.manager.pipeline.echo "Skipped: ${session.skipReason}"
+                    org.jenkinsci.plugins.pipeline.modeldefinition.Utils.markStageSkippedForConditional(session.stageName)
+                }
+            }
+        }
     }
 }
 
@@ -1099,6 +1143,21 @@ class PyTestManager {
     }
 
     /**
+     * Delete files matching a glob pattern (e.g. "wireshark/*.pcap", "*.coverage*").
+     * Silently succeeds if no files match or the path does not exist.
+     *
+     * @param pattern Unix-style glob pattern (forward slashes). On Windows, slashes are
+     *                converted to backslashes automatically.
+     */
+    private def deleteFiles(String pattern) {
+        if (this.venvManager.isUnixNode()) {
+            this.pipeline.sh(script: "rm -f ${pattern}", returnStatus: true)
+        } else {
+            this.pipeline.bat(script: "del /f \"${pattern.replace('/', '\\')}\" ", returnStatus: true)
+        }
+    }
+
+    /**
      * Archive Wireshark log files as Jenkins artifacts.
      * Archives all .pcap files from the specified directory.
      * 
@@ -1119,11 +1178,7 @@ class PyTestManager {
      * @param wiresharkDir Directory containing Wireshark log files to clear
      */
     private def clearWiresharkLogs(String wiresharkDir) {
-        if (this.venvManager.isUnixNode()) {
-            this.pipeline.sh(script: "rm -f ${wiresharkDir}/*.pcap", returnStatus: true)
-        } else {
-            this.pipeline.bat(script: "del /f \"${wiresharkDir}\\\\*.pcap\"", returnStatus: true)
-        }
+        this.deleteFiles("${wiresharkDir}/*.pcap")
     }
 
     /**
@@ -1131,11 +1186,7 @@ class PyTestManager {
      * Removes all .coverage* files to prepare for new test runs.
      */
     private def clearCoverageFiles() {
-        if (this.venvManager.isUnixNode()) {
-            this.pipeline.sh(script: 'rm -f *.coverage*', returnStatus: true)
-        } else {
-            this.pipeline.bat(script: 'del /f "*.coverage*"', returnStatus: true)
-        }
+        this.deleteFiles('*.coverage*')
     }
 
     /**
@@ -1192,11 +1243,7 @@ class PyTestManager {
         this.pipeline.junit "pytest_reports/*.xml"
         
         // Delete the junit after publishing it so it is not re-published on the next stage
-        if (this.venvManager.isUnixNode()) {
-            this.pipeline.sh "rm -f pytest_reports/*.xml"
-        } else {
-            this.pipeline.bat "del /S /Q pytest_reports\\*.xml"
-        }
+        this.deleteFiles('pytest_reports/*.xml')
     }
 
     /**
@@ -1321,16 +1368,17 @@ class PyTestManager {
                         )
                     }
 
-                    testConfigs.each { sessionName, testConfig ->
-                        def group = this.registeredGroups[sessionName]
+                    testConfigs.each { groupName, testConfig ->
+                        def group = this.registeredGroups[groupName]
                         if (!group) {
-                            this.pipeline.error("No TestGroup found for session name '${sessionName}'. Available groups: ${this.registeredGroups.keySet()}")
+                            this.pipeline.error("No TestGroup found for group name '${groupName}'. Available groups: ${this.registeredGroups.keySet()}")
                         }
                         def overrides = [
                             uid: testConfig.run_test_stage_uid,
                             markers: testConfig.markers,
                             setup: setupPath,
-                            stageName: testConfig.stage_name
+                            stageName: testConfig.stage_name,
+                            policy: executionPolicy ?: 'always'
                         ]
                         if (executionPolicy) {
                             def policyResult = this.shouldRunPolicy(executionPolicy)
@@ -1346,27 +1394,622 @@ class PyTestManager {
         }
     }
 
+    // --- Test Dashboard ---
+
     /**
-     * Run hardware test stages from pre-built TestSession objects.
+     * Run pytest --collect-only and return the list of selected test node IDs.
      *
-     * Each session produces exactly one Jenkins stage. Sessions with shouldRun==false
-     * are marked with Utils.markStageSkippedForConditional() so they appear grey
-     * (skipped) in the Jenkins UI rather than green (passed).
+     * When session is null the collection is unfiltered (no markers, no setup args),
+     * giving the full set of discoverable tests. When a session is supplied its
+     * getTestArgs() is used to mirror the exact arguments that runTestSession would pass.
      *
-     * @param group  TestGroup whose sessions will be run
+     * Always cleans up the temporary output file after reading it.
+     *
+     * @param session  TestSession to collect for, or null for unfiltered baseline
+     * @return Ordered list of test node IDs (e.g. "tests/test_servo.py::test_connect")
      */
-    def runTestStages(TestGroup group) {
-        group.sessions.each { session ->
-            this.pipeline.stage(session.stageName) {
-                if (session.shouldRun) {
-                    this.runTestSession(session)
-                } else {
-                    this.pipeline.echo "Skipped: ${session.skipReason}"
-                    org.jenkinsci.plugins.pipeline.modeldefinition.Utils.markStageSkippedForConditional(session.stageName)
+    private List<String> collectTests(TestSession session = null) {
+        def outputFile = "${this.pipeline.env.WORKSPACE}/.collect_output.txt"
+
+        this.venvManager.withPython(this.venvManager.default_python_version) { venv ->
+            def testArgsStr = session ? session.getTestArgs(venv).join(' ') : ''
+            venv.run("poetry run pytest --collect-only -q --tb=no --no-header ${testArgsStr} > \"${outputFile}\" 2>&1")
+        }
+
+        def output = this.pipeline.readFile(file: outputFile)
+        this.deleteFiles(outputFile)
+        return output.readLines().findAll { line ->
+            def t = line.trim()
+            t && t.contains('::') && !t.startsWith('#') && !t.contains('PytestCollectionWarning')
+        }.collect { it.trim() }
+    }
+
+    /** Collect test data and delegate HTML generation to TestDashboardBuilder. */
+    def generateTestDashboard() {
+        try {
+            def allSessions = []
+            this.registeredGroups.each { name, group ->
+                group.sessions.each { session -> allSessions << session }
+            }
+            if (allSessions.isEmpty()) {
+                this.pipeline.echo("generateTestDashboard: no sessions registered; skipping.")
+                return
+            }
+
+            // Baseline: collect ALL tests (no filters) so uncovered tests still appear as rows
+            def allTestsList = this.collectTests()
+
+            // Collect per-session test sets (one pytest --collect-only run per session)
+            def uidToTests = [:]
+            allSessions.each { session ->
+                uidToTests[session.uid] = this.collectTests(session)
+                uidToTests[session.uid].each { test ->
+                    if (!allTestsList.contains(test)) allTestsList << test
                 }
+            }
+
+            this.pipeline.echo("generateTestDashboard: building HTML (${allTestsList.size()} tests, ${allSessions.size()} sessions)...")
+            new TestDashboardBuilder(this.pipeline, this.registeredGroups)
+                .buildAndPublish(allTestsList, uidToTests)
+            this.pipeline.echo("generateTestDashboard: complete.")
+        } catch (Exception e) {
+            this.pipeline.echo("generateTestDashboard FAILED: ${e.getClass().getName()}: ${e.getMessage()}")
+            throw e
+        }
+    }
+}
+
+// TestDashboardBuilder - Generates an HTML test-coverage dashboard
+
+class TestDashboardBuilder {
+    private def pipeline
+    private Map registeredGroups
+
+    TestDashboardBuilder(def pipeline, Map registeredGroups) {
+        this.pipeline = pipeline
+        this.registeredGroups = registeredGroups
+    }
+
+    // --- Policy helpers ---
+
+    /**
+     * Map a policy tag to a CSS class name for the dashboard table.
+     */
+    @NonCPS
+    private static String policyCssClass(String policy) {
+        def map = [always: 'policy-always', nightly: 'policy-nightly', weekends: 'policy-weekends', never: 'policy-never']
+        return map.getOrDefault(policy ?: 'always', 'policy-other')
+    }
+
+    @NonCPS
+    private static Map policyLetterMap() {
+        return [always: '&#x2705;', nightly: '&#x1F319;', weekends: '&#x1F31E;', never: '&#x274C;']
+    }
+
+    // --- UID trie helpers ---
+
+    /**
+     * Build a trie from session UIDs split on '_'.
+     * Each node: Map with keys 'label' (String), 'children' (List), 'session' (TestSession or null).
+     * Leaf nodes carry the session reference.
+     *
+     * NOTE: All trie helpers use explicit Map.get()/put() and typed for-loops
+     * to avoid DefaultGroovyMethods.invokeMethod which the Jenkins sandbox blocks.
+     */
+    @NonCPS
+    private static Map buildUidTrie(List sessions) {
+        Map root = [label: '', children: [], session: null]
+        for (int i = 0; i < sessions.size(); i++) {
+            def session = sessions.get(i)
+            String[] parts = session.uid.split('_')
+            Map node = root
+            for (int p = 0; p < parts.length; p++) {
+                String part = parts[p]
+                List children = (List) node.get('children')
+                Map existing = null
+                for (int c = 0; c < children.size(); c++) {
+                    Map child = (Map) children.get(c)
+                    if (child.get('label') == part) {
+                        existing = child
+                        break
+                    }
+                }
+                if (existing == null) {
+                    existing = [label: part, children: [], session: null]
+                    children.add(existing)
+                }
+                node = existing
+            }
+            node.put('session', session)
+        }
+        return root
+    }
+
+    /** Max depth of a trie (0 for a leaf). */
+    @NonCPS
+    private static int trieDepth(Map node) {
+        List children = (List) node.get('children')
+        if (children.isEmpty()) return 0
+        int maxD = 0
+        for (int i = 0; i < children.size(); i++) {
+            int d = trieDepth((Map) children.get(i))
+            if (d > maxD) maxD = d
+        }
+        return 1 + maxD
+    }
+
+    /** Number of leaf nodes below (inclusive). */
+    @NonCPS
+    private static int trieLeafCount(Map node) {
+        List children = (List) node.get('children')
+        if (children.isEmpty()) return 1
+        int sum = 0
+        for (int i = 0; i < children.size(); i++) {
+            sum += trieLeafCount((Map) children.get(i))
+        }
+        return sum
+    }
+
+    /**
+     * Collect header cells from a trie, returning a list of lists (one per header row).
+     * Each cell: Map with keys 'label', 'colspan', 'rowspan', 'session'.
+     */
+    @NonCPS
+    private static List collectTrieHeaderCells(Map root, int totalRows) {
+        List rows = []
+        for (int i = 0; i < totalRows; i++) { rows.add([]) }
+        List rootChildren = (List) root.get('children')
+        for (int i = 0; i < rootChildren.size(); i++) {
+            traverseTrieNode((Map) rootChildren.get(i), 0, totalRows, rows)
+        }
+        return rows
+    }
+
+    @NonCPS
+    private static void traverseTrieNode(Map node, int depth, int totalRows, List rows) {
+        List children = (List) node.get('children')
+        List rowList = (List) rows.get(depth)
+        if (children.isEmpty()) {
+            rowList.add([label: node.get('label'), colspan: 1, rowspan: totalRows - depth, session: node.get('session')])
+        } else {
+            rowList.add([label: node.get('label'), colspan: trieLeafCount(node), rowspan: 1, session: null])
+            for (int i = 0; i < children.size(); i++) {
+                traverseTrieNode((Map) children.get(i), depth + 1, totalRows, rows)
             }
         }
     }
+
+    // --- HTML builder helpers ---
+
+    /** CSS styles for the dashboard. */
+    @NonCPS
+    private static String buildCssStyles() {
+        return '''\
+  <style>
+    body { font-family: monospace; font-size: 11px; margin: 20px; }
+    h1   { font-size: 16px; }
+    .table-wrap { overflow: auto; max-width: 100%; max-height: 85vh; }
+    table#dashboard { border-collapse: collapse; }
+    .search-box { margin: 8px 0; }
+    .search-box input { padding: 4px 8px; font-size: 12px; width: 300px; }
+    thead th { white-space: nowrap; position: sticky; z-index: 10; background: #fff; }
+    thead th.sortable { cursor: pointer; user-select: none; }
+    thead th.sortable:hover { background: #eef3fa; }
+    thead th .sort-arrow { font-size: 9px; margin-left: 2px; color: #999; }
+    thead tr.group-row th { background: #dde8f5 !important; font-weight: bold; text-align: center; }
+    thead tr.session-row th { white-space: normal; text-align: center; min-width: 40px; max-width: 80px; font-size: 10px; }
+    tbody tr:nth-child(even) td { background-color: #f9f9f9; }
+    tbody tr:nth-child(even) td.test-name { background-color: #f9f9f9; }
+    tbody tr:hover td { filter: brightness(0.92); }
+    td.test-name, th.test-name { position: sticky; left: 0; z-index: 5; background: #fff;
+                   text-align: left; white-space: nowrap; max-width: 400px;
+                   overflow: hidden; text-overflow: ellipsis; }
+    thead th.test-name { z-index: 20; background: #fff; }
+    thead tr.group-row th.test-name { background: #dde8f5 !important; }
+    tr.file-group td { font-weight: bold; background: #eee !important; border-bottom: 1px solid #ccc; padding: 4px 6px; }
+    th.skipped { color: #888; font-style: italic; }
+    td.policy-cell { text-align: center; font-weight: bold; font-size: 12px; }
+    .policy-always   { background: #c6efce; }
+    .policy-nightly  { background: #ffeb9c; }
+    .policy-weekends { background: #f4b942; }
+    .policy-never    { background: #d9d9d9; }
+    .policy-other    { background: #9fc5e8; }
+    .legend { margin: 8px 0; }
+    .legend-item { display: inline-block; margin-right: 8px;
+                   padding: 2px 10px; border: 1px solid #ccc; }
+    .policy-none     { background: #ffc7ce; }
+  </style>'''
+    }
+
+    /** Summary line and policy legend HTML. */
+    @NonCPS
+    private static String buildLegendHtml(int testCount, int sessionCount) {
+        def sb = new StringBuilder()
+        sb.append("  <p>${testCount} test(s) &nbsp;|&nbsp; ${sessionCount} session(s)</p>\n")
+        sb.append('  <div class="legend">\n')
+        def letters = policyLetterMap()
+        List labels = ['always', 'nightly', 'weekends', 'never']
+        for (int i = 0; i < labels.size(); i++) {
+            String label = (String) labels.get(i)
+            String letter = (String) letters.getOrDefault(label, '&#x2753;')
+            sb.append("    <span class=\"legend-item policy-${label}\">${letter} = ${label}</span>\n")
+        }
+        sb.append('    <span class="legend-item policy-none">&#x1F6AB; = not covered</span>\n')
+        sb.append('  </div>\n')
+        sb.append('  <div class="search-box"><input id="search" type="text" placeholder="Filter tests..."></div>\n')
+        return sb.toString()
+    }
+
+    /** Table header: group name row + hierarchical UID trie rows. */
+    @NonCPS
+    private static String buildTableHeaderHtml(List groupedSessions, List groupTries, int maxTrieDepth) {
+        def sb = new StringBuilder()
+        int totalHeaderRows = maxTrieDepth + 1
+
+        // Row 1: group headers
+        sb.append('      <tr class="group-row">\n')
+        sb.append("        <th rowspan=\"${totalHeaderRows}\" class=\"test-name\">Test Node ID</th>\n")
+        sb.append("        <th rowspan=\"${totalHeaderRows}\">Best</th>\n")
+        for (int gi = 0; gi < groupedSessions.size(); gi++) {
+            List pair = (List) groupedSessions.get(gi)
+            String groupName = (String) pair.get(0)
+            List sessions = (List) pair.get(1)
+            sb.append("        <th colspan=\"${sessions.size()}\">${groupName}</th>\n")
+        }
+        sb.append('      </tr>\n')
+
+        // Rows 2..N: hierarchical UID headers
+        List allTrieRows = []
+        for (int gi = 0; gi < groupTries.size(); gi++) {
+            allTrieRows.add(collectTrieHeaderCells((Map) groupTries.get(gi), maxTrieDepth))
+        }
+        for (int row = 0; row < maxTrieDepth; row++) {
+            sb.append('      <tr class="session-row">\n')
+            for (int gi = 0; gi < allTrieRows.size(); gi++) {
+                List trieRows = (List) allTrieRows.get(gi)
+                List rowCells = (List) trieRows.get(row)
+                for (int ci = 0; ci < rowCells.size(); ci++) {
+                    Map cell = (Map) rowCells.get(ci)
+                    List attrs = []
+                    int colspanVal = (int) cell.get('colspan')
+                    int rowspanVal = (int) cell.get('rowspan')
+                    if (colspanVal > 1) attrs.add("colspan=\"${colspanVal}\"")
+                    if (rowspanVal > 1) attrs.add("rowspan=\"${rowspanVal}\"")
+                    def cellSession = cell.get('session')
+                    if (cellSession != null) {
+                        if (!cellSession.shouldRun) attrs.add('class="skipped"')
+                        List titleLines = []
+                        if (cellSession.markers) { titleLines.add("markers: ${cellSession.markers}") }
+                        if (cellSession.setup)   { titleLines.add("setup: ${cellSession.setup}") }
+                        if (!cellSession.shouldRun && cellSession.skipReason) { titleLines.add("skip: ${cellSession.skipReason}") }
+                        if (!titleLines.isEmpty()) {
+                            attrs.add("title=\"${titleLines.join('&#10;').replace('"', '&quot;')}\"")
+                        }
+                    }
+                    String attrStr = attrs.isEmpty() ? '' : ' ' + attrs.join(' ')
+                    String cellLabel = (String) cell.get('label')
+                    sb.append("        <th${attrStr}>${cellLabel}</th>\n")
+                }
+            }
+            sb.append('      </tr>\n')
+        }
+        return sb.toString()
+    }
+
+    /** Table body: one row per test with best-policy and per-session indicator cells. */
+    @NonCPS
+    private static String buildTableBodyHtml(List<String> allTests, List allSessions, Map sessionTestSets) {
+        def sb = new StringBuilder()
+        List policyPriority = ['always', 'weekends', 'nightly', 'never']
+
+        for (int ti = 0; ti < allTests.size(); ti++) {
+            String testId = (String) allTests.get(ti)
+            sb.append('      <tr>\n')
+            String displayName = testId.startsWith('tests/') ? testId.substring(6) : testId
+            sb.append("        <td class=\"test-name\">${displayName.replace('&', '&amp;').replace('<', '&lt;')}</td>\n")
+
+            // Best policy across all sessions for this test
+            int bestIdx = policyPriority.size()
+            for (int si = 0; si < allSessions.size(); si++) {
+                def session = allSessions.get(si)
+                List tests = (List) sessionTestSets.get(session.uid)
+                if (tests != null && tests.contains(testId)) {
+                    String policyTag = session.policy ?: 'always'
+                    int idx = policyPriority.indexOf(policyTag)
+                    if (idx >= 0 && idx < bestIdx) { bestIdx = idx }
+                }
+            }
+            if (bestIdx < policyPriority.size()) {
+                String bestPolicy = (String) policyPriority.get(bestIdx)
+                String bestClass = policyCssClass(bestPolicy)
+                String bestLetter = (String) policyLetterMap().getOrDefault(bestPolicy, '&#x2753;')
+                sb.append("        <td class=\"${bestClass} policy-cell\" title=\"${bestPolicy}\">${bestLetter}</td>\n")
+            } else {
+                sb.append('        <td class="policy-none policy-cell" title="not covered">&#x1F6AB;</td>\n')
+            }
+
+            // Per-session cells
+            for (int si = 0; si < allSessions.size(); si++) {
+                def session = allSessions.get(si)
+                List tests = (List) sessionTestSets.get(session.uid)
+                if (tests != null && tests.contains(testId)) {
+                    String policyClass = policyCssClass(session.policy ?: 'always')
+                    String policyTag = session.policy ?: 'always'
+                    String policyLabel = policyTag.replace('"', '&quot;')
+                    String policyLetter = (String) policyLetterMap().getOrDefault(policyTag, '&#x2753;')
+                    sb.append("        <td class=\"${policyClass} policy-cell\" title=\"${policyLabel}\">${policyLetter}</td>\n")
+                } else {
+                    sb.append('        <td></td>\n')
+                }
+            }
+            sb.append('      </tr>\n')
+        }
+        return sb.toString()
+    }
+
+    /** Client-side JavaScript: search filter, sticky headers, file-group rows. */
+    @NonCPS
+    private static String buildScriptHtml() {
+        return '''\
+  <script>
+    (function () {
+      // Sticky header row offsets: cascade each row below the previous
+      var hrows = document.querySelectorAll('#dashboard thead tr');
+      var offset = 0;
+      for (var r = 0; r < hrows.length; r++) {
+        var ths = hrows[r].querySelectorAll('th');
+        for (var t = 0; t < ths.length; t++) { ths[t].style.top = offset + 'px'; }
+        offset += hrows[r].offsetHeight;
+      }
+      // Search filter
+      var input = document.getElementById('search');
+      if (input) {
+        input.addEventListener('input', function() {
+          var term = this.value.toLowerCase();
+          var rows = document.querySelectorAll('#dashboard tbody tr');
+          for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            if (row.classList.contains('file-group')) { row.style.display = 'none'; continue; }
+            var td = row.querySelector('td.test-name');
+            var text = td ? (td.title || td.textContent).toLowerCase() : '';
+            row.style.display = text.indexOf(term) >= 0 ? '' : 'none';
+          }
+          // Re-show file-group rows that have visible siblings after them
+          var allRows = document.querySelectorAll('#dashboard tbody tr');
+          for (var i = 0; i < allRows.length; i++) {
+            if (!allRows[i].classList.contains('file-group')) continue;
+            for (var j = i + 1; j < allRows.length; j++) {
+              if (allRows[j].classList.contains('file-group')) break;
+              if (allRows[j].style.display !== 'none') { allRows[i].style.display = ''; break; }
+            }
+          }
+        });
+      }
+      // Group tests by file: insert file header rows and shorten test names
+      function rebuildFileGroups() {
+        var tbody = document.querySelector('#dashboard tbody');
+        // Remove existing file-group rows
+        var existing = tbody.querySelectorAll('tr.file-group');
+        for (var i = 0; i < existing.length; i++) existing[i].remove();
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        var lastFile = '';
+        var totalCols = rows.length > 0 ? rows[0].children.length : 1;
+        rows.forEach(function(row) {
+          var td = row.querySelector('td.test-name');
+          if (!td) return;
+          var text = td.title || td.textContent;
+          var idx = text.indexOf('::');
+          if (idx < 0) return;
+          var file = text.substring(0, idx);
+          if (file !== lastFile) {
+            var groupRow = document.createElement('tr');
+            groupRow.className = 'file-group';
+            var fileTd = document.createElement('td');
+            fileTd.className = 'test-name';
+            fileTd.colSpan = totalCols;
+            fileTd.textContent = file;
+            groupRow.appendChild(fileTd);
+            row.parentNode.insertBefore(groupRow, row);
+            lastFile = file;
+          }
+        });
+      }
+      // Initial file-group build + shorten test names
+      (function() {
+        var tbody = document.querySelector('#dashboard tbody');
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        var lastFile = '';
+        var totalCols = rows.length > 0 ? rows[0].children.length : 1;
+        rows.forEach(function(row) {
+          var td = row.querySelector('td.test-name');
+          if (!td) return;
+          var text = td.textContent;
+          var idx = text.indexOf('::');
+          if (idx < 0) return;
+          var file = text.substring(0, idx);
+          var func = text.substring(idx + 2);
+          if (file !== lastFile) {
+            var groupRow = document.createElement('tr');
+            groupRow.className = 'file-group';
+            var fileTd = document.createElement('td');
+            fileTd.className = 'test-name';
+            fileTd.colSpan = totalCols;
+            fileTd.textContent = file;
+            groupRow.appendChild(fileTd);
+            row.parentNode.insertBefore(groupRow, row);
+            lastFile = file;
+          }
+          td.textContent = func;
+          td.title = text;
+        });
+      })();
+      // Column sorting
+      (function() {
+        var policyOrder = {'\u2705':0, '\uD83C\uDF1E':1, '\uD83C\uDF19':2, '\u274C':3, '\uD83D\uDEAB':4};
+        var sortCol = -1, sortAsc = true;
+        // Collect leaf header cells (bottom row + any rowspan cells reaching it)
+        var thead = document.querySelector('#dashboard thead');
+        var headerRows = thead.querySelectorAll('tr');
+        var numHeaderRows = headerRows.length;
+        var leafHeaders = [];
+        for (var r = 0; r < numHeaderRows; r++) {
+          var ths = headerRows[r].querySelectorAll('th');
+          for (var t = 0; t < ths.length; t++) {
+            var rs = parseInt(ths[t].getAttribute('rowspan')) || 1;
+            if (r + rs >= numHeaderRows) {
+              leafHeaders.push(ths[t]);
+            }
+          }
+        }
+        // Compute visual column index for each leaf header
+        var colIdx = 0;
+        leafHeaders.forEach(function(th, i) {
+          th.dataset.colIdx = colIdx;
+          var cs = parseInt(th.getAttribute('colspan')) || 1;
+          if (cs === 1) {
+            th.classList.add('sortable');
+            th.innerHTML += ' <span class="sort-arrow"></span>';
+            th.addEventListener('click', function() { doSort(parseInt(this.dataset.colIdx)); });
+          }
+          colIdx += cs;
+        });
+        function doSort(ci) {
+          if (sortCol === ci) { sortAsc = !sortAsc; } else { sortCol = ci; sortAsc = true; }
+          var tbody = document.querySelector('#dashboard tbody');
+          // Remove file-group rows before sorting
+          var fgs = tbody.querySelectorAll('tr.file-group');
+          for (var i = 0; i < fgs.length; i++) fgs[i].remove();
+          var rows = Array.from(tbody.querySelectorAll('tr'));
+          rows.sort(function(a, b) {
+            var ac = a.cells[ci], bc = b.cells[ci];
+            var at = ac ? ac.textContent.trim() : '', bt = bc ? bc.textContent.trim() : '';
+            // Policy cells: sort by priority
+            var ap = policyOrder[at], bp = policyOrder[bt];
+            if (ap !== undefined || bp !== undefined) {
+              var av = ap !== undefined ? ap : 5, bv = bp !== undefined ? bp : 5;
+              return sortAsc ? av - bv : bv - av;
+            }
+            // Text: sort alphabetically, empties last
+            if (!at && bt) return 1;
+            if (at && !bt) return -1;
+            var cmp = at.localeCompare(bt);
+            return sortAsc ? cmp : -cmp;
+          });
+          rows.forEach(function(row) { tbody.appendChild(row); });
+          rebuildFileGroups();
+          // Update sort arrows
+          leafHeaders.forEach(function(th) {
+            var arrow = th.querySelector('.sort-arrow');
+            if (!arrow) return;
+            var ci2 = parseInt(th.dataset.colIdx);
+            arrow.textContent = ci2 === sortCol ? (sortAsc ? '\u25B2' : '\u25BC') : '';
+          });
+        }
+      })();
+      // Hide Jenkins HTML Publisher "back to" wrapper link if present
+      try { if (window.parent) {
+        var wrapper = window.parent.document.querySelector('.htmlpublisher-wrapper a[href*="Back"]');
+        if (wrapper) wrapper.style.display = 'none';
+      }} catch(e) {}
+    })();
+  </script>'''
+    }
+
+    // --- HTML builder (orchestrator) ---
+
+    /**
+     * Assemble the full HTML dashboard document.
+     *
+     * @param allTests    Ordered list of all pytest node IDs (row headers)
+     * @param uidToTests  Map from session uid to list of matching test node IDs
+     * @return Complete HTML string
+     */
+    @NonCPS
+    private String buildDashboardHtml(List<String> allTests, Map uidToTests) {
+        // Collect sessions from registered groups (preserves insertion order)
+        List groupedSessions = []
+        List groupNames = []
+        groupNames.addAll(this.registeredGroups.keySet())
+        for (int gi = 0; gi < groupNames.size(); gi++) {
+            String groupName = (String) groupNames.get(gi)
+            def group = this.registeredGroups.get(groupName)
+            if (!group.sessions.isEmpty()) {
+                groupedSessions.add([groupName, group.sessions])
+            }
+        }
+        List allSessions = []
+        for (int gi = 0; gi < groupedSessions.size(); gi++) {
+            List pair = (List) groupedSessions.get(gi)
+            List sessions = (List) pair.get(1)
+            for (int si = 0; si < sessions.size(); si++) {
+                allSessions.add(sessions.get(si))
+            }
+        }
+
+        // Pre-compute per-session test sets
+        Map sessionTestSets = [:]
+        for (int si = 0; si < allSessions.size(); si++) {
+            def session = allSessions.get(si)
+            sessionTestSets.put(session.uid, uidToTests.get(session.uid) ?: [])
+        }
+
+        // Build UID tries and compute max depth across all groups
+        List groupTries = []
+        int maxTrieDepth = 0
+        for (int gi = 0; gi < groupedSessions.size(); gi++) {
+            List pair = (List) groupedSessions.get(gi)
+            Map trie = buildUidTrie((List) pair.get(1))
+            int depth = trieDepth(trie)
+            if (depth > maxTrieDepth) maxTrieDepth = depth
+            groupTries.add(trie)
+        }
+
+        // Assemble the complete HTML document
+        def sb = new StringBuilder()
+        sb.append('<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n')
+        sb.append('  <title>Test Coverage Dashboard</title>\n')
+        sb.append(buildCssStyles())
+        sb.append('\n</head>\n<body>\n  <h1>Test Coverage Dashboard</h1>\n')
+        sb.append(buildLegendHtml(allTests.size(), allSessions.size()))
+        sb.append('  <div class="table-wrap">\n')
+        sb.append('  <table id="dashboard">\n    <thead>\n')
+        sb.append(buildTableHeaderHtml(groupedSessions, groupTries, maxTrieDepth))
+        sb.append('    </thead>\n    <tbody>\n')
+        sb.append(buildTableBodyHtml(allTests, allSessions, sessionTestSets))
+        sb.append('    </tbody>\n  </table>\n  </div>\n')
+        sb.append(buildScriptHtml())
+        sb.append('\n</body>\n</html>\n')
+        return sb.toString()
+    }
+
+
+    // --- Build and publish ---
+
+    /**
+     * Build the HTML dashboard and publish it as a Jenkins HTML report.
+     *
+     * @param allTests   Ordered list of all pytest node IDs (row headers)
+     * @param uidToTests Map from session uid to list of matching test node IDs
+     */
+    def buildAndPublish(List<String> allTests, Map uidToTests) {
+        def html = this.buildDashboardHtml(allTests, uidToTests)
+        this.pipeline.echo("generateTestDashboard: HTML built (${html.size()} chars), writing file...")
+
+        def reportDir  = 'test_dashboard'
+        def reportFile = 'index.html'
+        this.pipeline.writeFile(file: "${reportDir}/${reportFile}", text: html, encoding: 'UTF-8')
+        this.pipeline.echo("generateTestDashboard: writeFile done, calling publishHTML...")
+        this.pipeline.publishHTML([
+            allowMissing         : false,
+            alwaysLinkToLastBuild: true,
+            keepAll              : true,
+            reportDir            : reportDir,
+            reportFiles          : reportFile,
+            reportName           : 'Test Coverage Dashboard',
+            reportTitles         : ''
+        ])
+    }
+
 }
 
 VEnvManager venvManager = new VEnvManager(
@@ -1392,6 +2035,7 @@ TestGroup CAN_TESTS = testManager.createGroup("CAN_TEST_SESSIONS", HW_TEST_SESSI
 TestGroup ETH_TESTS = testManager.createGroup("ETH_TEST_SESSIONS", HW_TEST_SESSIONS.override()) // Wireshark logging is injected later based on parameter
 TestGroup ECAT_TESTS = testManager.createGroup("ECAT_TEST_SESSIONS", HW_TEST_SESSIONS.override()) // Wireshark logging is injected later based on parameter
 TestGroup LINUX_DOCKER_TESTS = testManager.createGroup("LINUX_DOCKER_TEST_SESSIONS", TEST_SESSIONS.override())
+TestGroup WIN_DOCKER_TESTS = testManager.createGroup("WIN_DOCKER_TEST_SESSIONS", TEST_SESSIONS.override())
 
 
 /*
@@ -1430,18 +2074,18 @@ pipeline {
                 'no_pcap',
                 'pcap',
                 'ethercat.*',
-                'ethercat_everest',
-                'ethercat_capitan',
+                'ethercat_everest.*',
+                'ethercat_capitan.*',
                 'ethercat_multislave',
                 'fsoe.*',
                 'fsoe_phase1',
                 'fsoe_phase2',
                 'canopen.*',
-                'canopen_everest',
-                'canopen_capitan',
+                'canopen_everest.*',
+                'canopen_capitan.*',
                 'ethernet.*',
-                'ethernet_everest',
-                'ethernet_capitan',
+                'ethernet_everest.*',
+                'ethernet_capitan.*',
             ],
             name: 'test_session_filter',
             description: 'Regex pattern for which test sessions to run (e.g. "fsoe.*", "ethercat_everest", ".*" for all)'
@@ -1504,6 +2148,33 @@ pipeline {
                     testManager.runPolicyTags = runPolicyTags
 
                     echo("Test sessions have been configured to run with the following base configuration:\n${TEST_SESSIONS.configSummary()}")
+                }
+            }
+        }
+
+        stage('Register manual test sessions') {
+            steps {
+                script {
+                    // Pcap tests run on the EtherCAT machine — add manually since they're not in rack_specifiers
+                    ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
+
+                    // Linux pcap tests: runs pcap-marked tests that don't need hardware
+                    LINUX_DOCKER_TESTS.addSession(
+                        uid: "pcap",
+                        markers: "pcap",
+                        stageName: "Pcap Tests (Linux)")
+
+                    // Linux unit tests: everything that does not have a marker
+                    LINUX_DOCKER_TESTS.addSession(
+                        uid: "no_pcap",
+                        markers: PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "pcap", "no_pcap"]),
+                        stageName: "Unit Tests (Linux)")
+
+                    // Windows unit tests: mirrors the ad-hoc session in Build Windows for dashboard visibility
+                    WIN_DOCKER_TESTS.addSession(
+                        uid: "no_pcap",
+                        markers: PyTestManager.markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS),
+                        stageName: "Unit Tests (Windows)")
                 }
             }
         }
@@ -1602,17 +2273,15 @@ pipeline {
                                 stage('Run unit tests (no-pcap) tests on docker') {
                                     when {
                                         expression {
-                                            "no_pcap" ==~ params.test_session_filter
+                                            WIN_DOCKER_TESTS.anyShouldRun()
                                         }
                                     }
                                     steps {
                                         script {
-                                            /* Windows docker does not have npcap/winpcap installed so runs no_pcap tests */
-                                            def win_marker = PyTestManager.markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "no_pcap", markers: win_marker))
+                                            WIN_DOCKER_TESTS.runTestStages()
                                         }
                                     }
                                 }
@@ -1686,26 +2355,12 @@ pipeline {
                                                 venv.run("poetry run poe install-wheel")
                                             }
                                             
-                                            // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here)
+                                            // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here).
                                             testManager.buildTestSessions("tests.setups.rack_specifiers")
                                             testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
 
-                                            // Pcap tests run on the EtherCAT machine — add manually since they're not in rack_specifiers
-                                            ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
-
-                                            // Linux pcap tests: runs pcap-marked tests that don't need hardware
-                                            LINUX_DOCKER_TESTS.addSession(
-                                                uid: "pcap",
-                                                markers: "pcap",
-                                                stageName: "Pcap Tests (Linux)")
-
-                                            // Linux unit tests: everything that does not have a marker
-                                            LINUX_DOCKER_TESTS.addSession(
-                                                uid: "no_pcap",
-                                                markers: PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "pcap", "no_pcap"]),
-                                                stageName: "Unit Tests (Linux)")
-
                                             testManager.echoTestGroupsSummary()
+                                            testManager.generateTestDashboard()
                                         }
                                     }
                                 }
@@ -1718,7 +2373,7 @@ pipeline {
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            testManager.runTestStages(LINUX_DOCKER_TESTS)
+                                            LINUX_DOCKER_TESTS.runTestStages()
                                         }
                                     }
                                 }
@@ -1821,7 +2476,7 @@ pipeline {
                         stage('Run EtherCAT Tests') {
                             steps {
                                 script {
-                                    testManager.runTestStages(ECAT_TESTS)
+                                    ECAT_TESTS.runTestStages()
                                 }
                             }
                         }
@@ -1865,8 +2520,8 @@ pipeline {
                         stage('Run CANopen/Ethernet Tests') {
                             steps {
                                 script {
-                                    testManager.runTestStages(CAN_TESTS)
-                                    testManager.runTestStages(ETH_TESTS)
+                                    CAN_TESTS.runTestStages()
+                                    ETH_TESTS.runTestStages()
                                 }
                             }
                         }
