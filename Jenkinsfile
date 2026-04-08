@@ -1286,30 +1286,19 @@ class PyTestManager {
         def exportedSpecifiers = this.exportSpecifiersModule(specifierModule)
 
         exportedSpecifiers.each { setupKey, specifiers ->
-            // A SpecifierContainer wraps multiple part numbers; a direct specifier exposes one.
+            // The _type field is set by STF's export: "container" or "specifier".
             // This determines the pytest --setup path format:
             //   Container:         SETUP@PART_NUMBER@VERSION
             //   Direct specifier:  SETUP@VERSION  (no part-number segment)
-            boolean isContainer = specifiers.size() > 1
+            // remove() extracts the value and deletes the key so it is not
+            // iterated as a specifier entry in the loop below.
+            boolean isContainer = specifiers.remove("_type") == "container"
 
             specifiers.each { specifierName, specifierData ->
-                // Normalise no-version specifiers (extra_data at the specifier level, no version key)
-                // to version "" so the loop below works uniformly for both versioned and unversioned.
-                // https://novantamotion.atlassian.net/browse/CIT-612
-                def versionedData = specifierData.containsKey("extra_data") ? ["": specifierData] : specifierData
-
-                versionedData.each { version, versionData ->
-                    // "" and "latest" both mean no version suffix.
-                    // "" covers unversioned specifiers (e.g. Multislave, where extra_data
-                    // sits directly under the specifier and gets normalised to version="").
-                    // "latest" covers virtual-drive specifiers whose JSON always carries a
-                    // "latest" key even though there is no real version to pin; appending
-                    // "@latest" to the setup path would produce an invalid import path.
-                    // https://novantamotion.atlassian.net/browse/CIT-612
-                    def versionTag = (version && version != "latest") ? "@${version}" : ""
+                specifierData.each { version, versionData ->
                     def setupPath = isContainer
-                        ? "${specifierModule}.${setupKey}@${specifierName}${versionTag}"
-                        : "${specifierModule}.${setupKey}${versionTag}"
+                        ? "${specifierModule}.${setupKey}@${specifierName}@${version}"
+                        : "${specifierModule}.${setupKey}@${version}"
                     def executionPolicy = versionData?.extra_data?.execution_policy
 
                     def testConfigs = versionData?.extra_data?.test_configs
