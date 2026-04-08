@@ -12,7 +12,7 @@ from collections import OrderedDict, defaultdict
 from enum import Enum
 from threading import Thread
 from time import sleep
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, ClassVar, Optional, Union
 
 import can
 import canopen
@@ -184,6 +184,64 @@ class CustomListener(can.Listener):
         logger.error(f"CAN bus error (handled, notifier kept alive): {exc}")
         if self._network.notifier is not None:
             self._network.notifier.exception = None
+
+
+class HeartbeatCollisionDetector(can.Listener):
+    """Detect CAN node ID collisions by monitoring heartbeat/node guarding frames.
+
+    If two devices share the same node ID, both will respond to node guarding
+    RTR frames, producing two responses per cycle on COB-ID 0x700+node_id.
+    This listener detects such "double heartbeats" — pairs of frames on the same
+    COB-ID arriving within a short time window (< 10 ms apart).
+
+    Args:
+        node_ids: Set of CANopen node IDs to monitor.
+    """
+
+    NMT_BASE = 0x700
+    _CLOSE_PAIR_THRESHOLD_S = 0.010  # 10 ms
+
+    def __init__(self, node_ids: set[int]) -> None:
+        super().__init__()
+        self._cobids = {self.NMT_BASE + n for n in node_ids}
+        self._node_ids = node_ids
+        self._start = time_mod.monotonic()
+        self._timestamps: dict[int, list[float]] = {n: [] for n in node_ids}
+
+    def on_message_received(self, msg: can.Message) -> None:  # noqa: D102
+        if msg.arbitration_id in self._cobids:
+            node_id = msg.arbitration_id - self.NMT_BASE
+            self._timestamps[node_id].append(time_mod.monotonic() - self._start)
+
+    def report(self) -> None:
+        """Log collision detection results for each monitored node."""
+        for node_id in sorted(self._node_ids):
+            ts = self._timestamps[node_id]
+            if len(ts) < 2:
+                logger.info(
+                    "HeartbeatCollisionDetector: node %d: %d heartbeats (insufficient data)",
+                    node_id,
+                    len(ts),
+                )
+                continue
+            close_pairs = sum(
+                1 for i in range(len(ts) - 1) if ts[i + 1] - ts[i] < self._CLOSE_PAIR_THRESHOLD_S
+            )
+            if close_pairs > 0:
+                logger.warning(
+                    "HeartbeatCollisionDetector: node %d: %d/%d heartbeats have close pairs "
+                    "(< %.0f ms apart) — POSSIBLE NODE ID COLLISION!",
+                    node_id,
+                    close_pairs,
+                    len(ts),
+                    self._CLOSE_PAIR_THRESHOLD_S * 1000,
+                )
+            else:
+                logger.info(
+                    "HeartbeatCollisionDetector: node %d: %d heartbeats, no close pairs detected",
+                    node_id,
+                    len(ts),
+                )
 
 
 class SDOTracer(can.Listener):
@@ -398,8 +456,98 @@ class SDOTracer(can.Listener):
                     i + len(chunk) - 1,
                     ", ".join(chunk),
                 )
-        else:
+
+        # Check for 0x1018 (Identity Object) in unsolicited responses.
+        # If a second device shares the same node ID, its product code in an
+        # unsolicited 0x1018:02 response will differ from the primary device.
+        self._report_identity_collisions()
+
+        if unsolicited == 0:
             logger.info("SDOTracer: No unsolicited responses detected.")
+
+    _IDENTITY_INDEX = 0x1018
+    _IDENTITY_SUBNAMES: ClassVar[dict[int, str]] = {
+        1: "Vendor ID",
+        2: "Product Code",
+        3: "Revision Number",
+        4: "Serial Number",
+    }
+
+    def _report_identity_collisions(self) -> None:
+        """Check unsolicited and mismatch responses for Identity Object entries.
+
+        If two devices share the same CAN node ID, both process our SDO reads
+        for 0x1018 sub-indices.  The primary (faster) device's response is
+        consumed by the SDO client; the secondary device's response appears as
+        unsolicited or mismatch.  Comparing the product code (0x1018:02)
+        between matched and unsolicited responses can identify the secondary
+        device.
+        """
+        identity_frames: list[tuple[float, int, int, int, bytes]] = []
+        expecting_resp = False
+        for frame in self._frames:
+            if frame[3] == -1:
+                continue
+            if frame[1] == "TX>":
+                expecting_resp = True
+            elif frame[1] == "RX<":
+                if not expecting_resp:
+                    elapsed, _, node_id, idx, sub, raw = frame
+                    if idx == self._IDENTITY_INDEX:
+                        identity_frames.append((elapsed, node_id, idx, sub, raw))
+                expecting_resp = False
+
+        # Also collect identity entries from mismatch "got" responses
+        last_tx: Optional[tuple[float, str, int, int, int, bytes]] = None
+        for frame in self._frames:
+            if frame[3] == -1:
+                continue
+            if frame[1] == "TX>":
+                last_tx = frame
+            elif frame[1] == "RX<" and last_tx is not None:
+                _, _, _, tx_idx, tx_sub, _ = last_tx
+                elapsed, _, node_id, rx_idx, rx_sub, raw = frame
+                if (tx_idx != rx_idx or tx_sub != rx_sub) and rx_idx == self._IDENTITY_INDEX:
+                    identity_frames.append((elapsed, node_id, rx_idx, rx_sub, raw))
+                last_tx = None
+
+        if not identity_frames:
+            logger.info(
+                "SDOTracer: No 0x1018 (Identity Object) entries in unsolicited/mismatch responses."
+            )
+            return
+
+        for elapsed, node_id, idx, sub, raw in identity_frames:
+            sub_name = self._IDENTITY_SUBNAMES.get(sub, f"sub {sub}")
+            if len(raw) >= 8:
+                scs = raw[0]
+                # Expedited upload response: extract 4-byte value
+                if scs in (0x43, 0x4B, 0x4F, 0x42):
+                    value = struct.unpack_from("<I", raw, 4)[0]
+                    logger.warning(
+                        "SDOTracer IDENTITY in stale response at t=%.3fs node=%d: "
+                        "0x%04X:%d (%s) = %d (0x%08X)  raw=[%s]",
+                        elapsed,
+                        node_id,
+                        idx,
+                        sub,
+                        sub_name,
+                        value,
+                        value,
+                        raw.hex(" "),
+                    )
+                else:
+                    logger.warning(
+                        "SDOTracer IDENTITY in stale response at t=%.3fs node=%d: "
+                        "0x%04X:%d (%s) SCS=0x%02X  raw=[%s]",
+                        elapsed,
+                        node_id,
+                        idx,
+                        sub,
+                        sub_name,
+                        scs,
+                        raw.hex(" "),
+                    )
 
 
 class NetStatusListener(Thread):
@@ -508,6 +656,7 @@ class CanopenNetwork(CanopenNetworkBase):
         if self.__device == CanDevice.PCAN.value:
             self.__connection_args["auto_reset"] = True
         self._sdo_tracer: Optional[SDOTracer] = None
+        self._heartbeat_detector: Optional[HeartbeatCollisionDetector] = None
 
     def scan_slaves(self) -> list[int]:
         """Scans for nodes in the network.
@@ -754,7 +903,17 @@ class CanopenNetwork(CanopenNetworkBase):
         logger.info("Tear down connection.")
 
     def _stop_sdo_tracer(self) -> None:
-        """Report and detach the SDO tracer if one is active."""
+        """Report and detach the SDO tracer and heartbeat detector if active."""
+        if self._heartbeat_detector is not None:
+            self._heartbeat_detector.report()
+            if (
+                self._connection is not None
+                and self._connection.notifier is not None
+                and self._heartbeat_detector in self._connection.notifier.listeners
+            ):
+                self._connection.notifier.listeners.remove(self._heartbeat_detector)
+            self._heartbeat_detector = None
+
         if self._sdo_tracer is not None:
             self._sdo_tracer.report()
             self._sdo_tracer.unhook()
@@ -1491,6 +1650,48 @@ class CanopenNetwork(CanopenNetworkBase):
         except Exception as e:
             logger.warning("Failed to flush SDO responses for node %d: %s", servo.target, e)
 
+    _COLLISION_PROBE_READS = 10
+    _PRODUCT_CODE_INDEX = 0x1018
+    _PRODUCT_CODE_SUBINDEX = 2
+
+    def _probe_product_code(self) -> None:
+        """Read the product code (0x1018:02) multiple times after recovery.
+
+        This is a diagnostic probe: the product code is read-only and unique
+        per product line.  If two devices share the same CAN node ID, the
+        SDOTracer will capture the slower device's unsolicited response with
+        a potentially different product code.  Reading multiple times increases
+        the chance of catching the duplicate.
+        """
+        for servo in self.servos:
+            try:
+                self._probe_servo_product_code(servo)
+            except Exception as e:  # noqa: PERF203
+                logger.warning("Product code probe failed for node %d: %s", servo.target, e)
+
+    def _probe_servo_product_code(self, servo: CanopenServo) -> None:
+        sdo_client = servo.node.sdo
+        values: list[int] = []
+        for _ in range(self._COLLISION_PROBE_READS):
+            raw = sdo_client.upload(self._PRODUCT_CODE_INDEX, self._PRODUCT_CODE_SUBINDEX)
+            values.append(struct.unpack_from("<I", raw)[0])
+        unique = set(values)
+        if len(unique) == 1:
+            logger.info(
+                "Node %d product code probe (0x1018:02): %d (0x%08X) — consistent across %d reads",
+                servo.target,
+                values[0],
+                values[0],
+                len(values),
+            )
+        else:
+            logger.warning(
+                "Node %d product code probe (0x1018:02) INCONSISTENT! "
+                "values=%s — POSSIBLE NODE ID COLLISION!",
+                servo.target,
+                [f"0x{v:08X}" for v in values],
+            )
+
     def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:  # noqa: ARG002
         """Recover the CANopen communication with a servo after a disconnection.
 
@@ -1528,6 +1729,19 @@ class CanopenNetwork(CanopenNetworkBase):
                 self._connection.notifier.add_listener(tracer)
                 self._sdo_tracer = tracer
                 logger.info("SDOTracer attached — monitoring SDO traffic for nodes %s", node_ids)
+
+                # Attach heartbeat collision detector to identify node ID
+                # collisions (two devices sharing the same CAN node ID).
+                hb_detector = HeartbeatCollisionDetector(node_ids)
+                self._connection.notifier.add_listener(hb_detector)
+                self._heartbeat_detector = hb_detector
+                logger.info("HeartbeatCollisionDetector attached for nodes %s", node_ids)
+
+            # Probe product code (0x1018:02) to identify colliding devices.
+            # This read-only register has a unique value per product line.
+            # The SDOTracer will capture any unsolicited duplicate response
+            # from a second device sharing the same node ID.
+            self._probe_product_code()
 
             return True
         except Exception as e:
