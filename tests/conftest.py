@@ -199,6 +199,10 @@ def get_drive_configuration_from_rack_service(setup_descriptor, rs_client):
 
 @pytest.fixture(scope="session")
 def xcf_schema():
-    """Load the XCF schema from the xcf-specification submodule."""
+    """Load the XCF schema from the xcf-specification submodule.
+
+    Returns:
+        XMLSchema instance loaded from config.xsd.
+    """
     schema_path = Path(__file__).parent.parent / "xcf-specification" / "config.xsd"
     return xmlschema.XMLSchema(schema_path)
