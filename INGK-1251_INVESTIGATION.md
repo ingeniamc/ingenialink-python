@@ -177,13 +177,16 @@ being handled, causing `canopen.Network.check()` to re-raise it on every `send_m
 | #26 | ABORTED | Auto-triggered by logger.error commit, manually stopped |
 | #27 | **SUCCESS** | All tests passed. SDOTracer: 0 mismatches, 0 unsolicited across all 3 traces. Bug did NOT reproduce. |
 | #28 | UNSTABLE | `test_enable_disable` ×1. **SDOTracer: 494 unsolicited, 24 mismatches. `logger.error` confirmed errors in `__enter__()` of subsequent tests.** See "Jenkins Build #28" section. |
+| #29 | ABORTED | Auto-triggered by FW 2.10.0 commit, manually stopped |
+| #30 | **SUCCESS** | All tests passed (FW 2.4.0 + 2.9.0 + **2.10.0 first run**). SDOTracer: 0 mismatches, 0 unsolicited (except 2 segment FP per FW ≥2.9.0). Bug did NOT reproduce. |
 
 ### Success Rates (builds 11–23, after all fixes)
 
 | Stage | Runs | Passed | Failed | Rate |
 |-------|------|--------|--------|------|
-| CANopen Capitan FW 2.9.0 | 12 | 4 | 8 | **33%** |
-| `test_restore_parameters` | 12 | **12** | 0 | **100%** |
+| CANopen Capitan FW 2.9.0 | 14 | 6 | 8 | **43%** |
+| `test_restore_parameters` | 14 | **14** | 0 | **100%** |
+| CANopen Capitan FW 2.10.0 | 1 | 1 | 0 | **100%** |
 
 ### Unrelated Failures (infrastructure)
 
@@ -572,6 +575,57 @@ different CCS/SCS sets for TX vs RX:
 - TX (client): CCS ∈ {1, 2} = initiate (CCS 0 = segment, CCS 3 = block)
 - RX (server): SCS ∈ {2, 3} = initiate (SCS 0, 1 = segment)
 - Both: CCS/SCS 4 = abort (always has index/subindex)
+
+---
+
+## Jenkins Build #30 — FW 2.10.0 First Run (2026-04-07)
+
+### Setup
+
+- **Build**: PR-776 #30, triggered manually with `test_session_filter=canopen_capitan`,
+  `RUN_POLICY_NIGHTLY=true`, `PYTHON_VERSIONS=MIN`
+- **Commit**: includes FW 2.10.0 rack specifier additions
+- **Result**: **SUCCESS** — all tests passed on FW 2.4.0, 2.9.0, and 2.10.0
+
+### SDOTracer Output — All FW Versions
+
+| FW | Trace | TX | RX | Mismatches | Unsolicited | Notes |
+|----|-------|----|----|------------|-------------|-------|
+| 2.4.0 | 1 (test_store) | 11,295 | 11,295 | 0 | 0 | |
+| 2.4.0 | 2 (test_restore) | 947 | 947 | 0 | 0 | |
+| 2.4.0 | 3 (test_enable_disable) | 9,712 | 9,712 | 0 | 0 | |
+| **2.9.0** | 1 (test_store) | 12,003 | 12,003 | 0 | 2* | *Segment frame FP |
+| **2.9.0** | 2 (test_enable_disable) | 10,354 | 10,354 | 0 | 0 | |
+| **2.10.0** | 1 (test_store) | 12,491 | 12,491 | 0 | 2* | *Segment frame FP |
+| **2.10.0** | 2 (test_enable_disable) | 10,781 | 10,781 | 0 | 0 | |
+
+### Key Observations
+
+1. **FW 2.10.0 behaves identically to FW 2.9.0** — both show exactly 2 residual segment
+   frames for register `0x58A4:0` in the test_restore_parameters recovery span. FW 2.4.0
+   never produces these. This confirms the segment frames are a FW ≥2.9.0 behavior change
+   (harmless, false positive in SDOTracer).
+
+2. **Bug did NOT reproduce** — 0 stale SDO floods on any FW version. No "Skipping uid="
+   DCM logger.error messages. The timing lottery went in our favor this run.
+
+3. **FW 2.10.0 frame counts** are slightly higher than 2.9.0 (12,491 vs 12,003 TX in
+   trace 1, 10,781 vs 10,354 TX in trace 2). This is expected — the dictionary for 2.10.0
+   likely has a few more registers.
+
+4. **Recovery pattern identical across all FW versions**: double-reconnect (first attempt
+   "still disconnected", second succeeds), 5 SDO timeouts during is_alive() retries, all
+   recover successfully.
+
+### Build #30 Success Rates Summary
+
+With build #30 data:
+
+| FW Version | Runs with SDOTracer | Stale flood occurred | Rate |
+|------------|-------------------|---------------------|------|
+| FW 2.4.0 | 4 (#25, #27, #28, #30) | 0 | **0%** |
+| FW 2.9.0 | 4 (#25, #27, #28, #30) | 2 (#25, #28) | **50%** |
+| FW 2.10.0 | 1 (#30) | 0 | **0%** (insufficient data) |
 
 ---
 

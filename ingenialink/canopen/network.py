@@ -373,6 +373,31 @@ class SDOTracer(can.Listener):
             logger.warning(
                 "SDOTracer: %d unsolicited responses (no preceding request)!", unsolicited
             )
+            # Dump ALL unsolicited response indices for sequence analysis.
+            # This helps determine if the stale responses match the dictionary
+            # iteration order used by DriveContextManager._store_register_data().
+            unsol_indices: list[str] = []
+            expecting_resp = False
+            for frame in self._frames:
+                if frame[3] == -1:
+                    continue
+                if frame[1] == "TX>":
+                    expecting_resp = True
+                elif frame[1] == "RX<":
+                    if not expecting_resp:
+                        _, _, _, idx, sub, _ = frame
+                        unsol_indices.append(f"0x{idx:04X}:{sub}")
+                    expecting_resp = False
+            # Log in chunks to avoid line-length issues
+            chunk_size = 50
+            for i in range(0, len(unsol_indices), chunk_size):
+                chunk = unsol_indices[i : i + chunk_size]
+                logger.warning(
+                    "SDOTracer UNSOLICITED indices [%d-%d]: %s",
+                    i,
+                    i + len(chunk) - 1,
+                    ", ".join(chunk),
+                )
         else:
             logger.info("SDOTracer: No unsolicited responses detected.")
 

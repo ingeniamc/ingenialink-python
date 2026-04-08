@@ -173,12 +173,18 @@ class DriveContextManager:
         """
         register_values: OrderedDict[tuple[int, str], Union[int, float, str, bytes]] = OrderedDict()
         axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
+        # Log the SDO read order for sequence analysis (INGK-1251).
+        sdo_order: list[str] = []
         for axis in axes:
             for uid, register in self.drive.dictionary.registers(subnode=axis).items():
                 if uid in self._do_not_restore_registers:
                     continue
                 if register.access in [RegAccess.WO, RegAccess.RO]:
                     continue
+                idx = getattr(register, "idx", None)
+                subidx = getattr(register, "subidx", None)
+                if idx is not None and subidx is not None:
+                    sdo_order.append(f"0x{idx:04X}:{subidx}")
 
                 try:
                     register_value = self.drive.read(uid, subnode=axis)
@@ -202,6 +208,18 @@ class DriveContextManager:
                         )
                         continue
                 register_values[(axis, uid)] = register_value
+        # Log the SDO read order once per _store_register_data() call (INGK-1251).
+        if sdo_order:
+            chunk_size = 50
+            for i in range(0, len(sdo_order), chunk_size):
+                chunk = sdo_order[i : i + chunk_size]
+                logger.info(
+                    "%d: DCM register read order [%d-%d]: %s",
+                    id(self),
+                    i,
+                    i + len(chunk) - 1,
+                    ", ".join(chunk),
+                )
         return register_values
 
     def _store_objects_data(self) -> dict[CanOpenObject, bytes]:
