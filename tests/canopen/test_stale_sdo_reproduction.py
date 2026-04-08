@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Number of power-cycle iterations.  More iterations = better statistics.
-_NUM_ITERATIONS = 3
+_NUM_ITERATIONS = 20
 
 # Seconds to wait after recovery before starting the register scan.
 # This is the "stale response arrival window".
