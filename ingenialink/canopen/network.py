@@ -457,6 +457,36 @@ class SDOTracer(can.Listener):
                     ", ".join(chunk),
                 )
 
+        # Log unsolicited response timing distribution (1-second buckets).
+        if unsolicited > 0:
+            unsol_times: list[float] = []
+            expecting_resp2 = False
+            for frame in self._frames:
+                if frame[3] == -1:
+                    continue
+                if frame[1] == "TX>":
+                    expecting_resp2 = True
+                elif frame[1] == "RX<":
+                    if not expecting_resp2:
+                        unsol_times.append(frame[0])
+                    expecting_resp2 = False
+            if unsol_times:
+                bucket_size = 1.0
+                buckets: dict[int, int] = {}
+                for t in unsol_times:
+                    b = int(t / bucket_size)
+                    buckets[b] = buckets.get(b, 0) + 1
+                dist_str = ", ".join(
+                    f"{b}–{b + 1}s:{count}" for b, count in sorted(buckets.items())
+                )
+                logger.warning(
+                    "SDOTracer unsolicited timing distribution (1s buckets): %s  "
+                    "first=%.3fs last=%.3fs",
+                    dist_str,
+                    unsol_times[0],
+                    unsol_times[-1],
+                )
+
         # Check for 0x1018 (Identity Object) in unsolicited responses.
         # If a second device shares the same node ID, its product code in an
         # unsolicited 0x1018:02 response will differ from the primary device.
