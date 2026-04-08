@@ -1,0 +1,3 @@
+[submodule "xcf-specification"]
+	path = xcf-specification
+	url = https://github.com/ingeniamc/xcf-specification.git

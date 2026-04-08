@@ -108,12 +108,13 @@ def create_disturbance(servo):
 @pytest.mark.ethernet
 @pytest.mark.ethercat
 @pytest.mark.virtual
-def test_save_configuration(servo, tmp_path) -> None:
+def test_save_configuration(servo, tmp_path, xcf_schema) -> None:
     filename = tmp_path / "temp_config"
 
     servo.save_configuration(str(filename))
 
     assert filename.is_file()
+    xcf_schema.validate(str(filename))
 
     config_file = ConfigurationFile.load_from_xcf(str(filename))
 
@@ -145,7 +146,7 @@ def test_save_configuration(servo, tmp_path) -> None:
         assert registers[reg_id].address_type != RegAddressType.NVM_NONE
 
 
-def test_check_configuration(virtual_drive, tmp_path):
+def test_check_configuration(virtual_drive, tmp_path, xcf_schema):
     server, servo = virtual_drive
 
     assert servo is not None and server is not None
@@ -154,6 +155,7 @@ def test_check_configuration(virtual_drive, tmp_path):
 
     # Load the configuration, the subsequent check should not raise an error.
     servo.save_configuration(str(filename))
+    xcf_schema.validate(str(filename))
     servo.check_configuration(str(filename))
 
     # Change a random register
@@ -184,10 +186,11 @@ def test_check_configuration(virtual_drive, tmp_path):
 @pytest.mark.ethernet
 @pytest.mark.ethercat
 @pytest.mark.virtual
-def test_load_configuration(servo, tmp_path) -> None:
+def test_load_configuration(servo, tmp_path, xcf_schema) -> None:
     filename = tmp_path / "temp_config"
     servo.save_configuration(str(filename))
     assert filename.is_file()
+    xcf_schema.validate(str(filename))
     servo.load_configuration(str(filename))
     config_file = ConfigurationFile.load_from_xcf(str(filename))
 
