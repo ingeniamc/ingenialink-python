@@ -357,8 +357,8 @@ class TestOverrideValues:
         assert len(base.tables) == 1
         assert base.tables[0].elements[0].data == b"\xff"
 
-    def test_adds_non_matching_table_with_warning(self, caplog):
-        """A table not present in base is added, and a warning is logged."""
+    def test_adds_non_matching_table_with_debug_log(self, caplog):
+        """A table not present in base is added, and a debug message is logged."""
         base = ConfigurationFile.create_empty_configuration(
             interface=Interface.ETH,
             part_number=None,
@@ -379,9 +379,12 @@ class TestOverrideValues:
             ConfigTable(uid="TABLE_NEW", subnode=0, elements=[TableElement(0, b"\xab")])
         )
 
-        with caplog.at_level(logging.WARNING):
+        with caplog.at_level(logging.DEBUG):
             base.override_values(override)
 
         assert len(base.tables) == 1
         assert base.tables[0].uid == "TABLE_NEW"
-        assert any("TABLE_NEW" in record.message for record in caplog.records)
+        assert any(
+            "TABLE_NEW" in record.message and record.levelno == logging.DEBUG
+            for record in caplog.records
+        )

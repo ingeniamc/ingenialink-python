@@ -662,6 +662,9 @@ class ConfigurationFile(XMLBase, ABC):
         (RW) and stored in NVM (NVM_CFG or NVM address type), and populates each with
         its declared default value.
 
+        Tables are not included in the generated ConfigurationFile, as they have no default
+        values declared in the dictionary.
+
         Args:
             dictionary: XDF3 dictionary to read defaults from.
 
@@ -697,6 +700,7 @@ class ConfigurationFile(XMLBase, ABC):
                     "NVM/NVM_CFG RW registers have a declared default value."
                 )
             xcf_instance.add_register(register, default)
+
         return xcf_instance
 
     def override_values(self, other: "ConfigurationFile") -> None:
@@ -705,7 +709,10 @@ class ConfigurationFile(XMLBase, ABC):
         For each register and table in ``other``:
 
         - If a matching entry (same subnode and uid) exists in ``self``, it is replaced.
-        - If no match is found, the entry is appended to ``self`` and a warning is logged.
+        - If no match is found the entry is appended to ``self``. For registers a warning
+          is logged (unexpected mismatch). For tables a debug message is logged instead,
+          because tables have no default values in the dictionary and are therefore never
+          present in a ``ConfigurationFile`` built with :meth:`from_dictionary_defaults`.
 
         Args:
             other: ConfigurationFile whose values will be applied on top of ``self``.
@@ -737,9 +744,9 @@ class ConfigurationFile(XMLBase, ABC):
                 # Replace the existing table with the overriding content
                 self.tables[existing_table_idx[key]] = new_table
             else:
-                # Table is new — add it but warn the caller
-                logger.warning(
-                    f"Table {new_table.uid!r} (subnode {new_table.subnode}) from the override "
-                    "configuration was not found in the target; it will be added."
+                # Table did not exist in base config — Probably from a older xcf
+                # or one that was created from a dictionary defaults (that does not include them)
+                logger.debug(
+                    f"Table {new_table.uid!r} (subnode {new_table.subnode}) not in target; adding."
                 )
                 self.add_config_table(new_table)
