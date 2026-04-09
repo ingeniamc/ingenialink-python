@@ -385,7 +385,7 @@ def test_store_safe_parameters(servo, environment: "Environment") -> None:
 @pytest.mark.ethercat
 @pytest.mark.valid_versions_for_standard_comocos(
     max="2.8.0"
-)  # Pending investigation of failure with 2.9.0 https://novantamotion.atlassian.net/browse/INGK-1251
+)  # DRIVSUS-300: Stale SDO responses after power cycle on FW >=2.9.0
 def test_restore_parameters(servo, environment: "Environment") -> None:
     user_over_voltage_register = "DRV_PROT_USER_OVER_VOLT"
 
