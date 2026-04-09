@@ -1394,7 +1394,6 @@ class PyTestManager {
         }
     }
 
-    // --- Test Dashboard ---
 
     /**
      * Run pytest --collect-only and return the list of selected test node IDs.
@@ -1427,43 +1426,39 @@ class PyTestManager {
 
     /** Collect test data and delegate HTML generation to TestDashboardBuilder. */
     def generateTestDashboard() {
-        try {
-            def allSessions = []
-            this.registeredGroups.each { name, group ->
-                group.sessions.each { session -> allSessions << session }
-            }
-            if (allSessions.isEmpty()) {
-                this.pipeline.echo("generateTestDashboard: no sessions registered; skipping.")
-                return
-            }
-
-            // Baseline: collect ALL tests (no filters) so uncovered tests still appear as rows
-            def allTestsList = this.collectTests()
-
-            // Collect per-session test sets (one pytest --collect-only run per session)
-            def uidToTests = [:]
-            allSessions.each { session ->
-                uidToTests[session.uid] = this.collectTests(session)
-            }
-
-            this.pipeline.echo("generateTestDashboard: building HTML (${allTestsList.size()} tests, ${allSessions.size()} sessions)...")
-            new TestDashboardBuilder(this.pipeline, this.registeredGroups)
-                .buildAndPublish(allTestsList, uidToTests)
-            this.pipeline.echo("generateTestDashboard: complete.")
-        } catch (Exception e) {
-            this.pipeline.echo("generateTestDashboard FAILED: ${e.getClass().getName()}: ${e.getMessage()}")
-            throw e
+        def allSessions = []
+        this.registeredGroups.each { name, group ->
+            group.sessions.each { session -> allSessions << session }
         }
+        if (allSessions.isEmpty()) {
+            this.pipeline.echo("generateTestDashboard: no sessions registered; skipping.")
+            return
+        }
+
+        // Baseline: collect ALL tests (no filters) so uncovered tests still appear as rows
+        def allTestsList = this.collectTests()
+
+        // Collect per-session test sets (one pytest --collect-only run per session)
+        def uidToTests = [:]
+        allSessions.each { session ->
+            uidToTests[session.uid] = this.collectTests(session)
+        }
+
+        this.pipeline.echo("generateTestDashboard: building HTML (${allTestsList.size()} tests, ${allSessions.size()} sessions)...")
+        new TestDashboardBuilder(this.pipeline, this.registeredGroups)
+            .buildAndPublish(allTestsList, uidToTests)
+        this.pipeline.echo("generateTestDashboard: complete.")
     }
 }
 
-// TestDashboardBuilder - Publishes a client-side HTML test-coverage dashboard.
-//
-// The heavy lifting (trie headers, table body, sorting, filtering) is done
-// entirely in JavaScript inside tests/dashboard_template.html.
-// This class only serialises the test/session data to JSON and copies the
-// template + data file into the Jenkins report directory.
-
+/**
+ * Publishes a client-side HTML test-coverage dashboard.
+ *
+ * The heavy lifting (trie headers, table body, filtering) is done entirely
+ * in JavaScript inside tests/dashboard_template.html.
+ * This class only serialises the test/session data to JSON and copies the
+ * template + data file into the Jenkins report directory.
+ */
 class TestDashboardBuilder {
     private def pipeline
     private Map registeredGroups
@@ -1478,7 +1473,17 @@ class TestDashboardBuilder {
      * client-side dashboard_template.html.
      *
      * Structure:
-     *   { "allTests": [...], "groups": [ { "name": "...", "sessions": [ { "uid", "stageName", "markers", "setup", "policy", "shouldRun", "skipReason", "tests": [...] }, ... ] }, ... ] }
+     *   {
+     *     "allTests": [...],
+     *     "groups": [{
+     *       "name": "...",
+     *       "sessions": [{
+     *         "uid", "stageName", "markers", "setup",
+     *         "policy", "shouldRun", "skipReason",
+     *         "tests": [...]
+     *       }]
+     *     }]
+     *   }
      */
     @NonCPS
     private String buildDataJson(List<String> allTests, Map uidToTests) {
