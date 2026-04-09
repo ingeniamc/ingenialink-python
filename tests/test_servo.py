@@ -219,7 +219,27 @@ def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: 
     )
 
 
-@pytest.mark.canopen
+def test_load_configuration_accepts_configuration_file_object(virtual_drive_custom_dict):
+    """load_configuration accepts a ConfigurationFile instance directly (no file path needed)."""
+    dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
+    _, _, servo = virtual_drive_custom_dict(dictionary, Interface.ETH)
+
+    # Build a ConfigurationFile from the test xcf file
+    test_file = tests.resources.TEST_CONFIG_FILE
+    conf = ConfigurationFile.load_from_xcf(test_file)
+
+    # Should not raise - the ConfigurationFile object is accepted directly
+    servo.load_configuration(conf)
+
+    # Verify the registers were written: read them back and compare
+    for config_register in conf.registers:
+        value = servo.read(config_register.uid, subnode=config_register.subnode)
+        if config_register.dtype == RegDtype.FLOAT:
+            assert value == pytest.approx(config_register.storage, 0.0001)
+        else:
+            assert value == config_register.storage
+
+
 @pytest.mark.ethernet
 @pytest.mark.ethercat
 @pytest.mark.virtual
