@@ -294,7 +294,7 @@ def test_table_index_out_of_bounds(servo_with_table):
         table[99999] = 123
 
 
-def test_save_and_load_xcf_with_tables(virtual_drive_with_tables, tmp_path):
+def test_save_and_load_xcf_with_tables(virtual_drive_with_tables, tmp_path, xcf_schema):
     """Save configuration to XCF from a virtual servo that has tables.
 
     This test writes integer values to a table, saves the servo configuration to an XCF file,
@@ -312,6 +312,7 @@ def test_save_and_load_xcf_with_tables(virtual_drive_with_tables, tmp_path):
     xcf_path = tmp_path / "virt_tables.xcf"
     servo.save_configuration(str(xcf_path))
     assert xcf_path.exists()
+    xcf_schema.validate(str(xcf_path))
 
     # Load configuration file and verify a table was saved (contents are validated
     # by restoring them into the virtual drive and reading back).
@@ -334,7 +335,7 @@ def test_save_and_load_xcf_with_tables(virtual_drive_with_tables, tmp_path):
     assert table.get_value(1) == val1
 
 
-def test_check_configuration_with_tables(virtual_drive_with_tables, tmp_path):
+def test_check_configuration_with_tables(virtual_drive_with_tables, tmp_path, xcf_schema):
     """Verify `check_configuration` compares table contents and raises on mismatch.
 
     Steps:
@@ -348,6 +349,7 @@ def test_check_configuration_with_tables(virtual_drive_with_tables, tmp_path):
 
     filename = tmp_path / "table_check.xcf"
     servo.save_configuration(str(filename))
+    xcf_schema.validate(str(filename))
 
     # Initial check should pass
     servo.check_configuration(str(filename))

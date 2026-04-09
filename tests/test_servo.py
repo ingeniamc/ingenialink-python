@@ -107,12 +107,14 @@ def create_disturbance(servo):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_save_configuration(servo, tmp_path) -> None:
+@pytest.mark.virtual
+def test_save_configuration(servo, tmp_path, xcf_schema) -> None:
     filename = tmp_path / "temp_config"
 
     servo.save_configuration(str(filename))
 
     assert filename.is_file()
+    xcf_schema.validate(str(filename))
 
     config_file = ConfigurationFile.load_from_xcf(str(filename))
 
@@ -144,7 +146,7 @@ def test_save_configuration(servo, tmp_path) -> None:
         assert registers[reg_id].address_type != RegAddressType.NVM_NONE
 
 
-def test_check_configuration(virtual_drive, tmp_path):
+def test_check_configuration(virtual_drive, tmp_path, xcf_schema):
     server, servo = virtual_drive
 
     assert servo is not None and server is not None
@@ -153,6 +155,7 @@ def test_check_configuration(virtual_drive, tmp_path):
 
     # Load the configuration, the subsequent check should not raise an error.
     servo.save_configuration(str(filename))
+    xcf_schema.validate(str(filename))
     servo.check_configuration(str(filename))
 
     # Change a random register
@@ -182,10 +185,12 @@ def test_check_configuration(virtual_drive, tmp_path):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
-def test_load_configuration(servo, tmp_path) -> None:
+@pytest.mark.virtual
+def test_load_configuration(servo, tmp_path, xcf_schema) -> None:
     filename = tmp_path / "temp_config"
     servo.save_configuration(str(filename))
     assert filename.is_file()
+    xcf_schema.validate(str(filename))
     servo.load_configuration(str(filename))
     config_file = ConfigurationFile.load_from_xcf(str(filename))
 
@@ -217,9 +222,30 @@ def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: 
     )
 
 
-@pytest.mark.canopen
+def test_load_configuration_accepts_configuration_file_object(virtual_drive_custom_dict):
+    """load_configuration accepts a ConfigurationFile instance directly (no file path needed)."""
+    dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
+    _, _, servo = virtual_drive_custom_dict(dictionary, Interface.ETH)
+
+    # Build a ConfigurationFile from the test xcf file
+    test_file = tests.resources.TEST_CONFIG_FILE
+    conf = ConfigurationFile.load_from_xcf(test_file)
+
+    # Should not raise - the ConfigurationFile object is accepted directly
+    servo.load_configuration(conf)
+
+    # Verify the registers were written: read them back and compare
+    for config_register in conf.registers:
+        value = servo.read(config_register.uid, subnode=config_register.subnode)
+        if config_register.dtype == RegDtype.FLOAT:
+            assert value == pytest.approx(config_register.storage, 0.0001)
+        else:
+            assert value == config_register.storage
+
+
 @pytest.mark.ethernet
 @pytest.mark.ethercat
+@pytest.mark.virtual
 def test_load_configuration_file_not_found(servo) -> None:
     filename = "can_config.xdf"
     with pytest.raises(FileNotFoundError):
@@ -405,6 +431,7 @@ def test_restore_safe_parameters(servo, environment: "Environment") -> None:
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
+@pytest.mark.virtual
 def test_read(servo) -> None:
     value = servo.read("DRV_STATE_STATUS")
     assert value is not None
@@ -413,6 +440,7 @@ def test_read(servo) -> None:
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
+@pytest.mark.virtual
 def test_write(servo) -> None:
     reg = "CL_AUX_FBK_SENSOR"
     value = 4
@@ -429,6 +457,7 @@ def test_write(servo) -> None:
 @pytest.mark.ethernet
 @pytest.mark.canopen
 @pytest.mark.ethercat
+@pytest.mark.virtual
 def test_monitoring_enable_disable(servo):
     skip_if_monitoring_is_not_available(servo)
     servo.monitoring_enable()
@@ -452,6 +481,7 @@ def test_monitoring_remove_data(create_monitoring):
 @pytest.mark.ethernet
 @pytest.mark.canopen
 @pytest.mark.ethercat
+@pytest.mark.virtual
 def test_monitoring_map_register(servo):
     skip_if_monitoring_is_not_available(servo)
     servo.monitoring_remove_all_mapped_registers()
@@ -506,6 +536,7 @@ def test_monitoring_read_data(create_monitoring):
 @pytest.mark.ethernet
 @pytest.mark.canopen
 @pytest.mark.ethercat
+@pytest.mark.virtual
 def test_disturbance_enable_disable(servo):
     skip_if_monitoring_is_not_available(servo)
     servo.disturbance_enable()
@@ -531,6 +562,7 @@ def test_disturbance_remove_data(create_disturbance):
 @pytest.mark.ethernet
 @pytest.mark.canopen
 @pytest.mark.ethercat
+@pytest.mark.virtual
 def test_disturbance_map_register(servo):
     skip_if_monitoring_is_not_available(servo)
     servo.disturbance_remove_all_mapped_registers()
@@ -564,6 +596,7 @@ def test_disturbance_data_size(create_disturbance):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
+@pytest.mark.virtual
 def test_enable_disable(servo):
     servo.enable()
     assert servo.status[1] == ServoState.ENABLED
@@ -609,6 +642,7 @@ def test_fault_reset_eve_xcr(servo, net, setup_specifier):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
+@pytest.mark.virtual
 def test_is_alive(servo):
     assert servo.is_alive()
 
@@ -616,6 +650,7 @@ def test_is_alive(servo):
 @pytest.mark.canopen
 @pytest.mark.ethernet
 @pytest.mark.ethercat
+@pytest.mark.virtual
 def test_status_word_wait_change(servo):
     subnode = 1
     timeout = 0.5
@@ -632,6 +667,7 @@ def test_status_word_wait_change(servo):
 @pytest.mark.ethernet
 @pytest.mark.canopen
 @pytest.mark.ethercat
+@pytest.mark.virtual
 def test_disturbance_overflow(servo):
     skip_if_monitoring_is_not_available(servo)
     servo.disturbance_disable()
