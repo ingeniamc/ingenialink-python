@@ -348,6 +348,16 @@
           .catch(error => this.setState({ error: error.message }));
       }
 
+      componentDidUpdate() {
+        const thead = document.querySelector('#dashboard thead');
+        if (!thead) return;
+        let top = 0;
+        for (const tr of thead.rows) {
+          for (const th of tr.cells) th.style.top = top + 'px';
+          top += tr.offsetHeight;
+        }
+      }
+
       render(_, { data, error, search }) {
         if (error) return html`<p>Failed to load dashboard data: ${error}</p>`;
         if (!data) return html`<p id="loading">Loading dashboard data...</p>`;
