@@ -4,28 +4,50 @@
   <meta charset="UTF-8">
   <title>Test Coverage Dashboard</title>
   <style>
-    body { font-family: monospace; font-size: 11px; margin: 20px; }
+    :root {
+      --bg: #fff;
+      --text: #000;
+      --bg-alt: #f9f9f9;
+      --bg-group: #dde8f5;
+      --bg-file: #eee;
+      --border: #ccc;
+      --input-bg: #fff;
+      --input-border: #ccc;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1e1e1e;
+        --text: #d4d4d4;
+        --bg-alt: #252526;
+        --bg-group: #2d3748;
+        --bg-file: #2a2a2a;
+        --border: #444;
+        --input-bg: #2d2d2d;
+        --input-border: #555;
+      }
+    }
+    body { font-family: monospace; font-size: 11px; margin: 20px; background: var(--bg); color: var(--text); }
     h1   { font-size: 16px; }
     .table-wrap { overflow: auto; max-width: 100%; max-height: 85vh; }
     table#dashboard { border-collapse: collapse; }
     .search-box { margin: 8px 0; }
-    .search-box input { padding: 4px 8px; font-size: 12px; width: 300px; }
-    thead th { white-space: nowrap; position: sticky; z-index: 10; background: #fff; }
-    thead tr.group-row th { background: #dde8f5 !important; font-weight: bold; text-align: center; }
+    .search-box input { padding: 4px 8px; font-size: 12px; width: 300px; background: var(--input-bg); color: var(--text); border: 1px solid var(--input-border); }
+    thead th { white-space: nowrap; position: sticky; z-index: 10; background: var(--bg); color: var(--text); }
+    thead tr.group-row th { background: var(--bg-group) !important; font-weight: bold; text-align: center; }
     thead tr.session-row th { white-space: normal; text-align: center; min-width: 40px; max-width: 80px; font-size: 10px; }
-    tbody tr:nth-child(even) td { background-color: #f9f9f9; }
-    tbody tr:nth-child(even) td.test-name { background-color: #f9f9f9; }
+    tbody tr:nth-child(even) td { background-color: var(--bg-alt); }
+    tbody tr:nth-child(even) td.test-name { background-color: var(--bg-alt); }
     tbody tr:hover td { filter: brightness(0.92); }
     td.test-name, th.test-name {
-      position: sticky; left: 0; z-index: 5; background: #fff;
+      position: sticky; left: 0; z-index: 5; background: var(--bg);
       text-align: left; white-space: nowrap; max-width: 400px;
       overflow: hidden; text-overflow: ellipsis;
     }
-    thead th.test-name { z-index: 20; background: #fff; }
-    thead tr.group-row th.test-name { background: #dde8f5 !important; }
+    thead th.test-name { z-index: 20; background: var(--bg); }
+    thead tr.group-row th.test-name { background: var(--bg-group) !important; }
     tr.file-group td {
-      font-weight: bold; background: #eee !important;
-      border-bottom: 1px solid #ccc; padding: 4px 6px;
+      font-weight: bold; background: var(--bg-file) !important;
+      border-bottom: 1px solid var(--border); padding: 4px 6px;
     }
     th.skipped { color: #888; font-style: italic; }
     td.policy-cell { text-align: center; font-weight: bold; font-size: 12px; }
@@ -35,10 +57,18 @@
     .policy-never    { background: #d9d9d9; }
     .policy-other    { background: #9fc5e8; }
     .policy-none     { background: #ffc7ce; }
+    @media (prefers-color-scheme: dark) {
+      .policy-always   { background: #1a5c2a; }
+      .policy-nightly  { background: #6b5b10; }
+      .policy-weekends { background: #7a5a10; }
+      .policy-never    { background: #3a3a3a; }
+      .policy-other    { background: #1a4a6b; }
+      .policy-none     { background: #6b1a2a; }
+    }
     .legend { margin: 8px 0; }
     .legend-item {
       display: inline-block; margin-right: 8px;
-      padding: 2px 10px; border: 1px solid #ccc;
+      padding: 2px 10px; border: 1px solid var(--border);
     }
     #loading { font-size: 14px; padding: 20px; }
   </style>
