@@ -67,7 +67,7 @@ Use an environment with a certain Python version::
 
 Install all dependencies::
 
-    poetry sync --all-groups --extras virtual_drive
+    poetry sync --all-groups
 
 
 Project Tasks - Poe The Poet plugin
