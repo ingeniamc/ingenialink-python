@@ -144,7 +144,7 @@ def test_config_table_to_xcf():
     assert elements[1].attrib["data"] == "bb"
 
 
-def test_configuration_file_with_tables(tmp_path):
+def test_configuration_file_with_tables(tmp_path, xcf_schema):
     """Test saving and loading ConfigurationFile with ConfigTable entries."""
     conf_file = ConfigurationFile.create_empty_configuration(
         Interface.ETH, "TEST-PART", 123, 456, "1.0.0"
@@ -163,6 +163,7 @@ def test_configuration_file_with_tables(tmp_path):
     # Save and reload
     xcf_path = tmp_path / "test_with_tables.xcf"
     conf_file.save_to_xcf(str(xcf_path))
+    xcf_schema.validate(str(xcf_path))
 
     loaded_conf = ConfigurationFile.load_from_xcf(str(xcf_path))
 
