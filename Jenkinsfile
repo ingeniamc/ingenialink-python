@@ -1444,9 +1444,6 @@ class PyTestManager {
             def uidToTests = [:]
             allSessions.each { session ->
                 uidToTests[session.uid] = this.collectTests(session)
-                uidToTests[session.uid].each { test ->
-                    if (!allTestsList.contains(test)) allTestsList << test
-                }
             }
 
             this.pipeline.echo("generateTestDashboard: building HTML (${allTestsList.size()} tests, ${allSessions.size()} sessions)...")
