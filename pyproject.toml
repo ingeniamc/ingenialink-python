@@ -124,6 +124,7 @@ pytest-console-scripts = "==1.4.1"
 twisted = "==25.5.0"
 summit-testing-framework = {version = "==0.3.0.post24+develop.96055cd"}
 virtual_drive = {version = "==0.1.0"}
+xmlschema = ">=3.0.0"
 
 # -----------------------------------------------------------------------
 #                                   TASKS

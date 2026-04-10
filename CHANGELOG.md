@@ -3,6 +3,9 @@
 ## [Unreleased]
 ### Added
 - Add specialized `ILRegisterAccessError` exception for improved error handling on aborted register read/write operations
+- Create config files from DictionaryV3 defaults
+- Override configuration file values with values from another configuration file
+- Allow to upload configurations from configuration file class
 
 ### Fixed
 - Fix issues of servo status listener of ethercat drives when the drive is on operational state

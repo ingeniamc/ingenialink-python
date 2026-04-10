@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Callable, Optional
 
 import pytest
+import xmlschema
 from summit_testing_framework import dynamic_loader
 from summit_testing_framework.pytest_helpers.marker_helper import (
     apply_firmware_version_markers_to_items,
@@ -194,3 +195,14 @@ def get_drive_configuration_from_rack_service(setup_descriptor, rs_client):
     if setup_descriptor.rack_drive_idx is None:
         raise ValueError
     return rs_client.configuration.drives[setup_descriptor.rack_drive_idx]
+
+
+@pytest.fixture(scope="session")
+def xcf_schema():
+    """Load the XCF schema from the xcf-specification submodule.
+
+    Returns:
+        XMLSchema instance loaded from config.xsd.
+    """
+    schema_path = Path(__file__).parent.parent / "xcf-specification" / "config.xsd"
+    return xmlschema.XMLSchema(schema_path)
