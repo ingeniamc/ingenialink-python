@@ -1,6 +1,7 @@
 import binascii
 import csv
 from dataclasses import dataclass
+from typing import Optional, cast
 
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.table import Table
@@ -81,6 +82,37 @@ class CSVConfigurationFile:
         self.__data: list[RegisterRow] = []
         self.__crc = 0x0000
 
+    @classmethod
+    def load_from_csv(cls, filename: str) -> "CSVConfigurationFile":
+        """Load a CSV configuration file.
+
+        Args:
+            filename: The path to the CSV file.
+
+        Returns:
+            A CSVConfigurationFile instance loaded from the file.
+
+        Raises:
+            ValueError: If the CSV format is invalid.
+        """
+        instance = cls(filename)
+        with open(filename, newline="") as file:
+            reader = csv.reader(file)
+            rows = list(reader)
+        if not rows or rows[0] != ["v1"]:
+            raise ValueError("Invalid CSV format: missing or incorrect version")
+        crc_str = rows[1][0]
+        try:
+            instance.__crc = int(crc_str, 16)
+        except ValueError:
+            raise ValueError(f"Invalid CRC format: {crc_str}")
+        for row in rows[2:]:
+            if len(row) != 3:
+                raise ValueError(f"Invalid row format: {row}")
+            index, subindex, value = row
+            instance.__data.append(RegisterRow(index, subindex, value))
+        return instance
+
     def add_register(self, register: EthercatRegister, storage: bytes) -> None:
         """Add a register to the CSV configuration.
 
@@ -119,6 +151,65 @@ class CSVConfigurationFile:
             writer.writerow([f"0x{self.__crc:04X}"])
             for row in self.__data:
                 writer.writerow(row.csv_row)
+
+    def compare_with_table(self, table: Table) -> list[str]:
+        """Compare the CSV configuration contents with a table.
+
+        Returns:
+            A list of mismatch or error messages. The list is empty when the
+            CSV contents match the current table values.
+        """
+        mismatches: list[str] = []
+        index_reg = cast("EthercatRegister", table.index_register)
+        value_reg = cast("EthercatRegister", table.value_register)
+        current_address: Optional[int] = None
+
+        bytes_length, _ = dtype_value[value_reg.dtype]
+        index_reg_key = f"0x{index_reg.idx:04X}", f"0x{index_reg.subidx:02X}"
+        value_reg_key = f"0x{value_reg.idx:04X}", f"0x{value_reg.subidx:02X}"
+
+        for row in self.__data:
+            if (row.index, row.subindex) == index_reg_key:
+                try:
+                    current_address = (
+                        int(row.value[2:], 16) if row.value.startswith("0x") else int(row.value, 16)
+                    )
+                except ValueError as exc:
+                    mismatches.append(f"Invalid index value for row {row.csv_row}: {exc}")
+                    current_address = None
+                continue
+
+            if (row.index, row.subindex) != value_reg_key:
+                continue
+
+            if current_address is None:
+                mismatches.append("CSV value row found before an index row for the target table.")
+                continue
+
+            try:
+                expected_raw = bytes.fromhex(
+                    row.value[2:] if row.value.startswith("0x") else row.value
+                )
+            except ValueError as exc:
+                mismatches.append(f"Invalid value for CSV row {row.csv_row}: {exc}")
+                continue
+
+            try:
+                drive_raw = table.get_value_raw(current_address)
+            except Exception as exc:
+                mismatches.append(
+                    f"Table {value_reg.identifier} address {current_address} -- {exc}"
+                )
+                continue
+
+            actual_raw = drive_raw[:bytes_length][::-1]
+            if actual_raw != expected_raw:
+                mismatches.append(
+                    f"Table {value_reg.identifier} address {current_address} --- "
+                    f"Expected: 0x{expected_raw.hex().upper()} Found: 0x{actual_raw.hex().upper()}"
+                )
+
+        return mismatches
 
     def __calculate_crc(self, row: RegisterRow) -> None:
         """Calculate the CRC for a given row and update the internal CRC state.

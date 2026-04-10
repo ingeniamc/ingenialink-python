@@ -6,7 +6,7 @@ import pytest
 
 import tests.resources
 from ingenialink import Servo
-from ingenialink.configuration_file import ConfigurationFile
+from ingenialink.configuration_file import ConfigTable, ConfigurationFile, TableElement
 from ingenialink.dictionary import DictionaryTable, Interface
 from ingenialink.exceptions import ILConfigurationError
 from ingenialink.table import Table
@@ -429,3 +429,38 @@ def test_save_configuration_csv_with_tables(real_servo_with_tables, tmp_path: Pa
                 break
         else:
             pytest.fail(f"Index row {idx_row} not found in CSV")
+
+
+def test_table_compare_with_modified_config_table(
+    servo_with_tables,
+) -> None:
+    """Verify compare_with_config_table detects mismatches when table data differs.
+
+    Args:
+        servo_with_tables: Fixture providing a servo and table.
+    """
+    _, table = servo_with_tables
+    config_table = table.to_config_table()
+    first_element = config_table.elements[0]
+
+    mutated_data = bytes(
+        b ^ 0x01 if i == len(first_element.data) - 1 else b
+        for i, b in enumerate(first_element.data)
+    )
+    if mutated_data == first_element.data:
+        mutated_data = bytes(
+            b ^ 0x02 if i == len(first_element.data) - 1 else b
+            for i, b in enumerate(first_element.data)
+        )
+
+    mutated_elements = [
+        TableElement(address=first_element.address, data=mutated_data),
+        *config_table.elements[1:],
+    ]
+    mutated_table = ConfigTable(config_table.uid, config_table.subnode, mutated_elements)
+
+    mismatches = table.compare_with_config_table(mutated_table)
+    assert mismatches, "compare_with_config_table should report mismatches for modified table data"
+    assert len(mismatches) == 1
+    assert f"Table {config_table.uid} address {first_element.address}" in mismatches[0]
+    assert "Expected:" in mismatches[0] and "Found:" in mismatches[0]
