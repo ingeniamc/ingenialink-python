@@ -99,7 +99,7 @@ class CSVConfigurationFile:
         with open(filename, newline="") as file:
             reader = csv.reader(file)
             rows = list(reader)
-        if not rows or rows[0] != ["v1"]:
+        if not rows or rows[0] != [cls.__VERSION]:
             raise ValueError("Invalid CSV format: missing or incorrect version")
         crc_str = rows[1][0]
         try:
