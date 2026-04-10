@@ -432,14 +432,14 @@ def test_save_configuration_csv_with_tables(real_servo_with_tables, tmp_path: Pa
 
 
 def test_table_compare_with_modified_config_table(
-    servo_with_tables,
+    servo_with_table,
 ) -> None:
     """Verify compare_with_config_table detects mismatches when table data differs.
 
     Args:
-        servo_with_tables: Fixture providing a servo and table.
+        servo_with_table: Fixture providing a servo and table.
     """
-    _, table = servo_with_tables
+    _, table = servo_with_table
     config_table = table.to_config_table()
     first_element = config_table.elements[0]
 
