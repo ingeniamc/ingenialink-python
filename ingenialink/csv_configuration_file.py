@@ -3,7 +3,6 @@ import csv
 from dataclasses import dataclass
 from typing import Optional, cast
 
-from ingenialink import table
 from ingenialink.configuration_file import ConfigTable, TableElement
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.table import Table
@@ -177,10 +176,7 @@ class CSVConfigurationFile:
         value_key = (f"0x{value_reg.idx:04X}", f"0x{value_reg.subidx:02X}")
 
         # ConfigTable identifies the table logically (dictionary id + axis)
-        config_table = ConfigTable(
-            uid=table._Table__dict_table.id,  # same identifier used elsewhere
-            subnode=table._Table__dict_table.axis or 0,
-        )
+        config_table = ConfigTable(uid=table.uid, subnode=table.axis)
 
         current_address: Optional[int] = None
         bytes_length, _ = dtype_value[value_reg.dtype]
@@ -210,9 +206,7 @@ class CSVConfigurationFile:
                 value_str = row.value[2:] if row.value.startswith("0x") else row.value
                 raw_be = bytes.fromhex(value_str)
             except ValueError as exc:
-                raise ValueError(
-                    f"Invalid value data in CSV row {row.csv_row}: {exc}"
-                ) from exc
+                raise ValueError(f"Invalid value data in CSV row {row.csv_row}: {exc}") from exc
 
             # CSV stores big-endian hex; table expects raw little-endian bytes
             raw_le = raw_be[:bytes_length][::-1]

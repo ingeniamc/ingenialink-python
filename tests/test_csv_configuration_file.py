@@ -7,7 +7,6 @@ import pytest
 from ingenialink.csv_configuration_file import CSVConfigurationFile, RegisterRow
 from ingenialink.enums.register import RegAccess, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
-from tests.test_table import servo_with_table
 
 
 def test_register_row_formatting():
@@ -110,8 +109,8 @@ def test_extract_config_table_multiple_entries(servo_with_table):
 
     assert len(config_table.elements) == 2
     assert [e.address for e in config_table.elements] == [0, 1]
-    assert config_table.elements[0].data == b"\xAA\xAA\xAA\xAA"
-    assert config_table.elements[1].data == b"\xBB\xBB\xBB\xBB"
+    assert config_table.elements[0].data == b"\xaa\xaa\xaa\xaa"
+    assert config_table.elements[1].data == b"\xbb\xbb\xbb\xbb"
 
 
 def test_extract_config_table_value_before_index_raises(servo_with_table):
