@@ -1,37 +1,13 @@
 import csv
 import struct
-from dataclasses import dataclass
 from pathlib import Path
+
+import pytest
 
 from ingenialink.csv_configuration_file import CSVConfigurationFile, RegisterRow
 from ingenialink.enums.register import RegAccess, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
-
-
-@dataclass(frozen=True)
-class DummyRegister:
-    idx: int
-    subidx: int
-    dtype: RegDtype
-    identifier: str
-
-
-class DummyTable:
-    def __init__(
-        self,
-        index_register: DummyRegister,
-        value_register: DummyRegister,
-        raw_values: dict[int, bytes],
-    ) -> None:
-        self.index_register = index_register
-        self.value_register = value_register
-        self._raw_values = raw_values
-
-    def get_value_raw(self, index: int) -> bytes:
-        try:
-            return self._raw_values[index]
-        except KeyError as exc:
-            raise IndexError(f"Table address {index} not found.") from exc
+from tests.test_table import servo_with_table
 
 
 def test_register_row_formatting():
@@ -86,33 +62,70 @@ def test_load_from_csv_reads_rows(tmp_path: Path):
     ]
 
 
-def test_compare_with_table_reports_no_mismatches_for_matching_values():
+def test_extract_config_table_single_entry(servo_with_table):
+    _servo, table = servo_with_table
+
+    index_reg = table.index_register
+    value_reg = table.value_register
+
     csv_cfg = CSVConfigurationFile("unused")
     csv_cfg._CSVConfigurationFile__data.extend([
-        RegisterRow("0x1000", "0x00", "0x00000001"),
-        RegisterRow("0x1001", "0x00", "0x01020304"),
+        RegisterRow(
+            f"0x{index_reg.idx:04X}",
+            f"0x{index_reg.subidx:02X}",
+            "0x00000001",
+        ),
+        RegisterRow(
+            f"0x{value_reg.idx:04X}",
+            f"0x{value_reg.subidx:02X}",
+            "0x01020304",
+        ),
     ])
 
-    index_register = DummyRegister(idx=0x1000, subidx=0x00, dtype=RegDtype.U32, identifier="INDEX")
-    value_register = DummyRegister(idx=0x1001, subidx=0x00, dtype=RegDtype.U32, identifier="VALUE")
-    table = DummyTable(index_register, value_register, {1: b"\x04\x03\x02\x01"})
+    config_table = csv_cfg.extract_config_table(table)
 
-    mismatches = csv_cfg.compare_with_table(table)
+    assert config_table.uid == table._Table__dict_table.id
+    assert config_table.subnode == (table._Table__dict_table.axis or 0)
+    assert len(config_table.elements) == 1
 
-    assert mismatches == []
+    element = config_table.elements[0]
+    assert element.address == 1
+    assert element.data == b"\x04\x03\x02\x01"
 
 
-def test_compare_with_table_reports_mismatches_for_differing_values():
+def test_extract_config_table_multiple_entries(servo_with_table):
+    _servo, table = servo_with_table
+    index_reg = table.index_register
+    value_reg = table.value_register
+
     csv_cfg = CSVConfigurationFile("unused")
     csv_cfg._CSVConfigurationFile__data.extend([
-        RegisterRow("0x1000", "0x00", "0x00000001"),
-        RegisterRow("0x1001", "0x00", "0x01020304"),
+        RegisterRow(f"0x{index_reg.idx:04X}", f"0x{index_reg.subidx:02X}", "0x00000000"),
+        RegisterRow(f"0x{value_reg.idx:04X}", f"0x{value_reg.subidx:02X}", "0xAAAAAAAA"),
+        RegisterRow(f"0x{index_reg.idx:04X}", f"0x{index_reg.subidx:02X}", "0x00000001"),
+        RegisterRow(f"0x{value_reg.idx:04X}", f"0x{value_reg.subidx:02X}", "0xBBBBBBBB"),
     ])
 
-    index_register = DummyRegister(idx=0x1000, subidx=0x00, dtype=RegDtype.U32, identifier="INDEX")
-    value_register = DummyRegister(idx=0x1001, subidx=0x00, dtype=RegDtype.U32, identifier="VALUE")
-    table = DummyTable(index_register, value_register, {1: b"\x08\x07\x06\x05"})
+    config_table = csv_cfg.extract_config_table(table)
 
-    mismatches = csv_cfg.compare_with_table(table)
+    assert len(config_table.elements) == 2
+    assert [e.address for e in config_table.elements] == [0, 1]
+    assert config_table.elements[0].data == b"\xAA\xAA\xAA\xAA"
+    assert config_table.elements[1].data == b"\xBB\xBB\xBB\xBB"
 
-    assert mismatches == ["Table VALUE address 1 --- Expected: 0x01020304 Found: 0x05060708"]
+
+def test_extract_config_table_value_before_index_raises(servo_with_table):
+    _servo, table = servo_with_table
+    value_reg = table.value_register
+
+    csv_cfg = CSVConfigurationFile("unused")
+    csv_cfg._CSVConfigurationFile__data.append(
+        RegisterRow(
+            f"0x{value_reg.idx:04X}",
+            f"0x{value_reg.subidx:02X}",
+            "0x01020304",
+        )
+    )
+
+    with pytest.raises(ValueError, match="Value register row found before index"):
+        csv_cfg.extract_config_table(table)
