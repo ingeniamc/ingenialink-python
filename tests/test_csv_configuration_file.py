@@ -8,6 +8,8 @@ from ingenialink.csv_configuration_file import CSVConfigurationFile, RegisterRow
 from ingenialink.enums.register import RegAccess, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 
+pytest_plugins = ["tests.test_table"]
+
 
 def test_register_row_formatting():
     reg = EthercatRegister(0x2025, 0x00, RegDtype.U32, RegAccess.RW)
