@@ -38,7 +38,7 @@ ECAT_SETUP = SpecifierContainer({
                     __TEST_CONFIGS_KEY: {
                         "ECAT_TEST_SESSIONS": PyTestConfig(
                             markers="ethercat",
-                            run_test_stage_uid="ethercat_everest",
+                            run_test_stage_uid="ethercat_everest_2.6.0",
                             stage_name="EtherCAT Everest - FW. 2.6.0",
                         )
                     },
@@ -53,7 +53,7 @@ ECAT_SETUP = SpecifierContainer({
                     __TEST_CONFIGS_KEY: {
                         "ECAT_TEST_SESSIONS": PyTestConfig(
                             markers="ethercat",
-                            run_test_stage_uid="ethercat_everest",
+                            run_test_stage_uid="ethercat_everest_2.8.0",
                             stage_name="EtherCAT Everest - FW. 2.8.0",
                         )
                     },
@@ -74,7 +74,7 @@ ECAT_SETUP = SpecifierContainer({
                     __TEST_CONFIGS_KEY: {
                         "ECAT_TEST_SESSIONS": PyTestConfig(
                             markers="ethercat",
-                            run_test_stage_uid="ethercat_capitan",
+                            run_test_stage_uid="ethercat_capitan_2.6.0",
                             stage_name="EtherCAT Capitan - FW. 2.6.0",
                         )
                     },
@@ -89,7 +89,7 @@ ECAT_SETUP = SpecifierContainer({
                     __TEST_CONFIGS_KEY: {
                         "ECAT_TEST_SESSIONS": PyTestConfig(
                             markers="ethercat",
-                            run_test_stage_uid="ethercat_capitan",
+                            run_test_stage_uid="ethercat_capitan_2.9.0",
                             stage_name="EtherCAT Capitan - FW. 2.9.0",
                         )
                     },
@@ -113,7 +113,7 @@ ETH_SETUP = SpecifierContainer({
                     __TEST_CONFIGS_KEY: {
                         "ETH_TEST_SESSIONS": PyTestConfig(
                             markers="ethernet",
-                            run_test_stage_uid="ethernet_everest",
+                            run_test_stage_uid="ethernet_everest_2.4.0",
                             stage_name="Ethernet Everest - FW. 2.4.0",
                         )
                     },
@@ -128,7 +128,7 @@ ETH_SETUP = SpecifierContainer({
                     __TEST_CONFIGS_KEY: {
                         "ETH_TEST_SESSIONS": PyTestConfig(
                             markers="ethernet",
-                            run_test_stage_uid="ethernet_everest",
+                            run_test_stage_uid="ethernet_everest_2.8.0",
                             stage_name="Ethernet Everest - FW. 2.8.0",
                         )
                     },
@@ -149,7 +149,7 @@ ETH_SETUP = SpecifierContainer({
                     __TEST_CONFIGS_KEY: {
                         "ETH_TEST_SESSIONS": PyTestConfig(
                             markers="ethernet",
-                            run_test_stage_uid="ethernet_capitan",
+                            run_test_stage_uid="ethernet_capitan_2.4.0",
                             stage_name="Ethernet Capitan - FW. 2.4.0",
                         )
                     },
@@ -164,7 +164,7 @@ ETH_SETUP = SpecifierContainer({
                     __TEST_CONFIGS_KEY: {
                         "ETH_TEST_SESSIONS": PyTestConfig(
                             markers="ethernet",
-                            run_test_stage_uid="ethernet_capitan",
+                            run_test_stage_uid="ethernet_capitan_2.9.0",
                             stage_name="Ethernet Capitan - FW. 2.9.0",
                         )
                     },
@@ -188,7 +188,7 @@ CAN_SETUP = SpecifierContainer({
                     __TEST_CONFIGS_KEY: {
                         "CAN_TEST_SESSIONS": PyTestConfig(
                             markers="canopen",
-                            run_test_stage_uid="canopen_everest",
+                            run_test_stage_uid="canopen_everest_2.4.0",
                             stage_name="CANopen Everest - FW. 2.4.0",
                         )
                     },
@@ -203,7 +203,7 @@ CAN_SETUP = SpecifierContainer({
                     __TEST_CONFIGS_KEY: {
                         "CAN_TEST_SESSIONS": PyTestConfig(
                             markers="canopen",
-                            run_test_stage_uid="canopen_everest",
+                            run_test_stage_uid="canopen_everest_2.8.0",
                             stage_name="CANopen Everest - FW. 2.8.0",
                         )
                     },
@@ -224,7 +224,7 @@ CAN_SETUP = SpecifierContainer({
                     __TEST_CONFIGS_KEY: {
                         "CAN_TEST_SESSIONS": PyTestConfig(
                             markers="canopen",
-                            run_test_stage_uid="canopen_capitan",
+                            run_test_stage_uid="canopen_capitan_2.4.0",
                             stage_name="CANopen Capitan - FW. 2.4.0",
                         )
                     },
@@ -239,7 +239,7 @@ CAN_SETUP = SpecifierContainer({
                     __TEST_CONFIGS_KEY: {
                         "CAN_TEST_SESSIONS": PyTestConfig(
                             markers="canopen",
-                            run_test_stage_uid="canopen_capitan",
+                            run_test_stage_uid="canopen_capitan_2.9.0",
                             stage_name="CANopen Capitan - FW. 2.9.0",
                         )
                     },
