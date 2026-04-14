@@ -85,8 +85,8 @@ def test_extract_config_table_single_entry(servo_with_table):
 
     config_table = csv_cfg.extract_config_table(table)
 
-    assert config_table.uid == table._Table__dict_table.id
-    assert config_table.subnode == (table._Table__dict_table.axis or 0)
+    assert config_table.uid == table.uid
+    assert config_table.subnode == table.axis
     assert len(config_table.elements) == 1
 
     element = config_table.elements[0]
