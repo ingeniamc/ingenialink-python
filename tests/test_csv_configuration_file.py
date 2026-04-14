@@ -7,6 +7,8 @@ import pytest
 from ingenialink.csv_configuration_file import CSVConfigurationFile, RegisterRow
 from ingenialink.enums.register import RegAccess, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
+from ingenialink.servo import Servo
+from ingenialink.table import Table
 
 pytest_plugins = ["tests.test_table"]
 
@@ -50,7 +52,12 @@ def test_format_value_for_csv():
     assert row.value == f"0x{expected_value_big_endian.hex().upper()}"
 
 
-def test_load_from_csv_reads_rows(tmp_path: Path):
+def test_load_from_csv_reads_rows(tmp_path: Path) -> None:
+    """Test that loading from a CSV file reads the rows correctly.
+
+    Args:
+        tmp_path: pytest fixture providing a temporary directory for file operations.
+    """
     file_path = tmp_path / "load_config.csv"
     file_path.write_text("v1\n0x0000\n0x2025,0x00,0x41A00000\n0x209A,0x00,0x3F800000\n")
 
@@ -63,7 +70,12 @@ def test_load_from_csv_reads_rows(tmp_path: Path):
     ]
 
 
-def test_extract_config_table_single_entry(servo_with_table):
+def test_extract_config_table_single_entry(servo_with_table: tuple[Servo, Table]) -> None:
+    """Test that a configuration table can be extracted from the CSV data.
+
+    Args:
+        servo_with_table: pytest fixture providing a servo and a table for testing.
+    """
     _servo, table = servo_with_table
 
     index_reg = table.index_register
@@ -94,7 +106,12 @@ def test_extract_config_table_single_entry(servo_with_table):
     assert element.data == b"\x04\x03\x02\x01"
 
 
-def test_extract_config_table_multiple_entries(servo_with_table):
+def test_extract_config_table_multiple_entries(servo_with_table: tuple[Servo, Table]) -> None:
+    """Test that multiple entries can be extracted into a configuration table.
+
+    Args:
+        servo_with_table: pytest fixture providing a servo and a table for testing.
+    """
     _servo, table = servo_with_table
     index_reg = table.index_register
     value_reg = table.value_register
@@ -115,7 +132,16 @@ def test_extract_config_table_multiple_entries(servo_with_table):
     assert config_table.elements[1].data == b"\xbb\xbb\xbb\xbb"
 
 
-def test_extract_config_table_value_before_index_raises(servo_with_table):
+def test_extract_config_table_value_before_index_raises(
+    servo_with_table: tuple[Servo, Table],
+) -> None:
+    """Test that a ValueError is raised if a value row is encountered before an index row.
+
+    This tests the enforcement of index/value pairing in the CSV configuration extraction logic.
+
+    Args:
+       servo_with_table: pytest fixture providing a servo and a table for testing.
+    """
     _servo, table = servo_with_table
     value_reg = table.value_register
 
