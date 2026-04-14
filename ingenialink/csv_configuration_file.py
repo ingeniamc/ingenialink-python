@@ -1,7 +1,9 @@
 import binascii
 import csv
 from dataclasses import dataclass
+from typing import Optional, cast
 
+from ingenialink.configuration_file import ConfigTable, TableElement
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.table import Table
 from ingenialink.utils._utils import dtype_value
@@ -81,6 +83,37 @@ class CSVConfigurationFile:
         self.__data: list[RegisterRow] = []
         self.__crc = 0x0000
 
+    @classmethod
+    def load_from_csv(cls, filename: str) -> "CSVConfigurationFile":
+        """Load a CSV configuration file.
+
+        Args:
+            filename: The path to the CSV file.
+
+        Returns:
+            A CSVConfigurationFile instance loaded from the file.
+
+        Raises:
+            ValueError: If the CSV format is invalid.
+        """
+        instance = cls(filename)
+        with open(filename, newline="") as file:
+            reader = csv.reader(file)
+            rows = list(reader)
+        if not rows or rows[0] != [cls.__VERSION]:
+            raise ValueError("Invalid CSV format: missing or incorrect version")
+        crc_str = rows[1][0]
+        try:
+            instance.__crc = int(crc_str, 16)
+        except ValueError:
+            raise ValueError(f"Invalid CRC format: {crc_str}")
+        for row in rows[2:]:
+            if len(row) != 3:
+                raise ValueError(f"Invalid row format: {row}")
+            index, subindex, value = row
+            instance.__data.append(RegisterRow(index, subindex, value))
+        return instance
+
     def add_register(self, register: EthercatRegister, storage: bytes) -> None:
         """Add a register to the CSV configuration.
 
@@ -119,6 +152,71 @@ class CSVConfigurationFile:
             writer.writerow([f"0x{self.__crc:04X}"])
             for row in self.__data:
                 writer.writerow(row.csv_row)
+
+    def extract_config_table(self, table: Table) -> ConfigTable:
+        """Extract a table encoded in the CSV write sequence and return it as a ConfigTable.
+
+        The method scans the CSV rows looking for index-register and value-register
+        writes corresponding to the given table. Each index/value pair is converted
+        into a TableElement using raw bytes as stored in the CSV.
+
+        Args:
+            table: Target Table definition (index/value registers are used as keys).
+
+        Returns:
+            ConfigTable populated with the extracted table elements.
+
+        Raises:
+            ValueError: If malformed rows are encountered.
+        """
+        index_reg = cast("EthercatRegister", table.index_register)
+        value_reg = cast("EthercatRegister", table.value_register)
+
+        index_key = (f"0x{index_reg.idx:04X}", f"0x{index_reg.subidx:02X}")
+        value_key = (f"0x{value_reg.idx:04X}", f"0x{value_reg.subidx:02X}")
+
+        # ConfigTable identifies the table logically (dictionary id + axis)
+        config_table = ConfigTable(uid=table.uid, subnode=table.axis)
+
+        current_address: Optional[int] = None
+        bytes_length, _ = dtype_value[value_reg.dtype]
+
+        for row in self.__data:
+            # --- Index register write ---
+            if (row.index, row.subindex) == index_key:
+                try:
+                    value_str = row.value[2:] if row.value.startswith("0x") else row.value
+                    current_address = int(value_str, 16)
+                except ValueError as exc:
+                    raise ValueError(
+                        f"Invalid index value in CSV row {row.csv_row}: {exc}"
+                    ) from exc
+                continue
+            # --- Value register write ---
+            if (row.index, row.subindex) != value_key:
+                continue
+
+            if current_address is None:
+                raise ValueError(
+                    "Value register row found before index register row while "
+                    "extracting table from CSV."
+                )
+
+            try:
+                value_str = row.value[2:] if row.value.startswith("0x") else row.value
+                raw_be = bytes.fromhex(value_str)
+            except ValueError as exc:
+                raise ValueError(f"Invalid value data in CSV row {row.csv_row}: {exc}") from exc
+
+            # CSV stores big-endian hex; table expects raw little-endian bytes
+            raw_le = raw_be[:bytes_length][::-1]
+
+            element = TableElement(address=current_address, data=raw_le)
+            config_table.elements.append(element)
+
+            current_address = None  # enforce index/value pairing
+
+        return config_table
 
     def __calculate_crc(self, row: RegisterRow) -> None:
         """Calculate the CRC for a given row and update the internal CRC state.
