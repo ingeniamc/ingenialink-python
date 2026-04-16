@@ -194,8 +194,3 @@ cmd = "python -I -m coverage combine"
 # ----------------------------- Coverage report -----------------------------
 [tool.poe.tasks.cov-report]
 cmd = "python -I -m coverage xml"
-
-# ----------------------------- Export tests specifiers -----------------------------
-[tool.poe.tasks.export_specifier_module]
-help="Export an specifier to JSON file"
-cmd = "python -I -m summit_testing_framework.helpers.export_specifier_module"
