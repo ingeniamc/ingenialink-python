@@ -1,4 +1,4 @@
-@Library('cicd-lib@cit-564-migration-to-cicdlib-and-migration-of-pipelines') _
+@Library('cicd-lib@cit-564-migration-to-cicdlib-and-migration-of-pipelines-changes') _
 
 import python.VirtualEnvironment
 import python.VEnvManager
