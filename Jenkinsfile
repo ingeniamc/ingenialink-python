@@ -240,6 +240,7 @@ pipeline {
                                 stage('Build wheels') {
                                     steps {
                                         script {
+                                            venvManager.runInWorkingFolder("if exist dist rmdir /s /q dist")
                                             venvManager.forEachEnvironment() { venv ->
                                                 venv.run("poetry run poe build-wheel")
                                                 venv.run("poetry run poe check-wheels")
@@ -354,6 +355,7 @@ pipeline {
                                 stage('Build wheels') {
                                     steps {
                                         script {
+                                            venvManager.runInWorkingFolder("rm -rf dist")
                                             // Linux for now does not contain compiled code
                                             // so building on one python version is enough
                                             venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
