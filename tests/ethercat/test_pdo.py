@@ -691,6 +691,61 @@ def test_pdo_item_custom_size(open_dictionary):
     assert tpdo_item.raw_data_bytes == b"\x09"
 
 
+@pytest.mark.ethercat
+@pytest.mark.parametrize("reverse_order", [False, True], ids=["index_order", "reverse_order"])
+def test_multiple_pdo_maps_insertion_order_matches_processing_order(
+    servo: EthercatServo, net: "EthercatNetwork", reverse_order: bool
+):
+    """PDO values must arrive at the correct registers regardless of map insertion order."""
+    drv_op_cmd = servo.dictionary.get_register("DRV_OP_CMD")
+    cl_pos_set_point = servo.dictionary.get_register("CL_POS_SET_POINT_VALUE")
+    drv_op_value = servo.dictionary.get_register("DRV_OP_VALUE")
+    cl_vel_fbk = servo.dictionary.get_register("CL_VEL_FBK_VALUE")
+
+    initial_op_mode = servo.read(drv_op_cmd)
+    target_op_mode = 1 if initial_op_mode != 1 else 2
+
+    rpdo_map1 = RPDOMap()
+    rpdo_map1.map_register_index = 0x1600
+    pos_item = RPDOMapItem(cl_pos_set_point)
+    pos_item.value = 0
+    rpdo_map1.add_item(pos_item)
+
+    rpdo_map2 = RPDOMap()
+    rpdo_map2.map_register_index = 0x1601
+    op_cmd_item = RPDOMapItem(drv_op_cmd)
+    op_cmd_item.value = target_op_mode
+    rpdo_map2.add_item(op_cmd_item)
+
+    tpdo_map1 = TPDOMap()
+    tpdo_map1.map_register_index = 0x1A00
+    tpdo_map1.add_item(TPDOMapItem(cl_vel_fbk))
+
+    tpdo_map2 = TPDOMap()
+    tpdo_map2.map_register_index = 0x1A01
+    tpdo_map2.add_item(TPDOMapItem(drv_op_value))
+
+    if reverse_order:
+        rpdo_maps = [rpdo_map2, rpdo_map1]
+        tpdo_maps = [tpdo_map2, tpdo_map1]
+    else:
+        rpdo_maps = [rpdo_map1, rpdo_map2]
+        tpdo_maps = [tpdo_map1, tpdo_map2]
+
+    servo.set_pdo_map_to_slave(rpdo_maps=rpdo_maps, tpdo_maps=tpdo_maps)
+
+    try:
+        start_stop_pdos(net)
+
+        actual_op_mode = servo.read(drv_op_cmd)
+        assert actual_op_mode == target_op_mode, (
+            f"DRV_OP_CMD: expected {target_op_mode}, got {actual_op_mode}. "
+            "RPDO byte order does not match insertion order."
+        )
+    finally:
+        servo.write(drv_op_cmd, initial_op_mode)
+
+
 def test_pdo_item_custom_size_wrong_length(open_dictionary):
     ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(SUBNODE)[TPDO_REGISTERS[0]]
