@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from collections import OrderedDict
 from typing import TYPE_CHECKING, Callable, ClassVar, Literal, Optional, TypeVar, Union
 
 import bitarray
@@ -868,9 +869,11 @@ class PDOServo(Servo):
         super().__init__(
             target, dictionary_path, servo_status_listener, disconnect_callback=disconnect_callback
         )
-        # Index of the pdo map -> PDO Map instance
-        self._rpdo_maps: dict[int, RPDOMap] = {}
-        self._tpdo_maps: dict[int, TPDOMap] = {}
+        # Index of the pdo map -> PDO Map instance. OrderedDict preserves insertion
+        # order so that assignment (map_rpdos/map_tpdos) and processing
+        # (_process_rpdo/_process_tpdo) iterate maps in the same order.
+        self._rpdo_maps: OrderedDict[int, RPDOMap] = OrderedDict()
+        self._tpdo_maps: OrderedDict[int, TPDOMap] = OrderedDict()
 
     @property  # type: ignore[misc]
     def dictionary(self) -> CanopenDictionary:  # type: ignore[override]
@@ -996,9 +999,9 @@ class PDOServo(Servo):
         if rpdo_map is not None:
             if rpdo_map not in self._rpdo_maps.values():
                 raise ValueError("The RPDOMap instance is not in the RPDOMaps")
-            self._rpdo_maps = {
-                idx: rmap for idx, rmap in self._rpdo_maps.items() if rmap is not rpdo_map
-            }
+            self._rpdo_maps = OrderedDict(
+                (idx, rmap) for idx, rmap in self._rpdo_maps.items() if rmap is not rpdo_map
+            )
             return
         if rpdo_map_index is not None:
             del self._rpdo_maps[rpdo_map_index]
@@ -1021,9 +1024,9 @@ class PDOServo(Servo):
         if tpdo_map is not None:
             if tpdo_map not in self._tpdo_maps.values():
                 raise ValueError("The TPDOMap instance is not in the TPDOMaps")
-            self._tpdo_maps = {
-                idx: tmap for idx, tmap in self._tpdo_maps.items() if tmap is not tpdo_map
-            }
+            self._tpdo_maps = OrderedDict(
+                (idx, tmap) for idx, tmap in self._tpdo_maps.items() if tmap is not tpdo_map
+            )
             return
         if tpdo_map_index is not None:
             self._tpdo_maps.pop(tpdo_map_index)
@@ -1058,8 +1061,7 @@ class PDOServo(Servo):
             input_data: Concatenated received data bytes.
 
         """
-        for idx in sorted(self._tpdo_maps):
-            tpdo_map = self._tpdo_maps[idx]
+        for tpdo_map in self._tpdo_maps.values():
             map_bytes = input_data[: tpdo_map.data_length_bytes]
             tpdo_map.set_item_bytes(map_bytes)
             input_data = input_data[tpdo_map.data_length_bytes :]
@@ -1072,7 +1074,7 @@ class PDOServo(Servo):
             Concatenated data bytes to be sent.
         """
         output = bytearray()
-        for idx in sorted(self._rpdo_maps):
-            self._rpdo_maps[idx]._notify_process_data_event()
-            output += self._rpdo_maps[idx].get_item_bytes()
+        for rpdo_map in self._rpdo_maps.values():
+            rpdo_map._notify_process_data_event()
+            output += rpdo_map.get_item_bytes()
         return bytes(output)
