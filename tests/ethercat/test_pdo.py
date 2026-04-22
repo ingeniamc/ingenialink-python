@@ -743,6 +743,8 @@ def test_multiple_pdo_maps_insertion_order_matches_processing_order(
             "RPDO byte order does not match insertion order."
         )
     finally:
+        # Rollback register values modified by PDO exchanges during test teardown
+        # https://novantamotion.atlassian.net/browse/CIT-657
         servo.write(drv_op_cmd, initial_op_mode)
 
 
