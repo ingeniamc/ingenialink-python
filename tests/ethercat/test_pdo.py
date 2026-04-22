@@ -692,6 +692,7 @@ def test_pdo_item_custom_size(open_dictionary):
 
 
 @pytest.mark.ethercat
+@pytest.mark.not_valid_for_standard_cocomoco # CoCoMoCo does not support multiple PDO maps
 @pytest.mark.parametrize("reverse_order", [False, True], ids=["index_order", "reverse_order"])
 def test_multiple_pdo_maps_insertion_order_matches_processing_order(
     servo: EthercatServo, net: "EthercatNetwork", reverse_order: bool
@@ -745,11 +746,7 @@ def test_multiple_pdo_maps_insertion_order_matches_processing_order(
     servo.set_pdo_map_to_slave(rpdo_maps=rpdo_maps, tpdo_maps=tpdo_maps)
 
     try:
-        net.start_pdos(timeout=5.0)
-        start_time = time.time()
-        while time.time() < start_time + 1:
-            net.send_receive_processdata()
-        net.stop_pdos()
+        start_stop_pdos(net)
 
         # Validate RPDO map 1: CL_POS_SET_POINT_VALUE received the correct value
         actual_pos_set_point = servo.read(cl_pos_set_point)
@@ -770,8 +767,6 @@ def test_multiple_pdo_maps_insertion_order_matches_processing_order(
             "TPDO map 2 data was read from the wrong position."
         )
     finally:
-        with contextlib.suppress(Exception):
-            net.stop_pdos()
         # Rollback register values modified by PDO exchanges during test teardown
         # https://novantamotion.atlassian.net/browse/CIT-657
         servo.write(drv_op_cmd, initial_op_mode)
