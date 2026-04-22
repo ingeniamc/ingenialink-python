@@ -735,7 +735,11 @@ def test_multiple_pdo_maps_insertion_order_matches_processing_order(
     servo.set_pdo_map_to_slave(rpdo_maps=rpdo_maps, tpdo_maps=tpdo_maps)
 
     try:
-        start_stop_pdos(net)
+        net.start_pdos(timeout=5.0)
+        start_time = time.time()
+        while time.time() < start_time + 1:
+            net.send_receive_processdata()
+        net.stop_pdos()
 
         actual_op_mode = servo.read(drv_op_cmd)
         assert actual_op_mode == target_op_mode, (
@@ -743,6 +747,8 @@ def test_multiple_pdo_maps_insertion_order_matches_processing_order(
             "RPDO byte order does not match insertion order."
         )
     finally:
+        with contextlib.suppress(Exception):
+            net.stop_pdos()
         # Rollback register values modified by PDO exchanges during test teardown
         # https://novantamotion.atlassian.net/browse/CIT-657
         servo.write(drv_op_cmd, initial_op_mode)
