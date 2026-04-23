@@ -122,7 +122,7 @@ pytest-cov = "==7.1.0"
 pytest-mock = "==3.15.1"
 pytest-console-scripts = "==1.4.1"
 twisted = "==25.5.0"
-summit-testing-framework = {version = "==0.3.0.post24+develop.96055cd"}
+summit-testing-framework = {version = "==0.3.0.post49+develop.d6a7699"}
 virtual_drive = {version = "==0.1.0"}
 xmlschema = ">=3.0.0"
 
@@ -194,8 +194,3 @@ cmd = "python -I -m coverage combine"
 # ----------------------------- Coverage report -----------------------------
 [tool.poe.tasks.cov-report]
 cmd = "python -I -m coverage xml"
-
-# ----------------------------- Export tests specifiers -----------------------------
-[tool.poe.tasks.export_specifier_module]
-help="Export an specifier to JSON file"
-cmd = "python -I -m summit_testing_framework.helpers.export_specifier_module"
