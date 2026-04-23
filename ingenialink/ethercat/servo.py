@@ -204,8 +204,10 @@ class EthercatServo(EthercatServoBase):
             ILIOError,
         ) as e:
             self._handle_sdo_exception(reg, SdoOperationMsg.READ, e)
-        except AttributeError:
-            raise ILIOError(f"Error reading {reg.identifier}. The drive has been disconnected.")
+        except (AttributeError, ILError) as e:
+            raise ILIOError(
+                f"Error reading {reg.identifier}. The drive has been disconnected."
+            ) from e
         finally:
             self._lock.release()
         return value
@@ -233,8 +235,10 @@ class EthercatServo(EthercatServoBase):
             ILIOError,
         ) as e:
             self._handle_sdo_exception(reg, SdoOperationMsg.WRITE, e)
-        except AttributeError:
-            raise ILIOError(f"Error writing {reg.identifier}. The drive has been disconnected.")
+        except (AttributeError, ILError) as e:
+            raise ILIOError(
+                f"Error writing {reg.identifier}. The drive has been disconnected."
+            ) from e
         finally:
             self._lock.release()
 
