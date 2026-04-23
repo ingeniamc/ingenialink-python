@@ -260,10 +260,10 @@ class EthercatServo(EthercatServoBase):
         default_error_msg = f"Error {operation_msg.value} {reg.identifier}"
         if isinstance(exception, pysoem.WkcError):
             wkc_errors = {
-                self.NO_RESPONSE_WORKING_COUNTER: "The working counter remained unchanged.",
-                self.NOFRAME_WORKING_COUNTER: "No frame.",
-                self.TIMEOUT_WORKING_COUNTER: "Timeout.",
-                self.UNKNOWN_FRAME_WORKING_COUNTER: "Unknown frame received.",
+                self.NO_RESPONSE_WORKING_COUNTER: "The working counter remained unchanged",
+                self.NOFRAME_WORKING_COUNTER: "No frame",
+                self.TIMEOUT_WORKING_COUNTER: "Timeout",
+                self.UNKNOWN_FRAME_WORKING_COUNTER: "Unknown frame received",
             }
             reason = wkc_errors.get(exception.wkc, f"Working counter: {exception.wkc}")
         elif isinstance(exception, (pysoem.SdoError, pysoem.MailboxError, pysoem.PacketError)):
