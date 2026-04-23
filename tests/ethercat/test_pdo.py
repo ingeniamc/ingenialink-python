@@ -692,7 +692,7 @@ def test_pdo_item_custom_size(open_dictionary):
 
 
 @pytest.mark.ethercat
-@pytest.mark.not_valid_for_standard_cocomoco # CoCoMoCo does not support multiple PDO maps
+@pytest.mark.not_valid_for_standard_cocomoco  # CoCoMoCo does not support multiple PDO maps
 @pytest.mark.parametrize("reverse_order", [False, True], ids=["index_order", "reverse_order"])
 def test_multiple_pdo_maps_insertion_order_matches_processing_order(
     servo: EthercatServo, net: "EthercatNetwork", reverse_order: bool
