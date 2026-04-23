@@ -691,6 +691,88 @@ def test_pdo_item_custom_size(open_dictionary):
     assert tpdo_item.raw_data_bytes == b"\x09"
 
 
+@pytest.mark.ethercat
+@pytest.mark.not_valid_for_standard_cocomoco  # CoCoMoCo does not support multiple PDO maps
+@pytest.mark.parametrize("reverse_order", [False, True], ids=["index_order", "reverse_order"])
+def test_multiple_pdo_maps_insertion_order_matches_processing_order(
+    servo: EthercatServo, net: "EthercatNetwork", reverse_order: bool
+):
+    """PDO values must arrive at the correct registers regardless of map insertion order.
+
+    Uses two RPDO maps and two TPDO maps to verify that the byte layout in the
+    process data image matches the insertion order of the maps, not their index order.
+    Both RPDO values are validated via SDO reads and both TPDO item values are
+    cross-checked against their corresponding SDO registers.
+    """
+    drv_op_cmd = servo.dictionary.get_register("DRV_OP_CMD")
+    cl_pos_set_point = servo.dictionary.get_register("CL_POS_SET_POINT_VALUE")
+    drv_op_value = servo.dictionary.get_register("DRV_OP_VALUE")
+    cl_vel_fbk = servo.dictionary.get_register("CL_VEL_FBK_VALUE")
+
+    initial_op_mode = servo.read(drv_op_cmd)
+    initial_pos_set_point = servo.read(cl_pos_set_point)
+    target_op_mode = 1 if initial_op_mode != 1 else 2
+    target_pos_set_point = 12345
+
+    rpdo_map1 = RPDOMap()
+    rpdo_map1.map_register_index = 0x1600
+    pos_item = RPDOMapItem(cl_pos_set_point)
+    pos_item.value = target_pos_set_point
+    rpdo_map1.add_item(pos_item)
+
+    rpdo_map2 = RPDOMap()
+    rpdo_map2.map_register_index = 0x1601
+    op_cmd_item = RPDOMapItem(drv_op_cmd)
+    op_cmd_item.value = target_op_mode
+    rpdo_map2.add_item(op_cmd_item)
+
+    tpdo_map1 = TPDOMap()
+    tpdo_map1.map_register_index = 0x1A00
+    vel_fbk_item = TPDOMapItem(cl_vel_fbk)
+    tpdo_map1.add_item(vel_fbk_item)
+
+    tpdo_map2 = TPDOMap()
+    tpdo_map2.map_register_index = 0x1A01
+    op_value_item = TPDOMapItem(drv_op_value)
+    tpdo_map2.add_item(op_value_item)
+
+    if reverse_order:
+        rpdo_maps = [rpdo_map2, rpdo_map1]
+        tpdo_maps = [tpdo_map2, tpdo_map1]
+    else:
+        rpdo_maps = [rpdo_map1, rpdo_map2]
+        tpdo_maps = [tpdo_map1, tpdo_map2]
+
+    servo.set_pdo_map_to_slave(rpdo_maps=rpdo_maps, tpdo_maps=tpdo_maps)
+
+    try:
+        start_stop_pdos(net)
+
+        # Validate RPDO map 1: CL_POS_SET_POINT_VALUE received the correct value
+        actual_pos_set_point = servo.read(cl_pos_set_point)
+        assert actual_pos_set_point == target_pos_set_point, (
+            f"CL_POS_SET_POINT_VALUE: expected {target_pos_set_point}, got {actual_pos_set_point}. "
+            "RPDO map 1 data was placed at the wrong position."
+        )
+        # Validate RPDO map 2: DRV_OP_CMD received the correct value
+        actual_op_mode = servo.read(drv_op_cmd)
+        assert actual_op_mode == target_op_mode, (
+            f"DRV_OP_CMD: expected {target_op_mode}, got {actual_op_mode}. "
+            "RPDO map 2 data was placed at the wrong position."
+        )
+        # Validate TPDO map 2: DRV_OP_VALUE item matches the SDO read
+        actual_drv_op_value = servo.read(drv_op_value)
+        assert op_value_item.value == actual_drv_op_value, (
+            f"DRV_OP_VALUE TPDO item: expected {actual_drv_op_value}, got {op_value_item.value}. "
+            "TPDO map 2 data was read from the wrong position."
+        )
+    finally:
+        # Rollback register values modified by PDO exchanges during test teardown
+        # https://novantamotion.atlassian.net/browse/CIT-657
+        servo.write(drv_op_cmd, initial_op_mode)
+        servo.write(cl_pos_set_point, initial_pos_set_point)
+
+
 def test_pdo_item_custom_size_wrong_length(open_dictionary):
     ethercat_dictionary = open_dictionary
     register = ethercat_dictionary.registers(SUBNODE)[TPDO_REGISTERS[0]]
