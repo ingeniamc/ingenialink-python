@@ -1,7 +1,7 @@
 import contextlib
 import threading
 from types import SimpleNamespace
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from unittest.mock import MagicMock
 
 with contextlib.suppress(ImportError):
@@ -11,10 +11,13 @@ import pytest
 from ingenialink.ethercat.servo import EthercatServo, SdoOperationMsg
 from ingenialink.exceptions import ILError, ILIOError, ILRegisterAccessError
 
+if TYPE_CHECKING:
+    from pysoem import WkcError
+
 REGISTER = SimpleNamespace(idx=0x2010, subidx=0x00, identifier="DRV_STATE_STATUS")
 
 
-def _make_wkc_error(wkc: int) -> pysoem.WkcError:
+def _make_wkc_error(wkc: int) -> "WkcError":
     """Create a pysoem.WkcError with the given working counter value.
 
     Returns:
@@ -71,15 +74,15 @@ class TestHandleSdoException:
         ("exception", "expected_fragments"),
         [
             (
-                pysoem.SdoError(0, 1, 2, 0x06090011, "Sub index does not exist"),
+                lambda: pysoem.SdoError(0, 1, 2, 0x06090011, "Sub index does not exist"),
                 ["SdoError", "Abort code", "Sub index does not exist"],
             ),
             (
-                pysoem.MailboxError(1, 2, "Mailbox timeout"),
+                lambda: pysoem.MailboxError(1, 2, "Mailbox timeout"),
                 ["MailboxError", "Error code", "Mailbox timeout"],
             ),
             (
-                pysoem.PacketError(1, 3),
+                lambda: pysoem.PacketError(1, 3),
                 ["PacketError", "Error code", "Data container too small for type"],
             ),
         ],
@@ -90,13 +93,14 @@ class TestHandleSdoException:
     ) -> None:
         """SdoError, MailboxError, and PacketError produce reason strings with the right details."""
         servo = self._build_servo()
+        exc = exception()
 
         with pytest.raises(ILRegisterAccessError) as exc_info:
-            servo._handle_sdo_exception(REGISTER, SdoOperationMsg.READ, exception)
+            servo._handle_sdo_exception(REGISTER, SdoOperationMsg.READ, exc)
 
         error = exc_info.value
         assert error.reg is REGISTER
-        assert error.base_exception is exception
+        assert error.base_exception is exc
         for fragment in expected_fragments:
             assert fragment in error.reason
 
