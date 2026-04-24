@@ -1,11 +1,9 @@
-import contextlib
 import threading
 from types import SimpleNamespace
 from typing import Optional
 from unittest.mock import MagicMock
 
-with contextlib.suppress(ImportError):
-    import pysoem
+import pysoem
 import pytest
 
 from ingenialink.ethercat.servo import EthercatServo, SdoOperationMsg
@@ -35,6 +33,7 @@ class _ServoForRawIO(EthercatServo):
         self._lock = threading.Lock()
 
 
+@pytest.mark.pcap
 class TestHandleSdoException:
     """Tests that _handle_sdo_exception raises ILRegisterAccessError for each pysoem error type."""
 
@@ -110,6 +109,7 @@ class TestHandleSdoException:
         assert exc_info.value.reason == "Some IO error"
 
 
+@pytest.mark.pcap
 class TestReadRawWriteRawErrorHandling:
     """Tests that _read_raw and _write_raw properly translate exceptions."""
 
