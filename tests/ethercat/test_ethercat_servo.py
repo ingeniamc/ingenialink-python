@@ -1,9 +1,11 @@
+import contextlib
 import threading
 from types import SimpleNamespace
 from typing import Optional
 from unittest.mock import MagicMock
 
-import pysoem
+with contextlib.suppress(ImportError):
+    import pysoem
 import pytest
 
 from ingenialink.ethercat.servo import EthercatServo, SdoOperationMsg
