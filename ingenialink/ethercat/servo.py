@@ -83,7 +83,6 @@ class EthercatServo(EthercatServoBase):
     """
 
     MAX_WRITE_SIZE = CAN_MAX_WRITE_SIZE
-    MONITORING_DATA_BUFFER_SIZE = 1024
 
     NO_RESPONSE_WORKING_COUNTER = 0
     TIMEOUT_WORKING_COUNTER = -5
@@ -184,7 +183,7 @@ class EthercatServo(EthercatServoBase):
     def _read_raw(  # type: ignore [override]
         self,
         reg: EthercatRegister,
-        buffer_size: int = 0,
+        buffer_size: Optional[int] = None,
         complete_access: bool = False,
         *,
         release_gil: Optional[bool] = None,
@@ -192,6 +191,8 @@ class EthercatServo(EthercatServoBase):
         if release_gil is None:
             release_gil = self.__sdo_read_write_release_gil
         self._lock.acquire()
+        if buffer_size is None:
+            buffer_size = reg.byte_length
         try:
             value: bytes = self.slave.sdo_read(
                 reg.idx, reg.subidx, buffer_size, complete_access, release_gil=release_gil
@@ -292,10 +293,9 @@ class EthercatServo(EthercatServoBase):
         if not super()._is_monitoring_implemented():
             raise NotImplementedError("Monitoring is not supported by this device.")
         if not isinstance(
-            data := self.read_complete_access(
+            data := self.read(
                 self.MONITORING_DATA,
                 subnode=0,
-                buffer_size=self.MONITORING_DATA_BUFFER_SIZE,
             ),
             bytes,
         ):
@@ -313,7 +313,7 @@ class EthercatServo(EthercatServoBase):
         """
         if not super()._is_disturbance_implemented():
             raise NotImplementedError("Disturbance is not supported by this device.")
-        return self.write_complete_access(self.DIST_DATA, subnode=0, data=data)
+        return self.write(self.DIST_DATA, subnode=0, data=data)
 
     def emcy_subscribe(self, callback: Callable[[EmergencyMessage], None]) -> None:
         """Subscribe to emergency messages.
