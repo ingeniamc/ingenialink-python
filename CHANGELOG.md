@@ -9,6 +9,7 @@
 
 ### Fixed
 - Fix issues of servo status listener of ethercat drives when the drive is on operational state
+- Removed number of PDO mappings pre-flight check
 
 ## [7.6.0] - 2026-03-20
 ### Added
