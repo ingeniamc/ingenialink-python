@@ -53,13 +53,6 @@ class RegisterUpdateTest:
         self.call_count += 1
 
 
-def skip_if_monitoring_is_not_available(servo):
-    try:
-        servo.read("MON_DIST_STATUS")
-    except ILError:
-        pytest.skip("Monitoring is not available")
-
-
 class SDOReadTimeoutManager:
     def __init__(self, network, new_value):
         self.__net = network
@@ -76,7 +69,7 @@ class SDOReadTimeoutManager:
 
 @pytest.fixture
 def create_monitoring(servo):
-    skip_if_monitoring_is_not_available(servo)
+
     servo.monitoring_disable()
     servo.monitoring_remove_all_mapped_registers()
     registers_key = ["CL_CUR_D_REF_VALUE"]
@@ -92,7 +85,7 @@ def create_monitoring(servo):
 
 @pytest.fixture()
 def create_disturbance(servo):
-    skip_if_monitoring_is_not_available(servo)
+
     data = list(range(DISTURBANCE_NUM_SAMPLES))
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()
@@ -459,7 +452,7 @@ def test_write(servo) -> None:
 @pytest.mark.ethercat
 @pytest.mark.virtual
 def test_monitoring_enable_disable(servo):
-    skip_if_monitoring_is_not_available(servo)
+
     servo.monitoring_enable()
     assert servo.read(servo.MONITORING_DIST_ENABLE, subnode=0) == 1
     servo.monitoring_disable()
@@ -483,7 +476,7 @@ def test_monitoring_remove_data(create_monitoring):
 @pytest.mark.ethercat
 @pytest.mark.virtual
 def test_monitoring_map_register(servo):
-    skip_if_monitoring_is_not_available(servo)
+
     servo.monitoring_remove_all_mapped_registers()
     registers_key = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
     data_size = 4
@@ -538,7 +531,7 @@ def test_monitoring_read_data(create_monitoring):
 @pytest.mark.ethercat
 @pytest.mark.virtual
 def test_disturbance_enable_disable(servo):
-    skip_if_monitoring_is_not_available(servo)
+
     servo.disturbance_enable()
     assert servo.read(servo.DISTURBANCE_ENABLE, subnode=0) == 1
     servo.disturbance_disable()
@@ -564,7 +557,7 @@ def test_disturbance_remove_data(create_disturbance):
 @pytest.mark.ethercat
 @pytest.mark.virtual
 def test_disturbance_map_register(servo):
-    skip_if_monitoring_is_not_available(servo)
+
     servo.disturbance_remove_all_mapped_registers()
     registers_key = ["CL_POS_SET_POINT_VALUE", "CL_VEL_SET_POINT_VALUE"]
     data_size = 4
@@ -669,7 +662,7 @@ def test_status_word_wait_change(servo):
 @pytest.mark.ethercat
 @pytest.mark.virtual
 def test_disturbance_overflow(servo):
-    skip_if_monitoring_is_not_available(servo)
+
     servo.disturbance_disable()
     servo.disturbance_remove_all_mapped_registers()
     servo.disturbance_set_mapped_register(
