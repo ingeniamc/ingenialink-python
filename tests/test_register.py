@@ -154,3 +154,29 @@ def test_bit_register_write_invalid_value(virtual_drive, write_value):
         str(exc_info.value)
         == f"Invalid value. Expected values: [0, 1, True, False], got {write_value}"
     )
+
+@pytest.mark.parametrize(
+    "dtype, bits, byts",
+    [
+        (RegDtype.U8, 8, 1),
+        (RegDtype.S8, 8, 1),
+        (RegDtype.U16, 16, 2),
+        (RegDtype.S16, 16, 2),
+        (RegDtype.U32, 32, 4),
+        (RegDtype.S32, 32, 4),
+        (RegDtype.U64, 64, 8),
+        (RegDtype.S64, 64, 8),
+        (RegDtype.FLOAT, 32, 4),
+        (RegDtype.BYTE_ARRAY_512, 512 * 8, 512),
+        (RegDtype.BOOL, 1, 1),
+    ]
+)
+def test_register_length(dtype, bits, byts):
+    """Test register bit and byte length for datatype."""
+    reg = Register(
+        dtype=dtype,
+        access=RegAccess.RW,
+    )
+
+    assert reg.bit_length == bits
+    assert reg.byte_length == byts
