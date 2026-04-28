@@ -851,8 +851,6 @@ class TPDOMap(PDOMap):
 class PDOServo(Servo):
     """Abstract class to implement PDOs in a Servo class."""
 
-    AVAILABLE_PDOS = 2
-
     ETG_COMMS_RPDO_ASSIGN_TOTAL = "ETG_COMMS_RPDO_ASSIGN_TOTAL"
     ETG_COMMS_RPDO_ASSIGN_1 = "ETG_COMMS_RPDO_ASSIGN_1"
 
@@ -915,16 +913,8 @@ class PDOServo(Servo):
         and adds them to the PDO Assign object.
 
         WARNING: This operation can not be done if the servo is not in pre-operational state.
-
-        Raises:
-            ILError: If there are no available PDOs.
         """
         self.check_servo_is_in_preoperational_state()
-        if len(self._rpdo_maps) > self.AVAILABLE_PDOS:
-            raise ILError(
-                f"Could not map the RPDO maps, received {len(self._rpdo_maps)} PDOs and only"
-                f" {self.AVAILABLE_PDOS} are available"
-            )
         self.write(self.ETG_COMMS_RPDO_ASSIGN_TOTAL, len(self._rpdo_maps), subnode=0)
         rpdo_assigns = b""
         for rpdo_map in self._rpdo_maps.values():
@@ -941,16 +931,8 @@ class PDOServo(Servo):
         and adds them to the PDO Assign object
 
         WARNING: This operation can not be done if the servo is not in pre-operational state.
-
-        Raises:
-            ILError: If there are no available PDOs.
         """
         self.check_servo_is_in_preoperational_state()
-        if len(self._tpdo_maps) > self.AVAILABLE_PDOS:
-            raise ILError(
-                f"Could not map the TPDO maps, received {len(self._tpdo_maps)} PDOs and only"
-                f" {self.AVAILABLE_PDOS} are available"
-            )
         self.write(self.ETG_COMMS_TPDO_ASSIGN_TOTAL, len(self._tpdo_maps), subnode=0)
         tpdo_assigns = b""
         for tpdo_map in self._tpdo_maps.values():
