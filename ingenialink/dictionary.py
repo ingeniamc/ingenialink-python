@@ -137,6 +137,7 @@ class CanOpenObject:
         return bit_length
 
     @property
+    @weak_lru(maxsize=None)
     def byte_length(self) -> int:
         """Get the byte length of the object.
 
