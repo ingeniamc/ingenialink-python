@@ -913,9 +913,6 @@ class PDOServo(Servo):
         and adds them to the PDO Assign object.
 
         WARNING: This operation can not be done if the servo is not in pre-operational state.
-
-        Raises:
-            ILError: If there are no available PDOs.
         """
         self.check_servo_is_in_preoperational_state()
         self.write(self.ETG_COMMS_RPDO_ASSIGN_TOTAL, len(self._rpdo_maps), subnode=0)
@@ -934,9 +931,6 @@ class PDOServo(Servo):
         and adds them to the PDO Assign object
 
         WARNING: This operation can not be done if the servo is not in pre-operational state.
-
-        Raises:
-            ILError: If there are no available PDOs.
         """
         self.check_servo_is_in_preoperational_state()
         self.write(self.ETG_COMMS_TPDO_ASSIGN_TOTAL, len(self._tpdo_maps), subnode=0)
