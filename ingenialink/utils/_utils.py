@@ -84,7 +84,7 @@ _T = TypeVar("_T")
 
 
 def weak_lru(
-    maxsize: int = 128, typed: bool = False
+    maxsize: Optional[int] = 128, typed: bool = False
 ) -> Callable[[Callable[..., _T]], Callable[..., _T]]:
     """Decorator that allows safe use of lru_cache in class methods.
 

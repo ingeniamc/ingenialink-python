@@ -1,3 +1,4 @@
+import math
 from abc import ABC
 from dataclasses import dataclass
 from typing import Any, Optional, Union
@@ -16,6 +17,7 @@ from ingenialink.utils._utils import (
     convert_bytes_to_dtype,
     convert_dtype_to_bytes,
     dtype_length_bits,
+    weak_lru,
 )
 
 dtypes_ranges: dict[RegDtype, dict[str, Union[int, float]]] = {
@@ -314,6 +316,16 @@ class Register(ABC):
             int: bit length of the register.
         """
         return dtype_length_bits[self.dtype]
+
+    @property
+    @weak_lru(maxsize=None)
+    def byte_length(self) -> int:
+        """Get the byte length of the object.
+
+        Returns:
+            int: byte length of the object.
+        """
+        return math.ceil(self.bit_length / 8)
 
     def __repr__(self) -> str:
         """String representation of the Register class.
