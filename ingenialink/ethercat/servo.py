@@ -295,8 +295,8 @@ class EthercatServo(EthercatServoBase):
         if not super()._is_monitoring_implemented():
             raise NotImplementedError("Monitoring is not supported by this device.")
         if not isinstance(
-            data := self.read(
-                self.MONITORING_DATA,
+            data := self._read_raw(
+                self._get_reg(self.MONITORING_DATA),
                 subnode=0,
                 buffer_size=self.MONITORING_DATA_BUFFER_SIZE,
             ),
