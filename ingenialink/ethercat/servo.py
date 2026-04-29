@@ -202,6 +202,8 @@ class EthercatServo(EthercatServoBase):
         *,
         release_gil: Optional[bool] = None,
     ) -> bytes:
+        logger.error(f"reading reg {reg.identifier} from buffer {buffer_size}")
+
         if release_gil is None:
             release_gil = self.__sdo_read_write_release_gil
         self._lock.acquire()
