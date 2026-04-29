@@ -12,7 +12,6 @@ from ingenialink.csv_configuration_file import CSVConfigurationFile
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.ethercat.dictionary import EthercatDictionary
 from ingenialink.table import Table
-from ingenialink.utils._utils import weak_lru
 
 try:
     import pysoem
@@ -183,7 +182,7 @@ class EthercatServo(EthercatServoBase):
         self.write(reg=self.RESTORE_COCO_ALL, data=PASSWORD_RESTORE_SAFETY_REGS, subnode=0)
         logger.info("Restore safety registers successful.")
 
-    @weak_lru(maxsize=None)
+    # @weak_lru(maxsize=None)
     def __get_sdo_buffer_size(
         self, reg: EthercatRegister, buffer_size: Optional[int] = None
     ) -> int:
