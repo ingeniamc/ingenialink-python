@@ -40,7 +40,7 @@ Documentation = "https://distext.ingeniamc.com/doc/ingenialink-python/latest/"
 Source = "https://github.com/ingeniamc/ingenialink-python"
 
 [tool.poetry]
-version = "7.6.0"  # base version
+version = "7.6.1"  # base version
 
 [[tool.poetry.source]]
 name = "PyPI"
