@@ -552,7 +552,8 @@ class TestSession implements Serializable {
         'jobName',
         'setAttApiToken',
         'enableFirmwareVersionCheck',
-        'stageName'
+        'stageName',
+        'policy'
     ]
 
     /**
@@ -681,6 +682,12 @@ class TestSession implements Serializable {
      * Default: true
      */
     Boolean enableFirmwareVersionCheck = true
+
+    /**
+     * Execution policy tag for this session (e.g. 'always', 'nightly', 'weekends').
+     * Default: null
+     */
+    String policy = null
 
     TestSession(Map args = [:]) {
         // Validate arguments against whitelist
@@ -874,23 +881,32 @@ class TestSession implements Serializable {
  *        ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
  *   4. Gate the hardware node on the group and run all sessions:
  *        when { expression { ECAT_TESTS.anyShouldRun() } }
- *        testManager.runTestStages(ECAT_TESTS)
+ *        ECAT_TESTS.runTestStages()
  */
 class TestGroup {
     /** Key used to look up this group in rack_specifiers test_configs (e.g. "ECAT_TEST_SESSIONS"). */
     final String name
     /** Template session; every session in this group is derived via baseTestSession.override(). */
     final TestSession baseTestSession
-    /** Ordered list of sessions to run; populated by buildTestSessions() and manual appends. */
-    List<TestSession> sessions
+    /** Ordered list of sessions to run; populated by buildTestSessions() and addSession(). */
+    private List<TestSession> _sessions
     /** Back-reference to the PyTestManager that created this group */
     private final PyTestManager manager
+    /** When true, addSession() will throw. Set automatically by runTestStages() to prevent
+     *  concurrent modifications from parallel branches. */
+    private boolean locked = false
 
     TestGroup(String name, TestSession baseTestSession, PyTestManager manager) {
         this.name = name
         this.baseTestSession = baseTestSession
-        this.sessions = []
+        this._sessions = []
         this.manager = manager
+    }
+
+    /** Read-only access to the sessions list. */
+    @NonCPS
+    List<TestSession> getSessions() {
+        return this._sessions
     }
 
     /**
@@ -910,6 +926,12 @@ class TestGroup {
      * @param overrides  Map of TestSession attribute overrides (must include at least 'uid')
      */
     void addSession(Map overrides) {
+        if (this.locked) {
+            throw new IllegalStateException(
+                "Cannot add session to locked group '${this.name}'. "
+                + "The group was locked by runTestStages() to prevent concurrent modifications from parallel branches."
+            )
+        }
         if (!overrides.containsKey('uid') || !overrides.uid) {
             throw new IllegalArgumentException("addSession() requires a non-null 'uid' in overrides. Got: ${overrides}")
         }
@@ -922,7 +944,7 @@ class TestGroup {
             session.shouldRun = false
             session.skipReason = "uid '${session.uid}' does not match test_session_filter '${testSessionFilter}'"
         }
-        this.sessions << session
+        this._sessions << session
     }
 
     /**
@@ -930,7 +952,7 @@ class TestGroup {
      * Used as the gate condition for allocating the hardware node.
      */
     boolean anyShouldRun() {
-        return this.sessions.any { it.shouldRun }
+        return this._sessions.any { it.shouldRun }
     }
 
     /**
@@ -938,14 +960,36 @@ class TestGroup {
      * Includes run/skip status and the skip reason for excluded sessions.
      */
     String configSummary() {
-        def runCount = this.sessions.count { it.shouldRun }
-        def lines = ["TestGroup '${this.name}': ${this.sessions.size()} session(s), ${runCount} to run"]
-        this.sessions.each { session ->
+        def runCount = this._sessions.count { it.shouldRun }
+        def lines = ["TestGroup '${this.name}': ${this._sessions.size()} session(s), ${runCount} to run"]
+        this._sessions.each { session ->
             def status = session.shouldRun ? 'run ' : 'skip'
             def reason = session.shouldRun ? '' : " (${session.skipReason})"
             lines << "  [${status}] ${session.stageName} [uid=${session.uid}]${reason}"
         }
         return lines.join('\n')
+    }
+
+    /**
+     * Run test stages from pre-built TestSession objects.
+     *
+     * Locks the group to prevent concurrent modifications, then runs each session
+     * as a Jenkins stage. Sessions with shouldRun==false are marked with
+     * Utils.markStageSkippedForConditional() so they appear grey (skipped) in the
+     * Jenkins UI rather than green (passed).
+     */
+    def runTestStages() {
+        this.locked = true
+        this._sessions.each { session ->
+            this.manager.pipeline.stage(session.stageName) {
+                if (session.shouldRun) {
+                    this.manager.runTestSession(session)
+                } else {
+                    this.manager.pipeline.echo "Skipped: ${session.skipReason}"
+                    org.jenkinsci.plugins.pipeline.modeldefinition.Utils.markStageSkippedForConditional(session.stageName)
+                }
+            }
+        }
     }
 }
 
@@ -1099,6 +1143,21 @@ class PyTestManager {
     }
 
     /**
+     * Delete files matching a glob pattern (e.g. "wireshark/*.pcap", "*.coverage*").
+     * Silently succeeds if no files match or the path does not exist.
+     *
+     * @param pattern Unix-style glob pattern (forward slashes). On Windows, slashes are
+     *                converted to backslashes automatically.
+     */
+    private def deleteFiles(String pattern) {
+        if (this.venvManager.isUnixNode()) {
+            this.pipeline.sh(script: "rm -f ${pattern}", returnStatus: true)
+        } else {
+            this.pipeline.bat(script: "del /f \"${pattern.replace('/', '\\')}\" ", returnStatus: true)
+        }
+    }
+
+    /**
      * Archive Wireshark log files as Jenkins artifacts.
      * Archives all .pcap files from the specified directory.
      * 
@@ -1119,11 +1178,7 @@ class PyTestManager {
      * @param wiresharkDir Directory containing Wireshark log files to clear
      */
     private def clearWiresharkLogs(String wiresharkDir) {
-        if (this.venvManager.isUnixNode()) {
-            this.pipeline.sh(script: "rm -f ${wiresharkDir}/*.pcap", returnStatus: true)
-        } else {
-            this.pipeline.bat(script: "del /f \"${wiresharkDir}\\\\*.pcap\"", returnStatus: true)
-        }
+        this.deleteFiles("${wiresharkDir}/*.pcap")
     }
 
     /**
@@ -1131,11 +1186,7 @@ class PyTestManager {
      * Removes all .coverage* files to prepare for new test runs.
      */
     private def clearCoverageFiles() {
-        if (this.venvManager.isUnixNode()) {
-            this.pipeline.sh(script: 'rm -f *.coverage*', returnStatus: true)
-        } else {
-            this.pipeline.bat(script: 'del /f "*.coverage*"', returnStatus: true)
-        }
+        this.deleteFiles('*.coverage*')
     }
 
     /**
@@ -1192,11 +1243,7 @@ class PyTestManager {
         this.pipeline.junit "pytest_reports/*.xml"
         
         // Delete the junit after publishing it so it is not re-published on the next stage
-        if (this.venvManager.isUnixNode()) {
-            this.pipeline.sh "rm -f pytest_reports/*.xml"
-        } else {
-            this.pipeline.bat "del /S /Q pytest_reports\\*.xml"
-        }
+        this.deleteFiles('pytest_reports/*.xml')
     }
 
     /**
@@ -1286,30 +1333,19 @@ class PyTestManager {
         def exportedSpecifiers = this.exportSpecifiersModule(specifierModule)
 
         exportedSpecifiers.each { setupKey, specifiers ->
-            // A SpecifierContainer wraps multiple part numbers; a direct specifier exposes one.
+            // The _type field is set by STF's export: "container" or "specifier".
             // This determines the pytest --setup path format:
             //   Container:         SETUP@PART_NUMBER@VERSION
             //   Direct specifier:  SETUP@VERSION  (no part-number segment)
-            boolean isContainer = specifiers.size() > 1
+            // remove() extracts the value and deletes the key so it is not
+            // iterated as a specifier entry in the loop below.
+            boolean isContainer = specifiers.remove("_type") == "container"
 
             specifiers.each { specifierName, specifierData ->
-                // Normalise no-version specifiers (extra_data at the specifier level, no version key)
-                // to version "" so the loop below works uniformly for both versioned and unversioned.
-                // https://novantamotion.atlassian.net/browse/CIT-612
-                def versionedData = specifierData.containsKey("extra_data") ? ["": specifierData] : specifierData
-
-                versionedData.each { version, versionData ->
-                    // "" and "latest" both mean no version suffix.
-                    // "" covers unversioned specifiers (e.g. Multislave, where extra_data
-                    // sits directly under the specifier and gets normalised to version="").
-                    // "latest" covers virtual-drive specifiers whose JSON always carries a
-                    // "latest" key even though there is no real version to pin; appending
-                    // "@latest" to the setup path would produce an invalid import path.
-                    // https://novantamotion.atlassian.net/browse/CIT-612
-                    def versionTag = (version && version != "latest") ? "@${version}" : ""
+                specifierData.each { version, versionData ->
                     def setupPath = isContainer
-                        ? "${specifierModule}.${setupKey}@${specifierName}${versionTag}"
-                        : "${specifierModule}.${setupKey}${versionTag}"
+                        ? "${specifierModule}.${setupKey}@${specifierName}@${version}"
+                        : "${specifierModule}.${setupKey}@${version}"
                     def executionPolicy = versionData?.extra_data?.execution_policy
 
                     def testConfigs = versionData?.extra_data?.test_configs
@@ -1321,16 +1357,17 @@ class PyTestManager {
                         )
                     }
 
-                    testConfigs.each { sessionName, testConfig ->
-                        def group = this.registeredGroups[sessionName]
+                    testConfigs.each { groupName, testConfig ->
+                        def group = this.registeredGroups[groupName]
                         if (!group) {
-                            this.pipeline.error("No TestGroup found for session name '${sessionName}'. Available groups: ${this.registeredGroups.keySet()}")
+                            this.pipeline.error("No TestGroup found for group name '${groupName}'. Available groups: ${this.registeredGroups.keySet()}")
                         }
                         def overrides = [
                             uid: testConfig.run_test_stage_uid,
                             markers: testConfig.markers,
                             setup: setupPath,
-                            stageName: testConfig.stage_name
+                            stageName: testConfig.stage_name,
+                            policy: executionPolicy ?: 'always'
                         ]
                         if (executionPolicy) {
                             def policyResult = this.shouldRunPolicy(executionPolicy)
@@ -1346,26 +1383,156 @@ class PyTestManager {
         }
     }
 
+
     /**
-     * Run hardware test stages from pre-built TestSession objects.
+     * Run pytest --collect-only and return the list of selected test node IDs.
      *
-     * Each session produces exactly one Jenkins stage. Sessions with shouldRun==false
-     * are marked with Utils.markStageSkippedForConditional() so they appear grey
-     * (skipped) in the Jenkins UI rather than green (passed).
+     * When session is null the collection is unfiltered (no markers, no setup args),
+     * giving the full set of discoverable tests. When a session is supplied its
+     * getTestArgs() is used to mirror the exact arguments that runTestSession would pass.
      *
-     * @param group  TestGroup whose sessions will be run
+     * Always cleans up the temporary output file after reading it.
+     *
+     * @param session  TestSession to collect for, or null for unfiltered baseline
+     * @return Ordered list of test node IDs (e.g. "tests/test_servo.py::test_connect")
      */
-    def runTestStages(TestGroup group) {
-        group.sessions.each { session ->
-            this.pipeline.stage(session.stageName) {
-                if (session.shouldRun) {
-                    this.runTestSession(session)
-                } else {
-                    this.pipeline.echo "Skipped: ${session.skipReason}"
-                    org.jenkinsci.plugins.pipeline.modeldefinition.Utils.markStageSkippedForConditional(session.stageName)
-                }
-            }
+    private List<String> collectTests(TestSession session = null) {
+        def tag = session ? session.uid : 'baseline'
+        def outputFile = "${this.pipeline.env.WORKSPACE}/.collect_output_${tag}.txt"
+
+        this.venvManager.withPython(this.venvManager.default_python_version) { venv ->
+            def testArgsStr = session ? session.getTestArgs(venv).join(' ') : ''
+            venv.run("poetry run pytest --collect-only -q --tb=no --no-header ${testArgsStr} > \"${outputFile}\" 2>&1")
         }
+
+        def output = this.pipeline.readFile(file: outputFile)
+        this.deleteFiles(outputFile)
+        return output.readLines().findAll { line ->
+            def t = line.trim()
+            t && t.contains('::') && !t.startsWith('#') && !t.contains('PytestCollectionWarning')
+        }.collect { it.trim() }
+    }
+
+    /** Collect test data and delegate HTML generation to TestDashboardBuilder. */
+    def generateTestDashboard() {
+        def allSessions = []
+        this.registeredGroups.each { name, group ->
+            group.sessions.each { session -> allSessions << session }
+        }
+        if (allSessions.isEmpty()) {
+            this.pipeline.echo("generateTestDashboard: no sessions registered; skipping.")
+            return
+        }
+
+        // Baseline: collect ALL tests (no filters) so uncovered tests still appear as rows
+        def allTestsList = this.collectTests()
+
+        // Collect per-session test sets (one pytest --collect-only run per session)
+        def uidToTests = [:]
+        allSessions.each { session ->
+            uidToTests[session.uid] = this.collectTests(session)
+        }
+
+        this.pipeline.echo("generateTestDashboard: building HTML (${allTestsList.size()} tests, ${allSessions.size()} sessions)...")
+        new TestDashboardBuilder(this.pipeline, this.registeredGroups)
+            .buildAndPublish(allTestsList, uidToTests)
+        this.pipeline.echo("generateTestDashboard: complete.")
+    }
+}
+
+/**
+ * Publishes a client-side HTML test-coverage dashboard.
+ *
+ * The heavy lifting (trie headers, table body, filtering) is done entirely
+ * in JavaScript inside tests/dashboard_template.html.
+ * This class only serialises the test/session data to JSON and copies the
+ * template + data file into the Jenkins report directory.
+ */
+class TestDashboardBuilder {
+    private def pipeline
+    private Map registeredGroups
+
+    TestDashboardBuilder(def pipeline, Map registeredGroups) {
+        this.pipeline = pipeline
+        this.registeredGroups = registeredGroups
+    }
+
+    /**
+     * Serialise session and test data to a JSON string consumable by the
+     * client-side dashboard_template.html.
+     *
+     * Structure:
+     *   {
+     *     "allTests": [...],
+     *     "groups": [{
+     *       "name": "...",
+     *       "sessions": [{
+     *         "uid", "stageName", "markers", "setup",
+     *         "policy", "shouldRun", "skipReason",
+     *         "tests": [...]
+     *       }]
+     *     }]
+     *   }
+     */
+    @NonCPS
+    private String buildDataJson(List<String> allTests, Map uidToTests) {
+        List groupEntries = []
+        List groupNames = []
+        groupNames.addAll(this.registeredGroups.keySet())
+        for (int gi = 0; gi < groupNames.size(); gi++) {
+            String groupName = (String) groupNames.get(gi)
+            def group = this.registeredGroups.get(groupName)
+            List sessionEntries = []
+            List sessions = group.sessions
+            for (int si = 0; si < sessions.size(); si++) {
+                def s = sessions.get(si)
+                List tests = (List) (uidToTests.get(s.uid) ?: [])
+                Map entry = [
+                    uid       : s.uid,
+                    stageName : s.stageName,
+                    markers   : s.markers,
+                    setup     : s.setup,
+                    policy    : s.policy ?: 'always',
+                    shouldRun : s.shouldRun,
+                    skipReason: s.skipReason,
+                    tests     : tests
+                ]
+                sessionEntries.add(entry)
+            }
+            groupEntries.add([name: groupName, sessions: sessionEntries])
+        }
+
+        Map data = [allTests: allTests, groups: groupEntries]
+        return groovy.json.JsonOutput.toJson(data)
+    }
+
+    /**
+     * Build the JSON data file, copy the HTML template, and publish via
+     * Jenkins HTML Publisher.
+     */
+    def buildAndPublish(List<String> allTests, Map uidToTests) {
+        def json = this.buildDataJson(allTests, uidToTests)
+        this.pipeline.echo("generateTestDashboard: JSON built (${json.size()} chars), writing files...")
+
+        def reportDir  = 'test_dashboard'
+        // Write data.json
+        this.pipeline.writeFile(file: "${reportDir}/data.json", text: json, encoding: 'UTF-8')
+
+        // Copy the static HTML template into the report directory
+        def templateSrc = "${this.pipeline.env.WORKSPACE}/tests/dashboard_template.html"
+        def templateHtml = this.pipeline.readFile(file: templateSrc, encoding: 'UTF-8')
+        this.pipeline.writeFile(file: "${reportDir}/index.html", text: templateHtml, encoding: 'UTF-8')
+
+        this.pipeline.echo("generateTestDashboard: files written, calling publishHTML...")
+        this.pipeline.publishHTML([
+            allowMissing         : false,
+            alwaysLinkToLastBuild: true,
+            keepAll              : true,
+            reportDir            : reportDir,
+            reportFiles          : 'index.html',
+            reportName           : 'Test Coverage Dashboard',
+            reportTitles         : ''
+        ])
     }
 }
 
@@ -1392,13 +1559,14 @@ TestGroup CAN_TESTS = testManager.createGroup("CAN_TEST_SESSIONS", HW_TEST_SESSI
 TestGroup ETH_TESTS = testManager.createGroup("ETH_TEST_SESSIONS", HW_TEST_SESSIONS.override()) // Wireshark logging is injected later based on parameter
 TestGroup ECAT_TESTS = testManager.createGroup("ECAT_TEST_SESSIONS", HW_TEST_SESSIONS.override()) // Wireshark logging is injected later based on parameter
 TestGroup LINUX_DOCKER_TESTS = testManager.createGroup("LINUX_DOCKER_TEST_SESSIONS", TEST_SESSIONS.override())
+TestGroup WIN_DOCKER_TESTS = testManager.createGroup("WIN_DOCKER_TEST_SESSIONS", TEST_SESSIONS.override())
 
 
 /*
  * Cron schedules for the develop branch:
  *
  * Nightly builds (every day):
- *   19:00, 21:00, 23:00 UTC (21:00, 23:00, 01:00 Barcelona Time)
+ *   19:00, 23:00 UTC (21:00, 01:00 Barcelona Time)
  *   → Sets RUN_POLICY_NIGHTLY=true so that tests gated on the 'nightly' policy will run.
  *
  * Weekend extra builds (Saturday & Sunday only):
@@ -1406,7 +1574,7 @@ TestGroup LINUX_DOCKER_TESTS = testManager.createGroup("LINUX_DOCKER_TEST_SESSIO
  *   → Sets RUN_POLICY_NIGHTLY=true and RUN_POLICY_WEEKEND=true so that tests gated on
  *     either 'nightly' or 'weekends' policy will run.
  */
-def NIGHTLY_CRON   = '0 19,21,23 * * * % PYTHON_VERSIONS=All;RUN_POLICY_NIGHTLY=true'
+def NIGHTLY_CRON   = '0 19,23 * * * % PYTHON_VERSIONS=All;RUN_POLICY_NIGHTLY=true'
 def WEEKEND_CRON   = '0 8,14 * * 6-7 % PYTHON_VERSIONS=All;RUN_POLICY_NIGHTLY=true;RUN_POLICY_WEEKEND=true'
 def CRON_SETTINGS  = BRANCH_NAME == "develop" ? "${NIGHTLY_CRON}\n${WEEKEND_CRON}" : ""
 
@@ -1430,18 +1598,18 @@ pipeline {
                 'no_pcap',
                 'pcap',
                 'ethercat.*',
-                'ethercat_everest',
-                'ethercat_capitan',
+                'ethercat_everest.*',
+                'ethercat_capitan.*',
                 'ethercat_multislave',
                 'fsoe.*',
                 'fsoe_phase1',
                 'fsoe_phase2',
                 'canopen.*',
-                'canopen_everest',
-                'canopen_capitan',
+                'canopen_everest.*',
+                'canopen_capitan.*',
                 'ethernet.*',
-                'ethernet_everest',
-                'ethernet_capitan',
+                'ethernet_everest.*',
+                'ethernet_capitan.*',
             ],
             name: 'test_session_filter',
             description: 'Regex pattern for which test sessions to run (e.g. "fsoe.*", "ethercat_everest", ".*" for all)'
@@ -1508,6 +1676,33 @@ pipeline {
             }
         }
 
+        stage('Register manual test sessions') {
+            steps {
+                script {
+                    // Pcap tests run on the EtherCAT machine — add manually since they're not in rack_specifiers
+                    ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
+
+                    // Linux pcap tests: runs pcap-marked tests that don't need hardware
+                    LINUX_DOCKER_TESTS.addSession(
+                        uid: "pcap",
+                        markers: "pcap",
+                        stageName: "Pcap Tests (Linux)")
+
+                    // Linux unit tests: everything that does not have a marker
+                    LINUX_DOCKER_TESTS.addSession(
+                        uid: "no_pcap",
+                        markers: PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "pcap", "no_pcap"]),
+                        stageName: "Unit Tests (Linux)")
+
+                    // Windows unit tests: mirrors the ad-hoc session in Build Windows for dashboard visibility
+                    WIN_DOCKER_TESTS.addSession(
+                        uid: "no_pcap",
+                        markers: PyTestManager.markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS),
+                        stageName: "Unit Tests (Windows)")
+                }
+            }
+        }
+
         stage('Build and publish') {
             stages {
                 stage('Build') {
@@ -1540,9 +1735,6 @@ pipeline {
                                     }
                                 }
                                 stage('Build wheels') {
-                                    environment {
-                                        SETUPTOOLS_SCM_PRETEND_VERSION = getPythonVersionForPr()
-                                    }
                                     steps {
                                         script {
                                             venvManager.forEachEnvironment() { venv ->
@@ -1605,17 +1797,15 @@ pipeline {
                                 stage('Run unit tests (no-pcap) tests on docker') {
                                     when {
                                         expression {
-                                            "no_pcap" ==~ params.test_session_filter
+                                            WIN_DOCKER_TESTS.anyShouldRun()
                                         }
                                     }
                                     steps {
                                         script {
-                                            /* Windows docker does not have npcap/winpcap installed so runs no_pcap tests */
-                                            def win_marker = PyTestManager.markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS)
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            testManager.runTestSession(TEST_SESSIONS.override(uid: "no_pcap", markers: win_marker))
+                                            WIN_DOCKER_TESTS.runTestStages()
                                         }
                                     }
                                 }
@@ -1659,9 +1849,6 @@ pipeline {
                                     }
                                 }
                                 stage('Build wheels') {
-                                    environment {
-                                        SETUPTOOLS_SCM_PRETEND_VERSION = getPythonVersionForPr()
-                                    }
                                     steps {
                                         script {
                                             // Linux for now does not contain compiled code
@@ -1692,26 +1879,12 @@ pipeline {
                                                 venv.run("poetry run poe install-wheel")
                                             }
                                             
-                                            // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here)
+                                            // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here).
                                             testManager.buildTestSessions("tests.setups.rack_specifiers")
                                             testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
 
-                                            // Pcap tests run on the EtherCAT machine — add manually since they're not in rack_specifiers
-                                            ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
-
-                                            // Linux pcap tests: runs pcap-marked tests that don't need hardware
-                                            LINUX_DOCKER_TESTS.addSession(
-                                                uid: "pcap",
-                                                markers: "pcap",
-                                                stageName: "Pcap Tests (Linux)")
-
-                                            // Linux unit tests: everything that does not have a marker
-                                            LINUX_DOCKER_TESTS.addSession(
-                                                uid: "no_pcap",
-                                                markers: PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "pcap", "no_pcap"]),
-                                                stageName: "Unit Tests (Linux)")
-
                                             testManager.echoTestGroupsSummary()
+                                            testManager.generateTestDashboard()
                                         }
                                     }
                                 }
@@ -1724,7 +1897,7 @@ pipeline {
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            testManager.runTestStages(LINUX_DOCKER_TESTS)
+                                            LINUX_DOCKER_TESTS.runTestStages()
                                         }
                                     }
                                 }
@@ -1827,7 +2000,7 @@ pipeline {
                         stage('Run EtherCAT Tests') {
                             steps {
                                 script {
-                                    testManager.runTestStages(ECAT_TESTS)
+                                    ECAT_TESTS.runTestStages()
                                 }
                             }
                         }
@@ -1871,8 +2044,8 @@ pipeline {
                         stage('Run CANopen/Ethernet Tests') {
                             steps {
                                 script {
-                                    testManager.runTestStages(CAN_TESTS)
-                                    testManager.runTestStages(ETH_TESTS)
+                                    CAN_TESTS.runTestStages()
+                                    ETH_TESTS.runTestStages()
                                 }
                             }
                         }

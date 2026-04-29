@@ -14,7 +14,7 @@ from ingenialink.configuration_file import ConfigRegister, ConfigurationFile
 from ingenialink.constants import CAN_MAX_WRITE_SIZE
 from ingenialink.dictionary import Interface
 from ingenialink.emcy import EmergencyMessage
-from ingenialink.exceptions import ILIOError
+from ingenialink.exceptions import ILRegisterAccessError
 from ingenialink.register import Register
 from ingenialink.servo import Servo
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
@@ -106,8 +106,13 @@ class CanopenServo(CanopenServoBase):
             self.__node.sdo.download(reg.idx, reg.subidx, data)
         except Exception as e:
             logger.error("Failed writing %s. Exception: %s", str(reg.identifier), e)
-            error_raised = f"Error writing {reg.identifier}"
-            raise ILIOError(error_raised) from e
+            root_cause = str(e)
+            raise ILRegisterAccessError(
+                base_message=f"Error writing {reg.identifier}",
+                reg=reg,
+                base_exception=e,
+                reason=root_cause,
+            ) from e
         finally:
             self._lock.release()
 
@@ -117,8 +122,13 @@ class CanopenServo(CanopenServoBase):
             value = self.__node.sdo.upload(reg.idx, reg.subidx)
         except Exception as e:
             logger.error("Failed reading %s. Exception: %s", str(reg.identifier), e)
-            error_raised = f"Error reading {reg.identifier}"
-            raise ILIOError(error_raised)
+            root_cause = str(e)
+            raise ILRegisterAccessError(
+                base_message=f"Error reading {reg.identifier}",
+                reg=reg,
+                base_exception=e,
+                reason=root_cause,
+            ) from e
         finally:
             self._lock.release()
         if not isinstance(value, bytes):

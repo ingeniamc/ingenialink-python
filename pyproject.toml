@@ -40,7 +40,7 @@ Documentation = "https://distext.ingeniamc.com/doc/ingenialink-python/latest/"
 Source = "https://github.com/ingeniamc/ingenialink-python"
 
 [tool.poetry]
-version = "7.6.0"  # base version
+version = "7.6.1"  # base version
 
 [[tool.poetry.source]]
 name = "PyPI"
@@ -58,7 +58,7 @@ requires = [
   "setuptools_scm[toml]>=8", 
   "wheel==0.42.0", 
   "Cython==3.0.11",
-  "setuptools_scm_policies @ http://pypi.novanta.com/packages/setuptools_scm_policies-0.1.0-py3-none-any.whl"
+  "setuptools_scm_policies @ http://pypi.novanta.com/packages/setuptools_scm_policies-0.2.0-py3-none-any.whl"
 ]
 build-backend = "setuptools.build_meta"
 
@@ -118,12 +118,13 @@ optional = true
 [tool.poetry.group.tests.dependencies]
 pytest = "==8.4.1"
 pytest-env = "==1.1.5"
-pytest-cov = "==7.0.0"
+pytest-cov = "==7.1.0"
 pytest-mock = "==3.15.1"
 pytest-console-scripts = "==1.4.1"
 twisted = "==25.5.0"
-summit-testing-framework = {version = "==0.2.0.post234+develop.74cb3cf"}
-virtual_drive = {version = "==0.0+g8bc818283"}
+summit-testing-framework = {version = "==0.3.0.post39+cit.612.make.multidrive.b13e7d8"}
+virtual_drive = {version = "==0.1.0"}
+xmlschema = ">=3.0.0"
 
 # -----------------------------------------------------------------------
 #                                   TASKS

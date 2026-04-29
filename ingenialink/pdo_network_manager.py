@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Callable, Optional
 import ingenialogger
 
 from ingenialink.exceptions import ILError, ILWrongWorkingCountError
+from ingenialink.utils.event import create_event
 
 if TYPE_CHECKING:
     from ingenialink.ethercat.network import EthercatNetwork
@@ -89,7 +90,6 @@ class PDONetworkManager:
                         self._net.send_receive_processdata(self._refresh_rate)
                 except ILWrongWorkingCountError as il_error:
                     self._pd_thread_stop_event.set()
-                    self._net.stop_pdos()
                     duration_error = (
                         (
                             f"Last iteration took {iteration_duration * 1000:0.1f} ms which is "
@@ -105,10 +105,10 @@ class PDONetworkManager:
                     )
                     self._notify_exceptions(
                         ILError(
-                            "Stopping the PDO thread due to the following exception:"
-                            f" {il_error} {duration_error}"
+                            f"PDO exchange error (wrong working count): {il_error} {duration_error}"
                         )
                     )
+                    # stop_pdos() will be indirectly called through _pdo_thread_exception_handler
                 except Exception as il_error:
                     self._pd_thread_stop_event.set()
                     if first_iteration:
@@ -183,7 +183,7 @@ class PDONetworkManager:
         self._pdo_thread: Optional[PDONetworkManager.ProcessDataThread] = None
         self._pdo_send_observers: list[Callable[[], None]] = []
         self._pdo_receive_observers: list[Callable[[], None]] = []
-        self._pdo_exceptions_observers: list[Callable[[ILError], None]] = []
+        self._pdo_exceptions_observers, self._pdo_exception_publisher = create_event(ILError)
 
     def check_safe_pdo_configuration(self) -> bool:
         """Returns True if safe drives have their safe PDOs configured.
@@ -281,9 +281,7 @@ class PDONetworkManager:
         Args:
             callback: Callback function.
         """
-        if callback in self._pdo_exceptions_observers:
-            return
-        self._pdo_exceptions_observers.append(callback)
+        self._pdo_exceptions_observers.subscribe(callback)
 
     def unsubscribe_to_send_process_data(self, callback: Callable[[], None]) -> None:
         """Unsubscribe from the send process data notifications.
@@ -312,9 +310,7 @@ class PDONetworkManager:
             callback: Subscribed callback function.
 
         """
-        if callback not in self._pdo_exceptions_observers:
-            return
-        self._pdo_exceptions_observers.remove(callback)
+        self._pdo_exceptions_observers.unsubscribe(callback)
 
     def _notify_send_process_data(self) -> None:
         """Notify subscribers that the RPDO values will be sent."""
@@ -329,6 +325,9 @@ class PDONetworkManager:
     def _notify_exceptions(self, exc: ILError) -> None:
         """Notify subscribers that there was an exception.
 
+        Each subscriber is called in isolation: if one callback raises, the remaining
+        callbacks are still notified.
+
         Args:
             exc: Exception that was raised in the PDO process data thread.
         """
@@ -338,6 +337,5 @@ class PDONetworkManager:
                 "in a safe drive. Please, check that the safe PDOs are correctly mapped. "
             )
         self.logger.error(exc)
-        for callback in self._pdo_exceptions_observers:
-            callback(exc)
+        self._pdo_exception_publisher.notify(exc)
         self._pdo_thread = None  # If there has been an error, remove the pdo thread reference

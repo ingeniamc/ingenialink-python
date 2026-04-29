@@ -6,7 +6,7 @@ import pytest
 
 import tests.resources
 from ingenialink import Servo
-from ingenialink.configuration_file import ConfigurationFile
+from ingenialink.configuration_file import ConfigTable, ConfigurationFile, TableElement
 from ingenialink.dictionary import DictionaryTable, Interface
 from ingenialink.exceptions import ILConfigurationError
 from ingenialink.table import Table
@@ -294,7 +294,7 @@ def test_table_index_out_of_bounds(servo_with_table):
         table[99999] = 123
 
 
-def test_save_and_load_xcf_with_tables(virtual_drive_with_tables, tmp_path):
+def test_save_and_load_xcf_with_tables(virtual_drive_with_tables, tmp_path, xcf_schema):
     """Save configuration to XCF from a virtual servo that has tables.
 
     This test writes integer values to a table, saves the servo configuration to an XCF file,
@@ -312,6 +312,7 @@ def test_save_and_load_xcf_with_tables(virtual_drive_with_tables, tmp_path):
     xcf_path = tmp_path / "virt_tables.xcf"
     servo.save_configuration(str(xcf_path))
     assert xcf_path.exists()
+    xcf_schema.validate(str(xcf_path))
 
     # Load configuration file and verify a table was saved (contents are validated
     # by restoring them into the virtual drive and reading back).
@@ -334,7 +335,7 @@ def test_save_and_load_xcf_with_tables(virtual_drive_with_tables, tmp_path):
     assert table.get_value(1) == val1
 
 
-def test_check_configuration_with_tables(virtual_drive_with_tables, tmp_path):
+def test_check_configuration_with_tables(virtual_drive_with_tables, tmp_path, xcf_schema):
     """Verify `check_configuration` compares table contents and raises on mismatch.
 
     Steps:
@@ -348,6 +349,7 @@ def test_check_configuration_with_tables(virtual_drive_with_tables, tmp_path):
 
     filename = tmp_path / "table_check.xcf"
     servo.save_configuration(str(filename))
+    xcf_schema.validate(str(filename))
 
     # Initial check should pass
     servo.check_configuration(str(filename))
@@ -427,3 +429,38 @@ def test_save_configuration_csv_with_tables(real_servo_with_tables, tmp_path: Pa
                 break
         else:
             pytest.fail(f"Index row {idx_row} not found in CSV")
+
+
+def test_table_compare_with_modified_config_table(
+    servo_with_table,
+) -> None:
+    """Verify compare_with_config_table detects mismatches when table data differs.
+
+    Args:
+        servo_with_table: Fixture providing a servo and table.
+    """
+    _, table = servo_with_table
+    config_table = table.to_config_table()
+    first_element = config_table.elements[0]
+
+    mutated_data = bytes(
+        b ^ 0x01 if i == len(first_element.data) - 1 else b
+        for i, b in enumerate(first_element.data)
+    )
+    if mutated_data == first_element.data:
+        mutated_data = bytes(
+            b ^ 0x02 if i == len(first_element.data) - 1 else b
+            for i, b in enumerate(first_element.data)
+        )
+
+    mutated_elements = [
+        TableElement(address=first_element.address, data=mutated_data),
+        *config_table.elements[1:],
+    ]
+    mutated_table = ConfigTable(config_table.uid, config_table.subnode, mutated_elements)
+
+    mismatches = table.compare_with_config_table(mutated_table)
+    assert mismatches, "compare_with_config_table should report mismatches for modified table data"
+    assert len(mismatches) == 1
+    assert f"Table {config_table.uid} address {first_element.address}" in mismatches[0]
+    assert "Expected:" in mismatches[0] and "Found:" in mismatches[0]

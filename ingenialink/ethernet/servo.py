@@ -15,7 +15,13 @@ from ingenialink.constants import (
 )
 from ingenialink.dictionary import Interface
 from ingenialink.ethernet.register import EthernetRegister
-from ingenialink.exceptions import ILError, ILIOError, ILTimeoutError, ILWrongRegisterError
+from ingenialink.exceptions import (
+    ILError,
+    ILIOError,
+    ILRegisterAccessError,
+    ILTimeoutError,
+    ILWrongRegisterError,
+)
 from ingenialink.servo import Servo
 from ingenialink.utils._utils import convert_ip_to_int
 from ingenialink.utils.mcb import MCB
@@ -162,10 +168,26 @@ class EthernetServo(EthernetServoBase):
         self.write(self.COMMS_ETH_MAC, subnode=0, data=mac_address)
 
     def _write_raw(self, reg: EthernetRegister, data: bytes) -> None:  # type: ignore [override]
-        self._send_mcb_frame(MCB_CMD_WRITE, reg.address, reg.subnode, data)
+        try:
+            self._send_mcb_frame(MCB_CMD_WRITE, reg.address, reg.subnode, data)
+        except ILIOError as e:
+            raise ILRegisterAccessError(
+                base_message=f"Error writing {reg.identifier}",
+                reg=reg,
+                base_exception=e,
+                reason=str(e),
+            ) from e
 
     def _read_raw(self, reg: EthernetRegister) -> bytes:  # type: ignore [override]
-        return self._send_mcb_frame(MCB_CMD_READ, reg.address, reg.subnode)
+        try:
+            return self._send_mcb_frame(MCB_CMD_READ, reg.address, reg.subnode)
+        except ILIOError as e:
+            raise ILRegisterAccessError(
+                base_message=f"Error reading {reg.identifier}",
+                reg=reg,
+                base_exception=e,
+                reason=str(e),
+            ) from e
 
     def _send_mcb_frame(
         self, cmd: int, reg: int, subnode: int, data: Optional[bytes] = None

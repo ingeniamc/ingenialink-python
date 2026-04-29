@@ -61,6 +61,16 @@ class Table:
         """Value register used to read/write table values."""
         return self.__value_register
 
+    @property
+    def uid(self) -> str:
+        """Unique identifier for the table."""
+        return self.__dict_table.id
+
+    @property
+    def axis(self) -> int:
+        """Axis to which the table belongs."""
+        return self.__dict_table.axis or 0
+
     def get_value(self, index: int) -> REG_VALUE:
         """Reads a value from the table.
 
