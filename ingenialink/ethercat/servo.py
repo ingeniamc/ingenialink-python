@@ -99,8 +99,6 @@ class EthercatServo(EthercatServoBase):
     DEFAULT_EEPROM_OPERATION_TIMEOUT_uS = 200_000
     DEFAULT_EEPROM_READ_BYTES_LENGTH = 2
 
-    __PYSOEM_STATIC_SDO_READ_BUFFER_SIZE = 256
-
     # Default PDO maps to assign if not specified
     DEFAULT_RPDO_MAP = "ETG_COMMS_RPDO_MAP1"
     DEFAULT_TPDO_MAP = "ETG_COMMS_TPDO_MAP1"
@@ -182,31 +180,17 @@ class EthercatServo(EthercatServoBase):
         self.write(reg=self.RESTORE_COCO_ALL, data=PASSWORD_RESTORE_SAFETY_REGS, subnode=0)
         logger.info("Restore safety registers successful.")
 
-    # @weak_lru(maxsize=None)
-    def __get_sdo_buffer_size(
-        self, reg: EthercatRegister, buffer_size: Optional[int] = None
-    ) -> int:
-        if buffer_size is None:
-            if reg.byte_length > self.__PYSOEM_STATIC_SDO_READ_BUFFER_SIZE:
-                return reg.byte_length  # Pysoem will dynamically allocate a buffer for this reg
-            return 0  # Pysoem will use a statically allocated of size STATIC_SDO_READ_BUFFER_SIZE
-
-        return buffer_size
-
     def _read_raw(  # type: ignore [override]
         self,
         reg: EthercatRegister,
-        buffer_size: Optional[int] = None,
+        buffer_size: int = 0,
         complete_access: bool = False,
         *,
         release_gil: Optional[bool] = None,
     ) -> bytes:
-        logger.error(f"reading reg {reg.identifier} from buffer {buffer_size}")
-
         if release_gil is None:
             release_gil = self.__sdo_read_write_release_gil
         self._lock.acquire()
-        buffer_size = self.__get_sdo_buffer_size(reg, buffer_size)
         try:
             value: bytes = self.slave.sdo_read(
                 reg.idx, reg.subidx, buffer_size, complete_access, release_gil=release_gil
@@ -314,6 +298,7 @@ class EthercatServo(EthercatServoBase):
             data := self.read(
                 self.MONITORING_DATA,
                 subnode=0,
+                buffer_size=self.MONITORING_DATA_BUFFER_SIZE,
             ),
             bytes,
         ):
