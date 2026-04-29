@@ -1,4 +1,10 @@
 # Changelog
+## [Unreleased]
+### Added
+- Support for reading large data-types in EtherCAT without complete access.
+
+### Changed
+- Monitoring registers reads without complete access
 
 ## [7.6.1] - 2026-04-29
 ### Added

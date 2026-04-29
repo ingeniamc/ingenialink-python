@@ -756,7 +756,6 @@ class Servo:
             subnode
         ).values():
             for configuration_register in configuration_registers:
-                logger.warning(f"Saving configuration of reg {configuration_register.identifier}")
                 try:
                     storage = self.read(configuration_register)
                     if isinstance(storage, bytes):
