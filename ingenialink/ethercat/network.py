@@ -1099,17 +1099,27 @@ class EthercatNetwork(EthercatNetworkBase):
         if self._ecat_master.state == pysoem.PREOP_STATE and all_servos_have_refs:
             return True
 
-        # Clean start the master to try to recover the CoE communication.
-        # This is needed to avoid the master state machine to be stuck in a wrong
-        # state after a disconnection.
-        self._lock.acquire()
+        # Acquire all servo locks to wait for any in-flight SDO operations to
+        # complete before closing the master. This prevents use-after-close crashes
+        # when sdo_read/sdo_write is running with release_gil=True.
+        ecat_servos = [s for s in self.servos if isinstance(s, EthercatServo)]
+        for s in ecat_servos:
+            s._lock.acquire()
         try:
-            self._ecat_master.close()
-            self._ecat_master.open(self.interface_name)
-        finally:
-            self._lock.release()
+            # Clean start the master to try to recover the CoE communication.
+            # This is needed to avoid the master state machine to be stuck in a wrong
+            # state after a disconnection.
+            self._lock.acquire()
+            try:
+                self._ecat_master.close()
+                self._ecat_master.open(self.interface_name)
+            finally:
+                self._lock.release()
 
-        self.__init_nodes()
+            self.__init_nodes()
+        finally:
+            for s in ecat_servos:
+                s._lock.release()
         if not self.servos:
             log_message = (
                 "The CoE communication cannot be recovered. No slaves where detected in the network"

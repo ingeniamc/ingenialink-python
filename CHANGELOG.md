@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [7.6.1] - 2026-04-29
 ### Added
 - Add specialized `ILRegisterAccessError` exception for improved error handling on aborted register read/write operations
 - Create config files from DictionaryV3 defaults
