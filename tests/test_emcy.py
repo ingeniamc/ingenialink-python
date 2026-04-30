@@ -42,11 +42,10 @@ def test_emcy_callback(servo):
 
 
 @pytest.mark.ethercat
+@pytest.mark.not_valid_for_standard_cocomoco
 def test_emcy_callback_coco_moco_ethercat(servo):
     # EMCY test for COCO MOCO EtherCAT drives
     # Check INGK-993
-    if not is_coco_moco(servo):
-        pytest.skip("The test is only for COCO MOCO EtherCAT drives")
     emcy_test = EmcyTest()
     servo.emcy_subscribe(emcy_test.emcy_callback)
     prev_val = servo.read("DRV_PROT_USER_OVER_VOLT", subnode=1)
