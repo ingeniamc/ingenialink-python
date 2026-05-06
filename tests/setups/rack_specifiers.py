@@ -36,7 +36,7 @@ ECAT_SETUP = SpecifierContainer({
                 config_file=_config_files.EVE_XCR_E_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "nightly",
+                    __EXECUTION_POLICY_KEY: "weekends",
                     __TEST_CONFIGS_KEY: {
                         "ECAT_TEST_SESSIONS": PyTestConfig(
                             markers="ethercat",
@@ -72,7 +72,7 @@ ECAT_SETUP = SpecifierContainer({
                 config_file=_config_files.CAP_XCR_E_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "nightly",
+                    __EXECUTION_POLICY_KEY: "weekends",
                     __TEST_CONFIGS_KEY: {
                         "ECAT_TEST_SESSIONS": PyTestConfig(
                             markers="ethercat",
@@ -111,7 +111,7 @@ ETH_SETUP = SpecifierContainer({
                 config_file=_config_files.EVE_XCR_C_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "nightly",
+                    __EXECUTION_POLICY_KEY: "weekends",
                     __TEST_CONFIGS_KEY: {
                         "ETH_TEST_SESSIONS": PyTestConfig(
                             markers="ethernet",
@@ -147,7 +147,7 @@ ETH_SETUP = SpecifierContainer({
                 config_file=_config_files.CAP_XCR_C_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "nightly",
+                    __EXECUTION_POLICY_KEY: "weekends",
                     __TEST_CONFIGS_KEY: {
                         "ETH_TEST_SESSIONS": PyTestConfig(
                             markers="ethernet",
@@ -186,7 +186,7 @@ CAN_SETUP = SpecifierContainer({
                 config_file=_config_files.EVE_XCR_C_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "nightly",
+                    __EXECUTION_POLICY_KEY: "weekends",
                     __TEST_CONFIGS_KEY: {
                         "CAN_TEST_SESSIONS": PyTestConfig(
                             markers="canopen",
@@ -222,7 +222,7 @@ CAN_SETUP = SpecifierContainer({
                 config_file=_config_files.CAP_XCR_C_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "nightly",
+                    __EXECUTION_POLICY_KEY: "weekends",
                     __TEST_CONFIGS_KEY: {
                         "CAN_TEST_SESSIONS": PyTestConfig(
                             markers="canopen",
