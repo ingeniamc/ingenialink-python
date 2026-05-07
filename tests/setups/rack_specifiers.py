@@ -85,7 +85,7 @@ ECAT_SETUP = SpecifierContainer({
             "2.10.0": VersionConfig.from_version(
                 version="2.10.0",
                 config_file=_config_files.CAP_XCR_E_CONFIG,
-                dictionary_type=DictionaryType.XDF_V2,
+                dictionary_type=DictionaryType.XDF_V3,
                 extra_data={
                     __EXECUTION_POLICY_KEY: "always",
                     __TEST_CONFIGS_KEY: {
@@ -160,7 +160,7 @@ ETH_SETUP = SpecifierContainer({
             "2.10.0": VersionConfig.from_version(
                 version="2.10.0",
                 config_file=_config_files.CAP_XCR_C_CONFIG,
-                dictionary_type=DictionaryType.XDF_V2,
+                dictionary_type=DictionaryType.XDF_V3,
                 extra_data={
                     __EXECUTION_POLICY_KEY: "always",
                     __TEST_CONFIGS_KEY: {
@@ -235,7 +235,7 @@ CAN_SETUP = SpecifierContainer({
             "2.10.0": VersionConfig.from_version(
                 version="2.10.0",
                 config_file=_config_files.CAP_XCR_C_CONFIG,
-                dictionary_type=DictionaryType.XDF_V2,
+                dictionary_type=DictionaryType.XDF_V3,
                 extra_data={
                     __EXECUTION_POLICY_KEY: "always",
                     __TEST_CONFIGS_KEY: {
