@@ -40,8 +40,8 @@ def real_servo_with_tables(servo) -> Generator[tuple[Servo, Table] :, None, None
     """
     # Assert that the table is not already defined in the XDF
     try:
-        servo.get_table(uid="MEM_USR", axis=0)
-        return  # Table already exists, skip injection
+        table = servo.get_table(uid="MEM_USR", axis=0)
+        yield servo, table  # Table already exists, skip injection
     except (ValueError, KeyError):
         # Expected: table not found in dictionary
         pass
