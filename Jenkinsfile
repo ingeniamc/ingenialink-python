@@ -72,13 +72,13 @@ TestGroup WIN_DOCKER_TESTS = testManager.createGroup("WIN_DOCKER_TEST_SESSIONS",
  *   19:00, 23:00 UTC (21:00, 01:00 Barcelona Time)
  *   → Sets RUN_POLICY_NIGHTLY=true so that tests gated on the 'nightly' policy will run.
  *
- * Friday+Saturday extra builds (Friday & Saturday only):
+ * Weekend extra builds (Saturday & Sunday only):
  *   08:00, 14:00 UTC (10:00, 16:00 Barcelona Time)
  *   → Sets RUN_POLICY_NIGHTLY=true and RUN_POLICY_WEEKEND=true so that tests gated on
  *     either 'nightly' or 'weekends' policy will run.
  */
 def NIGHTLY_CRON   = '0 19,23 * * * % PYTHON_VERSIONS=All;RUN_POLICY_NIGHTLY=true'
-def WEEKEND_CRON   = '0 8,14 * * 5,6 % PYTHON_VERSIONS=All;RUN_POLICY_NIGHTLY=true;RUN_POLICY_WEEKEND=true'
+def WEEKEND_CRON   = '0 8,14 * * 6-7 % PYTHON_VERSIONS=All;RUN_POLICY_NIGHTLY=true;RUN_POLICY_WEEKEND=true'
 def CRON_SETTINGS  = BRANCH_NAME == "develop" ? "${NIGHTLY_CRON}\n${WEEKEND_CRON}" : ""
 
 pipeline {
