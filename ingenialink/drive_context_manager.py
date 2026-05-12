@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from collections.abc import Container
 from typing import TYPE_CHECKING, Optional, Union, cast
 
 from ingenialogger import get_logger
@@ -9,6 +10,7 @@ from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILIOError
 from ingenialink.register import Register
 from ingenialink.servo import RegisterAccessOperation, Servo
+from ingenialink.utils._utils import REG_VALUE
 
 if TYPE_CHECKING:
     from ingenialink.canopen.register import CanopenRegister
@@ -24,6 +26,70 @@ _PDO_TPDO_MAP_REGISTER_UID = "ETG_COMMS_TPDO_"
 # In EtherCAT dictionaries, the uid is "MON_DATA" and "DIST_DATA"
 _MON_DATA_OBJECT_UID = "MON_DATA"
 _DIST_DATA_OBJECT_UID = "DIST_DATA"
+
+
+class DriveRegistersState:
+    """Class to represent an immutable state of the drive registers."""
+
+    def __init__(self, values: OrderedDict[Register, REG_VALUE]) -> None:
+        self._values = values
+
+    @classmethod
+    def from_hardware(
+        cls,
+        servo: "Servo",
+        axis: Optional[int] = None,
+        ignore_uids: Container[str] = frozenset(),
+        read_max_attempts: int = 2,
+    ) -> "DriveRegistersState":
+        register_values: OrderedDict[Register, REG_VALUE] = OrderedDict()
+
+        registers_iter = (
+            servo.dictionary.all_registers()
+            if axis is None
+            else servo.dictionary.registers(axis).values()
+        )
+
+        for register in registers_iter:
+            if register.identifier in ignore_uids:
+                continue
+
+            if register.access in [RegAccess.WO, RegAccess.RO]:
+                continue
+
+            for attempt in range(1, read_max_attempts + 1):
+                try:
+                    register_values[register] = servo.read(register)
+                    break
+                except ILIOError as e:
+                    message = (
+                        f"{e}\n"
+                        f"An exception happened while trying to read "
+                        f"{register.identifier} from {axis=} "
+                        f"attempt ({attempt}/{read_max_attempts})\n "
+                    )
+
+                    if attempt < read_max_attempts:
+                        logger.warning(f"{message}, \n trying again...")
+                    else:
+                        logger.error(f"{message}, \n Skipping this register")
+                        break
+
+        return cls(register_values)
+
+    def to_tuple_dict(self) -> OrderedDict[tuple[int, str], REG_VALUE]:
+        """Convert to an OrderedDict keyed by (subnode, uid) tuples.
+
+        Returns:
+            OrderedDict mapping (subnode, uid) to register value.
+        """
+        return OrderedDict(
+            ((reg.subnode, cast("str", reg.identifier)), val) for reg, val in self._values.items()
+        )
+
+
+class DriveRegistersSession:
+    """Class to represent a mutable rolling tracking of the drive register value changes."""
 
 
 class DriveContextManager:
@@ -78,9 +144,7 @@ class DriveContextManager:
             set(complete_access_objects) if isinstance(complete_access_objects, list) else set()
         )
 
-        self._original_register_values: OrderedDict[
-            tuple[int, str], Union[int, float, str, bytes]
-        ] = OrderedDict()
+        self._baseline = DriveRegistersState(OrderedDict())
 
         self._original_canopen_object_values: dict[CanOpenObject, bytes] = {}
 
@@ -109,14 +173,14 @@ class DriveContextManager:
             return
         if uid in self._do_not_restore_registers:
             return
-        dict_key = (register.subnode, uid)
-        if dict_key not in self._original_register_values:
+        if register not in self._baseline._values:
             return
 
         # Check if the new value is different from the previous one
+        dict_key = (register.subnode, uid)
         if dict_key in self._registers_changed:
             previous_value = self._registers_changed[dict_key]
-        previous_value = self._original_register_values[dict_key]
+        previous_value = self._baseline._values[dict_key]
         current_value = value if value is not None else previous_value
         if current_value == previous_value:
             return
@@ -165,7 +229,9 @@ class DriveContextManager:
 
         logger.debug(f"{id(self)}: Object {obj.uid} changed using complete access to {value!r}.")
 
-    def _store_register_data(self) -> OrderedDict[tuple[int, str], Union[int, float, str, bytes]]:
+    def _store_register_data(
+        self,
+    ) -> OrderedDict[tuple[int, str], Union[int, float, str, bytes]]:  # TODO Moved
         """Reads and returns the value of all registers.
 
         Returns:
@@ -305,7 +371,9 @@ class DriveContextManager:
 
     def __enter__(self) -> None:
         """Subscribes to register update callbacks and saves the drive values."""
-        self._original_register_values = self._store_register_data()
+        self._baseline = DriveRegistersState.from_hardware(
+            self.drive, axis=self._axis, ignore_uids=self._do_not_restore_registers
+        )
         self._original_canopen_object_values = self._store_objects_data()
         self.drive.register_update_subscribe(self._register_update_callback)
         self.drive.register_update_complete_access_subscribe(self._complete_access_callback)
@@ -339,7 +407,7 @@ class DriveContextManager:
                 # Re-read current register values and restore any differences
                 current_register_values = self._store_register_data()
                 self._restore_register_data(
-                    original_values=self._original_register_values,
+                    original_values=self._baseline.to_tuple_dict(),
                     changed_values=current_register_values,
                     force_restore=True,
                 )
@@ -364,7 +432,7 @@ class DriveContextManager:
         self.drive.register_update_unsubscribe(self._register_update_callback)
         self.drive.register_update_complete_access_unsubscribe(self._complete_access_callback)
         self._restore_register_data(
-            original_values=self._original_register_values,
+            original_values=self._baseline.to_tuple_dict(),
             changed_values=self._registers_changed,
             force_restore=False,
         )
