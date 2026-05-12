@@ -1,4 +1,7 @@
 # Changelog
+## [Unreleased]
+### Changed
+- Monitoring registers reads without complete access
 
 ## [7.6.1] - 2026-04-29
 ### Added
