@@ -1205,12 +1205,12 @@ class CanopenNetwork(CanopenNetworkBase):
             unavailable_devices.append(CanDevice.SOCKETCAN)
         return [
             (available_device["interface"], available_device["channel"])
-            for available_device in (
-                can.detect_available_configs([
+            for available_device in [
+                *can.detect_available_configs([
                     device.value for device in CanDevice if device not in unavailable_devices
-                ])
-                + self._get_available_kvaser_devices()
-            )
+                ]),
+                *self._get_available_kvaser_devices(),
+            ]
         ]
 
     def _get_available_kvaser_devices(self) -> list[dict[str, Any]]:
