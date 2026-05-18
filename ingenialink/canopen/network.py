@@ -1205,12 +1205,12 @@ class CanopenNetwork(CanopenNetworkBase):
             unavailable_devices.append(CanDevice.SOCKETCAN)
         return [
             (available_device["interface"], available_device["channel"])
-            for available_device in (
-                can.detect_available_configs([
+            for available_device in [
+                *can.detect_available_configs([
                     device.value for device in CanDevice if device not in unavailable_devices
-                ])
-                + self._get_available_kvaser_devices()
-            )
+                ]),
+                *self._get_available_kvaser_devices(),
+            ]
         ]
 
     def _get_available_kvaser_devices(self) -> list[dict[str, Any]]:
@@ -1229,8 +1229,18 @@ class CanopenNetwork(CanopenNetworkBase):
         return [
             {"interface": "kvaser", "channel": channel}
             for channel in range(num_channels.value)
-            if "Virtual" not in can.interfaces.kvaser.get_channel_info(channel)  # type: ignore[no-untyped-call]
+            if not self._is_kvaser_virtual_channel(channel)
         ]
+
+    @staticmethod
+    def _is_kvaser_virtual_channel(channel: int) -> bool:
+        channel_info = can.interfaces.kvaser.get_channel_info(channel)  # type: ignore[no-untyped-call]
+        if isinstance(channel_info, str):
+            return "Virtual" in channel_info
+        if isinstance(channel_info, dict):
+            device_name = channel_info.get("device_name")
+            return isinstance(device_name, str) and "Virtual" in device_name
+        return False
 
     @staticmethod
     def _reload_kvaser_lib() -> None:
