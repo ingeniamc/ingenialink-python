@@ -285,39 +285,6 @@ class DriveContextManager:
 
         logger.debug(f"{id(self)}: Object {obj.uid} changed using complete access to {value!r}.")
 
-    def _store_register_data(
-        self,
-    ) -> OrderedDict[tuple[int, str], Union[int, float, str, bytes]]:  # TODO Moved
-        """Reads and returns the value of all registers.
-
-        Returns:
-            OrderedDict mapping (axis, uid) tuple to register value.
-        """
-        register_values: OrderedDict[tuple[int, str], Union[int, float, str, bytes]] = OrderedDict()
-        axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
-        for axis in axes:
-            for uid, register in self.drive.dictionary.registers(subnode=axis).items():
-                if uid in self._do_not_restore_registers:
-                    continue
-                if register.access in [RegAccess.WO, RegAccess.RO]:
-                    continue
-
-                try:
-                    register_value = self.drive.read(uid, subnode=axis)
-                except ILIOError:
-                    continue
-                except Exception as e:
-                    logger.warning(
-                        f"{id(self)}: '{e}' happened while trying to read {uid=} from {axis=}, "
-                        "trying again..."
-                    )
-                    try:
-                        register_value = self.drive.read(uid, subnode=axis)
-                    except ILIOError:
-                        continue
-                register_values[(axis, uid)] = register_value
-        return register_values
-
     def _store_objects_data(self) -> dict[CanOpenObject, bytes]:
         """Reads and returns complete access objects data.
 
@@ -469,7 +436,9 @@ class DriveContextManager:
                 # Clear the current tracking
                 self._session.changes.clear()
                 # Re-read current register values and restore any differences
-                current_register_values = self._store_register_data()
+                current_register_values = DriveRegistersState.from_hardware(
+                    self.drive, axis=self._axis, ignore_uids=self._do_not_restore_registers
+                ).to_tuple_dict()
                 self._restore_register_data(
                     original_values=self._baseline.to_tuple_dict(),
                     changed_values=current_register_values,
