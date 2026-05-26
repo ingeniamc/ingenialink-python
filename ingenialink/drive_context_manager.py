@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from collections.abc import Container
+from collections.abc import Callable, Container
 from typing import TYPE_CHECKING, Optional, Union, cast
 
 from ingenialogger import get_logger
@@ -240,6 +240,22 @@ class DriveContextManager:
         if self._session is None:
             return OrderedDict()
         return self._session.to_tuple_dict()
+
+    @property
+    def _register_update_callback(
+        self,
+    ) -> Callable[[Servo, Register, REG_VALUE], None]:
+        """Alias for backward compatibility — delegates to the session callback.
+
+        Raises:
+            RuntimeError: If no active session exists (``__enter__`` not called).
+        """
+        if self._session is None:
+            raise RuntimeError(
+                "DriveContextManager has no active session. "
+                "Call __enter__() before accessing _register_update_callback."
+            )
+        return self._session._register_update_callback
 
     def _complete_access_callback(
         self,
