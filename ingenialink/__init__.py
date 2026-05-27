@@ -20,6 +20,14 @@ from .canopen.register import CanopenRegister
 from .canopen.servo import CanopenServo
 from .dictionary import Dictionary, DictionaryV2, DictionaryV3
 
+# Drive context manager
+from .drive_context_manager import (
+    DriveContextManager,
+    DriveRegistersSession,
+    DriveRegistersState,
+    RestoreResult,
+)
+
 # Ethercat
 from .ethercat.dictionary import EthercatDictionary, EthercatDictionaryV2, EthercatDictionaryV3
 from .ethercat.network import EthercatNetwork, EthercatNetworkBase, GilReleaseConfig
@@ -86,6 +94,10 @@ __all__ = [
     "CanopenServo",
     "CanopenRegister",
     "Poller",
+    "DriveContextManager",
+    "DriveRegistersSession",
+    "DriveRegistersState",
+    "RestoreResult",
 ]
 
 

@@ -3,8 +3,15 @@ from typing import TYPE_CHECKING, Union
 
 import pytest
 
-from ingenialink.drive_context_manager import DriveContextManager, DriveRegistersState
+from ingenialink.drive_context_manager import (
+    DriveContextManager,
+    DriveRegistersSession,
+    DriveRegistersState,
+    RestoreResult,
+)
+from ingenialink.enums.register import RegAccess, RegDtype
 from ingenialink.pdo import RPDOMap, TPDOMap
+from ingenialink.register import Register
 
 if TYPE_CHECKING:
     from summit_testing_framework.setups.descriptors import DriveEcatSetup
@@ -494,3 +501,129 @@ def test_drive_registers_state_get(
     # A RO register is excluded by from_hardware, so get() should return None
     missing_register = servo.dictionary.get_register("DRV_STATE_STATUS", axis=1)
     assert state.get(missing_register) is None
+
+
+class TestRestoreResult:
+    """Tests for the RestoreResult structured result class."""
+
+    def test_empty(self):
+        """An empty RestoreResult reports success with a clean summary."""
+        result = RestoreResult()
+        assert result.all_succeeded is True
+        assert "Restored: 0" in result.summary()
+
+    def test_with_failures(self):
+        """A RestoreResult with failures reports not-all-succeeded."""
+        result = RestoreResult()
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
+        result.restored.append((reg, 1.0))
+        result.failed.append((reg, 2.0, RuntimeError("boom")))
+        result.skipped.append((reg, "reason"))
+
+        assert result.all_succeeded is False
+        summary = result.summary()
+        assert "Restored: 1" in summary
+        assert "Failed: 1" in summary
+        assert "Skipped: 1" in summary
+
+
+@pytest.mark.ethernet
+@pytest.mark.ethercat
+@pytest.mark.canopen
+@pytest.mark.virtual
+class TestDriveRegistersSession:
+    """Tests for DriveRegistersSession methods."""
+
+    def test_state_merges_baseline_and_changes(
+        self,
+        setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
+    ) -> None:
+        """state() returns baseline values overlaid with tracked changes."""
+        net, _, _ = setup_manager
+        servo = net.servos[0]
+
+        baseline = DriveRegistersState.from_hardware(servo)
+        session = DriveRegistersSession(
+            servo=servo,
+            baseline=baseline,
+            do_not_restore_registers=set(),
+        )
+
+        register = servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1)
+        original_value = baseline.get(register)
+
+        # Before any changes, state() should equal baseline
+        state = session.state()
+        assert state.get(register) == original_value
+
+        # Simulate a tracked change
+        new_value = 123.0
+        session.changes[register] = new_value
+
+        state = session.state()
+        assert state.get(register) == new_value
+
+    def test_restore_returns_result(
+        self,
+        setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
+    ) -> None:
+        """restore() writes baseline values back and returns a RestoreResult."""
+        net, _, _ = setup_manager
+        servo = net.servos[0]
+
+        previous_reg_value = _read_user_over_voltage_uid(servo)
+        baseline = DriveRegistersState.from_hardware(servo)
+        session = DriveRegistersSession(
+            servo=servo,
+            baseline=baseline,
+            do_not_restore_registers=set(),
+        )
+        session.start()
+
+        new_reg_value = 100.0
+        if previous_reg_value == new_reg_value:
+            new_reg_value -= 1.0
+
+        servo.write(_USER_OVER_VOLTAGE_UID, new_reg_value, subnode=1)
+        assert _read_user_over_voltage_uid(servo) == new_reg_value
+
+        session.stop()
+        result = session.restore()
+
+        assert isinstance(result, RestoreResult)
+        assert result.all_succeeded
+        assert len(result.restored) >= 1
+        assert _read_user_over_voltage_uid(servo) == previous_reg_value
+
+    def test_force_restore_returns_result(
+        self,
+        setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
+    ) -> None:
+        """force_restore() re-reads hardware, diffs, restores, and returns a RestoreResult."""
+        net, _, _ = setup_manager
+        servo = net.servos[0]
+
+        previous_reg_value = _read_user_over_voltage_uid(servo)
+        baseline = DriveRegistersState.from_hardware(servo)
+        session = DriveRegistersSession(
+            servo=servo,
+            baseline=baseline,
+            do_not_restore_registers=set(),
+        )
+
+        new_reg_value = 100.0
+        if previous_reg_value == new_reg_value:
+            new_reg_value -= 1.0
+
+        # Write directly — session is NOT subscribed, simulating external change
+        servo.write(_USER_OVER_VOLTAGE_UID, new_reg_value, subnode=1)
+        assert _read_user_over_voltage_uid(servo) == new_reg_value
+
+        result = session.force_restore()
+
+        assert isinstance(result, RestoreResult)
+        assert result.all_succeeded
+        assert len(result.restored) >= 1
+        assert _read_user_over_voltage_uid(servo) == previous_reg_value
+        # force_restore clears changes
+        assert len(session.changes) == 0

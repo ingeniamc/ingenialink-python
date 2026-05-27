@@ -17,6 +17,35 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
+
+class RestoreResult:
+    """Structured result from a register restoration operation.
+
+    Collects which registers were successfully restored, which failed, and
+    which were skipped, so callers can log, display, or raise as appropriate
+    instead of having the restore method raise on individual failures.
+    """
+
+    def __init__(self) -> None:
+        self.restored: list[tuple[Register, REG_VALUE]] = []
+        self.failed: list[tuple[Register, REG_VALUE, Exception]] = []
+        self.skipped: list[tuple[Register, str]] = []
+
+    @property
+    def all_succeeded(self) -> bool:
+        """Return ``True`` if no registers failed to restore."""
+        return len(self.failed) == 0
+
+    def summary(self) -> str:
+        """Return a one-line human-readable summary of the result."""
+        parts = [f"Restored: {len(self.restored)}"]
+        if self.failed:
+            parts.append(f"Failed: {len(self.failed)}")
+        if self.skipped:
+            parts.append(f"Skipped: {len(self.skipped)}")
+        return ", ".join(parts)
+
+
 # PDO registers
 _PDO_RPDO_MAP_REGISTER_UID = "ETG_COMMS_RPDO_"
 _PDO_TPDO_MAP_REGISTER_UID = "ETG_COMMS_TPDO_"
@@ -165,6 +194,7 @@ class DriveRegistersSession:
         servo: The servo whose register updates are tracked.
         baseline: The immutable snapshot used as the reference state.
         do_not_restore_registers: UIDs that should be ignored by the tracker.
+        axis: Axis (subnode) scope.  ``None`` means all axes.
     """
 
     def __init__(
@@ -172,10 +202,12 @@ class DriveRegistersSession:
         servo: Servo,
         baseline: DriveRegistersState,
         do_not_restore_registers: set[str],
+        axis: Optional[int] = None,
     ) -> None:
         self.servo = servo
         self.baseline = baseline
         self._do_not_restore_registers = do_not_restore_registers
+        self._axis = axis
         self.changes: OrderedDict[Register, REG_VALUE] = OrderedDict()
 
     def to_tuple_dict(self) -> OrderedDict[tuple[int, str], REG_VALUE]:
@@ -212,6 +244,112 @@ class DriveRegistersSession:
             return
         self.changes[register] = current_value
         logger.debug(f"{id(self)}: {uid=} changed from {previous_value!r} to {current_value!r}")
+
+    def state(self) -> DriveRegistersState:
+        """Return the current expected state: baseline overlaid with tracked changes.
+
+        Returns:
+            A new ``DriveRegistersState`` with baseline values updated by any
+            changes recorded so far.
+        """
+        merged: OrderedDict[Register, REG_VALUE] = OrderedDict(self.baseline._values)
+        merged.update(self.changes)
+        return DriveRegistersState(merged)
+
+    def _write_with_retry(
+        self,
+        register: Register,
+        value: REG_VALUE,
+        result: RestoreResult,
+        max_attempts: int = 2,
+    ) -> None:
+        """Write a register value with retry, recording the outcome in *result*."""
+        for attempt in range(1, max_attempts + 1):
+            try:
+                self.servo.write(register, value)
+                result.restored.append((register, value))
+                return
+            except Exception as e:  # noqa: PERF203
+                if attempt < max_attempts:
+                    logger.error(
+                        f"{id(self)}: {register.identifier} failed to restore to "
+                        f"{value!r} on axis={register.subnode} with exception '{e}', "
+                        f"attempt ({attempt}/{max_attempts})"
+                    )
+                else:
+                    result.failed.append((register, value, e))
+
+    def restore(self, write_max_attempts: int = 2) -> RestoreResult:
+        """Restore tracked changes back to their baseline values.
+
+        Iterates changes in reverse chronological order (undo-stack), writing
+        the original baseline value back to hardware for each changed register.
+
+        Args:
+            write_max_attempts: Number of write attempts per register before
+                recording a failure.
+
+        Returns:
+            A ``RestoreResult`` summarising successes, failures, and skips.
+        """
+        result = RestoreResult()
+
+        for register, current_value in reversed(self.changes.items()):
+            baseline_value = self.baseline._values.get(register)
+            if baseline_value is None:
+                result.skipped.append((register, "No baseline value"))
+                continue
+
+            if current_value == baseline_value:
+                continue
+
+            logger.debug(
+                f"Restoring {register.identifier!s} to {baseline_value!r} "
+                f"on axis={register.subnode}"
+            )
+            self._write_with_retry(register, baseline_value, result, write_max_attempts)
+
+        return result
+
+    def force_restore(self, write_max_attempts: int = 2) -> RestoreResult:
+        """Force-restore all registers to baseline by re-reading hardware.
+
+        Re-reads all registers via ``DriveRegistersState.from_hardware()``,
+        diffs against the baseline, and restores any that differ.  The tracked
+        changes are cleared before reading so subsequent tracking starts fresh.
+
+        Args:
+            write_max_attempts: Number of write attempts per register before
+                recording a failure.
+
+        Returns:
+            A ``RestoreResult`` summarising successes, failures, and skips.
+        """
+        self.changes.clear()
+
+        current = DriveRegistersState.from_hardware(
+            self.servo,
+            axis=self._axis,
+            ignore_uids=self._do_not_restore_registers,
+        )
+        differences = self.baseline.diff(current)
+
+        result = RestoreResult()
+        for register, (baseline_value, _current_value) in differences.items():
+            uid = cast("str", register.identifier)
+
+            # PDO mapping registers are handled via complete access
+            if _PDO_RPDO_MAP_REGISTER_UID in uid or _PDO_TPDO_MAP_REGISTER_UID in uid:
+                result.skipped.append((register, "PDO mapping register"))
+                continue
+
+            logger.debug(
+                f"Force restoring {register.identifier!s} to {baseline_value!r} "
+                f"on axis={register.subnode}"
+            )
+            self._write_with_retry(register, baseline_value, result, write_max_attempts)
+
+        return result
 
     def start(self) -> None:
         """Subscribe the tracking callback to the servo."""
@@ -398,50 +536,6 @@ class DriveContextManager:
             object_values[obj] = obj_value
         return object_values
 
-    def _restore_register_data(
-        self,
-        original_values: OrderedDict[tuple[int, str], Union[int, float, str, bytes]],
-        changed_values: OrderedDict[tuple[int, str], Union[int, float, str, bytes]],
-        force_restore: bool = False,
-    ) -> None:
-        """Restores the drive values.
-
-        Args:
-            original_values: OrderedDict mapping (axis, uid) to original value.
-            changed_values: OrderedDict mapping (axis, uid) to changed value.
-            force_restore: If True, registers are being restored by force mode.
-        """
-        axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
-        restored_registers: dict[int, list[str]] = {axis: [] for axis in axes}
-
-        for (axis, uid), current_value in reversed(changed_values.items()):
-            # No original data for the register
-            if (axis, uid) not in original_values:
-                continue
-            # Register has already been restored with a newer value than the evaluated one
-            if uid in restored_registers[axis]:
-                continue
-            # Skip PDO mapping registers: handled via complete access in _restore_objects_data
-            if force_restore and (
-                _PDO_RPDO_MAP_REGISTER_UID in uid or _PDO_TPDO_MAP_REGISTER_UID in uid
-            ):
-                continue
-            restore_value = original_values[(axis, uid)]
-            # No change with respect to the original value
-            if current_value == restore_value:
-                continue
-
-            try:
-                logger.debug(f"Restoring {uid=} to {restore_value!r} on {axis=}")
-                self.drive.write(uid, restore_value, subnode=axis)
-            except Exception as e:
-                logger.error(
-                    f"{id(self)}: {uid} failed to restore value={current_value!r} "
-                    f"to {restore_value!r} with exception '{e}', trying again..."
-                )
-                self.drive.write(uid, restore_value, subnode=axis)
-            restored_registers[axis].append(uid)
-
     def _restore_objects_data(
         self,
         original_values: dict[CanOpenObject, bytes],
@@ -481,6 +575,7 @@ class DriveContextManager:
             servo=self.drive,
             baseline=self._baseline,
             do_not_restore_registers=self._do_not_restore_registers,
+            axis=self._axis,
         )
         self._original_canopen_object_values = self._store_objects_data()
         self._session.start()
@@ -513,17 +608,7 @@ class DriveContextManager:
 
         try:
             if restore_registers:
-                # Clear the current tracking
-                self._session.changes.clear()
-                # Re-read current register values and restore any differences
-                current_register_values = DriveRegistersState.from_hardware(
-                    self.drive, axis=self._axis, ignore_uids=self._do_not_restore_registers
-                ).to_tuple_dict()
-                self._restore_register_data(
-                    original_values=self._baseline.to_tuple_dict(),
-                    changed_values=current_register_values,
-                    force_restore=True,
-                )
+                self._session.force_restore()
 
             if restore_objects:
                 # Clear the current tracking
@@ -546,11 +631,7 @@ class DriveContextManager:
         assert self._baseline is not None
         self._session.stop()
         self.drive.register_update_complete_access_unsubscribe(self._complete_access_callback)
-        self._restore_register_data(
-            original_values=self._baseline.to_tuple_dict(),
-            changed_values=self._session.to_tuple_dict(),
-            force_restore=False,
-        )
+        self._session.restore()
         self._restore_objects_data(
             original_values=self._original_canopen_object_values,
             changed_values=self._objects_changed,
