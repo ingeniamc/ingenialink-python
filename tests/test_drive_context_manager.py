@@ -1,8 +1,9 @@
+from collections import OrderedDict
 from typing import TYPE_CHECKING, Union
 
 import pytest
 
-from ingenialink.drive_context_manager import DriveContextManager
+from ingenialink.drive_context_manager import DriveContextManager, DriveRegistersState
 from ingenialink.pdo import RPDOMap, TPDOMap
 
 if TYPE_CHECKING:
@@ -379,3 +380,117 @@ def test_force_restore_with_complete_access_objects(
 
         # Tracking should be cleared
         assert context._objects_changed == {}
+
+
+@pytest.mark.ethernet
+@pytest.mark.ethercat
+@pytest.mark.canopen
+@pytest.mark.virtual
+def test_drive_context_manager_with_baseline(
+    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
+) -> None:
+    """Test that passing a pre-built baseline skips the from_hardware() read in __enter__."""
+    net, _, _ = setup_manager
+    servo = net.servos[0]
+
+    # Build a baseline snapshot from hardware
+    baseline = DriveRegistersState.from_hardware(servo)
+
+    # Create context manager with the pre-built baseline
+    context = DriveContextManager(servo, baseline=baseline)
+
+    new_reg_value = 100.0
+    previous_reg_value = _read_user_over_voltage_uid(servo)
+    if previous_reg_value == new_reg_value:
+        new_reg_value -= 1.0
+
+    with context:
+        # The context should use the pre-built baseline (not read from hardware again)
+        assert context._baseline is baseline
+
+        # Verify tracking and restoration still work
+        servo.write(_USER_OVER_VOLTAGE_UID, new_reg_value, subnode=1)
+        assert _read_user_over_voltage_uid(servo) == new_reg_value
+        assert (1, _USER_OVER_VOLTAGE_UID) in context._registers_changed
+
+    # Registers should be restored
+    assert _read_user_over_voltage_uid(servo) == previous_reg_value
+
+
+@pytest.mark.ethernet
+@pytest.mark.ethercat
+@pytest.mark.canopen
+@pytest.mark.virtual
+def test_drive_registers_state_diff(
+    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
+) -> None:
+    """diff() returns registers whose values differ between two snapshots."""
+    net, _, _ = setup_manager
+    servo = net.servos[0]
+
+    state_before = DriveRegistersState.from_hardware(servo)
+
+    new_reg_value = 100.0
+    previous_reg_value = _read_user_over_voltage_uid(servo)
+    if previous_reg_value == new_reg_value:
+        new_reg_value -= 1.0
+
+    servo.write(_USER_OVER_VOLTAGE_UID, new_reg_value, subnode=1)
+    try:
+        state_after = DriveRegistersState.from_hardware(servo)
+
+        differences = state_before.diff(state_after)
+        diff_uids = {reg.identifier for reg in differences}
+        assert _USER_OVER_VOLTAGE_UID in diff_uids
+
+        # The tuple should be (before_value, after_value)
+        for reg, (before_val, after_val) in differences.items():
+            if reg.identifier == _USER_OVER_VOLTAGE_UID:
+                assert before_val == previous_reg_value
+                assert after_val == new_reg_value
+    finally:
+        servo.write(_USER_OVER_VOLTAGE_UID, previous_reg_value, subnode=1)
+
+
+@pytest.mark.ethernet
+@pytest.mark.ethercat
+@pytest.mark.canopen
+@pytest.mark.virtual
+def test_drive_registers_state_from_dict(
+    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
+) -> None:
+    """from_dict() builds a state from an existing register-to-value mapping."""
+    net, _, _ = setup_manager
+    servo = net.servos[0]
+
+    register = servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1)
+    data: OrderedDict = OrderedDict([(register, 42.0)])
+    state = DriveRegistersState.from_dict(data)
+
+    assert state.get(register) == 42.0
+    tuples = state.to_tuple_dict()
+    assert (1, _USER_OVER_VOLTAGE_UID) in tuples
+    assert tuples[(1, _USER_OVER_VOLTAGE_UID)] == 42.0
+
+
+@pytest.mark.ethernet
+@pytest.mark.ethercat
+@pytest.mark.canopen
+@pytest.mark.virtual
+def test_drive_registers_state_get(
+    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
+) -> None:
+    """get() returns a register value or None if not present."""
+    net, _, _ = setup_manager
+    servo = net.servos[0]
+
+    state = DriveRegistersState.from_hardware(servo)
+
+    register = servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1)
+    value = state.get(register)
+    assert value is not None
+    assert value == _read_user_over_voltage_uid(servo)
+
+    # A RO register is excluded by from_hardware, so get() should return None
+    missing_register = servo.dictionary.get_register("DRV_STATE_STATUS", axis=1)
+    assert state.get(missing_register) is None

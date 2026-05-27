@@ -105,6 +105,54 @@ class DriveRegistersState:
             ((reg.subnode, cast("str", reg.identifier)), val) for reg, val in self._values.items()
         )
 
+    def diff(
+        self, other: "DriveRegistersState"
+    ) -> OrderedDict[Register, tuple[REG_VALUE, REG_VALUE]]:
+        """Compare this state with another and return registers that differ.
+
+        Only registers present in both states are compared.
+
+        Args:
+            other: The other state to compare against.
+
+        Returns:
+            OrderedDict mapping registers to ``(self_value, other_value)`` for
+            registers whose values differ.
+        """
+        result: OrderedDict[Register, tuple[REG_VALUE, REG_VALUE]] = OrderedDict()
+        for register, self_value in self._values.items():
+            if register in other._values:
+                other_value = other._values[register]
+                if self_value != other_value:
+                    result[register] = (self_value, other_value)
+        return result
+
+    @classmethod
+    def from_dict(cls, data: OrderedDict[Register, REG_VALUE]) -> "DriveRegistersState":
+        """Construct a state from an existing in-memory mapping.
+
+        This enables building a baseline without hardware I/O, for example
+        from MotionLab3's ``MLRegister._value`` cache.
+
+        Args:
+            data: Ordered mapping from ``Register`` objects to their values.
+
+        Returns:
+            A new ``DriveRegistersState`` wrapping the provided data.
+        """
+        return cls(data)
+
+    def get(self, register: Register) -> Optional[REG_VALUE]:
+        """Look up a single register value from the snapshot.
+
+        Args:
+            register: The register to look up.
+
+        Returns:
+            The stored value, or ``None`` if the register is not in this snapshot.
+        """
+        return self._values.get(register)
+
 
 class DriveRegistersSession:
     """Stateful tracker that monitors register changes against a baseline.
@@ -186,6 +234,7 @@ class DriveContextManager:
         axis: Optional[int] = None,
         do_not_restore_registers: Optional[list[str]] = None,
         complete_access_objects: Optional[list[str]] = None,
+        baseline: Optional[DriveRegistersState] = None,
     ) -> None:
         """Initializes the registers that shouldn't be stored.
 
@@ -201,8 +250,11 @@ class DriveContextManager:
             Also, monitoring and disturbance data objects ("MON_DATA" and "DIST_DATA")
                 should be read using complete access.
                 Defaults to None.
+            baseline: pre-built register snapshot to use as the baseline state.
+                When provided, ``__enter__`` skips the hardware read and uses this
+                snapshot directly.  Defaults to None (read from hardware).
         """
-        self.drive = servo
+        self._drive = servo
         self._axis = axis
 
         self._do_not_restore_registers: set[str] = (
@@ -226,13 +278,24 @@ class DriveContextManager:
             set(complete_access_objects) if isinstance(complete_access_objects, list) else set()
         )
 
-        self._baseline: Optional[DriveRegistersState] = None
+        self._baseline: Optional[DriveRegistersState] = baseline
 
         self._session: Optional[DriveRegistersSession] = None
 
         self._original_canopen_object_values: dict[CanOpenObject, bytes] = {}
 
         self._objects_changed: dict[CanOpenObject, bytes] = {}
+
+    @property
+    def drive(self) -> Servo:
+        """The servo this context manager operates on."""
+        return self._drive
+
+    @drive.setter
+    def drive(self, servo: Servo) -> None:
+        self._drive = servo
+        if self._session is not None:
+            self._session.servo = servo
 
     @property
     def _registers_changed(self) -> OrderedDict[tuple[int, str], REG_VALUE]:
@@ -410,9 +473,10 @@ class DriveContextManager:
 
     def __enter__(self) -> None:
         """Subscribes to register update callbacks and saves the drive values."""
-        self._baseline = DriveRegistersState.from_hardware(
-            self.drive, axis=self._axis, ignore_uids=self._do_not_restore_registers
-        )
+        if self._baseline is None:
+            self._baseline = DriveRegistersState.from_hardware(
+                self.drive, axis=self._axis, ignore_uids=self._do_not_restore_registers
+            )
         self._session = DriveRegistersSession(
             servo=self.drive,
             baseline=self._baseline,
