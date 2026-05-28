@@ -25,7 +25,10 @@ from .drive_context_manager import (
     DriveContextManager,
     DriveRegistersSession,
     DriveRegistersState,
+    FailedEntry,
+    RestoredEntry,
     RestoreResult,
+    SkippedEntry,
 )
 
 # Ethercat
@@ -97,7 +100,10 @@ __all__ = [
     "DriveContextManager",
     "DriveRegistersSession",
     "DriveRegistersState",
+    "FailedEntry",
+    "RestoredEntry",
     "RestoreResult",
+    "SkippedEntry",
 ]
 
 

@@ -2,16 +2,21 @@ from collections import OrderedDict
 from typing import TYPE_CHECKING, Union
 
 import pytest
+from pytest_mock import MockerFixture
 
 from ingenialink.drive_context_manager import (
     DriveContextManager,
     DriveRegistersSession,
     DriveRegistersState,
+    FailedEntry,
+    RestoredEntry,
     RestoreResult,
+    SkippedEntry,
 )
 from ingenialink.enums.register import RegAccess, RegDtype
 from ingenialink.pdo import RPDOMap, TPDOMap
 from ingenialink.register import Register
+from ingenialink.servo import Servo
 
 if TYPE_CHECKING:
     from summit_testing_framework.setups.descriptors import DriveEcatSetup
@@ -510,30 +515,41 @@ class TestRestoreResult:
         """An empty RestoreResult reports success with a clean summary."""
         result = RestoreResult()
         assert result.all_succeeded is True
-        assert "Restored: 0" in result.summary()
+        assert result.summary() == "Restored: 0"
 
     def test_with_failures(self):
         """A RestoreResult with failures reports not-all-succeeded."""
         result = RestoreResult()
         reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
-        result.restored.append((reg, 1.0))
-        result.failed.append((reg, 2.0, RuntimeError("boom")))
-        result.skipped.append((reg, "reason"))
+        result.restored.append(RestoredEntry(reg, 1.0))
+        result.failed.append(FailedEntry(reg, 2.0, RuntimeError("boom")))
+        result.skipped.append(SkippedEntry(reg, "reason"))
 
         assert result.all_succeeded is False
-        summary = result.summary()
-        assert "Restored: 1" in summary
-        assert "Failed: 1" in summary
-        assert "Skipped: 1" in summary
+        assert result.summary() == "Restored: 1, Failed: 1, Skipped: 1"
+
+    def test_summary_only_restored(self):
+        """summary() omits Failed and Skipped sections when only restores exist."""
+        result = RestoreResult()
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="REG1")
+        result.restored.append(RestoredEntry(reg, 1.0))
+        assert result.summary() == "Restored: 1"
+
+    def test_summary_with_failed_only(self):
+        """summary() omits Skipped section when only failures exist."""
+        result = RestoreResult()
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="REG1")
+        result.failed.append(FailedEntry(reg, 1.0, RuntimeError("boom")))
+        assert result.summary() == "Restored: 0, Failed: 1"
 
 
-@pytest.mark.ethernet
-@pytest.mark.ethercat
-@pytest.mark.canopen
-@pytest.mark.virtual
 class TestDriveRegistersSession:
     """Tests for DriveRegistersSession methods."""
 
+    @pytest.mark.ethernet
+    @pytest.mark.ethercat
+    @pytest.mark.canopen
+    @pytest.mark.virtual
     def test_state_merges_baseline_and_changes(
         self,
         setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
@@ -563,6 +579,10 @@ class TestDriveRegistersSession:
         state = session.state()
         assert state.get(register) == new_value
 
+    @pytest.mark.ethernet
+    @pytest.mark.ethercat
+    @pytest.mark.canopen
+    @pytest.mark.virtual
     def test_restore_returns_result(
         self,
         setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
@@ -595,6 +615,10 @@ class TestDriveRegistersSession:
         assert len(result.restored) >= 1
         assert _read_user_over_voltage_uid(servo) == previous_reg_value
 
+    @pytest.mark.ethernet
+    @pytest.mark.ethercat
+    @pytest.mark.canopen
+    @pytest.mark.virtual
     def test_force_restore_returns_result(
         self,
         setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
@@ -627,3 +651,110 @@ class TestDriveRegistersSession:
         assert _read_user_over_voltage_uid(servo) == previous_reg_value
         # force_restore clears changes
         assert len(session.changes) == 0
+
+    def test_write_with_retry_succeeds_first_attempt(self, mocker: MockerFixture):
+        """_write_with_retry records success on first write attempt."""
+        servo_mock = mocker.MagicMock(spec=Servo)
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
+        baseline = DriveRegistersState(OrderedDict([(reg, 42.0)]))
+        session = DriveRegistersSession(
+            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
+        )
+
+        result = RestoreResult()
+        session._write_with_retry(reg, 42.0, result, max_attempts=2)
+
+        servo_mock.write.assert_called_once_with(reg, 42.0)
+        assert len(result.restored) == 1
+        assert len(result.failed) == 0
+
+    def test_write_with_retry_retries_on_failure(self, mocker: MockerFixture):
+        """_write_with_retry retries and succeeds on second attempt."""
+        servo_mock = mocker.MagicMock(spec=Servo)
+        servo_mock.write.side_effect = [RuntimeError("first fail"), None]
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
+        baseline = DriveRegistersState(OrderedDict([(reg, 42.0)]))
+        session = DriveRegistersSession(
+            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
+        )
+
+        result = RestoreResult()
+        session._write_with_retry(reg, 42.0, result, max_attempts=2)
+
+        assert servo_mock.write.call_count == 2
+        assert len(result.restored) == 1
+        assert len(result.failed) == 0
+
+    def test_write_with_retry_fails_after_max_attempts(self, mocker: MockerFixture):
+        """_write_with_retry records failure when all attempts fail."""
+        servo_mock = mocker.MagicMock(spec=Servo)
+        servo_mock.write.side_effect = RuntimeError("persistent error")
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
+        baseline = DriveRegistersState(OrderedDict([(reg, 42.0)]))
+        session = DriveRegistersSession(
+            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
+        )
+
+        result = RestoreResult()
+        session._write_with_retry(reg, 42.0, result, max_attempts=2)
+
+        assert servo_mock.write.call_count == 2
+        assert len(result.restored) == 0
+        assert len(result.failed) == 1
+        failed_reg, failed_value, failed_exc = result.failed[0]
+        assert failed_reg is reg
+        assert failed_value == 42.0
+        assert isinstance(failed_exc, RuntimeError)
+
+    def test_restore_skips_when_no_baseline_value(self, mocker: MockerFixture):
+        """restore() skips registers with no baseline entry."""
+        servo_mock = mocker.MagicMock(spec=Servo)
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="ORPHAN")
+        baseline = DriveRegistersState(OrderedDict())
+        session = DriveRegistersSession(
+            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
+        )
+        session.changes[reg] = 99.0
+
+        result = session.restore()
+
+        servo_mock.write.assert_not_called()
+        assert len(result.skipped) == 1
+        assert result.skipped[0] == (reg, "No baseline value")
+
+    def test_restore_skips_unchanged_values(self, mocker: MockerFixture):
+        """restore() silently skips registers whose value matches baseline."""
+        servo_mock = mocker.MagicMock(spec=Servo)
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="UNCHANGED")
+        baseline = DriveRegistersState(OrderedDict([(reg, 42.0)]))
+        session = DriveRegistersSession(
+            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
+        )
+        session.changes[reg] = 42.0
+
+        result = session.restore()
+
+        servo_mock.write.assert_not_called()
+        assert len(result.restored) == 0
+        assert len(result.skipped) == 0
+
+    def test_force_restore_no_differences(self, mocker: MockerFixture):
+        """force_restore() returns empty result when hardware matches baseline."""
+        servo_mock = mocker.MagicMock(spec=Servo)
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="SAME")
+        baseline = DriveRegistersState(OrderedDict([(reg, 42.0)]))
+        session = DriveRegistersSession(
+            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
+        )
+
+        current_state = DriveRegistersState(OrderedDict([(reg, 42.0)]))
+        mocker.patch.object(
+            DriveRegistersState, "from_hardware", autospec=True, return_value=current_state
+        )
+        result = session.force_restore()
+
+        servo_mock.write.assert_not_called()
+        assert result.all_succeeded
+        assert len(result.restored) == 0
+        assert len(result.skipped) == 0
+        assert len(result.failed) == 0

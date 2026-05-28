@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from collections.abc import Callable, Container
-from typing import TYPE_CHECKING, Optional, Union, cast
+from typing import TYPE_CHECKING, NamedTuple, Optional, Union, cast
 
 from ingenialogger import get_logger
 
@@ -18,6 +18,28 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
+class RestoredEntry(NamedTuple):
+    """A register that was successfully restored to its baseline value."""
+
+    register: Register
+    value: REG_VALUE
+
+
+class FailedEntry(NamedTuple):
+    """A register that failed to restore after all retry attempts."""
+
+    register: Register
+    value: REG_VALUE
+    error: Exception
+
+
+class SkippedEntry(NamedTuple):
+    """A register that was skipped during restoration."""
+
+    register: Register
+    reason: str
+
+
 class RestoreResult:
     """Structured result from a register restoration operation.
 
@@ -27,9 +49,9 @@ class RestoreResult:
     """
 
     def __init__(self) -> None:
-        self.restored: list[tuple[Register, REG_VALUE]] = []
-        self.failed: list[tuple[Register, REG_VALUE, Exception]] = []
-        self.skipped: list[tuple[Register, str]] = []
+        self.restored: list[RestoredEntry] = []
+        self.failed: list[FailedEntry] = []
+        self.skipped: list[SkippedEntry] = []
 
     @property
     def all_succeeded(self) -> bool:
@@ -267,7 +289,7 @@ class DriveRegistersSession:
         for attempt in range(1, max_attempts + 1):
             try:
                 self.servo.write(register, value)
-                result.restored.append((register, value))
+                result.restored.append(RestoredEntry(register, value))
                 return
             except Exception as e:  # noqa: PERF203
                 if attempt < max_attempts:
@@ -277,7 +299,7 @@ class DriveRegistersSession:
                         f"attempt ({attempt}/{max_attempts})"
                     )
                 else:
-                    result.failed.append((register, value, e))
+                    result.failed.append(FailedEntry(register, value, e))
 
     def restore(self, write_max_attempts: int = 2) -> RestoreResult:
         """Restore tracked changes back to their baseline values.
@@ -297,7 +319,7 @@ class DriveRegistersSession:
         for register, current_value in reversed(self.changes.items()):
             baseline_value = self.baseline._values.get(register)
             if baseline_value is None:
-                result.skipped.append((register, "No baseline value"))
+                result.skipped.append(SkippedEntry(register, "No baseline value"))
                 continue
 
             if current_value == baseline_value:
@@ -336,13 +358,6 @@ class DriveRegistersSession:
 
         result = RestoreResult()
         for register, (baseline_value, _current_value) in differences.items():
-            uid = cast("str", register.identifier)
-
-            # PDO mapping registers are handled via complete access
-            if _PDO_RPDO_MAP_REGISTER_UID in uid or _PDO_TPDO_MAP_REGISTER_UID in uid:
-                result.skipped.append((register, "PDO mapping register"))
-                continue
-
             logger.debug(
                 f"Force restoring {register.identifier!s} to {baseline_value!r} "
                 f"on axis={register.subnode}"
@@ -410,6 +425,12 @@ class DriveContextManager:
             "ETG_ERROR_FIELD",
             "CIA301_COMMS_ERROR_FIELD",
         ])
+
+        # PDO mapping registers are restored via complete access, not individually
+        for register in servo.dictionary.all_registers():
+            uid = cast("str", register.identifier)
+            if _PDO_RPDO_MAP_REGISTER_UID in uid or _PDO_TPDO_MAP_REGISTER_UID in uid:
+                self._do_not_restore_registers.add(uid)
 
         # Set the objects that should be read using complete access
         self._complete_access_objects: set[str] = (
