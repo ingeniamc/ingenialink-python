@@ -125,6 +125,24 @@ class Register(ABC):
         self._monitoring = monitoring
         self.__config_range(reg_range)
 
+    def __eq__(self, other: object) -> bool:
+        """Compare registers by subnode and identifier.
+
+        Returns:
+            True if both subnode and identifier match.
+        """
+        if not isinstance(other, Register):
+            return NotImplemented
+        return self._subnode == other._subnode and self._identifier == other._identifier
+
+    def __hash__(self) -> int:
+        """Hash by subnode and identifier.
+
+        Returns:
+            Hash based on (subnode, identifier) tuple.
+        """
+        return hash((self._subnode, self._identifier))
+
     def __type_errors(self, dtype: RegDtype, access: RegAccess, phy: RegPhy) -> None:
         if not isinstance(dtype, RegDtype):
             raise exc.ILValueError("Invalid data type")
