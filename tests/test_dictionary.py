@@ -7,6 +7,7 @@ import pytest
 import virtual_drive.resources
 
 import tests.resources.canopen
+import tests.resources.ethercat
 from ingenialink.canopen.dictionary import CanopenDictionaryV2, CanopenDictionaryV3
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.dictionary import (
@@ -700,3 +701,48 @@ def test_get_table():
     # Specify the same uid, providing the axis, tables should match
     table_2 = dictionary.get_table(uid=uid, axis=0)
     assert table_1 == table_2
+
+
+class TestFindRegisters:
+    def _ecat_axis_dict(self):
+        return DictionaryFactory.create_dictionary(
+            tests.resources.ethercat.TEST_DICT_ETHERCAT_AXIS, Interface.ECAT
+        )
+
+    def test_exact_uid(self):
+        dictionary = self._ecat_axis_dict()
+        regs = list(dictionary.find_registers("DRV_DIAG_ERROR_LAST_COM"))
+        assert len(regs) == 1
+        assert regs[0].identifier == "DRV_DIAG_ERROR_LAST_COM"
+
+    def test_glob_pattern(self):
+        dictionary = self._ecat_axis_dict()
+        regs = list(dictionary.find_registers("ETG_COMMS_RPDO_MAP1_*"))
+        assert len(regs) > 0
+        for reg in regs:
+            assert reg.identifier.startswith("ETG_COMMS_RPDO_MAP1_")
+        # ASSIGN registers must NOT match
+        assert all("ASSIGN" not in r.identifier for r in regs)
+
+    def test_multiple_patterns(self):
+        dictionary = self._ecat_axis_dict()
+        regs = list(dictionary.find_registers("DRV_DIAG_ERROR_LAST_COM", "ETG_COMMS_RPDO_ASSIGN_*"))
+        identifiers = {r.identifier for r in regs}
+        assert "DRV_DIAG_ERROR_LAST_COM" in identifiers
+        assert any(uid.startswith("ETG_COMMS_RPDO_ASSIGN_") for uid in identifiers)
+
+    def test_no_match(self):
+        dictionary = self._ecat_axis_dict()
+        regs = list(dictionary.find_registers("NONEXISTENT_REGISTER"))
+        assert regs == []
+
+    def test_no_patterns(self):
+        dictionary = self._ecat_axis_dict()
+        regs = list(dictionary.find_registers())
+        assert regs == []
+
+    def test_returns_iterator(self):
+        dictionary = self._ecat_axis_dict()
+        result = dictionary.find_registers("DRV_DIAG_ERROR_LAST_COM")
+        # Should be an iterator/generator, not a list or set
+        assert hasattr(result, "__next__")

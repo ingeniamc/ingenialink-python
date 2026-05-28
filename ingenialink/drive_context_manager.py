@@ -95,7 +95,7 @@ class DriveRegistersState:
         cls,
         servo: "Servo",
         axis: Optional[int] = None,
-        ignore_uids: Container[str] = frozenset(),
+        ignore_registers: Container[Register] = frozenset(),
         read_max_attempts: int = 2,
     ) -> "DriveRegistersState":
         """Read current register values from a servo and return an immutable snapshot.
@@ -104,7 +104,7 @@ class DriveRegistersState:
             servo: The servo to read registers from.
             axis: If given, only read registers for this axis (subnode).
                 When ``None``, all registers from every subnode are read.
-            ignore_uids: Register UIDs to skip.
+            ignore_registers: Register instances to skip.
             read_max_attempts: Number of read attempts per register before
                 giving up and skipping it.
 
@@ -120,7 +120,7 @@ class DriveRegistersState:
         )
 
         for register in registers_iter:
-            if register.identifier in ignore_uids:
+            if register in ignore_registers:
                 continue
 
             if register.access in [RegAccess.WO, RegAccess.RO]:
@@ -223,7 +223,7 @@ class DriveRegistersSession:
         self,
         servo: Servo,
         baseline: DriveRegistersState,
-        do_not_restore_registers: set[str],
+        do_not_restore_registers: set[Register],
         axis: Optional[int] = None,
     ) -> None:
         self.servo = servo
@@ -249,10 +249,9 @@ class DriveRegistersSession:
         value: REG_VALUE,
     ) -> None:
         """Record a register write if it differs from the baseline."""
-        uid: str = cast("str", register.identifier)
         if register.access in [RegAccess.WO, RegAccess.RO]:
             return
-        if uid in self._do_not_restore_registers:
+        if register in self._do_not_restore_registers:
             return
         if register not in self.baseline._values:
             return
@@ -265,7 +264,10 @@ class DriveRegistersSession:
         if current_value == previous_value:
             return
         self.changes[register] = current_value
-        logger.debug(f"{id(self)}: {uid=} changed from {previous_value!r} to {current_value!r}")
+        logger.debug(
+            f"{id(self)}: uid={register.identifier!r} changed"
+            f" from {previous_value!r} to {current_value!r}"
+        )
 
     def state(self) -> DriveRegistersState:
         """Return the current expected state: baseline overlaid with tracked changes.
@@ -352,7 +354,7 @@ class DriveRegistersSession:
         current = DriveRegistersState.from_hardware(
             self.servo,
             axis=self._axis,
-            ignore_uids=self._do_not_restore_registers,
+            ignore_registers=self._do_not_restore_registers,
         )
         differences = self.baseline.diff(current)
 
@@ -410,27 +412,26 @@ class DriveContextManager:
         self._drive = servo
         self._axis = axis
 
-        self._do_not_restore_registers: set[str] = (
-            set(do_not_restore_registers) if isinstance(do_not_restore_registers, list) else set()
+        self._do_not_restore_registers: set[Register] = set(
+            servo.dictionary.find_registers(
+                # User-provided UIDs
+                *(do_not_restore_registers or []),
+                # Default registers that should never be restored
+                servo.STORE_COCO_ALL,
+                servo.STORE_MOCO_ALL_REGISTERS,
+                servo.RESTORE_COCO_ALL,
+                servo.RESTORE_MOCO_ALL_REGISTERS,
+                # Mac address should not be restored, in certain FW versions the reading of MAC
+                # address provides different values each time
+                "COMMS_ETH_MAC",
+                # Total number of error register should not be restored, only a 0 can be written
+                "ETG_ERROR_FIELD",
+                "CIA301_COMMS_ERROR_FIELD",
+                # PDO mapping registers are restored via complete access, not individually.
+                "ETG_COMMS_RPDO_MAP*",
+                "ETG_COMMS_TPDO_MAP*",
+            )
         )
-        self._do_not_restore_registers.update([
-            servo.STORE_COCO_ALL,
-            servo.STORE_MOCO_ALL_REGISTERS,
-            servo.RESTORE_COCO_ALL,
-            servo.RESTORE_MOCO_ALL_REGISTERS,
-            # Mac address should not be restored, in certain FW versions the reading of MAC
-            # address provides different values each time
-            "COMMS_ETH_MAC",
-            # Total number of error register should not be restored, only a 0 can be written
-            "ETG_ERROR_FIELD",
-            "CIA301_COMMS_ERROR_FIELD",
-        ])
-
-        # PDO mapping registers are restored via complete access, not individually
-        for register in servo.dictionary.all_registers():
-            uid = cast("str", register.identifier)
-            if _PDO_RPDO_MAP_REGISTER_UID in uid or _PDO_TPDO_MAP_REGISTER_UID in uid:
-                self._do_not_restore_registers.add(uid)
 
         # Set the objects that should be read using complete access
         self._complete_access_objects: set[str] = (
@@ -590,7 +591,7 @@ class DriveContextManager:
         """Subscribes to register update callbacks and saves the drive values."""
         if self._baseline is None:
             self._baseline = DriveRegistersState.from_hardware(
-                self.drive, axis=self._axis, ignore_uids=self._do_not_restore_registers
+                self.drive, axis=self._axis, ignore_registers=self._do_not_restore_registers
             )
         self._session = DriveRegistersSession(
             servo=self.drive,

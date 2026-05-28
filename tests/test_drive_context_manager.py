@@ -115,20 +115,24 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(
     net, _, _ = setup_manager
     servo = net.servos[0]
     context = DriveContextManager(servo)
-    assert len(context._do_not_restore_registers) == 7
 
-    # If not additional ignored registers are added,
-    # the default ones are the ones that are troublesome
-    # because they have a specific password, that is written but not read.
-    assert context._do_not_restore_registers == {
-        servo.STORE_COCO_ALL,
-        servo.STORE_MOCO_ALL_REGISTERS,
-        servo.RESTORE_COCO_ALL,
-        servo.RESTORE_MOCO_ALL_REGISTERS,
-        "COMMS_ETH_MAC",
-        "ETG_ERROR_FIELD",
-        "CIA301_COMMS_ERROR_FIELD",
-    }
+    expected = set(
+        servo.dictionary.find_registers(
+            servo.STORE_COCO_ALL,
+            servo.STORE_MOCO_ALL_REGISTERS,
+            servo.RESTORE_COCO_ALL,
+            servo.RESTORE_MOCO_ALL_REGISTERS,
+            "COMMS_ETH_MAC",
+            "ETG_ERROR_FIELD",
+            "CIA301_COMMS_ERROR_FIELD",
+            # EtherCAT dictionaries also exclude PDO MAP registers (restored via
+            # complete access).  ASSIGN registers are NOT excluded.
+            "ETG_COMMS_RPDO_MAP*",
+            "ETG_COMMS_TPDO_MAP*",
+        )
+    )
+
+    assert context._do_not_restore_registers == expected
 
 
 @pytest.mark.ethernet
@@ -141,9 +145,23 @@ def test_drive_context_manager_with_do_not_restore_registers(
     net, _, _ = setup_manager
     servo = net.servos[0]
     context = DriveContextManager(servo, do_not_restore_registers=[_USER_OVER_VOLTAGE_UID])
-    assert (
-        len(context._do_not_restore_registers) == 8
-    )  # COCO-MOCO store/restore registers + _USER_OVER_VOLTAGE_UID
+
+    expected = set(
+        servo.dictionary.find_registers(
+            servo.STORE_COCO_ALL,
+            servo.STORE_MOCO_ALL_REGISTERS,
+            servo.RESTORE_COCO_ALL,
+            servo.RESTORE_MOCO_ALL_REGISTERS,
+            "COMMS_ETH_MAC",
+            "ETG_ERROR_FIELD",
+            "CIA301_COMMS_ERROR_FIELD",
+            _USER_OVER_VOLTAGE_UID,
+            "ETG_COMMS_RPDO_MAP*",
+            "ETG_COMMS_TPDO_MAP*",
+        )
+    )
+
+    assert context._do_not_restore_registers == expected
 
     new_reg_value = 100.0
     previous_reg_value = _read_user_over_voltage_uid(servo)
