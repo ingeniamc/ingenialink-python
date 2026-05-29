@@ -24,7 +24,7 @@ from .dictionary import Dictionary, DictionaryV2, DictionaryV3
 from .drive_context_manager import (
     DriveContextManager,
     DriveRegistersSession,
-    DriveRegistersState,
+    DriveRegistersValue,
     FailedEntry,
     RestoredEntry,
     RestoreResult,
@@ -99,7 +99,7 @@ __all__ = [
     "Poller",
     "DriveContextManager",
     "DriveRegistersSession",
-    "DriveRegistersState",
+    "DriveRegistersValue",
     "FailedEntry",
     "RestoredEntry",
     "RestoreResult",

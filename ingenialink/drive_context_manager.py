@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from collections.abc import Callable, Container
+from collections.abc import Callable, Container, Iterable, Iterator
 from typing import TYPE_CHECKING, NamedTuple, Optional, Union
 
 from ingenialogger import get_logger
@@ -79,7 +79,7 @@ _MON_DATA_OBJECT_UID = "MON_DATA"
 _DIST_DATA_OBJECT_UID = "DIST_DATA"
 
 
-class DriveRegistersState:
+class DriveRegistersValue:
     """Class to represent an immutable state of the drive registers."""
 
     def __init__(self, values: OrderedDict[Register, REG_VALUE]) -> None:
@@ -97,7 +97,7 @@ class DriveRegistersState:
         axis: Optional[int] = None,
         ignore_registers: Container[Register] = frozenset(),
         read_max_attempts: int = 2,
-    ) -> "DriveRegistersState":
+    ) -> "DriveRegistersValue":
         """Read current register values from a servo and return an immutable snapshot.
 
         Args:
@@ -109,7 +109,7 @@ class DriveRegistersState:
                 giving up and skipping it.
 
         Returns:
-            A new ``DriveRegistersState`` containing the successfully read values.
+            A new ``DriveRegistersValue`` containing the successfully read values.
         """
         register_values: OrderedDict[Register, REG_VALUE] = OrderedDict()
 
@@ -119,10 +119,7 @@ class DriveRegistersState:
             else servo.dictionary.registers(axis).values()
         )
 
-        for register in registers_iter:
-            if register in ignore_registers:
-                continue
-
+        for register in cls.filter_registers(registers_iter, ignore_registers, axis):
             if register.access in [RegAccess.WO, RegAccess.RO]:
                 continue
 
@@ -146,20 +143,8 @@ class DriveRegistersState:
 
         return cls(register_values)
 
-    def to_tuple_dict(self) -> OrderedDict[tuple[int, str], REG_VALUE]:
-        """Convert to an OrderedDict keyed by (subnode, uid) tuples.
-
-        Returns:
-            OrderedDict mapping (subnode, uid) to register value.
-        """
-        result: OrderedDict[tuple[int, str], REG_VALUE] = OrderedDict()
-        for reg, val in self._values.items():
-            assert reg.identifier is not None, f"Register {reg!r} has no identifier"
-            result[(reg.subnode, reg.identifier)] = val
-        return result
-
     def diff(
-        self, other: "DriveRegistersState"
+        self, other: "DriveRegistersValue"
     ) -> OrderedDict[Register, tuple[REG_VALUE, REG_VALUE]]:
         """Compare this state with another and return registers that differ.
 
@@ -181,19 +166,52 @@ class DriveRegistersState:
         return result
 
     @classmethod
-    def from_dict(cls, data: OrderedDict[Register, REG_VALUE]) -> "DriveRegistersState":
-        """Construct a state from an existing in-memory mapping.
+    def from_dict(
+        cls,
+        data: OrderedDict[Register, REG_VALUE],
+        ignore_registers: Container[Register] = frozenset(),
+        axis: Optional[int] = None,
+    ) -> "DriveRegistersValue":
+        """Construct a value snapshot from an existing in-memory mapping.
 
         This enables building a baseline without hardware I/O, for example
-        from MotionLab3's ``MLRegister._value`` cache.
+        from an application-level register cache.
 
         Args:
             data: Ordered mapping from ``Register`` objects to their values.
+            ignore_registers: Registers to exclude from the snapshot.
+            axis: If given, only include registers with this subnode.
+                When ``None``, all subnodes are included.
 
         Returns:
-            A new ``DriveRegistersState`` wrapping the provided data.
+            A new ``DriveRegistersValue`` wrapping the filtered data.
         """
-        return cls(data)
+        return cls(
+            OrderedDict(
+                (reg, data[reg]) for reg in cls.filter_registers(data, ignore_registers, axis)
+            )
+        )
+
+    @staticmethod
+    def filter_registers(
+        registers: Iterable[Register],
+        ignore_registers: Container[Register] = frozenset(),
+        axis: Optional[int] = None,
+    ) -> Iterator[Register]:
+        """Yield registers that pass the axis and exclusion filters.
+
+        Args:
+            registers: The register iterable to filter.
+            ignore_registers: Registers to exclude.
+            axis: If given, only yield registers with this subnode.
+                When ``None``, all subnodes pass.
+
+        Yields:
+            Registers that are not in the exclusion set and match the axis.
+        """
+        for reg in registers:
+            if reg not in ignore_registers and (axis is None or reg.subnode == axis):
+                yield reg
 
     def get(self, register: Register) -> Optional[REG_VALUE]:
         """Look up a single register value from the snapshot.
@@ -224,31 +242,19 @@ class DriveRegistersSession:
     def __init__(
         self,
         servo: Servo,
-        baseline: DriveRegistersState,
-        do_not_restore_registers: set[Register],
+        baseline: DriveRegistersValue,
+        do_not_restore_registers: Container[Register] = frozenset(),
         axis: Optional[int] = None,
     ) -> None:
         self.servo = servo
         self.baseline = baseline
         self._do_not_restore_registers = do_not_restore_registers
         self._axis = axis
-        self.changes: OrderedDict[Register, REG_VALUE] = OrderedDict()
-
-    def to_tuple_dict(self) -> OrderedDict[tuple[int, str], REG_VALUE]:
-        """Convert changes to an OrderedDict keyed by ``(subnode, uid)`` tuples.
-
-        Returns:
-            OrderedDict mapping ``(subnode, uid)`` to the changed register value.
-        """
-        result: OrderedDict[tuple[int, str], REG_VALUE] = OrderedDict()
-        for reg, val in self.changes.items():
-            assert reg.identifier is not None, f"Register {reg!r} has no identifier"
-            result[(reg.subnode, reg.identifier)] = val
-        return result
+        self._changes: OrderedDict[Register, REG_VALUE] = OrderedDict()
 
     def _register_update_callback(
         self,
-        servo: Servo,  # noqa: ARG002
+        servo: Servo,  # noqa: ARG002 — required by callback signature, unused here
         register: Register,
         value: REG_VALUE,
     ) -> None:
@@ -260,29 +266,27 @@ class DriveRegistersSession:
         if register not in self.baseline._values:
             return
 
-        if register in self.changes:
-            previous_value = self.changes[register]
+        if register in self._changes:
+            previous_value = self._changes[register]
         else:
             previous_value = self.baseline._values[register]
-        current_value = value if value is not None else previous_value
-        if current_value == previous_value:
+        if value == previous_value:
             return
-        self.changes[register] = current_value
+        self._changes[register] = value
         logger.debug(
-            f"{id(self)}: uid={register.identifier!r} changed"
-            f" from {previous_value!r} to {current_value!r}"
+            f"{id(self)}: uid={register.identifier!r} changed from {previous_value!r} to {value!r}"
         )
 
-    def state(self) -> DriveRegistersState:
-        """Return the current expected state: baseline overlaid with tracked changes.
+    def current_value(self) -> DriveRegistersValue:
+        """Return the current register values: baseline overlaid with tracked changes.
 
         Returns:
-            A new ``DriveRegistersState`` with baseline values updated by any
+            A new ``DriveRegistersValue`` with baseline values updated by any
             changes recorded so far.
         """
         merged: OrderedDict[Register, REG_VALUE] = OrderedDict(self.baseline._values)
-        merged.update(self.changes)
-        return DriveRegistersState(merged)
+        merged.update(self._changes)
+        return DriveRegistersValue(merged)
 
     def _write_with_retry(
         self,
@@ -322,7 +326,7 @@ class DriveRegistersSession:
         """
         result = RestoreResult()
 
-        for register, current_value in reversed(self.changes.items()):
+        for register, current_value in reversed(self._changes.items()):
             baseline_value = self.baseline._values.get(register)
             if baseline_value is None:
                 result.skipped.append(SkippedEntry(register, "No baseline value"))
@@ -342,7 +346,7 @@ class DriveRegistersSession:
     def force_restore(self, write_max_attempts: int = 2) -> RestoreResult:
         """Force-restore all registers to baseline by re-reading hardware.
 
-        Re-reads all registers via ``DriveRegistersState.from_hardware()``,
+        Re-reads all registers via ``DriveRegistersValue.from_hardware()``,
         diffs against the baseline, and restores any that differ.  The tracked
         changes are cleared before reading so subsequent tracking starts fresh.
 
@@ -353,9 +357,9 @@ class DriveRegistersSession:
         Returns:
             A ``RestoreResult`` summarising successes, failures, and skips.
         """
-        self.changes.clear()
+        self._changes.clear()
 
-        current = DriveRegistersState.from_hardware(
+        current = DriveRegistersValue.from_hardware(
             self.servo,
             axis=self._axis,
             ignore_registers=self._do_not_restore_registers,
@@ -384,9 +388,9 @@ class DriveRegistersSession:
         """Clear all tracked changes.
 
         After calling this, the session behaves as if no register writes
-        have occurred since the baseline was established.
+        have occurred since the baseline was established. This clears ``self._changes``.
         """
-        self.changes.clear()
+        self._changes.clear()
 
 
 class DriveContextManager:
@@ -401,7 +405,7 @@ class DriveContextManager:
         axis: Optional[int] = None,
         do_not_restore_registers: Optional[list[str]] = None,
         complete_access_objects: Optional[list[str]] = None,
-        baseline: Optional[DriveRegistersState] = None,
+        baseline: Optional[DriveRegistersValue] = None,
         track_objects: bool = True,
     ) -> None:
         """Initializes the registers that shouldn't be stored.
@@ -454,7 +458,7 @@ class DriveContextManager:
             set(complete_access_objects) if isinstance(complete_access_objects, list) else set()
         )
 
-        self._baseline: Optional[DriveRegistersState] = baseline
+        self._baseline: Optional[DriveRegistersValue] = baseline
 
         self._track_objects = track_objects
 
@@ -476,17 +480,10 @@ class DriveContextManager:
             self._session.servo = servo
 
     @property
-    def _registers_changed(self) -> OrderedDict[tuple[int, str], REG_VALUE]:
-        """Alias for backward compatibility — delegates to the session."""
-        if self._session is None:
-            return OrderedDict()
-        return self._session.to_tuple_dict()
-
-    @property
     def _register_update_callback(
         self,
     ) -> Callable[[Servo, Register, REG_VALUE], None]:
-        """Alias for backward compatibility — delegates to the session callback.
+        """Alias for backward compatibility â€” delegates to the session callback.
 
         Raises:
             RuntimeError: If no active session exists (``__enter__`` not called).
@@ -533,7 +530,10 @@ class DriveContextManager:
         # restore the register individually instead
         if not obj.all_registers_writable:
             if self._session is None:
-                return
+                raise RuntimeError(
+                    "DriveContextManager has no active session. "
+                    "Call __enter__() before accessing _complete_access_callback."
+                )
             self._session._register_update_callback(servo=servo, register=register, value=value)
             return
 
@@ -608,7 +608,7 @@ class DriveContextManager:
     def __enter__(self) -> None:
         """Subscribes to register update callbacks and saves the drive values."""
         if self._baseline is None:
-            self._baseline = DriveRegistersState.from_hardware(
+            self._baseline = DriveRegistersValue.from_hardware(
                 self.drive, axis=self._axis, ignore_registers=self._do_not_restore_registers
             )
         self._session = DriveRegistersSession(
@@ -628,7 +628,7 @@ class DriveContextManager:
 
         This method re-reads all registers that were originally stored in __enter__,
         compares them with the original values, and restores any that have changed.
-        It ignores the current state of _registers_changed and _objects_changed,
+        It ignores the current state of the session's tracked changes and _objects_changed,
         effectively performing a complete refresh and restoration.
 
         This is useful when changes have been made outside the context manager's

@@ -710,12 +710,14 @@ class TestFindRegisters:
         )
 
     def test_exact_uid(self):
+        """Exact UID matching returns the specific register."""
         dictionary = self._ecat_axis_dict()
         regs = list(dictionary.find_registers("DRV_DIAG_ERROR_LAST_COM"))
         assert len(regs) == 1
         assert regs[0].identifier == "DRV_DIAG_ERROR_LAST_COM"
 
     def test_glob_pattern(self):
+        """Glob patterns match correctly (RPDO_MAP1_* but not ASSIGN)."""
         dictionary = self._ecat_axis_dict()
         regs = list(dictionary.find_registers("ETG_COMMS_RPDO_MAP1_*"))
         assert len(regs) > 0
@@ -725,6 +727,7 @@ class TestFindRegisters:
         assert all("ASSIGN" not in r.identifier for r in regs)
 
     def test_multiple_patterns(self):
+        """Multiple patterns can be passed and each matches independently."""
         dictionary = self._ecat_axis_dict()
         regs = list(dictionary.find_registers("DRV_DIAG_ERROR_LAST_COM", "ETG_COMMS_RPDO_ASSIGN_*"))
         identifiers = {r.identifier for r in regs}
@@ -732,16 +735,19 @@ class TestFindRegisters:
         assert any(uid.startswith("ETG_COMMS_RPDO_ASSIGN_") for uid in identifiers)
 
     def test_no_match(self):
+        """Non-existent register name returns no results."""
         dictionary = self._ecat_axis_dict()
         regs = list(dictionary.find_registers("NONEXISTENT_REGISTER"))
         assert regs == []
 
     def test_no_patterns(self):
+        """Calling with no patterns returns nothing."""
         dictionary = self._ecat_axis_dict()
         regs = list(dictionary.find_registers())
         assert regs == []
 
     def test_returns_iterator(self):
+        """Return type is a lazy iterator/generator."""
         dictionary = self._ecat_axis_dict()
         result = dictionary.find_registers("DRV_DIAG_ERROR_LAST_COM")
         # Should be an iterator/generator, not a list or set

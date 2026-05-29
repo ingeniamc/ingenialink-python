@@ -1,5 +1,4 @@
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Union
 
 import pytest
 from pytest_mock import MockerFixture
@@ -7,7 +6,7 @@ from pytest_mock import MockerFixture
 from ingenialink.drive_context_manager import (
     DriveContextManager,
     DriveRegistersSession,
-    DriveRegistersState,
+    DriveRegistersValue,
     FailedEntry,
     RestoredEntry,
     RestoreResult,
@@ -17,13 +16,6 @@ from ingenialink.enums.register import RegAccess, RegDtype
 from ingenialink.pdo import RPDOMap, TPDOMap
 from ingenialink.register import Register
 from ingenialink.servo import Servo
-
-if TYPE_CHECKING:
-    from summit_testing_framework.setups.descriptors import DriveEcatSetup
-    from summit_testing_framework.setups.environment_control import DriveEnvironmentController
-
-    from ingenialink.ethercat.network import EthercatNetwork
-    from ingenialink.network import Network
 
 _USER_OVER_VOLTAGE_UID = "DRV_PROT_USER_OVER_VOLT"
 _USER_UNDER_VOLTAGE_UID = "DRV_PROT_USER_UNDER_VOLT"
@@ -41,11 +33,7 @@ def _read_user_under_voltage_uid(servo):
 @pytest.mark.ethercat
 @pytest.mark.canopen
 @pytest.mark.virtual
-def test_drive_context_manager(
-    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
-):
-    net, _, _ = setup_manager
-    servo = net.servos[0]
+def test_drive_context_manager(servo: "Servo"):
     context = DriveContextManager(servo)
 
     new_reg_value = 100.0
@@ -56,15 +44,17 @@ def test_drive_context_manager(
     if previous_reg_value == new_reg_value_2:
         new_reg_value_2 -= 1.0
 
+    over_volt_reg = servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1)
+
     with context:
         servo.write(_USER_OVER_VOLTAGE_UID, new_reg_value, subnode=1)
         assert _read_user_over_voltage_uid(servo) == new_reg_value
-        assert context._registers_changed == {(1, _USER_OVER_VOLTAGE_UID): new_reg_value}
+        assert context._session._changes[over_volt_reg] == new_reg_value
 
         # Change the register a second time, it should register the change
         servo.write(_USER_OVER_VOLTAGE_UID, new_reg_value_2, subnode=1)
         assert _read_user_over_voltage_uid(servo) == new_reg_value_2
-        assert context._registers_changed == {(1, _USER_OVER_VOLTAGE_UID): new_reg_value_2}
+        assert context._session._changes[over_volt_reg] == new_reg_value_2
 
     assert _read_user_over_voltage_uid(servo) == previous_reg_value
 
@@ -73,11 +63,7 @@ def test_drive_context_manager(
 @pytest.mark.ethercat
 @pytest.mark.canopen
 @pytest.mark.virtual
-def test_drive_context_manager_nested_contexts(
-    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
-):
-    net, _, _ = setup_manager
-    servo = net.servos[0]
+def test_drive_context_manager_nested_contexts(servo: "Servo"):
     context = DriveContextManager(servo)
 
     new_over_volt_value = 100.0
@@ -109,11 +95,7 @@ def test_drive_context_manager_nested_contexts(
 @pytest.mark.ethercat
 @pytest.mark.canopen
 @pytest.mark.virtual
-def test_drive_context_manager_skips_default_do_not_restore_registers(
-    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
-):
-    net, _, _ = setup_manager
-    servo = net.servos[0]
+def test_drive_context_manager_skips_default_do_not_restore_registers(servo: "Servo"):
     context = DriveContextManager(servo)
 
     expected = set(
@@ -139,11 +121,7 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(
 @pytest.mark.ethercat
 @pytest.mark.canopen
 @pytest.mark.virtual
-def test_drive_context_manager_with_do_not_restore_registers(
-    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
-):
-    net, _, _ = setup_manager
-    servo = net.servos[0]
+def test_drive_context_manager_with_do_not_restore_registers(servo: "Servo"):
     context = DriveContextManager(servo, do_not_restore_registers=[_USER_OVER_VOLTAGE_UID])
 
     expected = set(
@@ -177,11 +155,8 @@ def test_drive_context_manager_with_do_not_restore_registers(
 
 @pytest.mark.ethercat
 def test_drive_context_manager_restores_complete_access_registers(
-    setup_manager: tuple["EthercatNetwork", str, "DriveEnvironmentController"],
-    setup_descriptor: "DriveEcatSetup",
+    servo: "Servo", setup_descriptor
 ) -> None:
-    net, _, _ = setup_manager
-    servo = net.servos[0]
     context = DriveContextManager(servo)
 
     servo.reset_rpdo_mapping()
@@ -199,14 +174,17 @@ def test_drive_context_manager_restores_complete_access_registers(
         register = servo.dictionary.get_register(rpdo_register)
         rpdo_map.add_registers(register)
 
+    rpdo_assign_total_reg = servo.dictionary.get_register("ETG_COMMS_RPDO_ASSIGN_TOTAL", axis=0)
+    tpdo_assign_total_reg = servo.dictionary.get_register("ETG_COMMS_TPDO_ASSIGN_TOTAL", axis=0)
+
     with context:
-        assert context._registers_changed == {}
+        assert context._session.changes == {}
         assert context._objects_changed == {}
         servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
         servo.map_pdos(slave_index=setup_descriptor.slave)
 
-        assert (0, "ETG_COMMS_RPDO_ASSIGN_TOTAL") in context._registers_changed
-        assert (0, "ETG_COMMS_TPDO_ASSIGN_TOTAL") in context._registers_changed
+        assert rpdo_assign_total_reg in context._session.changes
+        assert tpdo_assign_total_reg in context._session.changes
         assert len(context._objects_changed) == 4
         objects_uids = [obj.uid for obj in context._objects_changed]
         assert "ETG_COMMS_RPDO_ASSIGN" in objects_uids
@@ -219,12 +197,8 @@ def test_drive_context_manager_restores_complete_access_registers(
 @pytest.mark.ethercat
 @pytest.mark.canopen
 @pytest.mark.virtual
-def test_force_restore_with_external_changes(
-    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
-) -> None:
+def test_force_restore_with_external_changes(servo: "Servo") -> None:
     """Test that force_restore detects and restores changes made outside the context manager."""
-    net, _, _ = setup_manager
-    servo = net.servos[0]
     context = DriveContextManager(servo)
 
     new_over_volt_value = 100.0
@@ -241,14 +215,16 @@ def test_force_restore_with_external_changes(
         # Make a tracked change
         servo.write(_USER_OVER_VOLTAGE_UID, new_over_volt_value, subnode=1)
         assert _read_user_over_voltage_uid(servo) == new_over_volt_value
-        assert (1, _USER_OVER_VOLTAGE_UID) in context._registers_changed
+        over_volt_reg = servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1)
+        assert over_volt_reg in context._session.changes
 
         # Simulate an external change (bypass the callback by directly modifying the drive)
         # In reality, this would be done by another process/connection
         servo.write(_USER_UNDER_VOLTAGE_UID, new_under_volt_value, subnode=1)
 
         # Clear the tracking to simulate that this change wasn't tracked
-        context._registers_changed.pop((1, _USER_UNDER_VOLTAGE_UID), None)
+        under_volt_reg = servo.dictionary.get_register(_USER_UNDER_VOLTAGE_UID, axis=1)
+        context._session.changes.pop(under_volt_reg, None)
 
         # Verify the external change is present
         assert _read_user_under_voltage_uid(servo) == new_under_volt_value
@@ -261,7 +237,7 @@ def test_force_restore_with_external_changes(
         assert _read_user_under_voltage_uid(servo) == previous_under_volt_value
 
         # Tracking should be cleared
-        assert context._registers_changed == {}
+        assert context._session.changes == {}
         assert context._objects_changed == {}
 
 
@@ -269,12 +245,8 @@ def test_force_restore_with_external_changes(
 @pytest.mark.ethercat
 @pytest.mark.canopen
 @pytest.mark.virtual
-def test_force_restore_clears_tracking(
-    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
-) -> None:
+def test_force_restore_clears_tracking(servo: "Servo") -> None:
     """Test that force_restore clears the internal tracking dictionaries."""
-    net, _, _ = setup_manager
-    servo = net.servos[0]
     context = DriveContextManager(servo)
 
     new_reg_value = 100.0
@@ -282,16 +254,18 @@ def test_force_restore_clears_tracking(
     if previous_reg_value == new_reg_value:
         new_reg_value -= 1.0
 
+    over_volt_reg = servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1)
+
     with context:
         # Make changes
         servo.write(_USER_OVER_VOLTAGE_UID, new_reg_value, subnode=1)
-        assert (1, _USER_OVER_VOLTAGE_UID) in context._registers_changed
+        assert over_volt_reg in context._session.changes
 
         # Force restore
         context.force_restore()
 
         # Verify tracking is cleared
-        assert context._registers_changed == {}
+        assert context._session.changes == {}
         assert context._objects_changed == {}
 
         # Verify register was restored
@@ -302,12 +276,8 @@ def test_force_restore_clears_tracking(
 @pytest.mark.ethercat
 @pytest.mark.canopen
 @pytest.mark.virtual
-def test_force_restore_only_restores_changed_values(
-    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
-) -> None:
+def test_force_restore_only_restores_changed_values(servo: "Servo") -> None:
     """Test that force_restore only restores registers that have actually changed."""
-    net, _, _ = setup_manager
-    servo = net.servos[0]
     context = DriveContextManager(servo)
 
     new_reg_value = 100.0
@@ -338,12 +308,8 @@ def test_force_restore_only_restores_changed_values(
 @pytest.mark.ethercat
 @pytest.mark.canopen
 @pytest.mark.virtual
-def test_force_restore_multiple_times(
-    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
-) -> None:
+def test_force_restore_multiple_times(servo: "Servo") -> None:
     """Test that force_restore can be called multiple times."""
-    net, _, _ = setup_manager
-    servo = net.servos[0]
     context = DriveContextManager(servo)
 
     new_reg_value = 100.0
@@ -373,13 +339,8 @@ def test_force_restore_multiple_times(
 
 
 @pytest.mark.ethercat
-def test_force_restore_with_complete_access_objects(
-    setup_manager: tuple["EthercatNetwork", str, "DriveEnvironmentController"],
-    setup_descriptor: "DriveEcatSetup",
-) -> None:
+def test_force_restore_with_complete_access_objects(servo: "Servo", setup_descriptor) -> None:
     """Test that force_restore works with complete access objects (PDO mappings)."""
-    net, _, _ = setup_manager
-    servo = net.servos[0]
     context = DriveContextManager(servo)
 
     # Store original PDO state
@@ -416,15 +377,11 @@ def test_force_restore_with_complete_access_objects(
 @pytest.mark.ethercat
 @pytest.mark.canopen
 @pytest.mark.virtual
-def test_drive_context_manager_with_baseline(
-    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
-) -> None:
+def test_drive_context_manager_with_baseline(servo: "Servo") -> None:
     """Test that passing a pre-built baseline skips the from_hardware() read in __enter__."""
-    net, _, _ = setup_manager
-    servo = net.servos[0]
 
     # Build a baseline snapshot from hardware
-    baseline = DriveRegistersState.from_hardware(servo)
+    baseline = DriveRegistersValue.from_hardware(servo)
 
     # Create context manager with the pre-built baseline
     context = DriveContextManager(servo, baseline=baseline)
@@ -441,7 +398,8 @@ def test_drive_context_manager_with_baseline(
         # Verify tracking and restoration still work
         servo.write(_USER_OVER_VOLTAGE_UID, new_reg_value, subnode=1)
         assert _read_user_over_voltage_uid(servo) == new_reg_value
-        assert (1, _USER_OVER_VOLTAGE_UID) in context._registers_changed
+        over_volt_reg = servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1)
+        assert over_volt_reg in context._session.changes
 
     # Registers should be restored
     assert _read_user_over_voltage_uid(servo) == previous_reg_value
@@ -451,14 +409,10 @@ def test_drive_context_manager_with_baseline(
 @pytest.mark.ethercat
 @pytest.mark.canopen
 @pytest.mark.virtual
-def test_drive_registers_state_diff(
-    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
-) -> None:
+def test_drive_registers_state_diff(servo: "Servo") -> None:
     """diff() returns registers whose values differ between two snapshots."""
-    net, _, _ = setup_manager
-    servo = net.servos[0]
 
-    state_before = DriveRegistersState.from_hardware(servo)
+    state_before = DriveRegistersValue.from_hardware(servo)
 
     new_reg_value = 100.0
     previous_reg_value = _read_user_over_voltage_uid(servo)
@@ -467,7 +421,7 @@ def test_drive_registers_state_diff(
 
     servo.write(_USER_OVER_VOLTAGE_UID, new_reg_value, subnode=1)
     try:
-        state_after = DriveRegistersState.from_hardware(servo)
+        state_after = DriveRegistersValue.from_hardware(servo)
 
         differences = state_before.diff(state_after)
         diff_uids = {reg.identifier for reg in differences}
@@ -486,35 +440,24 @@ def test_drive_registers_state_diff(
 @pytest.mark.ethercat
 @pytest.mark.canopen
 @pytest.mark.virtual
-def test_drive_registers_state_from_dict(
-    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
-) -> None:
+def test_drive_registers_state_from_dict(servo: "Servo") -> None:
     """from_dict() builds a state from an existing register-to-value mapping."""
-    net, _, _ = setup_manager
-    servo = net.servos[0]
 
     register = servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1)
     data: OrderedDict = OrderedDict([(register, 42.0)])
-    state = DriveRegistersState.from_dict(data)
+    state = DriveRegistersValue.from_dict(data)
 
     assert state.get(register) == 42.0
-    tuples = state.to_tuple_dict()
-    assert (1, _USER_OVER_VOLTAGE_UID) in tuples
-    assert tuples[(1, _USER_OVER_VOLTAGE_UID)] == 42.0
 
 
 @pytest.mark.ethernet
 @pytest.mark.ethercat
 @pytest.mark.canopen
 @pytest.mark.virtual
-def test_drive_registers_state_get(
-    setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
-) -> None:
+def test_drive_registers_state_get(servo: "Servo") -> None:
     """get() returns a register value or None if not present."""
-    net, _, _ = setup_manager
-    servo = net.servos[0]
 
-    state = DriveRegistersState.from_hardware(servo)
+    state = DriveRegistersValue.from_hardware(servo)
 
     register = servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1)
     value = state.get(register)
@@ -570,13 +513,11 @@ class TestDriveRegistersSession:
     @pytest.mark.virtual
     def test_state_merges_baseline_and_changes(
         self,
-        setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
+        servo: "Servo",
     ) -> None:
         """state() returns baseline values overlaid with tracked changes."""
-        net, _, _ = setup_manager
-        servo = net.servos[0]
 
-        baseline = DriveRegistersState.from_hardware(servo)
+        baseline = DriveRegistersValue.from_hardware(servo)
         session = DriveRegistersSession(
             servo=servo,
             baseline=baseline,
@@ -586,15 +527,15 @@ class TestDriveRegistersSession:
         register = servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1)
         original_value = baseline.get(register)
 
-        # Before any changes, state() should equal baseline
-        state = session.state()
+        # Before any changes, current_value() should equal baseline
+        state = session.current_value()
         assert state.get(register) == original_value
 
         # Simulate a tracked change
         new_value = 123.0
-        session.changes[register] = new_value
+        session._changes[register] = new_value
 
-        state = session.state()
+        state = session.current_value()
         assert state.get(register) == new_value
 
     @pytest.mark.ethernet
@@ -603,14 +544,12 @@ class TestDriveRegistersSession:
     @pytest.mark.virtual
     def test_restore_returns_result(
         self,
-        setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
+        servo: "Servo",
     ) -> None:
         """restore() writes baseline values back and returns a RestoreResult."""
-        net, _, _ = setup_manager
-        servo = net.servos[0]
 
         previous_reg_value = _read_user_over_voltage_uid(servo)
-        baseline = DriveRegistersState.from_hardware(servo)
+        baseline = DriveRegistersValue.from_hardware(servo)
         session = DriveRegistersSession(
             servo=servo,
             baseline=baseline,
@@ -639,14 +578,12 @@ class TestDriveRegistersSession:
     @pytest.mark.virtual
     def test_force_restore_returns_result(
         self,
-        setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
+        servo: "Servo",
     ) -> None:
         """force_restore() re-reads hardware, diffs, restores, and returns a RestoreResult."""
-        net, _, _ = setup_manager
-        servo = net.servos[0]
 
         previous_reg_value = _read_user_over_voltage_uid(servo)
-        baseline = DriveRegistersState.from_hardware(servo)
+        baseline = DriveRegistersValue.from_hardware(servo)
         session = DriveRegistersSession(
             servo=servo,
             baseline=baseline,
@@ -657,7 +594,7 @@ class TestDriveRegistersSession:
         if previous_reg_value == new_reg_value:
             new_reg_value -= 1.0
 
-        # Write directly — session is NOT subscribed, simulating external change
+        # Write directly â€” session is NOT subscribed, simulating external change
         servo.write(_USER_OVER_VOLTAGE_UID, new_reg_value, subnode=1)
         assert _read_user_over_voltage_uid(servo) == new_reg_value
 
@@ -668,13 +605,13 @@ class TestDriveRegistersSession:
         assert len(result.restored) >= 1
         assert _read_user_over_voltage_uid(servo) == previous_reg_value
         # force_restore clears changes
-        assert len(session.changes) == 0
+        assert len(session._changes) == 0
 
     def test_write_with_retry_succeeds_first_attempt(self, mocker: MockerFixture):
         """_write_with_retry records success on first write attempt."""
         servo_mock = mocker.MagicMock(spec=Servo)
         reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
-        baseline = DriveRegistersState(OrderedDict([(reg, 42.0)]))
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
         session = DriveRegistersSession(
             servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
         )
@@ -691,7 +628,7 @@ class TestDriveRegistersSession:
         servo_mock = mocker.MagicMock(spec=Servo)
         servo_mock.write.side_effect = [RuntimeError("first fail"), None]
         reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
-        baseline = DriveRegistersState(OrderedDict([(reg, 42.0)]))
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
         session = DriveRegistersSession(
             servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
         )
@@ -708,7 +645,7 @@ class TestDriveRegistersSession:
         servo_mock = mocker.MagicMock(spec=Servo)
         servo_mock.write.side_effect = RuntimeError("persistent error")
         reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
-        baseline = DriveRegistersState(OrderedDict([(reg, 42.0)]))
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
         session = DriveRegistersSession(
             servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
         )
@@ -728,11 +665,11 @@ class TestDriveRegistersSession:
         """restore() skips registers with no baseline entry."""
         servo_mock = mocker.MagicMock(spec=Servo)
         reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="ORPHAN")
-        baseline = DriveRegistersState(OrderedDict())
+        baseline = DriveRegistersValue(OrderedDict())
         session = DriveRegistersSession(
             servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
         )
-        session.changes[reg] = 99.0
+        session._changes[reg] = 99.0
 
         result = session.restore()
 
@@ -744,11 +681,11 @@ class TestDriveRegistersSession:
         """restore() silently skips registers whose value matches baseline."""
         servo_mock = mocker.MagicMock(spec=Servo)
         reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="UNCHANGED")
-        baseline = DriveRegistersState(OrderedDict([(reg, 42.0)]))
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
         session = DriveRegistersSession(
             servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
         )
-        session.changes[reg] = 42.0
+        session._changes[reg] = 42.0
 
         result = session.restore()
 
@@ -760,14 +697,14 @@ class TestDriveRegistersSession:
         """force_restore() returns empty result when hardware matches baseline."""
         servo_mock = mocker.MagicMock(spec=Servo)
         reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="SAME")
-        baseline = DriveRegistersState(OrderedDict([(reg, 42.0)]))
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
         session = DriveRegistersSession(
             servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
         )
 
-        current_state = DriveRegistersState(OrderedDict([(reg, 42.0)]))
+        current_state = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
         mocker.patch.object(
-            DriveRegistersState, "from_hardware", autospec=True, return_value=current_state
+            DriveRegistersValue, "from_hardware", autospec=True, return_value=current_state
         )
         result = session.force_restore()
 
@@ -781,16 +718,16 @@ class TestDriveRegistersSession:
         """reset() clears all tracked changes."""
         servo_mock = mocker.MagicMock(spec=Servo)
         reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
-        baseline = DriveRegistersState(OrderedDict([(reg, 42.0)]))
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
         session = DriveRegistersSession(
             servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
         )
-        session.changes[reg] = 99.0
-        assert len(session.changes) == 1
+        session._changes[reg] = 99.0
+        assert len(session._changes) == 1
 
         session.reset()
 
-        assert len(session.changes) == 0
+        assert len(session._changes) == 0
 
     @pytest.mark.ethernet
     @pytest.mark.ethercat
@@ -798,13 +735,11 @@ class TestDriveRegistersSession:
     @pytest.mark.virtual
     def test_reset_allows_fresh_tracking(
         self,
-        setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
+        servo: Servo,
     ) -> None:
         """After reset(), subsequent writes are tracked from scratch."""
-        net, _, _ = setup_manager
-        servo = net.servos[0]
 
-        baseline = DriveRegistersState.from_hardware(servo)
+        baseline = DriveRegistersValue.from_hardware(servo)
         session = DriveRegistersSession(
             servo=servo,
             baseline=baseline,
@@ -815,14 +750,14 @@ class TestDriveRegistersSession:
         previous_value = _read_user_over_voltage_uid(servo)
         new_value = previous_value - 1.0
         servo.write(_USER_OVER_VOLTAGE_UID, new_value, subnode=1)
-        assert len(session.changes) >= 1
+        assert len(session._changes) >= 1
 
         session.reset()
-        assert len(session.changes) == 0
+        assert len(session._changes) == 0
 
-        # Write again — should be tracked
+        # Write again â€” should be tracked
         servo.write(_USER_OVER_VOLTAGE_UID, previous_value, subnode=1)
-        assert len(session.changes) >= 1
+        assert len(session._changes) >= 1
         session.stop()
 
 
@@ -835,12 +770,10 @@ class TestTrackObjects:
     @pytest.mark.virtual
     def test_track_objects_false_skips_object_read(
         self,
-        setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
+        servo: Servo,
         mocker: MockerFixture,
     ) -> None:
         """track_objects=False skips complete-access object reads and callbacks."""
-        net, _, _ = setup_manager
-        servo = net.servos[0]
 
         store_spy = mocker.patch.object(DriveContextManager, "_store_objects_data", return_value={})
         subscribe_spy = mocker.patch.object(servo, "register_update_complete_access_subscribe")
@@ -856,12 +789,10 @@ class TestTrackObjects:
     @pytest.mark.virtual
     def test_track_objects_true_reads_objects(
         self,
-        setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
+        servo: Servo,
         mocker: MockerFixture,
     ) -> None:
         """track_objects=True (default) reads complete-access objects."""
-        net, _, _ = setup_manager
-        servo = net.servos[0]
 
         subscribe_spy = mocker.patch.object(servo, "register_update_complete_access_subscribe")
 
