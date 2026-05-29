@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from collections.abc import Callable, Container
-from typing import TYPE_CHECKING, NamedTuple, Optional, Union, cast
+from typing import TYPE_CHECKING, NamedTuple, Optional, Union
 
 from ingenialogger import get_logger
 
@@ -152,9 +152,11 @@ class DriveRegistersState:
         Returns:
             OrderedDict mapping (subnode, uid) to register value.
         """
-        return OrderedDict(
-            ((reg.subnode, cast("str", reg.identifier)), val) for reg, val in self._values.items()
-        )
+        result: OrderedDict[tuple[int, str], REG_VALUE] = OrderedDict()
+        for reg, val in self._values.items():
+            assert reg.identifier is not None, f"Register {reg!r} has no identifier"
+            result[(reg.subnode, reg.identifier)] = val
+        return result
 
     def diff(
         self, other: "DriveRegistersState"
@@ -238,9 +240,11 @@ class DriveRegistersSession:
         Returns:
             OrderedDict mapping ``(subnode, uid)`` to the changed register value.
         """
-        return OrderedDict(
-            ((reg.subnode, cast("str", reg.identifier)), val) for reg, val in self.changes.items()
-        )
+        result: OrderedDict[tuple[int, str], REG_VALUE] = OrderedDict()
+        for reg, val in self.changes.items():
+            assert reg.identifier is not None, f"Register {reg!r} has no identifier"
+            result[(reg.subnode, reg.identifier)] = val
+        return result
 
     def _register_update_callback(
         self,
