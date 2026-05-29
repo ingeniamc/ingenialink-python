@@ -776,3 +776,95 @@ class TestDriveRegistersSession:
         assert len(result.restored) == 0
         assert len(result.skipped) == 0
         assert len(result.failed) == 0
+
+    def test_reset_clears_changes(self, mocker: MockerFixture):
+        """reset() clears all tracked changes."""
+        servo_mock = mocker.MagicMock(spec=Servo)
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
+        baseline = DriveRegistersState(OrderedDict([(reg, 42.0)]))
+        session = DriveRegistersSession(
+            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
+        )
+        session.changes[reg] = 99.0
+        assert len(session.changes) == 1
+
+        session.reset()
+
+        assert len(session.changes) == 0
+
+    @pytest.mark.ethernet
+    @pytest.mark.ethercat
+    @pytest.mark.canopen
+    @pytest.mark.virtual
+    def test_reset_allows_fresh_tracking(
+        self,
+        setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
+    ) -> None:
+        """After reset(), subsequent writes are tracked from scratch."""
+        net, _, _ = setup_manager
+        servo = net.servos[0]
+
+        baseline = DriveRegistersState.from_hardware(servo)
+        session = DriveRegistersSession(
+            servo=servo,
+            baseline=baseline,
+            do_not_restore_registers=set(),
+        )
+        session.start()
+
+        previous_value = _read_user_over_voltage_uid(servo)
+        new_value = previous_value - 1.0
+        servo.write(_USER_OVER_VOLTAGE_UID, new_value, subnode=1)
+        assert len(session.changes) >= 1
+
+        session.reset()
+        assert len(session.changes) == 0
+
+        # Write again — should be tracked
+        servo.write(_USER_OVER_VOLTAGE_UID, previous_value, subnode=1)
+        assert len(session.changes) >= 1
+        session.stop()
+
+
+class TestTrackObjects:
+    """Tests for track_objects parameter on DriveContextManager."""
+
+    @pytest.mark.ethernet
+    @pytest.mark.ethercat
+    @pytest.mark.canopen
+    @pytest.mark.virtual
+    def test_track_objects_false_skips_object_read(
+        self,
+        setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
+        mocker: MockerFixture,
+    ) -> None:
+        """track_objects=False skips complete-access object reads and callbacks."""
+        net, _, _ = setup_manager
+        servo = net.servos[0]
+
+        store_spy = mocker.patch.object(DriveContextManager, "_store_objects_data", return_value={})
+        subscribe_spy = mocker.patch.object(servo, "register_update_complete_access_subscribe")
+
+        context = DriveContextManager(servo, track_objects=False)
+        with context:
+            store_spy.assert_not_called()
+            subscribe_spy.assert_not_called()
+
+    @pytest.mark.ethernet
+    @pytest.mark.ethercat
+    @pytest.mark.canopen
+    @pytest.mark.virtual
+    def test_track_objects_true_reads_objects(
+        self,
+        setup_manager: tuple["Network", Union[str, list[str]], "DriveEnvironmentController"],
+        mocker: MockerFixture,
+    ) -> None:
+        """track_objects=True (default) reads complete-access objects."""
+        net, _, _ = setup_manager
+        servo = net.servos[0]
+
+        subscribe_spy = mocker.patch.object(servo, "register_update_complete_access_subscribe")
+
+        context = DriveContextManager(servo, track_objects=True)
+        with context:
+            subscribe_spy.assert_called_once()

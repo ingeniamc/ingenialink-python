@@ -376,6 +376,14 @@ class DriveRegistersSession:
         """Unsubscribe the tracking callback from the servo."""
         self.servo.register_update_unsubscribe(self._register_update_callback)
 
+    def reset(self) -> None:
+        """Clear all tracked changes.
+
+        After calling this, the session behaves as if no register writes
+        have occurred since the baseline was established.
+        """
+        self.changes.clear()
+
 
 class DriveContextManager:
     """Context used to make modifications in the drive.
@@ -390,6 +398,7 @@ class DriveContextManager:
         do_not_restore_registers: Optional[list[str]] = None,
         complete_access_objects: Optional[list[str]] = None,
         baseline: Optional[DriveRegistersState] = None,
+        track_objects: bool = True,
     ) -> None:
         """Initializes the registers that shouldn't be stored.
 
@@ -408,6 +417,9 @@ class DriveContextManager:
             baseline: pre-built register snapshot to use as the baseline state.
                 When provided, ``__enter__`` skips the hardware read and uses this
                 snapshot directly.  Defaults to None (read from hardware).
+            track_objects: whether to read and restore complete-access objects
+                (PDO maps, monitoring/disturbance data).  Defaults to True.
+                Set to False when only register-level tracking is needed.
         """
         self._drive = servo
         self._axis = axis
@@ -439,6 +451,8 @@ class DriveContextManager:
         )
 
         self._baseline: Optional[DriveRegistersState] = baseline
+
+        self._track_objects = track_objects
 
         self._session: Optional[DriveRegistersSession] = None
 
@@ -599,9 +613,11 @@ class DriveContextManager:
             do_not_restore_registers=self._do_not_restore_registers,
             axis=self._axis,
         )
-        self._original_canopen_object_values = self._store_objects_data()
+        if self._track_objects:
+            self._original_canopen_object_values = self._store_objects_data()
         self._session.start()
-        self.drive.register_update_complete_access_subscribe(self._complete_access_callback)
+        if self._track_objects:
+            self.drive.register_update_complete_access_subscribe(self._complete_access_callback)
 
     def force_restore(self, restore_registers: bool = True, restore_objects: bool = True) -> None:
         """Force restoration of all registers to their original values.
@@ -626,13 +642,14 @@ class DriveContextManager:
 
         # Temporarily unsubscribe from callbacks to avoid re-populating tracking during restoration
         self._session.stop()
-        self.drive.register_update_complete_access_unsubscribe(self._complete_access_callback)
+        if self._track_objects:
+            self.drive.register_update_complete_access_unsubscribe(self._complete_access_callback)
 
         try:
             if restore_registers:
                 self._session.force_restore()
 
-            if restore_objects:
+            if restore_objects and self._track_objects:
                 # Clear the current tracking
                 self._objects_changed.clear()
 
@@ -645,16 +662,19 @@ class DriveContextManager:
         finally:
             # Re-subscribe to callbacks
             self._session.start()
-            self.drive.register_update_complete_access_subscribe(self._complete_access_callback)
+            if self._track_objects:
+                self.drive.register_update_complete_access_subscribe(self._complete_access_callback)
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:  # type: ignore [no-untyped-def]
         """Unsubscribes from register updates and restores the drive values."""
         assert self._session is not None
         assert self._baseline is not None
         self._session.stop()
-        self.drive.register_update_complete_access_unsubscribe(self._complete_access_callback)
+        if self._track_objects:
+            self.drive.register_update_complete_access_unsubscribe(self._complete_access_callback)
         self._session.restore()
-        self._restore_objects_data(
-            original_values=self._original_canopen_object_values,
-            changed_values=self._objects_changed,
-        )
+        if self._track_objects:
+            self._restore_objects_data(
+                original_values=self._original_canopen_object_values,
+                changed_values=self._objects_changed,
+            )
