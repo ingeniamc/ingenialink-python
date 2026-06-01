@@ -104,7 +104,7 @@ class DriveContextManager:
             register: register.
             value: changed value.
         """
-        uid: str = cast("str", register.identifier)
+        uid = register.identifier
         if register.access in [RegAccess.WO, RegAccess.RO]:
             return
         if uid in self._do_not_restore_registers:
