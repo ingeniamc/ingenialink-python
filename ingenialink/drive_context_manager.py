@@ -247,11 +247,21 @@ class DriveRegistersSession:
         do_not_restore_registers: Container[Register] = frozenset(),
         axis: Optional[int] = None,
     ) -> None:
-        self.servo = servo
-        self.baseline = baseline
+        self._servo = servo
+        self._baseline = baseline
         self._do_not_restore_registers = do_not_restore_registers
         self._axis = axis
         self._changes: OrderedDict[Register, REG_VALUE] = OrderedDict()
+
+    @property
+    def servo(self) -> Servo:
+        """Servo whose register updates are tracked."""
+        return self._servo
+
+    @property
+    def baseline(self) -> DriveRegistersValue:
+        """Baseline snapshot used as the reference state."""
+        return self._baseline
 
     def _register_update_callback(
         self,
@@ -397,7 +407,7 @@ class DriveRegistersSession:
         have occurred since the baseline was established. This clears ``self._changes``
         and re-bases the session from the current tracked state.
         """
-        self.baseline = self.current_value()
+        self._baseline = self.current_value()
         self._changes.clear()
 
 
@@ -485,7 +495,7 @@ class DriveContextManager:
     def drive(self, servo: Servo) -> None:
         self._drive = servo
         if self._session is not None:
-            self._session.servo = servo
+            self._session._servo = servo
 
     @property
     def _register_update_callback(
