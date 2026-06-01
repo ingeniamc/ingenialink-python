@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from collections.abc import Callable, Container, Iterable, Iterator, Mapping
-from typing import TYPE_CHECKING, NamedTuple, Optional, Union
 from types import MappingProxyType
+from typing import TYPE_CHECKING, NamedTuple, Optional, Union
 
 from ingenialogger import get_logger
 

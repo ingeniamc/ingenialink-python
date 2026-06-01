@@ -755,7 +755,10 @@ class TestDriveRegistersSession:
 
         session.reset()
         assert len(session._changes) == 0
-        assert session.baseline.get(servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1)) == new_value
+        assert (
+            session.baseline.get(servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1))
+            == new_value
+        )
 
         # Write again should be tracked
         servo.write(_USER_OVER_VOLTAGE_UID, previous_value, subnode=1)
