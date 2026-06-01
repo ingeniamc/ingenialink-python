@@ -1,6 +1,7 @@
 from collections import OrderedDict
-from collections.abc import Callable, Container, Iterable, Iterator
+from collections.abc import Callable, Container, Iterable, Iterator, Mapping
 from typing import TYPE_CHECKING, NamedTuple, Optional, Union
+from types import MappingProxyType
 
 from ingenialogger import get_logger
 
@@ -254,7 +255,7 @@ class DriveRegistersSession:
 
     def _register_update_callback(
         self,
-        servo: Servo,  # noqa: ARG002 — required by callback signature, unused here
+        servo: Servo,  # noqa: ARG002 - required by callback signature, unused here
         register: Register,
         value: REG_VALUE,
     ) -> None:
@@ -287,6 +288,11 @@ class DriveRegistersSession:
         merged: OrderedDict[Register, REG_VALUE] = OrderedDict(self.baseline._values)
         merged.update(self._changes)
         return DriveRegistersValue(merged)
+
+    @property
+    def changes(self) -> Mapping[Register, REG_VALUE]:
+        """Read-only view of the tracked register changes."""
+        return MappingProxyType(self._changes)
 
     def _write_with_retry(
         self,
@@ -388,8 +394,10 @@ class DriveRegistersSession:
         """Clear all tracked changes.
 
         After calling this, the session behaves as if no register writes
-        have occurred since the baseline was established. This clears ``self._changes``.
+        have occurred since the baseline was established. This clears ``self._changes``
+        and re-bases the session from the current tracked state.
         """
+        self.baseline = self.current_value()
         self._changes.clear()
 
 
@@ -483,7 +491,7 @@ class DriveContextManager:
     def _register_update_callback(
         self,
     ) -> Callable[[Servo, Register, REG_VALUE], None]:
-        """Alias for backward compatibility â€” delegates to the session callback.
+        """Alias for backward compatibility; delegates to the session callback.
 
         Raises:
             RuntimeError: If no active session exists (``__enter__`` not called).

@@ -224,7 +224,7 @@ def test_force_restore_with_external_changes(servo: "Servo") -> None:
 
         # Clear the tracking to simulate that this change wasn't tracked
         under_volt_reg = servo.dictionary.get_register(_USER_UNDER_VOLTAGE_UID, axis=1)
-        context._session.changes.pop(under_volt_reg, None)
+        context._session._changes.pop(under_volt_reg, None)
 
         # Verify the external change is present
         assert _read_user_under_voltage_uid(servo) == new_under_volt_value
@@ -594,7 +594,7 @@ class TestDriveRegistersSession:
         if previous_reg_value == new_reg_value:
             new_reg_value -= 1.0
 
-        # Write directly â€” session is NOT subscribed, simulating external change
+        # Write directly. session is NOT subscribed, simulating external change
         servo.write(_USER_OVER_VOLTAGE_UID, new_reg_value, subnode=1)
         assert _read_user_over_voltage_uid(servo) == new_reg_value
 
@@ -715,7 +715,7 @@ class TestDriveRegistersSession:
         assert len(result.failed) == 0
 
     def test_reset_clears_changes(self, mocker: MockerFixture):
-        """reset() clears all tracked changes."""
+        """reset() clears tracked changes and rebases from the current tracked state."""
         servo_mock = mocker.MagicMock(spec=Servo)
         reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
         baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
@@ -728,6 +728,7 @@ class TestDriveRegistersSession:
         session.reset()
 
         assert len(session._changes) == 0
+        assert session.baseline.get(reg) == 99.0
 
     @pytest.mark.ethernet
     @pytest.mark.ethercat
@@ -754,8 +755,9 @@ class TestDriveRegistersSession:
 
         session.reset()
         assert len(session._changes) == 0
+        assert session.baseline.get(servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1)) == new_value
 
-        # Write again â€” should be tracked
+        # Write again should be tracked
         servo.write(_USER_OVER_VOLTAGE_UID, previous_value, subnode=1)
         assert len(session._changes) >= 1
         session.stop()
@@ -795,7 +797,9 @@ class TestTrackObjects:
         """track_objects=True (default) reads complete-access objects."""
 
         subscribe_spy = mocker.patch.object(servo, "register_update_complete_access_subscribe")
+        unsubscribe_spy = mocker.patch.object(servo, "register_update_complete_access_unsubscribe")
 
         context = DriveContextManager(servo, track_objects=True)
         with context:
             subscribe_spy.assert_called_once()
+            unsubscribe_spy.assert_not_called()
