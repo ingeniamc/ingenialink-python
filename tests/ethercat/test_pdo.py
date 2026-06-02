@@ -656,7 +656,9 @@ def test_set_pdo_map_to_slave(servo: EthercatServo, create_pdo_map):
 
 
 def test_pdo_item_bool():
-    register = EthercatRegister(0, 1, RegDtype.BOOL, RegAccess.RW, pdo_access=RegCyclicType.RX)
+    register = EthercatRegister(
+        0, 1, RegDtype.BOOL, RegAccess.RW, pdo_access=RegCyclicType.RX, identifier="MOCK"
+    )
     rpdo_item = RPDOMapItem(register)
 
     assert rpdo_item.register == register
@@ -831,7 +833,9 @@ def test_map_pdo_with_bools(open_dictionary):
     register = ethercat_dictionary.registers(SUBNODE)[RPDO_REGISTERS[0]]
     item1 = RPDOMapItem(register)
     item2 = RPDOMapItem(register, size_bits=4)
-    register = EthercatRegister(0, 1, RegDtype.BOOL, RegAccess.RW, pdo_access=RegCyclicType.RX)
+    register = EthercatRegister(
+        0, 1, RegDtype.BOOL, RegAccess.RW, pdo_access=RegCyclicType.RX, identifier="MOCK"
+    )
     item3 = RPDOMapItem(register)
     item4 = RPDOMapItem(register)
 
