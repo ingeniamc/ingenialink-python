@@ -505,9 +505,7 @@ class DriveContextManager:
 
             self._session.start()
             if self._track_objects:
-                self.drive.register_update_complete_access_subscribe(
-                    self._complete_access_callback
-                )
+                self.drive.register_update_complete_access_subscribe(self._complete_access_callback)
         else:
             self._drive = servo
 
