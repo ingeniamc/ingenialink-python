@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.21') _
+@Library('cicd-lib@CIT-676-successful-wireshark-logs-always-deleted') _
 
 import python.VirtualEnvironment
 import python.VEnvManager
