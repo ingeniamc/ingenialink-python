@@ -493,9 +493,23 @@ class DriveContextManager:
 
     @drive.setter
     def drive(self, servo: Servo) -> None:
-        self._drive = servo
         if self._session is not None:
+            self._session.stop()
+            if self._track_objects:
+                self.drive.register_update_complete_access_unsubscribe(
+                    self._complete_access_callback
+                )
+
+            self._drive = servo
             self._session._servo = servo
+
+            self._session.start()
+            if self._track_objects:
+                self.drive.register_update_complete_access_subscribe(
+                    self._complete_access_callback
+                )
+        else:
+            self._drive = servo
 
     @property
     def _register_update_callback(
