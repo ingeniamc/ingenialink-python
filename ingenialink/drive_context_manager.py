@@ -494,20 +494,35 @@ class DriveContextManager:
     @drive.setter
     def drive(self, servo: Servo) -> None:
         if self._session is not None:
-            self._session.stop()
-            if self._track_objects:
-                self.drive.register_update_complete_access_unsubscribe(
-                    self._complete_access_callback
-                )
+            self.stop()
 
             self._drive = servo
             self._session._servo = servo
 
-            self._session.start()
-            if self._track_objects:
-                self.drive.register_update_complete_access_subscribe(self._complete_access_callback)
+            self.start()
         else:
             self._drive = servo
+
+    def start(self) -> None:
+        """Start tracking register changes on the current drive.
+
+        Raises:
+            RuntimeError: If no active session exists (``__enter__`` not called).
+        """
+        if self._session is None:
+            raise RuntimeError("Cannot start tracking without an active session.")
+
+        self._session.start()
+        if self._track_objects:
+            self.drive.register_update_complete_access_subscribe(self._complete_access_callback)
+
+    def stop(self) -> None:
+        """Stop tracking register changes on the current drive."""
+        if self._session is not None:
+            self._session.stop()
+
+        if self._track_objects:
+            self.drive.register_update_complete_access_unsubscribe(self._complete_access_callback)
 
     @property
     def _register_update_callback(
@@ -649,9 +664,8 @@ class DriveContextManager:
         )
         if self._track_objects:
             self._original_canopen_object_values = self._store_objects_data()
-        self._session.start()
-        if self._track_objects:
-            self.drive.register_update_complete_access_subscribe(self._complete_access_callback)
+
+        self.start()
 
     def force_restore(self, restore_registers: bool = True, restore_objects: bool = True) -> None:
         """Force restoration of all registers to their original values.
@@ -675,9 +689,7 @@ class DriveContextManager:
         assert self._baseline is not None
 
         # Temporarily unsubscribe from callbacks to avoid re-populating tracking during restoration
-        self._session.stop()
-        if self._track_objects:
-            self.drive.register_update_complete_access_unsubscribe(self._complete_access_callback)
+        self.stop()
 
         try:
             if restore_registers:
@@ -695,17 +707,15 @@ class DriveContextManager:
                 )
         finally:
             # Re-subscribe to callbacks
-            self._session.start()
-            if self._track_objects:
-                self.drive.register_update_complete_access_subscribe(self._complete_access_callback)
+            self.start()
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:  # type: ignore [no-untyped-def]
         """Unsubscribes from register updates and restores the drive values."""
         assert self._session is not None
         assert self._baseline is not None
-        self._session.stop()
-        if self._track_objects:
-            self.drive.register_update_complete_access_unsubscribe(self._complete_access_callback)
+
+        self.stop()
+
         self._session.restore()
         if self._track_objects:
             self._restore_objects_data(
