@@ -76,7 +76,7 @@ class Register(ABC):
         self,
         dtype: RegDtype,
         access: RegAccess,
-        identifier: Optional[str] = None,
+        identifier: str,
         units: Optional[str] = None,
         pdo_access: RegCyclicType = RegCyclicType.CONFIG,
         phy: RegPhy = RegPhy.NONE,
@@ -172,7 +172,7 @@ class Register(ABC):
         return RegAccess(self._access)
 
     @property
-    def identifier(self) -> Optional[str]:
+    def identifier(self) -> str:
         """Register identifier."""
         return self._identifier
 
