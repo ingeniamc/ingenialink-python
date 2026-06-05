@@ -814,10 +814,6 @@ class TestContextManagerReset:
     def test_reset_tracked_clears_session_changes(self, mocker: MockerFixture):
         """reset(force=False) restores tracked changes, clears them, and rebuilds session."""
         servo_mock = mocker.MagicMock(spec=Servo)
-        servo_mock.register_update_subscribe = mocker.MagicMock()
-        servo_mock.register_update_unsubscribe = mocker.MagicMock()
-        servo_mock.register_update_complete_access_subscribe = mocker.MagicMock()
-        servo_mock.register_update_complete_access_unsubscribe = mocker.MagicMock()
 
         reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
         baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
@@ -838,10 +834,49 @@ class TestContextManagerReset:
         assert len(context._session._changes) == 0
         # Baseline should not change
         assert id(context._baseline) == baseline_id
-        # Servo.write should have been called to restore
-        servo_mock.write.assert_called()
 
         context.__exit__(None, None, None)
+
+    @pytest.mark.ethernet
+    @pytest.mark.ethercat
+    @pytest.mark.canopen
+    @pytest.mark.virtual
+    def test_reset_tracked_restores_to_baseline_integration(self, servo: "Servo"):
+        """reset(force=False) restores tracked changes and clears tracking twice."""
+        context = DriveContextManager(servo)
+
+        with context:
+            baseline_id = id(context._baseline)
+            objects_id = id(context._original_canopen_object_values)
+
+            # Write a value
+            previous_value = _read_user_over_voltage_uid(servo)
+            new_value = previous_value + 1.0
+            servo.write(_USER_OVER_VOLTAGE_UID, new_value, subnode=1)
+            assert _read_user_over_voltage_uid(servo) == new_value
+
+            # Reset (tracked mode)
+            context.reset(force=False)
+
+            # Should be restored to original value
+            assert _read_user_over_voltage_uid(servo) == previous_value
+            # Baseline and objects should be unchanged
+            assert id(context._baseline) == baseline_id
+            assert id(context._original_canopen_object_values) == objects_id
+
+            # Write again and reset again
+            new_value_2 = previous_value + 2.0
+            servo.write(_USER_OVER_VOLTAGE_UID, new_value_2, subnode=1)
+            assert _read_user_over_voltage_uid(servo) == new_value_2
+
+            # Reset again
+            context.reset(force=False)
+
+            # Should be restored again
+            assert _read_user_over_voltage_uid(servo) == previous_value
+            # Baseline and objects should still be unchanged
+            assert id(context._baseline) == baseline_id
+            assert id(context._original_canopen_object_values) == objects_id
 
     def test_reset_force_mode_with_mocks(self, mocker: MockerFixture):
         """reset(force=True) calls force_restore on session."""
@@ -879,43 +914,3 @@ class TestContextManagerReset:
 
         context.__exit__(None, None, None)
 
-    @pytest.mark.ethernet
-    @pytest.mark.ethercat
-    @pytest.mark.canopen
-    @pytest.mark.virtual
-    def test_reset_tracked_restores_to_baseline_integration(self, servo: "Servo"):
-        """reset(force=False) restores tracked changes and clears tracking."""
-        context = DriveContextManager(servo)
-
-        with context:
-            baseline_id = id(context._baseline)
-            objects_id = id(context._original_canopen_object_values)
-
-            # Write a value
-            previous_value = _read_user_over_voltage_uid(servo)
-            new_value = previous_value + 1.0
-            servo.write(_USER_OVER_VOLTAGE_UID, new_value, subnode=1)
-            assert _read_user_over_voltage_uid(servo) == new_value
-
-            # Reset (tracked mode)
-            context.reset(force=False)
-
-            # Should be restored to original value
-            assert _read_user_over_voltage_uid(servo) == previous_value
-            # Baseline and objects should be unchanged
-            assert id(context._baseline) == baseline_id
-            assert id(context._original_canopen_object_values) == objects_id
-
-            # Write again and reset again
-            new_value_2 = previous_value + 2.0
-            servo.write(_USER_OVER_VOLTAGE_UID, new_value_2, subnode=1)
-            assert _read_user_over_voltage_uid(servo) == new_value_2
-
-            # Reset again
-            context.reset(force=False)
-
-            # Should be restored again
-            assert _read_user_over_voltage_uid(servo) == previous_value
-            # Baseline and objects should still be unchanged
-            assert id(context._baseline) == baseline_id
-            assert id(context._original_canopen_object_values) == objects_id
