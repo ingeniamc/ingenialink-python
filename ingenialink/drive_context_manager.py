@@ -773,8 +773,8 @@ class DriveContextManager:
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:  # type: ignore [no-untyped-def]
         """Unsubscribes from register updates and restores the drive values."""
-        assert self._session is not None
-        assert self._baseline is not None
+        if self._session is None or self._baseline is None:
+            return
 
         self.stop()
 
