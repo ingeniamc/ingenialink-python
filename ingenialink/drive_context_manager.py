@@ -709,6 +709,68 @@ class DriveContextManager:
             # Re-subscribe to callbacks
             self.start()
 
+    def reset(self, force: bool = False) -> None:
+        """Reset the drive to its baseline state.
+
+        Restores the drive to the baseline captured during ``__enter__``, without
+        re-reading the baseline itself. Clears tracked changes and re-arms change tracking.
+
+        Args:
+            force: If True, re-reads all registers vs. baseline and restores differences
+                (for side-channel writes the context manager never saw). If False, restores
+                only the tracked changes and clears the tracked sets (default).
+
+        Raises:
+            RuntimeError: If no active session exists (``__enter__`` not called).
+        """
+        if self._session is None:
+            raise RuntimeError(
+                "DriveContextManager has no active session. "
+                "Call __enter__() before calling reset()."
+            )
+        if self._baseline is None:
+            raise RuntimeError(
+                "DriveContextManager has no baseline. "
+                "Call __enter__() before calling reset()."
+            )
+
+        # Temporarily unsubscribe from callbacks to avoid re-populating tracking during restoration
+        self.stop()
+
+        try:
+            if force:
+                # Force mode: re-read everything and restore differences
+                self._session.force_restore()
+                if self._track_objects:
+                    current_object_values = self._store_objects_data()
+                    self._restore_objects_data(
+                        original_values=self._original_canopen_object_values,
+                        changed_values=current_object_values,
+                    )
+            else:
+                # Tracked mode: restore only what we tracked, keep baselines unchanged
+                self._session.restore()
+                if self._track_objects:
+                    self._restore_objects_data(
+                        original_values=self._original_canopen_object_values,
+                        changed_values=self._objects_changed,
+                    )
+
+            # Clear object tracking and reset register tracking
+            if self._track_objects:
+                self._objects_changed.clear()
+
+            # Clear tracked changes and build fresh session without re-reading baseline
+            self._session = DriveRegistersSession(
+                servo=self.drive,
+                baseline=self._baseline,
+                do_not_restore_registers=self._session._do_not_restore_registers,
+                axis=self._axis,
+            )
+        finally:
+            # Re-subscribe to callbacks
+            self.start()
+
     def __exit__(self, exc_type, exc_value, traceback) -> None:  # type: ignore [no-untyped-def]
         """Unsubscribes from register updates and restores the drive values."""
         assert self._session is not None
