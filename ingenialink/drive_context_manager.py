@@ -507,7 +507,7 @@ class DriveContextManager:
         """Start tracking register changes on the current drive.
 
         Raises:
-            RuntimeError: If no active session exists (``__enter__`` not called).
+            RuntimeError: If no active session exists.
         """
         if self._session is None:
             raise RuntimeError("Cannot start tracking without an active session.")
