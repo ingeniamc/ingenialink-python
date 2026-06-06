@@ -734,12 +734,12 @@ class DriveContextManager:
                 "Call __enter__() before calling reset()."
             )
 
-        # Temporarily unsubscribe from callbacks to avoid re-populating tracking during restoration
+        # Unsubscribe from callbacks to avoid re-populating tracking
         self.stop()
 
         try:
             if force:
-                # Force mode: re-read everything and restore differences
+                # Force mode: re-read and restore all differences
                 self._session.force_restore()
                 if self._track_objects:
                     current_object_values = self._store_objects_data()
@@ -748,7 +748,7 @@ class DriveContextManager:
                         changed_values=current_object_values,
                     )
             else:
-                # Tracked mode: restore only what we tracked, keep baselines unchanged
+                # Tracked mode: restore only tracked changes
                 self._session.restore()
                 if self._track_objects:
                     self._restore_objects_data(
@@ -756,11 +756,10 @@ class DriveContextManager:
                         changed_values=self._objects_changed,
                     )
 
-            # Clear object tracking and reset register tracking
+            # Clear tracking and rebuild session
             if self._track_objects:
                 self._objects_changed.clear()
 
-            # Clear tracked changes and build fresh session without re-reading baseline
             self._session = DriveRegistersSession(
                 servo=self.drive,
                 baseline=self._baseline,
