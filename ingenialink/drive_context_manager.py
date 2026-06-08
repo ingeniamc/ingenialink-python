@@ -252,12 +252,12 @@ class DriveRegistersSession:
         self._do_not_restore_registers = do_not_restore_registers
         self._axis = axis
         self._changes: OrderedDict[Register, REG_VALUE] = OrderedDict()
-        self._is_running = False
+        self._subscribed_servo: Optional[Servo] = None
 
     @property
     def is_running(self) -> bool:
         """True if the session is currently tracking updates."""
-        return self._is_running
+        return self._subscribed_servo is self._servo
 
     @property
     def servo(self) -> Servo:
@@ -400,15 +400,15 @@ class DriveRegistersSession:
 
     def start(self) -> None:
         """Subscribe the tracking callback to the servo."""
-        if not self._is_running:
+        if self._subscribed_servo is not self._servo:
             self.servo.register_update_subscribe(self._register_update_callback)
-            self._is_running = True
+            self._subscribed_servo = self._servo
 
     def stop(self) -> None:
         """Unsubscribe the tracking callback from the servo."""
-        if self._is_running:
+        if self._subscribed_servo is self._servo:
             self.servo.register_update_unsubscribe(self._register_update_callback)
-            self._is_running = False
+            self._subscribed_servo = None
 
     def reset(self) -> None:
         """Clear all tracked changes.
@@ -518,6 +518,7 @@ class DriveContextManager:
 
             self._drive = servo
             self._session._servo = servo
+            self._session._subscribed_servo = None
 
             if active:
                 self.start()
