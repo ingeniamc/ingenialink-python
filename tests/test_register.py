@@ -45,17 +45,17 @@ def test_register_type_errors():
     dtype = "False type"
     access = RegAccess.RW
     with pytest.raises(ILValueError):
-        Register(dtype, access)
+        Register(dtype, access, "MOCK")
 
     dtype = RegDtype.FLOAT
     access = "False access"
     with pytest.raises(ILAccessError):
-        Register(dtype, access)
+        Register(dtype, access, "MOCK")
 
     dtype = RegDtype.FLOAT
     access = RegAccess.RW
     with pytest.raises(ILValueError):
-        Register(dtype, access, phy="False Phy")
+        Register(dtype, access, phy="False Phy", identifier="MOCK")
 
 
 def test_register_get_storage():
@@ -63,33 +63,33 @@ def test_register_get_storage():
 
     # invalid storage
     dtype = RegDtype.STR
-    register = Register(dtype, access, storage=1)
+    register = Register(dtype, access, storage=1, identifier="MOCK")
     assert register.storage_valid == 0
     assert register.storage is None
 
     # no storage
     dtype = RegDtype.FLOAT
-    register = Register(dtype, access)
+    register = Register(dtype, access, identifier="MOCK")
     assert register.storage_valid == 0
     assert register.storage is None
 
     # float storage
     dtype = RegDtype.FLOAT
     storage = 12.34
-    register = Register(dtype, access, storage=storage)
+    register = Register(dtype, access, storage=storage, identifier="MOCK")
     assert register.storage_valid == 1
     assert register.storage == storage
 
     # parse float storage
     dtype = RegDtype.FLOAT
     storage = 123
-    register = Register(dtype, access, storage=storage)
+    register = Register(dtype, access, storage=storage, identifier="MOCK")
     assert isinstance(register.storage, float)
 
     # parse int storage
     dtype = RegDtype.U8
     storage = 123.1
-    register = Register(dtype, access, storage=storage)
+    register = Register(dtype, access, storage=storage, identifier="MOCK")
     assert isinstance(register.storage, int)
     assert register.storage == 123
 
@@ -98,7 +98,7 @@ def test_register_set_storage():
     access = RegAccess.RW
     dtype = RegDtype.FLOAT
     storage = 20.0
-    register = Register(dtype, access, storage=storage)
+    register = Register(dtype, access, storage=storage, identifier="MOCK")
     assert register.storage == storage
 
     storage = 1.1
@@ -118,7 +118,7 @@ def test_register_set_storage():
     ],
 )
 def test_register_range(dtype, reg_range, expected_range, reg_type):
-    register = Register(dtype, RegAccess.RW, reg_range=reg_range)
+    register = Register(dtype, RegAccess.RW, reg_range=reg_range, identifier="MOCK")
 
     assert type(register.range[0]) is reg_type
     assert type(register.range[1]) is reg_type
