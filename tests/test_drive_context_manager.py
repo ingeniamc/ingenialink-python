@@ -913,4 +913,3 @@ class TestContextManagerReset:
         assert len(context._session._changes) == 0
 
         context.__exit__(None, None, None)
-

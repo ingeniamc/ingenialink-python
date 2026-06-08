@@ -730,8 +730,7 @@ class DriveContextManager:
             )
         if self._baseline is None:
             raise RuntimeError(
-                "DriveContextManager has no baseline. "
-                "Call __enter__() before calling reset()."
+                "DriveContextManager has no baseline. Call __enter__() before calling reset()."
             )
 
         # Unsubscribe from callbacks to avoid re-populating tracking
