@@ -252,6 +252,12 @@ class DriveRegistersSession:
         self._do_not_restore_registers = do_not_restore_registers
         self._axis = axis
         self._changes: OrderedDict[Register, REG_VALUE] = OrderedDict()
+        self._is_running = False
+
+    @property
+    def is_running(self) -> bool:
+        """True if the session is currently tracking updates."""
+        return self._is_running
 
     @property
     def servo(self) -> Servo:
@@ -394,11 +400,15 @@ class DriveRegistersSession:
 
     def start(self) -> None:
         """Subscribe the tracking callback to the servo."""
-        self.servo.register_update_subscribe(self._register_update_callback)
+        if not self._is_running:
+            self.servo.register_update_subscribe(self._register_update_callback)
+            self._is_running = True
 
     def stop(self) -> None:
         """Unsubscribe the tracking callback from the servo."""
-        self.servo.register_update_unsubscribe(self._register_update_callback)
+        if self._is_running:
+            self.servo.register_update_unsubscribe(self._register_update_callback)
+            self._is_running = False
 
     def reset(self) -> None:
         """Clear all tracked changes.
@@ -487,19 +497,30 @@ class DriveContextManager:
         self._objects_changed: dict[CanOpenObject, bytes] = {}
 
     @property
+    def is_running(self) -> bool:
+        """True if tracking is currently active."""
+        return self._session.is_running if self._session else False
+
+    @property
     def drive(self) -> Servo:
         """The servo this context manager operates on."""
         return self._drive
 
     @drive.setter
     def drive(self, servo: Servo) -> None:
+        if self._drive is servo:
+            return
+
         if self._session is not None:
-            self.stop()
+            active = self.is_running
+            if active:
+                self.stop()
 
             self._drive = servo
             self._session._servo = servo
 
-            self.start()
+            if active:
+                self.start()
         else:
             self._drive = servo
 
@@ -512,17 +533,21 @@ class DriveContextManager:
         if self._session is None:
             raise RuntimeError("Cannot start tracking without an active session.")
 
-        self._session.start()
-        if self._track_objects:
-            self.drive.register_update_complete_access_subscribe(self._complete_access_callback)
+        if not self.is_running:
+            self._session.start()
+            if self._track_objects:
+                self.drive.register_update_complete_access_subscribe(self._complete_access_callback)
 
     def stop(self) -> None:
         """Stop tracking register changes on the current drive."""
-        if self._session is not None:
-            self._session.stop()
+        if self.is_running:
+            if self._session is not None:
+                self._session.stop()
 
-        if self._track_objects:
-            self.drive.register_update_complete_access_unsubscribe(self._complete_access_callback)
+            if self._track_objects:
+                self.drive.register_update_complete_access_unsubscribe(
+                    self._complete_access_callback
+                )
 
     @property
     def _register_update_callback(
