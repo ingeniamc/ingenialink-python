@@ -51,7 +51,7 @@ PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvM
 TestSession TEST_SESSIONS = new TestSession(
     covPackageName: "ingenialink",
     wiresharkScope: null, // Set later based on parameter
-    wiresharkDir: "wireshark",
+    wiresharkDir: "wireshark_logs",
     startWiresharkTimeoutS: 10.0,
     importMode: "importlib",
     logCli: true,
