@@ -1460,8 +1460,6 @@ class DictionaryV3(Dictionary):
                 self.subnodes[axis] = SubnodeType.COMMUNICATION
             else:
                 self.subnodes[axis] = SubnodeType.MOTION
-        if register.identifier is None:
-            raise ValueError("Identifier must be provided.")
         self._registers[axis][register.identifier] = register
 
     def __read_mcb_register(self, register: ElementTree.Element) -> None:

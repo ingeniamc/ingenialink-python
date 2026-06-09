@@ -79,8 +79,7 @@ class ProcessDataExample:
         for item in rpdo_map.items:
             if not isinstance(item, RPDOMapItem):
                 raise TypeError("Expected item type to be RPDOMapItem.")
-            if item.register.identifier is not None:
-                item.value = RPDO_REGISTERS[item.register.identifier]
+            item.value = RPDO_REGISTERS[item.register.identifier]
         return rpdo_map, tpdo_map
 
     def process_data_loop(self) -> None:
@@ -88,11 +87,11 @@ class ProcessDataExample:
         while not self._pd_thread_stop_event.is_set():
             for index, _ in enumerate(self.servos):
                 for item in self.tpdo_maps[index].items:
-                    if item.register.identifier is not None and isinstance(item.value, int):
+                    if isinstance(item.value, int):
                         TPDO_REGISTERS[item.register.identifier] = item.value
                 RPDO_REGISTERS["CL_POS_SET_POINT_VALUE"] += 100
                 for item in self.rpdo_maps[index].items:
-                    if item.register.identifier is not None and isinstance(item, RPDOMapItem):
+                    if isinstance(item, RPDOMapItem):
                         item.value = RPDO_REGISTERS[item.register.identifier]
             time.sleep(0.1)
 

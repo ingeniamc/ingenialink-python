@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Optional, Union, cast
+from typing import TYPE_CHECKING, Optional, Union
 
 from ingenialogger import get_logger
 
@@ -104,7 +104,7 @@ class DriveContextManager:
             register: register.
             value: changed value.
         """
-        uid: str = cast("str", register.identifier)
+        uid = register.identifier
         if register.access in [RegAccess.WO, RegAccess.RO]:
             return
         if uid in self._do_not_restore_registers:

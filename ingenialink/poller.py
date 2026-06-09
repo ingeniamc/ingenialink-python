@@ -108,9 +108,6 @@ class Poller(Thread):
         # Obtain register
         _reg = self.servo._get_reg(reg, subnode)
 
-        if _reg.identifier is None:
-            raise TypeError("Register should have an identifier")
-
         # Reg identifier obtained and set enabled
         self.__mappings[channel] = _reg
         self.__mappings_enabled[channel] = True

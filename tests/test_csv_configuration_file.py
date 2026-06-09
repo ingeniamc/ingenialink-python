@@ -14,7 +14,7 @@ pytest_plugins = ["tests.test_table"]
 
 
 def test_register_row_formatting():
-    reg = EthercatRegister(0x2025, 0x00, RegDtype.U32, RegAccess.RW)
+    reg = EthercatRegister(0x2025, 0x00, RegDtype.U32, RegAccess.RW, "MOCK")
     row = RegisterRow.from_register(reg, b"\x00\x00\xa0A")
     assert row.index == "0x2025"
     assert row.subindex == "0x00"
@@ -26,8 +26,8 @@ def test_register_row_formatting():
 def test_csv_configuration_file(tmp_path: Path):
     file_path = tmp_path / "config.csv"
     cfg = CSVConfigurationFile(str(file_path))
-    reg1 = EthercatRegister(0x2025, 0x00, RegDtype.U32, RegAccess.RW)
-    reg2 = EthercatRegister(0x209A, 0x00, RegDtype.U32, RegAccess.RW)
+    reg1 = EthercatRegister(0x2025, 0x00, RegDtype.U32, RegAccess.RW, "MOCK")
+    reg2 = EthercatRegister(0x209A, 0x00, RegDtype.U32, RegAccess.RW, "MOCK")
     cfg.add_register(reg1, b"\x00\x00\xa0A")
     cfg.add_register(reg2, b"\x00\x00\x80?")
     cfg.write_to_file()
@@ -42,7 +42,7 @@ def test_csv_configuration_file(tmp_path: Path):
 
 
 def test_format_value_for_csv():
-    reg = EthercatRegister(0x2025, 0x00, RegDtype.U32, RegAccess.RW)
+    reg = EthercatRegister(0x2025, 0x00, RegDtype.U32, RegAccess.RW, "MOCK")
     register_float_value = 20.0
     raw_value_little_endian = struct.pack("f", register_float_value)
     garbage_bytes = b"\xff\xff"

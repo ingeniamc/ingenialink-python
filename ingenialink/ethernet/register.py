@@ -49,7 +49,7 @@ class EthernetRegister(Register):
         address: int,
         dtype: RegDtype,
         access: RegAccess,
-        identifier: Optional[str] = None,
+        identifier: str,
         units: Optional[str] = None,
         pdo_access: RegCyclicType = RegCyclicType.CONFIG,
         phy: RegPhy = RegPhy.NONE,
