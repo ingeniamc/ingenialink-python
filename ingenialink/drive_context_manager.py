@@ -765,21 +765,47 @@ class DriveContextManager:
         try:
             if force:
                 # Force mode: re-read and restore all differences
-                self._session.force_restore()
-                if self._track_objects:
-                    current_object_values = self._store_objects_data()
-                    self._restore_objects_data(
-                        original_values=self._original_canopen_object_values,
-                        changed_values=current_object_values,
+                try:
+                    self._session.force_restore()
+                except ILIOError as e:
+                    logger.warning(
+                        f"{id(self)}: Force restore failed during register read/write: {e}. "
+                        f"Drive may have disconnected. Continuing with tracking reset."
                     )
+
+                if self._track_objects:
+                    try:
+                        current_object_values = self._store_objects_data()
+                        self._restore_objects_data(
+                            original_values=self._original_canopen_object_values,
+                            changed_values=current_object_values,
+                        )
+                    except ILIOError as e:
+                        logger.warning(
+                            f"{id(self)}: Force restore failed during object read/write: {e}. "
+                            f"Drive may have disconnected. Skipping object restoration."
+                        )
             else:
                 # Tracked mode: restore only tracked changes
-                self._session.restore()
-                if self._track_objects:
-                    self._restore_objects_data(
-                        original_values=self._original_canopen_object_values,
-                        changed_values=self._objects_changed,
+                try:
+                    self._session.restore()
+                except ILIOError as e:
+                    logger.warning(
+                        f"{id(self)}: Restore failed during register write: {e}. "
+                        f"Drive may have disconnected. Continuing with tracking reset."
                     )
+
+                if self._track_objects:
+                    try:
+                        self._restore_objects_data(
+                            original_values=self._original_canopen_object_values,
+                            changed_values=self._objects_changed,
+                        )
+                    except ILIOError as e:
+                        logger.warning(
+                            f"{id(self)}: Restore failed during object write: {e}. "
+                            f"Drive may have disconnected. Skipping object restoration."
+                        )
 
             # Clear tracking and rebuild session
             if self._track_objects:
@@ -802,9 +828,22 @@ class DriveContextManager:
 
         self.stop()
 
-        self._session.restore()
-        if self._track_objects:
-            self._restore_objects_data(
-                original_values=self._original_canopen_object_values,
-                changed_values=self._objects_changed,
+        try:
+            self._session.restore()
+        except ILIOError as e:
+            logger.warning(
+                f"{id(self)}: Restore failed during context exit register write: {e}. "
+                f"Drive may have disconnected."
             )
+
+        if self._track_objects:
+            try:
+                self._restore_objects_data(
+                    original_values=self._original_canopen_object_values,
+                    changed_values=self._objects_changed,
+                )
+            except ILIOError as e:
+                logger.warning(
+                    f"{id(self)}: Restore failed during context exit object write: {e}. "
+                    f"Drive may have disconnected."
+                )
