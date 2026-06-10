@@ -224,6 +224,7 @@ pipeline {
                                 stage('Move workspace') {
                                     steps {
                                         script {
+                                            bat "git clean -fdx"
                                             venvManager.copyToWorkingFolder()
                                         }
                                     }
@@ -329,6 +330,7 @@ pipeline {
                                 stage('Check Dependencies') {
                                     steps {
                                         script {
+                                            sh "git clean -fdx"
                                             checkDependencies(excludeManagers: ['poetry:tests'])
                                         }
                                     }
@@ -436,6 +438,7 @@ pipeline {
                         stage('Unstash')
                         {
                             steps {
+                                sh "git clean -fdx"
                                 script {
                                     for (stash_name in wheel_stashes) {
                                         unstash stash_name
@@ -481,6 +484,7 @@ pipeline {
                         stage('Unstash')
                         {
                             steps {
+                                bat "git clean -fdx"
                                 script {
                                     for (stash_name in wheel_stashes) {
                                         unstash stash_name
@@ -525,6 +529,7 @@ pipeline {
                         stage('Unstash')
                         {
                             steps {
+                                bat "git clean -fdx"
                                 script {
                                     for (stash_name in wheel_stashes) {
                                         unstash stash_name
