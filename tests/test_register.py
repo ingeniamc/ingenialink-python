@@ -154,3 +154,43 @@ def test_bit_register_write_invalid_value(virtual_drive, write_value):
         str(exc_info.value)
         == f"Invalid value. Expected values: [0, 1, True, False], got {write_value}"
     )
+
+
+class TestRegisterEquality:
+    def test_equal_registers(self):
+        reg1 = Register(RegDtype.U32, RegAccess.RW, identifier="MOT_POLE_PAIRS", subnode=1)
+        reg2 = Register(RegDtype.U32, RegAccess.RW, identifier="MOT_POLE_PAIRS", subnode=1)
+        assert reg1 == reg2
+        assert reg1 == reg2
+
+    def test_different_identifier(self):
+        reg1 = Register(RegDtype.U32, RegAccess.RW, identifier="MOT_POLE_PAIRS", subnode=1)
+        reg2 = Register(RegDtype.U32, RegAccess.RW, identifier="DRV_OP_CMD", subnode=1)
+        assert reg1 != reg2
+
+    def test_different_subnode(self):
+        reg1 = Register(RegDtype.U32, RegAccess.RW, identifier="MOT_POLE_PAIRS", subnode=0)
+        reg2 = Register(RegDtype.U32, RegAccess.RW, identifier="MOT_POLE_PAIRS", subnode=1)
+        assert reg1 != reg2
+
+    def test_same_identity_ignores_other_fields(self):
+        reg1 = Register(RegDtype.U32, RegAccess.RW, identifier="REG_A", subnode=1)
+        reg2 = Register(RegDtype.FLOAT, RegAccess.RO, identifier="REG_A", subnode=1)
+        assert reg1 == reg2
+
+    def test_hash_consistent_with_equality(self):
+        reg1 = Register(RegDtype.U32, RegAccess.RW, identifier="MOT_POLE_PAIRS", subnode=1)
+        reg2 = Register(RegDtype.FLOAT, RegAccess.RO, identifier="MOT_POLE_PAIRS", subnode=1)
+        assert hash(reg1) == hash(reg2)
+
+    def test_usable_as_dict_key(self):
+        reg1 = Register(RegDtype.U32, RegAccess.RW, identifier="MOT_POLE_PAIRS", subnode=1)
+        reg2 = Register(RegDtype.U32, RegAccess.RW, identifier="MOT_POLE_PAIRS", subnode=1)
+        d = {reg1: 42}
+        assert d[reg2] == 42
+
+    def test_not_equal_to_non_register(self):
+        reg = Register(RegDtype.U32, RegAccess.RW, identifier="REG_A", subnode=1)
+        assert reg != "REG_A"
+        assert reg != 42
+        assert reg != (1, "REG_A")
