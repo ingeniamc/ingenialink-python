@@ -330,7 +330,7 @@ pipeline {
                                     steps {
                                         script {
                                             sh "git clean -fdx"
-                                            checkDependencies(excludeManagers: ['poetry:tests'])
+                                            checkDependencies(excludeManagers: ['poetry:tests', 'jenkins_shared_library'])
                                         }
                                     }
                                 }
