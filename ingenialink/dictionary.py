@@ -5,6 +5,7 @@ import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from fnmatch import fnmatch
 from functools import cached_property
 from pathlib import Path
 from typing import Optional, Union
@@ -533,6 +534,22 @@ class Dictionary(XMLBase, ABC):
         """
         for subnode_registers in self._registers.values():
             yield from subnode_registers.values()
+
+    def find_registers(self, *patterns: str) -> Iterator[Register]:
+        """Yield registers whose identifier matches any of the given patterns.
+
+        Uses :func:`fnmatch.fnmatch` for matching, which supports both
+        exact UIDs and glob patterns (``*``, ``?``, ``[seq]``, ``[!seq]``).
+
+        Args:
+            patterns: One or more UIDs or glob patterns.
+
+        Yields:
+            Matching :class:`Register` instances.
+        """
+        for reg in self.all_registers():
+            if reg.identifier is not None and any(fnmatch(reg.identifier, p) for p in patterns):
+                yield reg
 
     def all_tables(self) -> Iterator[DictionaryTable]:
         """Iterator for all tables.
