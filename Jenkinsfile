@@ -176,6 +176,7 @@ pipeline {
 
                     echo("Test sessions have been configured to run with the following base configuration:\n${TEST_SESSIONS.configSummary()}")
                     echo("ECAT test sessions have been configured to run with the following base configuration:\n${ECAT_TESTS.baseTestSession.configSummary()}")
+                    echo("ECAT tests have the following environment variables: ${ECAT_TESTS.baseTestSession.getEnvVars()}")
                 }
             }
         }
