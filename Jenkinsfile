@@ -175,6 +175,7 @@ pipeline {
                     testManager.runPolicyTags = runPolicyTags
 
                     echo("Test sessions have been configured to run with the following base configuration:\n${TEST_SESSIONS.configSummary()}")
+                    echo("ECAT test sessions have been configured to run with the following base configuration:\n${ECAT_TESTS.baseTestSession.configSummary()}")
                 }
             }
         }
