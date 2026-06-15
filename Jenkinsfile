@@ -1,11 +1,10 @@
-@Library('cicd-lib@0.21') _
+@Library('cicd-lib@0.22') _
 
 import python.VirtualEnvironment
 import python.VEnvManager
 import pytest.TestSession
 import pytest.TestGroup
 import pytest.PyTestManager
-import pytest.TestDashboardBuilder
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -387,6 +386,7 @@ pipeline {
                                             testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
 
                                             testManager.echoTestGroupsSummary()
+                                            testManager.collectTestsForDashboard()
                                             testManager.generateTestDashboard()
                                         }
                                     }
@@ -566,29 +566,31 @@ pipeline {
                     image WIN_DOCKER_IMAGE
                 }
             }
-            when {
-                expression { testManager.hasCoverageFiles() }
-            }
             environment {
                 VENV_WORKING_FOLDER = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
             }
             steps {
                 script {
-                    def coverage_files = testManager.getCoverageFiles().join(" ")
                     for (stash_name in wheel_stashes) {
                         unstash stash_name
                     }
+                    def coverage_files = testManager.getCoverageFiles()
                     venvManager.copyToWorkingFolder()
                     venvManager.createPoetryEnvironment(
-                      additionalCommands: ["poetry run poe install-wheel"]
+                        additionalCommands: ["poetry run poe install-wheel"]
                     )
-                    venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                        venv.run("poetry run poe cov-combine -- ${coverage_files}")
-                        venv.run("poetry run poe cov-report")
+
+                    if (coverage_files) {
+                        venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                            venv.run("poetry run poe cov-combine -- ${coverage_files.join(' ')}")
+                            venv.run("poetry run poe cov-report")
+                        }
+                        venvManager.copyFromWorkingFolder("coverage.xml")
+                        recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
+                        archiveArtifacts artifacts: '*.xml'
                     }
-                    venvManager.copyFromWorkingFolder("coverage.xml")
-                    recordCoverage(tools: [[parser: 'COBERTURA', pattern: 'coverage.xml']])
-                    archiveArtifacts artifacts: '*.xml'
+
+                    testManager.generateTestDashboard()
                 }
             }
         }
