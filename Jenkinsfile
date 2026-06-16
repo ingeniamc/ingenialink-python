@@ -385,6 +385,13 @@ pipeline {
                                             testManager.buildTestSessions("tests.setups.rack_specifiers")
                                             testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
 
+                                            if (env.BRANCH_NAME == 'develop' && runPolicyTags.isEmpty()) {
+                                                HW_TEST_SESSIONS.setAttributeInCascade(
+                                                    shouldRun: false,
+                                                    skipReason: 'Develop builds without nightly/weekend policy do not run hardware tests',
+                                                )
+                                            }
+
                                             testManager.echoTestGroupsSummary()
                                             testManager.collectTestsForDashboard()
                                             testManager.generateTestDashboard()
