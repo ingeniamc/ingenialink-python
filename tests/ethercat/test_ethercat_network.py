@@ -23,13 +23,14 @@ from ingenialink.ethercat.network import (
     ETHERCAT_NETWORK_REFERENCES,
     EthercatNetwork,
     GilReleaseConfig,
+    SlaveState,
     release_network_reference,
     set_network_reference,
 )
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetState
 from ingenialink.pdo import PDOMap, RPDOMap, TPDOMap
-from tests.ethercat.mock import pysoem_mock_network
+from tests.ethercat.mock import MockSoemSlave, pysoem_mock_network
 
 if TYPE_CHECKING:
     from pytest import FixtureRequest
@@ -377,30 +378,86 @@ def test_change_nodes_state_with_non_existent_slave(pysoem_mock_network):
     # _change_nodes_state should handle a list containing non-existent slaves
     # It should skip the non-existent slaves when changing state, but return False
     # because _check_node_state requires ALL nodes to exist and match the target state
-    target_state = pysoem.SAFEOP_STATE  # Use a different state than initial
+    target_state = SlaveState.SAFEOP_STATE  # Use a different state than initial
     result = net._change_nodes_state([servo1, servo2, servo3], target_state)
 
     # servo1's state should be changed to the target state
-    assert servo1.slave.state == target_state
+    assert servo1.slave.state == target_state.value
 
     # The method should return False because servo2 and servo3 don't exist
     assert result is False
 
     # Change state with only the existing servo - should return True
-    result = net._change_nodes_state([servo1], pysoem.OP_STATE)
+    result = net._change_nodes_state([servo1], SlaveState.OP_STATE)
     assert result is True
     assert servo1.slave.state == pysoem.OP_STATE
 
     # Change servo1 back and test with only non-existent slaves - should return False
     servo1.slave.state = initial_state
-    result = net._change_nodes_state([servo2, servo3], pysoem.OP_STATE)
+    result = net._change_nodes_state([servo2, servo3], SlaveState.OP_STATE)
     assert result is False
     # servo1 state should not have changed
     assert servo1.slave.state == initial_state
 
     # Test with a single non-existent servo - should return False
-    result = net._change_nodes_state(servo2, pysoem.OP_STATE)
+    result = net._change_nodes_state(servo2, SlaveState.OP_STATE)
     assert result is False
+
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_change_nodes_state_notifies_connected_servos():
+    """_change_nodes_state notifies each connected servo of the requested state."""
+    net = EthercatNetwork("dummy_ifname")
+    servo1 = net.connect_to_slave(slave_id=1, dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3)
+    servo2 = net.connect_to_slave(slave_id=2, dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3)
+
+    received1: list[SlaveState] = []
+    received2: list[SlaveState] = []
+    servo1.state_requested_event.subscribe(received1.append)
+    servo2.state_requested_event.subscribe(received2.append)
+
+    net._change_nodes_state([servo1, servo2], SlaveState.SAFEOP_STATE)
+
+    assert received1 == [SlaveState.SAFEOP_STATE]
+    assert received2 == [SlaveState.SAFEOP_STATE]
+
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_request_slave_change_routes_through_connected_servo():
+    """When the node belongs to a connected servo, _request_slave_change goes through the
+    servo so subscribers are notified."""
+    net = EthercatNetwork("dummy_ifname")
+    servo = net.connect_to_slave(slave_id=1, dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3)
+
+    received: list[SlaveState] = []
+    servo.state_requested_event.subscribe(received.append)
+
+    net._request_slave_change(servo.slave, SlaveState.SAFEOP_STATE)
+
+    assert servo.slave.state == SlaveState.SAFEOP_STATE.value
+    assert received == [SlaveState.SAFEOP_STATE]
+
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_request_slave_change_writes_directly_for_unconnected_node():
+    """For a node not registered as a servo, _request_slave_change writes the state directly
+    on the CdefSlave instead of going through a servo."""
+    net = EthercatNetwork("dummy_ifname")
+    net.connect_to_slave(slave_id=1, dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3)
+
+    orphan_slave = MockSoemSlave(id=99)
+    net._request_slave_change(orphan_slave, SlaveState.BOOT_STATE)
+
+    assert orphan_slave.state == SlaveState.BOOT_STATE.value
 
     net.close_ecat_master()
 
@@ -1137,7 +1194,7 @@ def test_recover_from_disconnection(net: "EthercatNetwork", servo: "EthercatServ
     assert net.recover_from_disconnection() is True
 
     # Simulate slave disconnection by changing state to INIT
-    net._change_nodes_state(servo, pysoem.INIT_STATE)
+    net._change_nodes_state(servo, SlaveState.INIT_STATE)
     assert servo.slave.state == pysoem.INIT_STATE, (
         "Servo should be in INIT state after disconnection"
     )
