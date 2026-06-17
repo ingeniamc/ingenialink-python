@@ -26,7 +26,6 @@ out.txt
 .DS_Store
 
 # Pipenv and venv
-/Pipfile.lock
 /.venv*
 
 # Test files
@@ -48,8 +47,8 @@ temp/*
 # ATT downloaded files
 /resources/
 
-# Wireshark logs
-/wireshark/
+# Test outputs 
+tests/outputs/
 
 # Version
 /ingenialink/_version.py

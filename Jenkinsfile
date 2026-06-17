@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.22') _
+@Library('cicd-lib@59677f0') _
 
 import python.VirtualEnvironment
 import python.VEnvManager
@@ -50,7 +50,6 @@ PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvM
 TestSession TEST_SESSIONS = new TestSession(
     covPackageName: "ingenialink",
     wiresharkScope: null, // Set later based on parameter
-    wiresharkDir: "wireshark",
     startWiresharkTimeoutS: 10.0,
     importMode: "importlib",
     logCli: true,
@@ -326,14 +325,15 @@ pipeline {
                                 VENV_WORKING_FOLDER = "/tmp/ingenialink_python"
                             }
                             stages {
-                                stage('Check Dependencies') {
-                                    steps {
-                                        script {
-                                            sh "git clean -fdx"
-                                            checkDependencies(excludeManagers: ['poetry:tests'])
-                                        }
-                                    }
-                                }
+                                // Uncomment when CICD is released: https://novantamotion.atlassian.net/browse/CIT-707
+                                // stage('Check Dependencies') {
+                                //     steps {
+                                //         script {
+                                //             sh "git clean -fdx"
+                                //             checkDependencies(excludeManagers: ['poetry:tests'])
+                                //         }
+                                //     }
+                                // }
                                 stage('Move workspace') {
                                     steps {
                                         script {
