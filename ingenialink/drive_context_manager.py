@@ -95,7 +95,9 @@ class DriveRegistersValue:
     def from_hardware(
         cls,
         servo: "Servo",
+        *,
         axis: Optional[int] = None,
+        include_registers: Optional[Container[Register]] = None,
         ignore_registers: Container[Register] = frozenset(),
         read_max_attempts: int = 2,
     ) -> "DriveRegistersValue":
@@ -105,9 +107,12 @@ class DriveRegistersValue:
             servo: The servo to read registers from.
             axis: If given, only read registers for this axis (subnode).
                 When ``None``, all registers from every subnode are read.
+            include_registers: If given, only read registers in this set.
+                When ``None``, all registers (subject to the other filters) are read.
             ignore_registers: Register instances to skip.
             read_max_attempts: Number of read attempts per register before
                 giving up and skipping it.
+
 
         Returns:
             A new ``DriveRegistersValue`` containing the successfully read values.
@@ -120,7 +125,12 @@ class DriveRegistersValue:
             else servo.dictionary.registers(axis).values()
         )
 
-        for register in cls.filter_registers(registers_iter, ignore_registers, axis):
+        for register in cls.filter_registers(
+            registers_iter,
+            include_registers=include_registers,
+            ignore_registers=ignore_registers,
+            axis=axis,
+        ):
             if register.access in [RegAccess.WO, RegAccess.RO]:
                 continue
 
@@ -189,28 +199,37 @@ class DriveRegistersValue:
         """
         return cls(
             OrderedDict(
-                (reg, data[reg]) for reg in cls.filter_registers(data, ignore_registers, axis)
+                (reg, data[reg])
+                for reg in cls.filter_registers(data, ignore_registers=ignore_registers, axis=axis)
             )
         )
 
     @staticmethod
     def filter_registers(
         registers: Iterable[Register],
+        *,
+        include_registers: Optional[Container[Register]] = None,
         ignore_registers: Container[Register] = frozenset(),
         axis: Optional[int] = None,
     ) -> Iterator[Register]:
-        """Yield registers that pass the axis and exclusion filters.
+        """Yield registers that pass the include, axis, and exclusion filters.
 
         Args:
             registers: The register iterable to filter.
+            include_registers: If given, only yield registers in this set.
+                When ``None``, all registers pass this filter.
             ignore_registers: Registers to exclude.
             axis: If given, only yield registers with this subnode.
                 When ``None``, all subnodes pass.
 
+
         Yields:
-            Registers that are not in the exclusion set and match the axis.
+            Registers that are in the include set (if any), not in the exclusion
+            set, and match the axis.
         """
         for reg in registers:
+            if include_registers is not None and reg not in include_registers:
+                continue
             if reg not in ignore_registers and (axis is None or reg.subnode == axis):
                 yield reg
 
@@ -365,25 +384,40 @@ class DriveRegistersSession:
 
         return result
 
-    def force_restore(self, write_max_attempts: int = 2) -> RestoreResult:
-        """Force-restore all registers to baseline by re-reading hardware.
+    def force_restore(
+        self,
+        *,
+        registers: Optional[Iterable[Register]] = None,
+        write_max_attempts: int = 2,
+    ) -> RestoreResult:
+        """Force-restore registers to baseline by re-reading hardware.
 
-        Re-reads all registers via ``DriveRegistersValue.from_hardware()``,
-        diffs against the baseline, and restores any that differ.  The tracked
-        changes are cleared before reading so subsequent tracking starts fresh.
+        Re-reads registers via ``DriveRegistersValue.from_hardware()``, diffs
+        against the baseline, and restores any that differ.
+
+        When ``registers`` is ``None``, all registers are re-read and the tracked
+        changes are cleared so subsequent tracking starts fresh.  When given,
+        only those registers are re-read, and tracking is cleared only for the
+        registers that were actually restored.
 
         Args:
+            registers: Specific registers to force-restore. When ``None``, all
+                registers in the baseline are considered.
             write_max_attempts: Number of write attempts per register before
                 recording a failure.
 
         Returns:
             A ``RestoreResult`` summarising successes, failures, and skips.
         """
-        self._changes.clear()
+        include_registers = None if registers is None else frozenset(registers)
+
+        if include_registers is None:
+            self._changes.clear()
 
         current = DriveRegistersValue.from_hardware(
             self.servo,
             axis=self._axis,
+            include_registers=include_registers,
             ignore_registers=self._do_not_restore_registers,
         )
         differences = self.baseline.diff(current)
@@ -395,6 +429,7 @@ class DriveRegistersSession:
                 f"on axis={register.subnode}"
             )
             self._write_with_retry(register, baseline_value, result, write_max_attempts)
+            self._changes.pop(register, None)
 
         return result
 
@@ -500,6 +535,18 @@ class DriveContextManager:
     def is_running(self) -> bool:
         """True if tracking is currently active."""
         return self._session.is_running if self._session else False
+
+    @property
+    def pending_changes(self) -> bool:
+        """True if any tracked register or object change has not been restored.
+
+        Inspects only what change tracking has recorded; it does not re-read
+        hardware, so it will not detect side-channel writes the context manager
+        never saw (use ``force_restore`` for that).
+        """
+        if self._session is None:
+            return False
+        return bool(self._session.changes) or bool(self._objects_changed)
 
     @property
     def drive(self) -> Servo:
@@ -693,13 +740,19 @@ class DriveContextManager:
 
         self.start()
 
-    def force_restore(self, restore_registers: bool = True, restore_objects: bool = True) -> None:
-        """Force restoration of all registers to their original values.
+    def force_restore(
+        self,
+        restore_registers: bool = True,
+        restore_objects: bool = True,
+        *,
+        registers: Optional[Iterable[Register]] = None,
+    ) -> None:
+        """Force restoration of registers to their original values.
 
-        This method re-reads all registers that were originally stored in __enter__,
-        compares them with the original values, and restores any that have changed.
-        It ignores the current state of the session's tracked changes and _objects_changed,
-        effectively performing a complete refresh and restoration.
+        This method re-reads registers from hardware, compares them with the
+        original values stored in ``__enter__``, and restores any that have changed.
+        It ignores the current state of the session's tracked changes and
+        _objects_changed, effectively performing a refresh and restoration.
 
         This is useful when changes have been made outside the context manager's
         tracking (e.g., external modifications to the drive).
@@ -707,6 +760,9 @@ class DriveContextManager:
         Args:
             restore_registers: If True, restores registers to their original values.
             restore_objects: If True, restores complete access objects to their original values.
+            registers: Specific registers to force-restore. When ``None`` (default),
+                all registers are re-read and restored. When given, only these
+                registers are read and restored.
         """
         if not restore_registers and not restore_objects:
             return
@@ -719,7 +775,7 @@ class DriveContextManager:
 
         try:
             if restore_registers:
-                self._session.force_restore()
+                self._session.force_restore(registers=registers)
 
             if restore_objects and self._track_objects:
                 # Clear the current tracking
