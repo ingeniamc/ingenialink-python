@@ -715,7 +715,7 @@ class EthercatNetwork(EthercatNetworkBase):
                     raise ILStateError("Drives can not reach SafeOp state")
 
             # Set all slaves to Op state
-            self._change_nodes_state(op_servo_list, pysoem.OP_STATE)
+            self._change_nodes_state(op_servo_list, SlaveState.OP_STATE)
             while not self._check_node_state(op_servo_list, pysoem.OP_STATE):
                 self.send_receive_processdata()
                 if t.has_expired:
@@ -735,7 +735,7 @@ class EthercatNetwork(EthercatNetworkBase):
         ]
         if len(restore_servos_list) == 0:
             return
-        if not self._change_nodes_state(restore_servos_list, pysoem.INIT_STATE):
+        if not self._change_nodes_state(restore_servos_list, SlaveState.INIT_STATE):
             logger.warning("Not all drives could reach the Init state")
         self.__init_nodes()
 
