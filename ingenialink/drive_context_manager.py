@@ -8,6 +8,7 @@ from ingenialogger import get_logger
 from ingenialink.dictionary import CanOpenObject
 from ingenialink.enums.register import RegAccess
 from ingenialink.ethercat.servo import EthercatServo
+from ingenialink.ethercat.state import SlaveState
 from ingenialink.exceptions import ILIOError
 from ingenialink.register import Register
 from ingenialink.servo import RegisterAccessOperation, Servo
@@ -170,7 +171,6 @@ class DriveRegistersValue:
         """
         self._values = values
 
-    
     @property
     def values(self) -> Mapping[Register, REG_VALUE]:
         """Read-only view of the register values."""
@@ -370,13 +370,13 @@ class DriveRegistersSession:
         self._set_dirty_mapped_pdo_registers = set_dirty_mapped_pdo_registers
         self._changes: OrderedDict[
             Register,  # Register present when there's changes in respect to the baseline
-            Optional[ # The last value written to the register, None if it's unknown but changed
+            Optional[  # The last value written to the register, None if it's unknown but changed
                 REG_VALUE
-            ],  
+            ],
         ] = OrderedDict()
         self._subscribed_servo: Optional[Servo] = None
-        if set_dirty_mapped_pdo_registers:
-            self._servo.state_requested_event.subscribe(self._mark_mapped_pdo_registers_dirty)
+        if set_dirty_mapped_pdo_registers and isinstance(servo, EthercatServo):
+            servo.state_requested_event.subscribe(self._on_ecat_state_requested)
 
     @property
     def is_running(self) -> bool:
@@ -420,7 +420,6 @@ class DriveRegistersSession:
             f"{id(self)}: uid={register.identifier!r} changed from {previous_value!r} to {value!r}"
         )
 
-
     def current_value(self) -> DriveRegistersValue:
         """Return the current register values: baseline overlaid with tracked changes.
 
@@ -435,7 +434,6 @@ class DriveRegistersSession:
         """Read-only view of the tracked register changes."""
         return MappingProxyType(self._changes)
 
-    
     def set_dirty_register(self, register: Register) -> None:
         """Mark a register as dirty (changed) without knowing its new value.
 
@@ -451,10 +449,18 @@ class DriveRegistersSession:
 
         self._changes[register] = None
 
-    def _mark_mapped_pdo_registers_dirty(self, servo: Servo) -> None:
-        """Mark all registers mapped in any RPDO as dirty, since their values may have changed"""
-        for map in servo.rpdo_maps.values():
-            for reg in map.mapped_registers:
+    def _on_ecat_state_requested(self, state: "SlaveState") -> None:
+        """Callback for Ethercat state changes.
+
+        When the servo is requested to transition to OPERATIONAL state,
+        marks all registers mapped to RPDOs as dirty.
+        """
+        if not isinstance(self._servo, EthercatServo):
+            return
+        if state != SlaveState.OP_STATE:
+            return
+        for rmap in self._servo.rpdo_maps:
+            for reg in rmap.registers:
                 self.set_dirty_register(reg)
 
     def restore(self, write_max_attempts: int = 2) -> RestoreResult:

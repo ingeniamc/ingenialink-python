@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from collections import OrderedDict
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, Callable, ClassVar, Literal, Optional, TypeVar, Union
 
 import bitarray
@@ -502,6 +503,11 @@ class PDOMap:
         return tuple(self.__items)
 
     @property
+    def registers(self) -> tuple[CanopenRegister, ...]:
+        """Registers of the items in the PDOMap."""
+        return tuple(item.register for item in self.__items)
+
+    @property
     def map_register_index_bytes(self) -> bytes:
         """Index of the mapping register in bytes.
 
@@ -872,6 +878,24 @@ class PDOServo(Servo):
         # (_process_rpdo/_process_tpdo) iterate maps in the same order.
         self._rpdo_maps: OrderedDict[int, RPDOMap] = OrderedDict()
         self._tpdo_maps: OrderedDict[int, TPDOMap] = OrderedDict()
+
+    @property
+    def rpdo_maps(self) -> Iterable[RPDOMap]:
+        """RPDO maps.
+
+        Returns:
+            RPDO maps.
+        """
+        return self._rpdo_maps.values()
+
+    @property
+    def tpdo_maps(self) -> Iterable[TPDOMap]:
+        """TPDO maps.
+
+        Returns:
+            TPDO maps.
+        """
+        return self._tpdo_maps.values()
 
     @property  # type: ignore[misc]
     def dictionary(self) -> CanopenDictionary:  # type: ignore[override]
