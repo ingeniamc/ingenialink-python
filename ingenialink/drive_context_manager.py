@@ -503,6 +503,10 @@ class DriveRegistersSession:
         if state != SlaveState.OP_STATE:
             return
         for rmap in self._servo.rpdo_maps:
+            regs = "\n".join(reg.identifier for reg in rmap.registers)
+            logger.info(
+                f"Servo requested OP state. Marking RPDO-mapped registers as dirty:\n {regs}"
+            )
             for reg in rmap.registers:
                 self.set_dirty_register(reg)
 
