@@ -835,6 +835,9 @@ class TestDirtyMappedPdoRegisters:
     ) -> None:
         """A real PDO exchange marks mapped RPDO registers dirty for restore."""
 
+        rpdo_assign = servo.dictionary.get_register("ETG_COMMS_RPDO_ASSIGN_TOTAL")
+        tpdo_assign = servo.dictionary.get_register("ETG_COMMS_TPDO_ASSIGN_TOTAL")
+
         rpdo_register = servo.dictionary.get_register("CL_POS_SET_POINT_VALUE")
         tpdo_register = servo.dictionary.get_register("CL_POS_FBK_VALUE")
         baseline_value = servo.read(rpdo_register)
@@ -855,13 +858,15 @@ class TestDirtyMappedPdoRegisters:
             with context:
                 net.start_pdos()
                 assert context.changes == {
-                    # The assign registers have been tracked via regular
-                    # register update callbacks
-                    rpdo_map.map_object.registers[0]: 1,  # rpdo assign register
-                    tpdo_map.map_object.registers[0]: 1,  # tpdo assign register
                     # only the rpdo assign register has been reset to unknown state,
                     # since it is assumed it will constantly change while it's on OP state
                     rpdo_register: None,
+
+                    # The assign index registers have been tracked via regular
+                    # register update callbacks too
+                    rpdo_assign: 1,  # rpdo assign total register
+                    tpdo_assign: 1,  # tpdo assign total register
+                    
                 }
                 assert context.pending_changes is True
 
