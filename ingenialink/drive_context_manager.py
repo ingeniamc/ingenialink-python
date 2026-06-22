@@ -361,11 +361,13 @@ class DriveRegistersSession:
         baseline: DriveRegistersValue,
         do_not_restore_registers: Container[Register] = frozenset(),
         axis: Optional[int] = None,
+        set_dirty_mapped_pdo_registers: bool = True,
     ) -> None:
         self._servo = servo
         self._baseline = baseline
         self._do_not_restore_registers = do_not_restore_registers
         self._axis = axis
+        self._set_dirty_mapped_pdo_registers = set_dirty_mapped_pdo_registers
         self._changes: OrderedDict[
             Register,  # Register present when there's changes in respect to the baseline
             Optional[ # The last value written to the register, None if it's unknown but changed
@@ -373,6 +375,8 @@ class DriveRegistersSession:
             ],  
         ] = OrderedDict()
         self._subscribed_servo: Optional[Servo] = None
+        if set_dirty_mapped_pdo_registers:
+            self._servo.state_requested_event.subscribe(self._mark_mapped_pdo_registers_dirty)
 
     @property
     def is_running(self) -> bool:
@@ -447,6 +451,11 @@ class DriveRegistersSession:
 
         self._changes[register] = None
 
+    def _mark_mapped_pdo_registers_dirty(self, servo: Servo) -> None:
+        """Mark all registers mapped in any RPDO as dirty, since their values may have changed"""
+        for map in servo.rpdo_maps.values():
+            for reg in map.mapped_registers:
+                self.set_dirty_register(reg)
 
     def restore(self, write_max_attempts: int = 2) -> RestoreResult:
         """Restore tracked changes back to their baseline values.
