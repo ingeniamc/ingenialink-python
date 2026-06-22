@@ -850,10 +850,19 @@ class TestDirtyMappedPdoRegisters:
         servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
 
         context = DriveContextManager(servo, track_objects=False)
+
         try:
             with context:
                 net.start_pdos()
-                assert context.changes == {rpdo_register: None}
+                assert context.changes == {
+                    # The assign registers have been tracked via regular
+                    # register update callbacks
+                    rpdo_map.map_object.registers[0]: 1,  # rpdo assign register
+                    tpdo_map.map_object.registers[0]: 1,  # tpdo assign register
+                    # only the rpdo assign register has been reset to unknown state,
+                    # since it is assumed it will constantly change while it's on OP state
+                    rpdo_register: None,
+                }
                 assert context.pending_changes is True
 
             assert context.changes == {}
