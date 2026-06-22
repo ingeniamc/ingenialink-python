@@ -85,8 +85,20 @@ def _write_with_retry(
     value: REG_VALUE,
     result: "RestoreResult",
     max_attempts: int = 2,
-) -> None:
-    """Write a register value with retry, recording the outcome in *result*."""
+) -> bool:
+    """Write a register value with retry, recording the outcome in *result*.
+
+    Args:
+        servo: The servo to write to.
+        register: The register to write.
+        value: The value to write.
+        result: The RestoreResult object to record successes and failures.
+        max_attempts: Maximum number of write attempts.
+
+    Returns:
+        True if the write succeeded, False if it failed after all attempts.
+
+    """
     try:
         _execute_with_retry(
             lambda: servo.write(register, value),
@@ -95,8 +107,10 @@ def _write_with_retry(
             "restore",
         )
         result.restored.append(RestoredEntry(register, value))
+        return True
     except Exception as e:
         result.failed.append(FailedEntry(register, value, e))
+        return False
 
 
 def filter_registers(
@@ -507,20 +521,22 @@ class DriveRegistersSession:
         """
         result = RestoreResult()
 
-        for register, current_value in reversed(self._changes.items()):
+        for register, current_value in reversed(list(self._changes.items())):
             baseline_value = self.baseline._values.get(register)
             if baseline_value is None:
                 result.skipped.append(SkippedEntry(register, "No baseline value"))
                 continue
 
             if current_value == baseline_value:
+                del self._changes[register]
                 continue
 
             logger.debug(
                 f"Restoring {register.identifier!s} to {baseline_value!r} "
                 f"on axis={register.subnode}"
             )
-            _write_with_retry(self.servo, register, baseline_value, result, write_max_attempts)
+            if _write_with_retry(self.servo, register, baseline_value, result, write_max_attempts):
+                del self._changes[register]
 
         return result
 

@@ -1035,10 +1035,20 @@ class TestContextManagerReset:
 
     def test_force_restore_skips_session_when_registers_disabled(self, mocker: MockerFixture):
         """force_restore(restore_registers=False) does not touch the session."""
-        context = self._make_context(mocker)
+        servo_mock = mocker.MagicMock(spec=Servo)
+        servo_mock.register_update_subscribe = mocker.MagicMock()
+        servo_mock.register_update_unsubscribe = mocker.MagicMock()
+        servo_mock.register_update_complete_access_subscribe = mocker.MagicMock()
+        servo_mock.register_update_complete_access_unsubscribe = mocker.MagicMock()
+
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
+
+        context = DriveContextManager(servo_mock, baseline=baseline, track_objects=False)
+        context.__enter__()
         spy = mocker.patch.object(context._session, "force_restore", return_value=RestoreResult())
 
-        context.force_restore(restore_registers=False, restore_objects=False, registers=[])
+        context.force_restore(restore_registers=False, restore_objects=False)
 
         spy.assert_not_called()
 
