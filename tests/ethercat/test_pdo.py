@@ -712,7 +712,6 @@ def test_multiple_pdo_maps_insertion_order_matches_processing_order(
     cl_vel_fbk = servo.dictionary.get_register("CL_VEL_FBK_VALUE")
 
     initial_op_mode = servo.read(drv_op_cmd)
-    initial_pos_set_point = servo.read(cl_pos_set_point)
     target_op_mode = 1 if initial_op_mode != 1 else 2
     target_pos_set_point = 12345
 
@@ -747,32 +746,26 @@ def test_multiple_pdo_maps_insertion_order_matches_processing_order(
 
     servo.set_pdo_map_to_slave(rpdo_maps=rpdo_maps, tpdo_maps=tpdo_maps)
 
-    try:
-        start_stop_pdos(net)
+    start_stop_pdos(net)
 
-        # Validate RPDO map 1: CL_POS_SET_POINT_VALUE received the correct value
-        actual_pos_set_point = servo.read(cl_pos_set_point)
-        assert actual_pos_set_point == target_pos_set_point, (
-            f"CL_POS_SET_POINT_VALUE: expected {target_pos_set_point}, got {actual_pos_set_point}. "
-            "RPDO map 1 data was placed at the wrong position."
-        )
-        # Validate RPDO map 2: DRV_OP_CMD received the correct value
-        actual_op_mode = servo.read(drv_op_cmd)
-        assert actual_op_mode == target_op_mode, (
-            f"DRV_OP_CMD: expected {target_op_mode}, got {actual_op_mode}. "
-            "RPDO map 2 data was placed at the wrong position."
-        )
-        # Validate TPDO map 2: DRV_OP_VALUE item matches the SDO read
-        actual_drv_op_value = servo.read(drv_op_value)
-        assert op_value_item.value == actual_drv_op_value, (
-            f"DRV_OP_VALUE TPDO item: expected {actual_drv_op_value}, got {op_value_item.value}. "
-            "TPDO map 2 data was read from the wrong position."
-        )
-    finally:
-        # Rollback register values modified by PDO exchanges during test teardown
-        # https://novantamotion.atlassian.net/browse/CIT-657
-        servo.write(drv_op_cmd, initial_op_mode)
-        servo.write(cl_pos_set_point, initial_pos_set_point)
+    # Validate RPDO map 1: CL_POS_SET_POINT_VALUE received the correct value
+    actual_pos_set_point = servo.read(cl_pos_set_point)
+    assert actual_pos_set_point == target_pos_set_point, (
+        f"CL_POS_SET_POINT_VALUE: expected {target_pos_set_point}, got {actual_pos_set_point}. "
+        "RPDO map 1 data was placed at the wrong position."
+    )
+    # Validate RPDO map 2: DRV_OP_CMD received the correct value
+    actual_op_mode = servo.read(drv_op_cmd)
+    assert actual_op_mode == target_op_mode, (
+        f"DRV_OP_CMD: expected {target_op_mode}, got {actual_op_mode}. "
+        "RPDO map 2 data was placed at the wrong position."
+    )
+    # Validate TPDO map 2: DRV_OP_VALUE item matches the SDO read
+    actual_drv_op_value = servo.read(drv_op_value)
+    assert op_value_item.value == actual_drv_op_value, (
+        f"DRV_OP_VALUE TPDO item: expected {actual_drv_op_value}, got {op_value_item.value}. "
+        "TPDO map 2 data was read from the wrong position."
+    )
 
 
 def test_pdo_item_custom_size_wrong_length(open_dictionary):
