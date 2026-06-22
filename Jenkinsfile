@@ -1,4 +1,5 @@
-@Library('cicd-lib@0.22') _
+// https://novantamotion.atlassian.net/browse/CIT-707
+@Library('cicd-lib@d6a0923') _
 
 import python.VirtualEnvironment
 import python.VEnvManager
@@ -50,7 +51,6 @@ PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvM
 TestSession TEST_SESSIONS = new TestSession(
     covPackageName: "ingenialink",
     wiresharkScope: null, // Set later based on parameter
-    wiresharkDir: "wireshark",
     startWiresharkTimeoutS: 10.0,
     importMode: "importlib",
     logCli: true,
@@ -155,6 +155,7 @@ pipeline {
                         jobName: "${env.JOB_NAME}-#${env.BUILD_NUMBER}",
                         wiresharkScope: params.WIRESHARK_LOGGING_SCOPE,
                         clearSuccessfulWiresharkLogs: params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS,
+                        archiveData: "*",
                     )
 
                     // Configure if ECAT and ETH sessions use Wireshark logging based on parameter
@@ -326,14 +327,15 @@ pipeline {
                                 VENV_WORKING_FOLDER = "/tmp/ingenialink_python"
                             }
                             stages {
-                                stage('Check Dependencies') {
-                                    steps {
-                                        script {
-                                            sh "git clean -fdx"
-                                            checkDependencies(excludeManagers: ['poetry:tests'])
-                                        }
-                                    }
-                                }
+                                // Uncomment when CICD is released: https://novantamotion.atlassian.net/browse/CIT-707
+                                // stage('Check Dependencies') {
+                                //     steps {
+                                //         script {
+                                //             sh "git clean -fdx"
+                                //             checkDependencies(excludeManagers: ['poetry:tests'])
+                                //         }
+                                //     }
+                                // }
                                 stage('Move workspace') {
                                     steps {
                                         script {
@@ -385,7 +387,7 @@ pipeline {
                                             testManager.buildTestSessions("tests.setups.rack_specifiers")
                                             testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
 
-                                            if (env.BRANCH_NAME == 'develop' && runPolicyTags.isEmpty()) {
+                                            if (env.BRANCH_NAME == 'develop' && testManager.runPolicyTags.isEmpty()) {
                                                 HW_TEST_SESSIONS.setAttributeInCascade(
                                                     shouldRun: false,
                                                     skipReason: 'Develop builds without nightly/weekend policy do not run hardware tests',
