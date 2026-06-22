@@ -11,6 +11,7 @@ from ingenialink.drive_context_manager import (
     RestoredEntry,
     RestoreResult,
     SkippedEntry,
+    _write_with_retry,
 )
 from ingenialink.enums.register import RegAccess, RegDtype
 from ingenialink.pdo import RPDOMap, TPDOMap
@@ -647,13 +648,9 @@ class TestDriveRegistersSession:
         """_write_with_retry records success on first write attempt."""
         servo_mock = mocker.MagicMock(spec=Servo)
         reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
-        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
-        session = DriveRegistersSession(
-            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
-        )
 
         result = RestoreResult()
-        session._write_with_retry(reg, 42.0, result, max_attempts=2)
+        _write_with_retry(servo_mock, reg, 42.0, result, max_attempts=2)
 
         servo_mock.write.assert_called_once_with(reg, 42.0)
         assert len(result.restored) == 1
@@ -664,13 +661,9 @@ class TestDriveRegistersSession:
         servo_mock = mocker.MagicMock(spec=Servo)
         servo_mock.write.side_effect = [RuntimeError("first fail"), None]
         reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
-        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
-        session = DriveRegistersSession(
-            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
-        )
 
         result = RestoreResult()
-        session._write_with_retry(reg, 42.0, result, max_attempts=2)
+        _write_with_retry(servo_mock, reg, 42.0, result, max_attempts=2)
 
         assert servo_mock.write.call_count == 2
         assert len(result.restored) == 1
@@ -681,13 +674,9 @@ class TestDriveRegistersSession:
         servo_mock = mocker.MagicMock(spec=Servo)
         servo_mock.write.side_effect = RuntimeError("persistent error")
         reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
-        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
-        session = DriveRegistersSession(
-            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
-        )
 
         result = RestoreResult()
-        session._write_with_retry(reg, 42.0, result, max_attempts=2)
+        _write_with_retry(servo_mock, reg, 42.0, result, max_attempts=2)
 
         assert servo_mock.write.call_count == 2
         assert len(result.restored) == 0
