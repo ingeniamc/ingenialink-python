@@ -675,6 +675,15 @@ class DriveContextManager:
         return bool(self._session.changes) or bool(self._objects_changed)
 
     @property
+    def baseline(self) -> Optional[DriveRegistersValue]:
+        """The baseline register snapshot used for restoration.
+
+        This is the snapshot captured during ``__enter__``, or the one
+        provided to the constructor.  It is ``None`` before ``__enter__`` is called.
+        """
+        return self._baseline
+
+    @property
     def changes(self) -> Mapping[Register, Optional[REG_VALUE]]:
         """Read-only view of the tracked register changes."""
         if self._session is None:
