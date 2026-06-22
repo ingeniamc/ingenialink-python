@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from collections.abc import Callable, Container, Iterable, Iterator, Mapping
 from types import MappingProxyType
-from typing import TYPE_CHECKING, NamedTuple, Optional, Union
+from typing import TYPE_CHECKING, NamedTuple, Optional, TypeVar, Union
 
 from ingenialogger import get_logger
 
@@ -17,6 +17,85 @@ if TYPE_CHECKING:
     from ingenialink.canopen.register import CanopenRegister
 
 logger = get_logger(__name__)
+
+
+_T = TypeVar("_T")
+
+
+def _execute_with_retry(
+    operation: Callable[[], _T],
+    register: Register,
+    max_attempts: int,
+    action_name: str,
+) -> _T:
+    """Execute a register operation with retry and logging.
+
+    Args:
+        operation: The operation to execute.
+        register: The register the operation is performed on.
+        max_attempts: Maximum number of attempts.
+        action_name: Name of the action (e.g., "read", "restore") for logging.
+
+    Returns:
+        The result of the operation.
+
+    Raises:
+        Exception: The last exception encountered if all attempts fail.
+        RuntimeError: If the function reaches an unreachable state.
+    """
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return operation()
+        except Exception as e:  # noqa: PERF203
+            if attempt < max_attempts:
+                logger.info(
+                    f"{register.identifier} failed to {action_name} on axis={register.subnode} "
+                    f"with exception {e!r}, attempt ({attempt}/{max_attempts})"
+                )
+            else:
+                logger.error(
+                    f"{register.identifier} failed to {action_name} on axis={register.subnode} "
+                    f"after {max_attempts} attempts: {e!r}"
+                )
+                raise
+    # This point is unreachable because the loop either returns or raises.
+    raise RuntimeError("Unreachable")  # pragma: no cover
+
+
+def _read_with_retry(
+    servo: Servo,
+    register: Register,
+    max_attempts: int = 2,
+) -> Optional[REG_VALUE]:
+    """Read a register value with retry, returning the value or None on failure.
+
+    Returns:
+        The read value, or ``None`` if all attempts fail.
+    """
+    try:
+        return _execute_with_retry(lambda: servo.read(register), register, max_attempts, "read")
+    except Exception:
+        return None
+
+
+def _write_with_retry(
+    servo: Servo,
+    register: Register,
+    value: REG_VALUE,
+    result: "RestoreResult",
+    max_attempts: int = 2,
+) -> None:
+    """Write a register value with retry, recording the outcome in *result*."""
+    try:
+        _execute_with_retry(
+            lambda: servo.write(register, value),
+            register,
+            max_attempts,
+            "restore",
+        )
+        result.restored.append(RestoredEntry(register, value))
+    except Exception as e:
+        result.failed.append(FailedEntry(register, value, e))
 
 
 class RestoredEntry(NamedTuple):
@@ -91,6 +170,12 @@ class DriveRegistersValue:
         """
         self._values = values
 
+    
+    @property
+    def values(self) -> Mapping[Register, REG_VALUE]:
+        """Read-only view of the register values."""
+        return MappingProxyType(self._values)
+
     @classmethod
     def from_hardware(
         cls,
@@ -134,25 +219,36 @@ class DriveRegistersValue:
             if register.access in [RegAccess.WO, RegAccess.RO]:
                 continue
 
-            for attempt in range(1, read_max_attempts + 1):
-                try:
-                    register_values[register] = servo.read(register)
-                    break
-                except ILIOError as e:
-                    message = (
-                        f"{e}\n"
-                        f"An exception happened while trying to read "
-                        f"{register.identifier} from {axis=} "
-                        f"attempt ({attempt}/{read_max_attempts})\n "
-                    )
-
-                    if attempt < read_max_attempts:
-                        logger.warning(f"{message}, \n trying again...")
-                    else:
-                        logger.error(f"{message}, \n Skipping this register")
-                        break
+            val = _read_with_retry(servo, register, read_max_attempts)
+            if val is not None:
+                register_values[register] = val
 
         return cls(register_values)
+
+    @classmethod
+    def from_session(cls, session: "DriveRegistersSession") -> "DriveRegistersValue":
+        """Construct a snapshot from a tracking session.
+
+        This overlays any tracked changes on top of the session's baseline.
+        Any unknown changes (recorded as ``None``) are resolved by reading hardware.
+
+        Args:
+            session: The session to snapshot.
+
+        Returns:
+            A new ``DriveRegistersValue`` representing the current state.
+        """
+        merged: OrderedDict[Register, REG_VALUE] = OrderedDict(session.baseline.values)
+
+        for register, value in session.changes.items():
+            if value is None:
+                read_value = _read_with_retry(session.servo, register)
+                if read_value is not None:
+                    merged[register] = read_value
+            else:
+                merged[register] = value
+
+        return cls(merged)
 
     def diff(
         self, other: "DriveRegistersValue"
@@ -270,7 +366,12 @@ class DriveRegistersSession:
         self._baseline = baseline
         self._do_not_restore_registers = do_not_restore_registers
         self._axis = axis
-        self._changes: OrderedDict[Register, REG_VALUE] = OrderedDict()
+        self._changes: OrderedDict[
+            Register,  # Register present when there's changes in respect to the baseline
+            Optional[ # The last value written to the register, None if it's unknown but changed
+                REG_VALUE
+            ],  
+        ] = OrderedDict()
         self._subscribed_servo: Optional[Servo] = None
 
     @property
@@ -303,8 +404,10 @@ class DriveRegistersSession:
             return
 
         if register in self._changes:
+            # Register has already been changed in from the baseline
             previous_value = self._changes[register]
         else:
+            # First time this register has changed from the baseline
             previous_value = self.baseline._values[register]
         if value == previous_value:
             return
@@ -313,6 +416,7 @@ class DriveRegistersSession:
             f"{id(self)}: uid={register.identifier!r} changed from {previous_value!r} to {value!r}"
         )
 
+
     def current_value(self) -> DriveRegistersValue:
         """Return the current register values: baseline overlaid with tracked changes.
 
@@ -320,37 +424,29 @@ class DriveRegistersSession:
             A new ``DriveRegistersValue`` with baseline values updated by any
             changes recorded so far.
         """
-        merged: OrderedDict[Register, REG_VALUE] = OrderedDict(self.baseline._values)
-        merged.update(self._changes)
-        return DriveRegistersValue(merged)
+        return DriveRegistersValue.from_session(self)
 
     @property
-    def changes(self) -> Mapping[Register, REG_VALUE]:
+    def changes(self) -> Mapping[Register, Optional[REG_VALUE]]:
         """Read-only view of the tracked register changes."""
         return MappingProxyType(self._changes)
 
-    def _write_with_retry(
-        self,
-        register: Register,
-        value: REG_VALUE,
-        result: RestoreResult,
-        max_attempts: int = 2,
-    ) -> None:
-        """Write a register value with retry, recording the outcome in *result*."""
-        for attempt in range(1, max_attempts + 1):
-            try:
-                self.servo.write(register, value)
-                result.restored.append(RestoredEntry(register, value))
-                return
-            except Exception as e:  # noqa: PERF203
-                if attempt < max_attempts:
-                    logger.error(
-                        f"{id(self)}: {register.identifier} failed to restore to "
-                        f"{value!r} on axis={register.subnode} with exception '{e}', "
-                        f"attempt ({attempt}/{max_attempts})"
-                    )
-                else:
-                    result.failed.append(FailedEntry(register, value, e))
+    
+    def set_dirty_register(self, register: Register) -> None:
+        """Mark a register as dirty (changed) without knowing its new value.
+
+        This is useful when a register is modified outside the context of this
+        session (e.g., via complete access, PDOs or side-channel writes) and the
+        session should track it as changed even though the new value is unknown.
+
+        Args:
+            register: The register to mark as dirty.
+        """
+        if register not in self.baseline._values:
+            return
+
+        self._changes[register] = None
+
 
     def restore(self, write_max_attempts: int = 2) -> RestoreResult:
         """Restore tracked changes back to their baseline values.
@@ -380,7 +476,7 @@ class DriveRegistersSession:
                 f"Restoring {register.identifier!s} to {baseline_value!r} "
                 f"on axis={register.subnode}"
             )
-            self._write_with_retry(register, baseline_value, result, write_max_attempts)
+            _write_with_retry(self.servo, register, baseline_value, result, write_max_attempts)
 
         return result
 
@@ -428,7 +524,7 @@ class DriveRegistersSession:
                 f"Force restoring {register.identifier!s} to {baseline_value!r} "
                 f"on axis={register.subnode}"
             )
-            self._write_with_retry(register, baseline_value, result, write_max_attempts)
+            _write_with_retry(self.servo, register, baseline_value, result, write_max_attempts)
             self._changes.pop(register, None)
 
         return result
