@@ -1,5 +1,5 @@
 // https://novantamotion.atlassian.net/browse/CIT-707
-@Library('cicd-lib@8f29029') _
+@Library('cicd-lib@d2aedbd') _
 
 import python.VirtualEnvironment
 import python.VEnvManager
@@ -40,9 +40,9 @@ def reassignFilePermissions() {
 }
 
 VEnvManager venvManager = new VEnvManager(
-  pipeline: this,
-  default_python_version: DEFAULT_PYTHON_VERSION,
-  poetry_default_install_command: "poetry sync --no-root --all-groups"
+    pipeline: this,
+    default_python_version: DEFAULT_PYTHON_VERSION,
+    poetry_default_install_command: "poetry sync --no-root --all-groups"
 )
 
 PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvManager)
@@ -261,7 +261,7 @@ pipeline {
                                     steps {
                                         script {
                                             venvManager.createPoetryEnvironments(
-                                              pythonVersions: ALL_PYTHON_VERSIONS
+                                                pythonVersions: ALL_PYTHON_VERSIONS
                                             )
                                         }
                                     }
@@ -326,6 +326,13 @@ pipeline {
                                         }
                                     }
                                 }
+                                stage('Resolve WIN_DOCKER_TESTS') {
+                                    steps {
+                                        script {
+                                            testManager.resolveSession(WIN_DOCKER_TESTS)
+                                        }
+                                    }
+                                }
                                 stage('Run unit tests (no-pcap) tests on docker') {
                                     when {
                                         expression {
@@ -375,7 +382,7 @@ pipeline {
                                     steps {
                                         script {
                                             venvManager.createPoetryEnvironments(
-                                              pythonVersions: ([DEFAULT_PYTHON_VERSION] as Set) + venvManager.defaultVenvNamesToVersion(TEST_SESSIONS.runInVirtualEnvs)
+                                                pythonVersions: ([DEFAULT_PYTHON_VERSION] as Set) + venvManager.defaultVenvNamesToVersion(TEST_SESSIONS.runInVirtualEnvs)
                                             )
                                         }
                                     }
@@ -410,7 +417,7 @@ pipeline {
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
-                                            
+
                                             // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here).
                                             testManager.buildTestSessions("tests.setups.rack_specifiers")
                                             testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
@@ -425,6 +432,9 @@ pipeline {
                                             testManager.echoTestGroupsSummary()
                                             testManager.collectTestsForDashboard()
                                             testManager.generateTestDashboard()
+
+                                            testManager.resolveSessions(excludeGroups: [WIN_DOCKER_TESTS])
+
                                         }
                                     }
                                 }
@@ -500,7 +510,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Tests') {
             parallel {
                 stage('EtherCAT/No Connection - Tests') {
