@@ -861,12 +861,10 @@ class TestDirtyMappedPdoRegisters:
                     # only the rpdo assign register has been reset to unknown state,
                     # since it is assumed it will constantly change while it's on OP state
                     rpdo_register: None,
-
                     # The assign index registers have been tracked via regular
                     # register update callbacks too
                     rpdo_assign: 1,  # rpdo assign total register
                     tpdo_assign: 1,  # tpdo assign total register
-                    
                 }
                 assert context.pending_changes is True
 
