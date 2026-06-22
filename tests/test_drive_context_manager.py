@@ -341,42 +341,6 @@ def test_force_restore_multiple_times(servo: "Servo") -> None:
         assert _read_user_over_voltage_uid(servo) == previous_reg_value
 
 
-@pytest.mark.ethernet
-@pytest.mark.ethercat
-@pytest.mark.canopen
-@pytest.mark.virtual
-def test_force_restore_specific_register_only(servo: "Servo") -> None:
-    """force_restore(registers=...) restores only the targeted register, leaving others."""
-    context = DriveContextManager(servo)
-
-    over_volt_reg = servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1)
-
-    previous_over_volt_value = _read_user_over_voltage_uid(servo)
-    new_over_volt_value = previous_over_volt_value - 1.0
-
-    previous_under_volt_value = _read_user_under_voltage_uid(servo)
-    new_under_volt_value = previous_under_volt_value + 1.0
-
-    with context:
-        # Change two registers.
-        servo.write(_USER_OVER_VOLTAGE_UID, new_over_volt_value, subnode=1)
-        servo.write(_USER_UNDER_VOLTAGE_UID, new_under_volt_value, subnode=1)
-        assert _read_user_over_voltage_uid(servo) == new_over_volt_value
-        assert _read_user_under_voltage_uid(servo) == new_under_volt_value
-
-        # Force-restore only the over-voltage register.
-        context.force_restore(restore_objects=False, registers=[over_volt_reg])
-
-        # Targeted register restored; the other keeps its changed value.
-        assert _read_user_over_voltage_uid(servo) == previous_over_volt_value
-        assert _read_user_under_voltage_uid(servo) == new_under_volt_value
-
-        # Only the targeted register's tracking was cleared.
-        under_volt_reg = servo.dictionary.get_register(_USER_UNDER_VOLTAGE_UID, axis=1)
-        assert over_volt_reg not in context._session.changes
-        assert under_volt_reg in context._session.changes
-
-
 @pytest.mark.ethercat
 def test_force_restore_with_complete_access_objects(servo: "Servo", setup_descriptor) -> None:
     """Test that force_restore works with complete access objects (PDO mappings)."""
@@ -741,67 +705,30 @@ class TestDriveRegistersSession:
         assert len(result.skipped) == 0
         assert len(result.failed) == 0
 
-    def test_force_restore_targeted_reads_only_given_registers(self, mocker: MockerFixture):
-        """force_restore(registers=...) restricts the hardware read to the given registers."""
+    def test_reconcile_registers_updates_dirty_register_from_hardware(
+        self,
+        mocker: MockerFixture,
+    ):
+        """reconcile_registers() replaces an unknown dirty value with the hardware value."""
         servo_mock = mocker.MagicMock(spec=Servo)
-        target = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TARGET")
-        other = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="OTHER")
-        baseline = DriveRegistersValue(OrderedDict([(target, 42.0), (other, 7.0)]))
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="DIRTY")
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
         session = DriveRegistersSession(
-            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
+            servo=servo_mock,
+            baseline=baseline,
+            do_not_restore_registers=set(),
         )
-        # Hardware reports the target changed; other is not part of the read.
-        current_state = DriveRegistersValue(OrderedDict([(target, 100.0)]))
-        from_hw_spy = mocker.patch.object(
-            DriveRegistersValue, "from_hardware", autospec=True, return_value=current_state
-        )
+        session._changes[reg] = None
 
-        result = session.force_restore(registers=[target])
-
-        assert from_hw_spy.call_args.kwargs["include_registers"] == frozenset({target})
-        servo_mock.write.assert_called_once_with(target, 42.0)
-        assert len(result.restored) == 1
-        assert result.restored[0].register is target
-
-    def test_force_restore_targeted_skips_unchanged(self, mocker: MockerFixture):
-        """force_restore(registers=...) does not write a register already at baseline."""
-        servo_mock = mocker.MagicMock(spec=Servo)
-        target = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TARGET")
-        baseline = DriveRegistersValue(OrderedDict([(target, 42.0)]))
-        session = DriveRegistersSession(
-            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
-        )
-        current_state = DriveRegistersValue(OrderedDict([(target, 42.0)]))
+        current_state = DriveRegistersValue(OrderedDict([(reg, 99.0)]))
         mocker.patch.object(
             DriveRegistersValue, "from_hardware", autospec=True, return_value=current_state
         )
 
-        result = session.force_restore(registers=[target])
+        session.reconcile_registers()
 
-        servo_mock.write.assert_not_called()
-        assert len(result.restored) == 0
-        assert result.all_succeeded
-
-    def test_force_restore_targeted_clears_only_targeted_changes(self, mocker: MockerFixture):
-        """force_restore(registers=...) clears tracked changes only for the given registers."""
-        servo_mock = mocker.MagicMock(spec=Servo)
-        target = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TARGET")
-        other = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="OTHER")
-        baseline = DriveRegistersValue(OrderedDict([(target, 42.0), (other, 7.0)]))
-        session = DriveRegistersSession(
-            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
-        )
-        session._changes[target] = 100.0
-        session._changes[other] = 8.0
-        current_state = DriveRegistersValue(OrderedDict([(target, 100.0)]))
-        mocker.patch.object(
-            DriveRegistersValue, "from_hardware", autospec=True, return_value=current_state
-        )
-
-        session.force_restore(registers=[target])
-
-        assert target not in session._changes
-        assert other in session._changes
+        assert session._changes[reg] == 99.0
+        assert session.current_value().get(reg) == 99.0
 
     def test_reset_clears_changes(self, mocker: MockerFixture):
         """reset() clears tracked changes and rebases from the current tracked state."""
@@ -917,6 +844,7 @@ class TestDirtyMappedPdoRegisters:
 
         rpdo_map = RPDOMap()
         rpdo_map.add_registers(rpdo_register)
+        rpdo_map.items[0].value = baseline_value
         tpdo_map = TPDOMap()
         tpdo_map.add_registers(tpdo_register)
         servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
@@ -1102,46 +1030,6 @@ class TestContextManagerReset:
         assert id(context._baseline) == baseline_id
         # Session should be rebuilt
         assert len(context._session._changes) == 0
-
-        context.__exit__(None, None, None)
-
-
-class TestContextManagerForceRestore:
-    """Tests for DriveContextManager.force_restore() argument forwarding."""
-
-    def _make_context(self, mocker: MockerFixture) -> DriveContextManager:
-        servo_mock = mocker.MagicMock(spec=Servo)
-        servo_mock.register_update_subscribe = mocker.MagicMock()
-        servo_mock.register_update_unsubscribe = mocker.MagicMock()
-        servo_mock.register_update_complete_access_subscribe = mocker.MagicMock()
-        servo_mock.register_update_complete_access_unsubscribe = mocker.MagicMock()
-
-        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
-        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
-        context = DriveContextManager(servo_mock, baseline=baseline, track_objects=False)
-        context.__enter__()
-        return context
-
-    def test_force_restore_forwards_registers_to_session(self, mocker: MockerFixture):
-        """force_restore(registers=...) forwards the target set to the session."""
-        context = self._make_context(mocker)
-        target = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TARGET")
-        spy = mocker.patch.object(context._session, "force_restore", return_value=RestoreResult())
-
-        context.force_restore(registers=[target])
-
-        spy.assert_called_once_with(registers=[target])
-
-        context.__exit__(None, None, None)
-
-    def test_force_restore_defaults_to_all_registers(self, mocker: MockerFixture):
-        """force_restore() with no target forwards registers=None (restore all)."""
-        context = self._make_context(mocker)
-        spy = mocker.patch.object(context._session, "force_restore", return_value=RestoreResult())
-
-        context.force_restore()
-
-        spy.assert_called_once_with(registers=None)
 
         context.__exit__(None, None, None)
 
