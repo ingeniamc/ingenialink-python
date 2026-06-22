@@ -660,6 +660,13 @@ class DriveContextManager:
         return bool(self._session.changes) or bool(self._objects_changed)
 
     @property
+    def changes(self) -> Mapping[Register, Optional[REG_VALUE]]:
+        """Read-only view of the tracked register changes."""
+        if self._session is None:
+            return MappingProxyType({})
+        return self._session.changes
+
+    @property
     def drive(self) -> Servo:
         """The servo this context manager operates on."""
         return self._drive

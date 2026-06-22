@@ -14,6 +14,8 @@ from ingenialink.drive_context_manager import (
     _write_with_retry,
 )
 from ingenialink.enums.register import RegAccess, RegDtype
+from ingenialink.ethercat.servo import EthercatServo
+from ingenialink.ethercat.state import SlaveState
 from ingenialink.pdo import RPDOMap, TPDOMap
 from ingenialink.register import Register
 from ingenialink.servo import Servo
@@ -893,6 +895,70 @@ class TestTrackObjects:
         with context:
             subscribe_spy.assert_called_once()
             unsubscribe_spy.assert_not_called()
+
+
+class TestDirtyMappedPdoRegisters:
+    """Tests for dirty tracking of EtherCAT RPDO-mapped registers."""
+
+    @pytest.mark.ethercat
+    def test_state_request_marks_rpdo_registers_dirty(
+        self,
+        servo: EthercatServo,
+        net,
+    ) -> None:
+        """A real PDO exchange marks mapped RPDO registers dirty for restore."""
+
+        rpdo_register = servo.dictionary.get_register("CL_POS_SET_POINT_VALUE")
+        tpdo_register = servo.dictionary.get_register("CL_POS_FBK_VALUE")
+        baseline_value = servo.read(rpdo_register)
+
+        servo.reset_rpdo_mapping()
+        servo.reset_tpdo_mapping()
+
+        rpdo_map = RPDOMap()
+        rpdo_map.add_registers(rpdo_register)
+        tpdo_map = TPDOMap()
+        tpdo_map.add_registers(tpdo_register)
+        servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+
+        context = DriveContextManager(servo, track_objects=False)
+        try:
+            with context:
+                net.start_pdos()
+                assert context.changes == {rpdo_register: None}
+                assert context.pending_changes is True
+
+            assert context.changes == {}
+            assert context.pending_changes is False
+            assert servo.read(rpdo_register) == baseline_value
+        finally:
+            if net.pdo_manager.is_active:
+                net.stop_pdos()
+
+    @pytest.mark.ethercat
+    def test_state_request_dirty_tracking_can_be_disabled(
+        self,
+        servo: EthercatServo,
+    ) -> None:
+        """The dirty-PDO hook can be disabled explicitly."""
+
+        rpdo_register = servo.dictionary.get_register("CL_POS_SET_POINT_VALUE")
+        baseline_value = servo.read(rpdo_register)
+
+        servo.reset_rpdo_mapping()
+        rpdo_map = RPDOMap()
+        rpdo_map.add_registers(rpdo_register)
+        servo.set_pdo_map_to_slave([rpdo_map], [])
+
+        session = DriveRegistersSession(
+            servo,
+            DriveRegistersValue(OrderedDict([(rpdo_register, baseline_value)])),
+            set_dirty_mapped_pdo_registers=False,
+        )
+
+        servo.request_node_state(SlaveState.OP_STATE)
+
+        assert session.changes == {}
 
 
 class TestPendingChanges:
