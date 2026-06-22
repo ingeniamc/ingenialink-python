@@ -1,5 +1,5 @@
 // https://novantamotion.atlassian.net/browse/CIT-707
-@Library('cicd-lib@d2aedbd') _
+@Library('cicd-lib@3a0e465') _
 
 import python.VirtualEnvironment
 import python.VEnvManager
@@ -134,7 +134,7 @@ properties([
         // If PYTEST_SELECTION is empty, this will have no effect since all tests will run once by default.
         string(
             name: 'PYTEST_REPEAT_COUNTS',
-            defaultValue: TEST_SESSIONS.latestBuildParamValue(currentBuild, 'PYTEST_REPEAT_COUNTS', ''),
+            defaultValue: TEST_SESSIONS.latestBuildParamValue(currentBuild, 'PYTEST_REPEAT_COUNTS', '1'),
             description: '''
                 Pytest repeat count used for <code>--count</code>.<br>
                 See <a href="https://github.com/pytest-dev/pytest-repeat" target="_blank">
@@ -326,7 +326,7 @@ pipeline {
                                         }
                                     }
                                 }
-                                stage('Resolve WIN_DOCKER_TESTS') {
+                                stage('Resolve Test Session') {
                                     steps {
                                         script {
                                             testManager.resolveSession(WIN_DOCKER_TESTS)
@@ -432,9 +432,13 @@ pipeline {
                                             testManager.echoTestGroupsSummary()
                                             testManager.collectTestsForDashboard()
                                             testManager.generateTestDashboard()
-
+                                        }
+                                    }
+                                }
+                                stage('Resolve Test Sessions') {
+                                    steps {
+                                        script {
                                             testManager.resolveSessions(excludeGroups: [WIN_DOCKER_TESTS])
-
                                         }
                                     }
                                 }
