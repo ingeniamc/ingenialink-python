@@ -545,6 +545,34 @@ class TestDriveRegistersSession:
     @pytest.mark.ethercat
     @pytest.mark.canopen
     @pytest.mark.virtual
+    def test_set_dirty_register_marks_only_baseline_registers(self, servo: "Servo") -> None:
+        """set_dirty_register() marks known registers dirty and ignores unknown ones."""
+
+        tracked_register = servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1)
+        baseline = DriveRegistersValue.from_hardware(servo)
+        session = DriveRegistersSession(
+            servo=servo,
+            baseline=baseline,
+            do_not_restore_registers=set(),
+        )
+
+        session.set_dirty_register(tracked_register)
+
+        assert session.changes[tracked_register] is None
+
+        ignored_register = Register(
+            dtype=RegDtype.FLOAT,
+            access=RegAccess.RW,
+            identifier="IGNORED_REG",
+        )
+        session.set_dirty_register(ignored_register)
+
+        assert ignored_register not in session.changes
+
+    @pytest.mark.ethernet
+    @pytest.mark.ethercat
+    @pytest.mark.canopen
+    @pytest.mark.virtual
     def test_restore_returns_result(
         self,
         servo: "Servo",

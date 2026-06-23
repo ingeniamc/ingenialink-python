@@ -367,6 +367,8 @@ class DriveRegistersSession:
         baseline: The immutable snapshot used as the reference state.
         do_not_restore_registers: UIDs that should be ignored by the tracker.
         axis: Axis (subnode) scope.  ``None`` means all axes.
+        set_dirty_mapped_pdo_registers: Whether to mark mapped RPDO registers as dirty
+            when the servo transitions to OP state.
     """
 
     def __init__(
@@ -428,7 +430,7 @@ class DriveRegistersSession:
             return
 
         if register in self._changes:
-            # Register has already been changed in from the baseline
+            # Register has already been changed from the baseline
             previous_value = self._changes[register]
         else:
             # First time this register has changed from the baseline
