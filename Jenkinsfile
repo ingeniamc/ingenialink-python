@@ -1,5 +1,5 @@
 // https://novantamotion.atlassian.net/browse/CIT-707
-@Library('cicd-lib@56bbe39') _
+@Library('cicd-lib@70fbc61') _
 
 import python.VirtualEnvironment
 import python.VEnvManager
@@ -121,9 +121,10 @@ properties([
         booleanParam(name: 'RUN_POLICY_WEEKEND', defaultValue: false, description: 'Tag this build as a weekend build (set automatically by weekend cron triggers)'),
         // Show the previous build's pytest selection as the initial value in the form.
         // If PYTEST_SELECTION contains data, it acts as an additional selector alongside test_session_filter.
+        // If master/develop/release branch, default to empty (no filter applied by default)
         string(
             name: 'PYTEST_SELECTION',
-            defaultValue: BuildParamUtils.latestBuildParamValue(currentBuild, 'PYTEST_SELECTION', ''),
+            defaultValue: env.BRANCH_NAME in [BRANCH_NAME_MASTER, 'develop'] || env.BRANCH_NAME?.startsWith('release/') ? '' : BuildParamUtils.latestBuildParamValue(currentBuild, 'PYTEST_SELECTION', ''),
             description: '''
                 Pytest selection string to select which tests to run.<br>
                 See <a href="https://docs.pytest.org/en/stable/how-to/usage.html#specifying-tests-selecting-tests" target="_blank">
