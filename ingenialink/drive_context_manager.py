@@ -505,7 +505,8 @@ class DriveRegistersSession:
         for rmap in self._servo.rpdo_maps:
             regs = "\n".join(reg.identifier for reg in rmap.registers)
             logger.debug(
-                f"Servo requested OP state. Marking RPDO-mapped registers as dirty:\n {regs}"
+                f"Servo requested OP state. Marking RPDO-mapped registers as dirty:\n {regs}",
+                stack_info=True,
             )
             for reg in rmap.registers:
                 self.set_dirty_register(reg)

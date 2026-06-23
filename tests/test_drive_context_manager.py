@@ -854,26 +854,23 @@ class TestDirtyMappedPdoRegisters:
 
         context = DriveContextManager(servo, track_objects=False)
 
-        try:
-            with context:
-                net.start_pdos()
-                assert context.changes == {
-                    # only the rpdo assign register has been reset to unknown state,
-                    # since it is assumed it will constantly change while it's on OP state
-                    rpdo_register: None,
-                    # The assign index registers have been tracked via regular
-                    # register update callbacks too
-                    rpdo_assign: 1,  # rpdo assign total register
-                    tpdo_assign: 1,  # tpdo assign total register
-                }
-                assert context.pending_changes is True
+        with context:
+            net.start_pdos()
+            assert context.changes == {
+                # only the rpdo assign register has been reset to unknown state,
+                # since it is assumed it will constantly change while it's on OP state
+                rpdo_register: None,
+                # The assign index registers have been tracked via regular
+                # register update callbacks too
+                rpdo_assign: 1,  # rpdo assign total register
+                tpdo_assign: 1,  # tpdo assign total register
+            }
+            assert context.pending_changes is True
+            net.stop_pdos()
 
-            assert context.changes == {}
-            assert context.pending_changes is False
-            assert servo.read(rpdo_register) == baseline_value
-        finally:
-            if net.pdo_manager.is_active:
-                net.stop_pdos()
+        assert context.changes == {}
+        assert context.pending_changes is False
+        assert servo.read(rpdo_register) == baseline_value
 
     @pytest.mark.ethercat
     def test_state_request_dirty_tracking_can_be_disabled(
