@@ -1,8 +1,9 @@
 // https://novantamotion.atlassian.net/browse/CIT-707
-@Library('cicd-lib@89fbfea') _
+@Library('cicd-lib@56bbe39') _
 
 import python.VirtualEnvironment
 import python.VEnvManager
+import utils.BuildParamUtils
 import pytest.TestSession
 import pytest.TestGroup
 import pytest.PyTestManager
@@ -119,10 +120,10 @@ properties([
         booleanParam(name: 'RUN_POLICY_NIGHTLY', defaultValue: false, description: 'Tag this build as a nightly build (set automatically by cron triggers)'),
         booleanParam(name: 'RUN_POLICY_WEEKEND', defaultValue: false, description: 'Tag this build as a weekend build (set automatically by weekend cron triggers)'),
         // Show the previous build's pytest selection as the initial value in the form.
-        // If PYTEST_SELECTION contains data, it will override test_session_filter. If both are empty, all tests will run.
+        // If PYTEST_SELECTION contains data, it acts as an additional selector alongside test_session_filter.
         string(
             name: 'PYTEST_SELECTION',
-            defaultValue: TEST_SESSIONS.latestBuildParamValue(currentBuild, 'PYTEST_SELECTION', ''),
+            defaultValue: BuildParamUtils.latestBuildParamValue(currentBuild, 'PYTEST_SELECTION', ''),
             description: '''
                 Pytest selection string to select which tests to run.<br>
                 See <a href="https://docs.pytest.org/en/stable/how-to/usage.html#specifying-tests-selecting-tests" target="_blank">
@@ -134,7 +135,7 @@ properties([
         // If PYTEST_SELECTION is empty, this will have no effect since all tests will run once by default.
         string(
             name: 'PYTEST_REPEAT_COUNTS',
-            defaultValue: TEST_SESSIONS.latestBuildParamValue(currentBuild, 'PYTEST_REPEAT_COUNTS', '1'),
+            defaultValue: BuildParamUtils.latestBuildParamValue(currentBuild, 'PYTEST_REPEAT_COUNTS', '1'),
             description: '''
                 Pytest repeat count used for <code>--count</code>.<br>
                 See <a href="https://github.com/pytest-dev/pytest-repeat" target="_blank">
