@@ -574,7 +574,7 @@ class DriveRegistersSession:
             self.servo.register_update_unsubscribe(self._register_update_callback)
             self._subscribed_servo = None
 
-    def reset(self) -> None:
+    def rebase_to_current(self) -> None:
         """Clear all tracked changes.
 
         After calling this, the session behaves as if no register writes
@@ -927,115 +927,56 @@ class DriveContextManager:
             # Re-subscribe to callbacks
             self.start()
 
-    def reset(self, force: bool = False) -> None:
+    def reset(self, *, force: bool = False, rearm: bool = True) -> None:
         """Reset the drive to its baseline state.
 
         Restores the drive to the baseline captured during ``__enter__``, without
-        re-reading the baseline itself. Clears tracked changes and re-arms change tracking.
+        re-reading the baseline itself. The tracking session is reused, not rebuilt.
 
         Args:
             force: If True, re-reads all registers vs. baseline and restores differences
                 (for side-channel writes the context manager never saw). If False, restores
                 only the tracked changes and clears the tracked sets (default).
-
-        Raises:
-            RuntimeError: If no active session exists (``__enter__`` not called).
+            rearm: If True, resume tracking after restoring (default). If False, leave
+                tracking stopped.
         """
-        if self._session is None:
-            raise RuntimeError(
-                "DriveContextManager has no active session. "
-                "Call __enter__() before calling reset()."
-            )
-        if self._baseline is None:
-            raise RuntimeError(
-                "DriveContextManager has no baseline. Call __enter__() before calling reset()."
-            )
-
-        # Unsubscribe from callbacks to avoid re-populating tracking
-        self.stop()
-
-        try:
-            if force:
-                # Force mode: re-read and restore all differences
-                try:
-                    self._session.force_restore()
-                except ILIOError as e:
-                    logger.warning(
-                        f"{id(self)}: Force restore failed during register read/write: {e}. "
-                        f"Drive may have disconnected. Continuing with tracking reset."
-                    )
-
-                if self._track_objects:
-                    try:
-                        current_object_values = self._store_objects_data()
-                        self._restore_objects_data(
-                            original_values=self._original_canopen_object_values,
-                            changed_values=current_object_values,
-                        )
-                    except ILIOError as e:
-                        logger.warning(
-                            f"{id(self)}: Force restore failed during object read/write: {e}. "
-                            f"Drive may have disconnected. Skipping object restoration."
-                        )
-            else:
-                # Tracked mode: restore only tracked changes
-                try:
-                    self._session.restore()
-                except ILIOError as e:
-                    logger.warning(
-                        f"{id(self)}: Restore failed during register write: {e}. "
-                        f"Drive may have disconnected. Continuing with tracking reset."
-                    )
-
-                if self._track_objects:
-                    try:
-                        self._restore_objects_data(
-                            original_values=self._original_canopen_object_values,
-                            changed_values=self._objects_changed,
-                        )
-                    except ILIOError as e:
-                        logger.warning(
-                            f"{id(self)}: Restore failed during object write: {e}. "
-                            f"Drive may have disconnected. Skipping object restoration."
-                        )
-
-            # Clear tracking and rebuild session
-            if self._track_objects:
-                self._objects_changed.clear()
-
-            self._session = DriveRegistersSession(
-                servo=self.drive,
-                baseline=self._baseline,
-                do_not_restore_registers=self._session._do_not_restore_registers,
-                axis=self._axis,
-            )
-        finally:
-            # Re-subscribe to callbacks
-            self.start()
-
-    def __exit__(self, exc_type, exc_value, traceback) -> None:  # type: ignore [no-untyped-def]
-        """Unsubscribes from register updates and restores the drive values."""
         if self._session is None or self._baseline is None:
             return
 
         self.stop()
 
         try:
-            self._session.restore()
+            if force:
+                self._session.force_restore()
+            else:
+                self._session.restore()
         except ILIOError as e:
             logger.warning(
-                f"{id(self)}: Restore failed during context exit register write: {e}. "
+                f"{id(self)}: Restore failed during register write: {e}. "
                 f"Drive may have disconnected."
             )
 
         if self._track_objects:
             try:
+                # In force mode reconcile against the current hardware state; otherwise
+                # restore only the object changes that tracking recorded.
+                changed_values = self._store_objects_data() if force else self._objects_changed
                 self._restore_objects_data(
                     original_values=self._original_canopen_object_values,
-                    changed_values=self._objects_changed,
+                    changed_values=changed_values,
                 )
+                # Clear only after the writes have actually gone through, so an
+                # interrupted object restore is retried rather than silently dropped.
+                self._objects_changed.clear()
             except ILIOError as e:
                 logger.warning(
-                    f"{id(self)}: Restore failed during context exit object write: {e}. "
+                    f"{id(self)}: Restore failed during object write: {e}. "
                     f"Drive may have disconnected."
                 )
+
+        if rearm:
+            self.start()
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:  # type: ignore [no-untyped-def]
+        """Unsubscribes from register updates and restores the drive values."""
+        self.reset(rearm=False)

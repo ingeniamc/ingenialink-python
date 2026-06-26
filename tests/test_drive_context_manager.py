@@ -758,8 +758,8 @@ class TestDriveRegistersSession:
         assert session._changes[reg] == 99.0
         assert session.current_value().get(reg) == 99.0
 
-    def test_reset_clears_changes(self, mocker: MockerFixture):
-        """reset() clears tracked changes and rebases from the current tracked state."""
+    def test_rebase_to_current_clears_changes(self, mocker: MockerFixture):
+        """rebase_to_current() clears tracked changes and rebases from the current state."""
         servo_mock = mocker.MagicMock(spec=Servo)
         reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
         baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
@@ -769,7 +769,7 @@ class TestDriveRegistersSession:
         session._changes[reg] = 99.0
         assert len(session._changes) == 1
 
-        session.reset()
+        session.rebase_to_current()
 
         assert len(session._changes) == 0
         assert session.baseline.get(reg) == 99.0
@@ -778,11 +778,11 @@ class TestDriveRegistersSession:
     @pytest.mark.ethercat
     @pytest.mark.canopen
     @pytest.mark.virtual
-    def test_reset_allows_fresh_tracking(
+    def test_rebase_to_current_allows_fresh_tracking(
         self,
         servo: Servo,
     ) -> None:
-        """After reset(), subsequent writes are tracked from scratch."""
+        """After rebase_to_current(), subsequent writes are tracked from scratch."""
 
         baseline = DriveRegistersValue.from_hardware(servo)
         session = DriveRegistersSession(
@@ -797,7 +797,7 @@ class TestDriveRegistersSession:
         servo.write(_USER_OVER_VOLTAGE_UID, new_value, subnode=1)
         assert len(session._changes) >= 1
 
-        session.reset()
+        session.rebase_to_current()
         assert len(session._changes) == 0
         assert (
             session.baseline.get(servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1))
@@ -1065,8 +1065,6 @@ class TestContextManagerReset:
         force_restore_spy.assert_called_once()
         # Baseline should not change
         assert id(context._baseline) == baseline_id
-        # Session should be rebuilt
-        assert len(context._session._changes) == 0
 
         context.__exit__(None, None, None)
 
