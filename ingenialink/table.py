@@ -1,5 +1,6 @@
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
+from types import TracebackType
 from typing import TYPE_CHECKING, Optional
 
 from ingenialink.configuration_file import ConfigTable, TableElement
@@ -7,9 +8,7 @@ from ingenialink.utils._utils import REG_VALUE, convert_bytes_to_dtype
 
 if TYPE_CHECKING:
     from ingenialink import Register, Servo
-
-
-from ingenialink.dictionary import DictionaryTable
+    from ingenialink.dictionary import DictionaryTable
 
 
 class Table:
@@ -18,10 +17,11 @@ class Table:
     Internal table that stores N values that are accessed by index register
     and read/written via value register.
 
-    The table contains the servo and dictionary table instances, as well as the index and value registers.
-    For mutable operations on the table, a context manager is used to ensure that the index register is restored after the operation.
-    When doing multiple operations in a sequence, it is recommended to use  a single context manager to avoid repeatedly
-        setting the index register.
+    The table contains the servo, dictionary table and the index and value registers.
+    For mutable operations on the table, a context manager is used to ensure that the index register
+        is restored after the operation.
+    When doing multiple operations in a sequence, it is recommended to use a single context manager
+        to avoid repeatedly setting the index register.
     """
 
     def __init__(
@@ -60,7 +60,7 @@ class Table:
         self.__max_index = max_index
 
     @contextmanager
-    def context(self) -> "TableContext":
+    def context(self) -> Iterator["TableContext"]:
         """Context manager to rollback index register after operations.
 
         Yields:
@@ -68,6 +68,11 @@ class Table:
         """
         with TableContext(self) as ctx:
             yield ctx
+
+    @property
+    def servo(self) -> "Servo":
+        """Servo instance associated with the table."""
+        return self.__servo
 
     @property
     def index_register(self) -> "Register":
@@ -88,6 +93,16 @@ class Table:
     def axis(self) -> int:
         """Axis to which the table belongs."""
         return self.__dict_table.axis or 0
+
+    @property
+    def min_index(self) -> int:
+        """Minimum valid table index."""
+        return self.__min_index
+
+    @property
+    def max_index(self) -> int:
+        """Maximum valid table index."""
+        return self.__max_index
 
     def __len__(self) -> int:
         """Returns the number of elements in the table.
@@ -312,10 +327,15 @@ class TableContext:
         Returns:
             The TableContext instance itself for use within the context.
         """
-        self._original_index = self._table._servo.read(self._table._index_register)
+        self._original_index = self._table.servo.read(self._table.index_register)
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
+    def __exit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
         """Restore the original index register value when exiting the context.
 
         Raises:
@@ -323,7 +343,7 @@ class TableContext:
         """
         if self._original_index is None:
             raise ValueError("Original index should not be None when exiting the context.")
-        self._table._servo.write(self._table._index_register, self._original_index)
+        self._table.servo.write(self._table.index_register, self._original_index)
 
     def get_value(self, index: int) -> REG_VALUE:
         """Read a value from the table within the context.
@@ -334,8 +354,8 @@ class TableContext:
         Returns:
             Value at the specified index.
         """
-        self._table._servo.write(self._table._index_register, index)
-        return self._table._servo.read(self._table._value_register)
+        self._table.servo.write(self._table.index_register, index)
+        return self._table.servo.read(self._table.value_register)
 
     def set_value(self, index: int, value: REG_VALUE) -> None:
         """Write a value to the table within the context.
@@ -344,8 +364,8 @@ class TableContext:
             index: Index of the value to write.
             value: Value to write at the specified index.
         """
-        self._table._servo.write(self._table._index_register, index)
-        self._table._servo.write(self._table._value_register, value)
+        self._table.servo.write(self._table.index_register, index)
+        self._table.servo.write(self._table.value_register, value)
 
     def get_value_raw(self, index: int) -> bytes:
         """Read a raw value from the table within the context.
@@ -356,8 +376,8 @@ class TableContext:
         Returns:
             Raw value at the specified index
         """
-        self._table._servo.write(self._table._index_register, index)
-        return self._table._servo._read_raw(self._table._value_register)
+        self._table.servo.write(self._table.index_register, index)
+        return self._table.servo._read_raw(self._table.value_register)
 
     def set_value_raw(self, index: int, raw_value: bytes) -> None:
         """Write a raw value to the table within the context.
@@ -366,8 +386,8 @@ class TableContext:
             index: Index of the value to write.
             raw_value: Raw bytes to write at the specified index.
         """
-        self._table._servo.write(self._table._index_register, index)
-        self._table._servo._write_raw(self._table._value_register, raw_value)
+        self._table.servo.write(self._table.index_register, index)
+        self._table.servo._write_raw(self._table.value_register, raw_value)
 
     def __iter__(self) -> Iterator[REG_VALUE]:
         """Iterate over all values in the table within the context.
@@ -375,7 +395,7 @@ class TableContext:
         Yields:
             Each value in the table from min_index to max_index.
         """
-        for i in range(self._table._min_index, self._table._max_index + 1):
+        for i in range(self._table.min_index, self._table.max_index + 1):
             yield self.get_value(i)
 
     def __getitem__(self, index: int) -> REG_VALUE:
@@ -390,8 +410,10 @@ class TableContext:
         Raises:
             IndexError: If index is out of range.
         """
-        if index < self.__min_index or index > self.__max_index:
-            raise IndexError(f"Index {index} out of range [{self.__min_index}, {self.__max_index}]")
+        if index < self._table.min_index or index > self._table.max_index:
+            raise IndexError(
+                f"Index {index} out of range [{self._table.min_index}, {self._table.max_index}]"
+            )
         return self.get_value(index)
 
     def __setitem__(self, index: int, value: REG_VALUE) -> None:
@@ -404,8 +426,10 @@ class TableContext:
         Raises:
             IndexError: If index is out of range.
         """
-        if index < self.__min_index or index > self.__max_index:
-            raise IndexError(f"Index {index} out of range [{self.__min_index}, {self.__max_index}]")
+        if index < self._table.min_index or index > self._table.max_index:
+            raise IndexError(
+                f"Index {index} out of range [{self._table.min_index}, {self._table.max_index}]"
+            )
         self.set_value(index, value)
 
     def read(
@@ -424,17 +448,17 @@ class TableContext:
             IndexError: If the range is out of bounds.
         """
         if start_index is None:
-            start_index = self.__min_index
+            start_index = self._table.min_index
 
         if count is None:
-            count = self.__max_index - start_index + 1
+            count = self._table.max_index - start_index + 1
 
         end_index = start_index + count - 1
 
-        if start_index < self.__min_index or end_index > self.__max_index:
+        if start_index < self._table.min_index or end_index > self._table.max_index:
             raise IndexError(
                 f"Range [{start_index}, {end_index}] out of bounds "
-                f"[{self.__min_index}, {self.__max_index}]"
+                f"[{self._table.min_index}, {self._table.max_index}]"
             )
 
         return [self.get_value(i) for i in range(start_index, end_index + 1)]
@@ -450,14 +474,14 @@ class TableContext:
             IndexError: If the range is out of bounds.
         """
         if start_index is None:
-            start_index = self.__min_index
+            start_index = self._table.min_index
 
         end_index = start_index + len(values) - 1
 
-        if start_index < self.__min_index or end_index > self.__max_index:
+        if start_index < self._table.min_index or end_index > self._table.max_index:
             raise IndexError(
                 f"Range [{start_index}, {end_index}] out of bounds "
-                f"[{self.__min_index}, {self.__max_index}]"
+                f"[{self._table.min_index}, {self._table.max_index}]"
             )
 
         for i, value in enumerate(values):
@@ -469,7 +493,7 @@ class TableContext:
         Returns:
             ConfigTable instance with the current table values.
         """
-        config_table = ConfigTable(uid=self.__dict_table.id, subnode=self.__dict_table.axis or 0)
+        config_table = ConfigTable(uid=self._table.uid, subnode=self._table.axis or 0)
         for address, raw_value in self.items_raw():
             element = TableElement(address=address, data=raw_value)
             config_table.elements.append(element)
@@ -491,8 +515,7 @@ class TableContext:
             A list of mismatch/error messages (empty when identical).
         """
         mismatches: list[str] = []
-        # Use the dictionary id for messages
-        uid = self.__dict_table.id
+        uid = self._table.uid
         for element in config_table.elements:
             try:
                 drive_raw = self.get_value_raw(element.address)
@@ -500,8 +523,8 @@ class TableContext:
                 mismatches.append(f"Table {uid} address {element.address} -- {e}")
                 continue
 
-            expected = convert_bytes_to_dtype(element.data, self.__value_register.dtype)
-            found = convert_bytes_to_dtype(drive_raw, self.__value_register.dtype)
+            expected = convert_bytes_to_dtype(element.data, self.value_register.dtype)
+            found = convert_bytes_to_dtype(drive_raw, self.value_register.dtype)
             if expected != found:
                 mismatches.append(
                     f"Table {uid} address {element.address} --- Expected: {expected!r} "
@@ -562,3 +585,13 @@ class TableContext:
             Tuples of (index, raw_value) for each entry in the table.
         """
         yield from self._table.items_raw()
+
+    @property
+    def min_index(self) -> int:
+        """Minimum valid table index."""
+        return self._table.min_index
+
+    @property
+    def max_index(self) -> int:
+        """Maximum valid table index."""
+        return self._table.max_index
