@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from collections import OrderedDict
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, Callable, ClassVar, Literal, Optional, TypeVar, Union
 
 import bitarray
@@ -24,6 +25,8 @@ if TYPE_CHECKING:
 BIT_ENDIAN: Literal["little"] = "little"
 
 PADDING_REGISTER_IDENTIFIER = "PADDING"
+PADDING_REGISTER_IDX = 0x0000
+PADDING_REGISTER_SUBIDX = 0x00
 
 MAP_REGISTER_BYTES = 4
 """Number of bytes used to store each mapping register information."""
@@ -70,8 +73,8 @@ class PDOMapItem:
                 identifier=PADDING_REGISTER_IDENTIFIER,
                 units="",
                 subnode=0,
-                idx=0x0000,
-                subidx=0x00,
+                idx=PADDING_REGISTER_IDX,
+                subidx=PADDING_REGISTER_SUBIDX,
                 pdo_access=self.ACCEPTED_CYCLICS[0],
                 dtype=RegDtype.STR,
                 access=RegAccess.RW,
@@ -80,6 +83,15 @@ class PDOMapItem:
         self.size_bits = dtype_length_bits[register.dtype] if size_bits is None else size_bits
         self._raw_data_bits: Optional[bitarray.bitarray] = None
         self._check_if_mappable()
+
+    @property
+    def is_padding(self) -> int:
+        """Check if the item is a padding register."""
+        return (
+            self.register.identifier == PADDING_REGISTER_IDENTIFIER
+            and self.register.idx == PADDING_REGISTER_IDX
+            and self.register.subidx == PADDING_REGISTER_SUBIDX
+        )
 
     def _check_if_mappable(self) -> None:
         """Check if the passed register is mappable. I.e., if the pdo_access information is correct.
@@ -502,6 +514,11 @@ class PDOMap:
         return tuple(self.__items)
 
     @property
+    def registers(self) -> tuple[CanopenRegister, ...]:
+        """Registers of the items in the PDOMap."""
+        return tuple(item.register for item in self.__items if not item.is_padding)
+
+    @property
     def map_register_index_bytes(self) -> bytes:
         """Index of the mapping register in bytes.
 
@@ -872,6 +889,24 @@ class PDOServo(Servo):
         # (_process_rpdo/_process_tpdo) iterate maps in the same order.
         self._rpdo_maps: OrderedDict[int, RPDOMap] = OrderedDict()
         self._tpdo_maps: OrderedDict[int, TPDOMap] = OrderedDict()
+
+    @property
+    def rpdo_maps(self) -> Iterable[RPDOMap]:
+        """RPDO maps.
+
+        Returns:
+            RPDO maps.
+        """
+        return self._rpdo_maps.values()
+
+    @property
+    def tpdo_maps(self) -> Iterable[TPDOMap]:
+        """TPDO maps.
+
+        Returns:
+            TPDO maps.
+        """
+        return self._tpdo_maps.values()
 
     @property  # type: ignore[misc]
     def dictionary(self) -> CanopenDictionary:  # type: ignore[override]

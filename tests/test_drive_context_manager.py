@@ -11,8 +11,11 @@ from ingenialink.drive_context_manager import (
     RestoredEntry,
     RestoreResult,
     SkippedEntry,
+    _write_with_retry,
 )
 from ingenialink.enums.register import RegAccess, RegDtype
+from ingenialink.ethercat.servo import EthercatServo
+from ingenialink.ethercat.state import SlaveState
 from ingenialink.pdo import RPDOMap, TPDOMap
 from ingenialink.register import Register
 from ingenialink.servo import Servo
@@ -542,6 +545,34 @@ class TestDriveRegistersSession:
     @pytest.mark.ethercat
     @pytest.mark.canopen
     @pytest.mark.virtual
+    def test_set_dirty_register_marks_only_baseline_registers(self, servo: "Servo") -> None:
+        """set_dirty_register() marks known registers dirty and ignores unknown ones."""
+
+        tracked_register = servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1)
+        baseline = DriveRegistersValue.from_hardware(servo)
+        session = DriveRegistersSession(
+            servo=servo,
+            baseline=baseline,
+            do_not_restore_registers=set(),
+        )
+
+        session.set_dirty_register(tracked_register)
+
+        assert session.changes[tracked_register] is None
+
+        ignored_register = Register(
+            dtype=RegDtype.FLOAT,
+            access=RegAccess.RW,
+            identifier="IGNORED_REG",
+        )
+        session.set_dirty_register(ignored_register)
+
+        assert ignored_register not in session.changes
+
+    @pytest.mark.ethernet
+    @pytest.mark.ethercat
+    @pytest.mark.canopen
+    @pytest.mark.virtual
     def test_restore_returns_result(
         self,
         servo: "Servo",
@@ -611,13 +642,9 @@ class TestDriveRegistersSession:
         """_write_with_retry records success on first write attempt."""
         servo_mock = mocker.MagicMock(spec=Servo)
         reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
-        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
-        session = DriveRegistersSession(
-            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
-        )
 
         result = RestoreResult()
-        session._write_with_retry(reg, 42.0, result, max_attempts=2)
+        _write_with_retry(servo_mock, reg, 42.0, result, max_attempts=2)
 
         servo_mock.write.assert_called_once_with(reg, 42.0)
         assert len(result.restored) == 1
@@ -628,13 +655,9 @@ class TestDriveRegistersSession:
         servo_mock = mocker.MagicMock(spec=Servo)
         servo_mock.write.side_effect = [RuntimeError("first fail"), None]
         reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
-        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
-        session = DriveRegistersSession(
-            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
-        )
 
         result = RestoreResult()
-        session._write_with_retry(reg, 42.0, result, max_attempts=2)
+        _write_with_retry(servo_mock, reg, 42.0, result, max_attempts=2)
 
         assert servo_mock.write.call_count == 2
         assert len(result.restored) == 1
@@ -645,13 +668,9 @@ class TestDriveRegistersSession:
         servo_mock = mocker.MagicMock(spec=Servo)
         servo_mock.write.side_effect = RuntimeError("persistent error")
         reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
-        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
-        session = DriveRegistersSession(
-            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
-        )
 
         result = RestoreResult()
-        session._write_with_retry(reg, 42.0, result, max_attempts=2)
+        _write_with_retry(servo_mock, reg, 42.0, result, max_attempts=2)
 
         assert servo_mock.write.call_count == 2
         assert len(result.restored) == 0
@@ -714,8 +733,33 @@ class TestDriveRegistersSession:
         assert len(result.skipped) == 0
         assert len(result.failed) == 0
 
-    def test_reset_clears_changes(self, mocker: MockerFixture):
-        """reset() clears tracked changes and rebases from the current tracked state."""
+    def test_reconcile_registers_updates_dirty_register_from_hardware(
+        self,
+        mocker: MockerFixture,
+    ):
+        """reconcile_registers() replaces an unknown dirty value with the hardware value."""
+        servo_mock = mocker.MagicMock(spec=Servo)
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="DIRTY")
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
+        session = DriveRegistersSession(
+            servo=servo_mock,
+            baseline=baseline,
+            do_not_restore_registers=set(),
+        )
+        session._changes[reg] = None
+
+        current_state = DriveRegistersValue(OrderedDict([(reg, 99.0)]))
+        mocker.patch.object(
+            DriveRegistersValue, "from_hardware", autospec=True, return_value=current_state
+        )
+
+        session.reconcile_registers()
+
+        assert session._changes[reg] == 99.0
+        assert session.current_value().get(reg) == 99.0
+
+    def test_rebase_to_current_clears_changes(self, mocker: MockerFixture):
+        """rebase_to_current() clears tracked changes and rebases from the current state."""
         servo_mock = mocker.MagicMock(spec=Servo)
         reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
         baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
@@ -725,7 +769,7 @@ class TestDriveRegistersSession:
         session._changes[reg] = 99.0
         assert len(session._changes) == 1
 
-        session.reset()
+        session.rebase_to_current()
 
         assert len(session._changes) == 0
         assert session.baseline.get(reg) == 99.0
@@ -734,11 +778,11 @@ class TestDriveRegistersSession:
     @pytest.mark.ethercat
     @pytest.mark.canopen
     @pytest.mark.virtual
-    def test_reset_allows_fresh_tracking(
+    def test_rebase_to_current_allows_fresh_tracking(
         self,
         servo: Servo,
     ) -> None:
-        """After reset(), subsequent writes are tracked from scratch."""
+        """After rebase_to_current(), subsequent writes are tracked from scratch."""
 
         baseline = DriveRegistersValue.from_hardware(servo)
         session = DriveRegistersSession(
@@ -753,7 +797,7 @@ class TestDriveRegistersSession:
         servo.write(_USER_OVER_VOLTAGE_UID, new_value, subnode=1)
         assert len(session._changes) >= 1
 
-        session.reset()
+        session.rebase_to_current()
         assert len(session._changes) == 0
         assert (
             session.baseline.get(servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1))
@@ -806,6 +850,118 @@ class TestTrackObjects:
         with context:
             subscribe_spy.assert_called_once()
             unsubscribe_spy.assert_not_called()
+
+
+class TestDirtyMappedPdoRegisters:
+    """Tests for dirty tracking of EtherCAT RPDO-mapped registers."""
+
+    @pytest.mark.ethercat
+    def test_state_request_marks_rpdo_registers_dirty(
+        self,
+        servo: EthercatServo,
+        net,
+    ) -> None:
+        """A real PDO exchange marks mapped RPDO registers dirty for restore."""
+
+        rpdo_assign = servo.dictionary.get_register("ETG_COMMS_RPDO_ASSIGN_TOTAL")
+        tpdo_assign = servo.dictionary.get_register("ETG_COMMS_TPDO_ASSIGN_TOTAL")
+
+        rpdo_register = servo.dictionary.get_register("CL_POS_SET_POINT_VALUE")
+        tpdo_register = servo.dictionary.get_register("CL_POS_FBK_VALUE")
+        baseline_value = servo.read(rpdo_register)
+
+        servo.reset_rpdo_mapping()
+        servo.reset_tpdo_mapping()
+
+        rpdo_map = RPDOMap()
+        rpdo_map.add_registers(rpdo_register)
+        rpdo_map.items[0].value = baseline_value
+        tpdo_map = TPDOMap()
+        tpdo_map.add_registers(tpdo_register)
+        servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+
+        context = DriveContextManager(servo, track_objects=False)
+
+        with context:
+            net.start_pdos()
+            assert context.changes == {
+                # only the rpdo assign register has been reset to unknown state,
+                # since it is assumed it will constantly change while it's on OP state
+                rpdo_register: None,
+                # The assign index registers have been tracked via regular
+                # register update callbacks too
+                rpdo_assign: 1,  # rpdo assign total register
+                tpdo_assign: 1,  # tpdo assign total register
+            }
+            assert context.pending_changes is True
+            net.stop_pdos()
+
+        assert context.changes == {}
+        assert context.pending_changes is False
+        assert servo.read(rpdo_register) == baseline_value
+
+    @pytest.mark.ethercat
+    def test_state_request_dirty_tracking_can_be_disabled(
+        self,
+        servo: EthercatServo,
+    ) -> None:
+        """The dirty-PDO hook can be disabled explicitly."""
+
+        rpdo_register = servo.dictionary.get_register("CL_POS_SET_POINT_VALUE")
+        baseline_value = servo.read(rpdo_register)
+
+        servo.reset_rpdo_mapping()
+        rpdo_map = RPDOMap()
+        rpdo_map.add_registers(rpdo_register)
+        servo.set_pdo_map_to_slave([rpdo_map], [])
+
+        session = DriveRegistersSession(
+            servo,
+            DriveRegistersValue(OrderedDict([(rpdo_register, baseline_value)])),
+            set_dirty_mapped_pdo_registers=False,
+        )
+
+        servo.request_node_state(SlaveState.OP_STATE)
+
+        assert session.changes == {}
+
+
+class TestPendingChanges:
+    """Tests for DriveContextManager.pending_changes property."""
+
+    def test_pending_changes_false_without_session(self, mocker: MockerFixture):
+        """pending_changes is False before __enter__ (no session)."""
+        servo_mock = mocker.MagicMock(spec=Servo)
+        context = DriveContextManager(servo_mock, track_objects=False)
+
+        assert context.pending_changes is False
+
+    def test_pending_changes_true_with_tracked_register(self, mocker: MockerFixture):
+        """pending_changes is True when a register change is tracked."""
+        servo_mock = mocker.MagicMock(spec=Servo)
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
+        context = DriveContextManager(servo_mock, baseline=baseline, track_objects=False)
+        context.__enter__()
+
+        assert context.pending_changes is False
+
+        context._session._changes[reg] = 99.0
+        assert context.pending_changes is True
+
+        context.__exit__(None, None, None)
+
+    def test_pending_changes_true_with_tracked_object(self, mocker: MockerFixture):
+        """pending_changes is True when only an object change is tracked."""
+        servo_mock = mocker.MagicMock(spec=Servo)
+        baseline = DriveRegistersValue(OrderedDict())
+        context = DriveContextManager(servo_mock, baseline=baseline, track_objects=False)
+        context.__enter__()
+
+        context._objects_changed[mocker.MagicMock()] = b""
+        assert context.pending_changes is True
+
+        context.__exit__(None, None, None)
 
 
 class TestContextManagerReset:
@@ -909,7 +1065,26 @@ class TestContextManagerReset:
         force_restore_spy.assert_called_once()
         # Baseline should not change
         assert id(context._baseline) == baseline_id
-        # Session should be rebuilt
-        assert len(context._session._changes) == 0
+
+        context.__exit__(None, None, None)
+
+    def test_force_restore_skips_session_when_registers_disabled(self, mocker: MockerFixture):
+        """force_restore(restore_registers=False) does not touch the session."""
+        servo_mock = mocker.MagicMock(spec=Servo)
+        servo_mock.register_update_subscribe = mocker.MagicMock()
+        servo_mock.register_update_unsubscribe = mocker.MagicMock()
+        servo_mock.register_update_complete_access_subscribe = mocker.MagicMock()
+        servo_mock.register_update_complete_access_unsubscribe = mocker.MagicMock()
+
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
+
+        context = DriveContextManager(servo_mock, baseline=baseline, track_objects=False)
+        context.__enter__()
+        spy = mocker.patch.object(context._session, "force_restore", return_value=RestoreResult())
+
+        context.force_restore(restore_registers=False, restore_objects=False)
+
+        spy.assert_not_called()
 
         context.__exit__(None, None, None)
