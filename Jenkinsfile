@@ -53,7 +53,6 @@ TestSession TEST_SESSIONS = new TestSession(
     wiresharkScope: null, // Set later based on parameter
     startWiresharkTimeoutS: 10.0,
     importMode: "importlib",
-    logCli: true,
     setAttApiToken: true
 )
 TestSession HW_TEST_SESSIONS = TEST_SESSIONS.override()
