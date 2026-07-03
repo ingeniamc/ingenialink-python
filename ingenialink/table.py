@@ -547,7 +547,8 @@ class TableContext:
         Yields:
             Tuples of (index, value) for each entry in the table.
         """
-        yield from self._table.items()
+        for address in self.addresses():
+            yield address, self.get_value(address)
 
     def items_raw(self) -> Iterator[tuple[int, bytes]]:
         """Iterate over all index-raw_value pairs in the table within the context.
@@ -555,7 +556,8 @@ class TableContext:
         Yields:
             Tuples of (index, raw_value) for each entry in the table.
         """
-        yield from self._table.items_raw()
+        for address in self.addresses():
+            yield address, self.get_value_raw(address)
 
     @property
     def min_index(self) -> int:

@@ -171,7 +171,7 @@ def test_table_set_and_get_value(servo_with_table, mocker):
 def assert_returns_index_to_original_and_no_unnecessary_writes(mocker, servo: Servo, table: Table):
     """Context manager to assert that after an operation, the table index is restored and
     no unnecessary writes occurred."""
-    write_spy = mocker.spy(servo, "write")
+    write_spy = mocker.patch.object(servo, "write", wraps=servo.write)
     original_index_value = servo.read(table.index_register)
     yield
 
