@@ -124,7 +124,7 @@ pytest-repeat = "==0.9.4"
 pytest-console-scripts = "==1.4.1"
 twisted = "==25.5.0"
 summit-testing-framework = {version = "0.3.0.post327+develop.14f4220"}
-virtual_drive = {version = "==0.1.1"}
+virtual_drive = {version = "0.1.1.post124+mot3.5494.cogging.compensation.6c8d9cd"}
 xmlschema = ">=3.0.0"
 
 # -----------------------------------------------------------------------
