@@ -238,21 +238,8 @@ class Table:
         Raises:
             IndexError: If the range is out of bounds.
         """
-        if start_index is None:
-            start_index = self.__min_index
-
-        if count is None:
-            count = self.__max_index - start_index + 1
-
-        end_index = start_index + count - 1
-
-        if start_index < self.__min_index or end_index > self.__max_index:
-            raise IndexError(
-                f"Range [{start_index}, {end_index}] out of bounds "
-                f"[{self.__min_index}, {self.__max_index}]"
-            )
-
-        return [self.get_value(i) for i in range(start_index, end_index + 1)]
+        with self.context() as ctx:
+            return ctx.read(start_index=start_index, count=count)
 
     def write(self, values: Sequence[REG_VALUE], start_index: Optional[int] = None) -> None:
         """Write multiple values to the table.
@@ -264,19 +251,8 @@ class Table:
         Raises:
             IndexError: If the range is out of bounds.
         """
-        if start_index is None:
-            start_index = self.__min_index
-
-        end_index = start_index + len(values) - 1
-
-        if start_index < self.__min_index or end_index > self.__max_index:
-            raise IndexError(
-                f"Range [{start_index}, {end_index}] out of bounds "
-                f"[{self.__min_index}, {self.__max_index}]"
-            )
-
-        for i, value in enumerate(values):
-            self.set_value(start_index + i, value)
+        with self.context() as ctx:
+            ctx.write(values, start_index=start_index)
 
     def to_config_table(self) -> ConfigTable:
         """Convert to ConfigTable representation with the current table values.
@@ -284,11 +260,8 @@ class Table:
         Returns:
             ConfigTable instance with the current table values.
         """
-        config_table = ConfigTable(uid=self.__dict_table.id, subnode=self.__dict_table.axis or 0)
-        for address, raw_value in self.items_raw():
-            element = TableElement(address=address, data=raw_value)
-            config_table.elements.append(element)
-        return config_table
+        with self.context() as ctx:
+            return ctx.to_config_table()
 
     def load_from_config_table(self, config_table: ConfigTable) -> None:
         """Load values of a config table to the current table.
@@ -296,8 +269,8 @@ class Table:
         Args:
             config_table: Table configuration to load
         """
-        for element in config_table.elements:
-            self.set_value_raw(element.address, element.data)
+        with self.context() as ctx:
+            ctx.load_from_config_table(config_table)
 
     def compare_with_config_table(self, config_table: ConfigTable) -> list[str]:
         """Compare the current table values with a ConfigTable.
