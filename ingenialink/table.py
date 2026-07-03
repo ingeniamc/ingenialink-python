@@ -205,9 +205,8 @@ class Table:
         Raises:
             IndexError: If index is out of range.
         """
-        if index < self.__min_index or index > self.__max_index:
-            raise IndexError(f"Index {index} out of range [{self.__min_index}, {self.__max_index}]")
-        return self.get_value(index)
+        with self.context() as ctx:
+            return ctx.__getitem__(index)  # This will raise IndexError if out of range
 
     def __setitem__(self, index: int, value: REG_VALUE) -> None:
         """Write a value to the table using bracket notation.
@@ -219,9 +218,8 @@ class Table:
         Raises:
             IndexError: If index is out of range.
         """
-        if index < self.__min_index or index > self.__max_index:
-            raise IndexError(f"Index {index} out of range [{self.__min_index}, {self.__max_index}]")
-        self.set_value(index, value)
+        with self.context() as ctx:
+            ctx.__setitem__(index, value)
 
     def read(
         self, start_index: Optional[int] = None, count: Optional[int] = None
