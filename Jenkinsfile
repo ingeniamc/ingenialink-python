@@ -199,6 +199,7 @@ pipeline {
                     // Pcap tests run on the EtherCAT machine — add manually since they're not in rack_specifiers
                     ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
 
+
                     // Linux pcap tests: runs pcap-marked tests that don't need hardware
                     LINUX_DOCKER_TESTS.addSession(
                         uid: "pcap",
