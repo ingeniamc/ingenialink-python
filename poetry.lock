@@ -5096,6 +5096,20 @@ standalone = ["Sphinx (>=5)"]
 test = ["pytest"]
 
 [[package]]
+name = "summit-drives-ci-configs"
+version = "0.3.0"
+description = "CI configurations for Novanta drives"
+optional = false
+python-versions = ">=3.9"
+groups = ["tests"]
+files = []
+develop = true
+
+[package.source]
+type = "directory"
+url = "summit_drives_ci_configs"
+
+[[package]]
 name = "summit-testing-framework"
 version = "0.3.0.post409+develop.c85ffbb"
 description = "Testing framework for Novanta drives"
@@ -5912,4 +5926,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "7326ecdea3d32a8aadcf645288a570ed8957b27cd267b786906fae78016d68fb"
+content-hash = "3312214f7bcb11d400407cee9279b33cca4b09f923d67c0af0da771b83e315fa"
