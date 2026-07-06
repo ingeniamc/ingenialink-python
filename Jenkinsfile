@@ -1,5 +1,5 @@
 // https://novantamotion.atlassian.net/browse/CIT-707
-@Library('cicd-lib@44e6075') _
+@Library('cicd-lib@a9ec121') _
 
 import python.VirtualEnvironment
 import python.VEnvManager
@@ -139,6 +139,7 @@ pipeline {
         stage("Set env") {
             steps {
                 script {
+                    echo("current build = ${currentBuild.getBuildCauses()}")
                     // Determine which Python versions to run tests against based on branch and parameters
                     Set pythonVersions
                     if (env.BRANCH_NAME == 'master') {
