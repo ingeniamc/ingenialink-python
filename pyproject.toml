@@ -126,7 +126,6 @@ twisted = "==25.5.0"
 summit-testing-framework = {version = "0.3.0.post409+develop.c85ffbb"}
 virtual_drive = {version = "==0.1.1"}
 xmlschema = ">=3.0.0"
-summit-drives-ci-configs = {path = "summit_drives_ci_configs", develop = true}
 
 # -----------------------------------------------------------------------
 #                                   TASKS
