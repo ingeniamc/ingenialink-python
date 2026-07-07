@@ -1,4 +1,4 @@
-## Class Hierarchy (Servo)
+# Class Hierarchy (Servo)
 ```mermaid
 classDiagram
   class Servo {

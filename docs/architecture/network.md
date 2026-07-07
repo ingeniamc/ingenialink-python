@@ -1,4 +1,4 @@
-## Class Hierarchy (Network)
+# Class Hierarchy (Network)
 ```mermaid
 classDiagram
   class Network {

@@ -11,7 +11,8 @@ sys.path.insert(0, os.path.abspath('..'))
 # options
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.doctest',
               'sphinx.ext.coverage', 'sphinx.ext.viewcode',
-              'sphinx.ext.napoleon', 'myst_parser']
+              'sphinx.ext.napoleon', 'myst_parser',
+              ]
 
 project = 'ingenialink'
 version = __version__
@@ -21,6 +22,11 @@ year = datetime.now().year
 copyright = '{}, Novanta Technologies Spain S.L.'.format(year)
 source_suffix = '.rst'
 master_doc = 'index'
+
+
+exclude_patterns = [
+    'architecture/**',
+]
 
 pygments_style = 'sphinx'
 
