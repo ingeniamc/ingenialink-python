@@ -178,7 +178,7 @@ cmd = "mypy ingenialink examples"
 # ----------------------------- Documentation -----------------------------
 [tool.poe.tasks.docs]
 help = "Build documentation"
-cmd = "python -I -m sphinx -b html docs _docs"
+cmd = "python -I -m sphinx -E -W --keep-going -b html docs _docs"
 
 # ----------------------------- Install wheel -----------------------------
 [tool.poe.tasks.install-wheel]
