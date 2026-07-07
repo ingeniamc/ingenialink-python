@@ -28,7 +28,7 @@ pytest_plugins = [
 # in the tests.
 # The issue is solved by dynamically importing them before the tests start. All modules that should
 # be imported and ARE NOT part of the package should be specified here
-_DYNAMIC_MODULES_IMPORT = ["tests"]
+_DYNAMIC_MODULES_IMPORT = ["tests", "summit_drives_ci_configs"]
 
 
 class SuppressSpecificLogs(logging.Filter):
