@@ -139,7 +139,6 @@ pipeline {
         stage("Set env") {
             steps {
                 script {
-                    echo("current build = ${currentBuild.getBuildCauses()}")
                     // Determine which Python versions to run tests against based on branch and parameters
                     Set pythonVersions
                     if (env.BRANCH_NAME == 'master') {
