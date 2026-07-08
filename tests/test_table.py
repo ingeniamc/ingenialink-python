@@ -1,5 +1,6 @@
 import csv
 from collections.abc import Generator
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -137,15 +138,17 @@ def servo_with_table(request) -> tuple[Servo, Table]:
     return request.getfixturevalue(request.param)
 
 
-def test_table_set_and_get_value(servo_with_table):
+def test_table_set_and_get_value(servo_with_table, mocker):
     """Test that Table.set_value and get_value methods work correctly."""
     _servo, table = servo_with_table
 
     # Test writing and reading a value
     index = 0
     value = 12345
-    table.set_value(index, value)
-    read_value = table.get_value(index)
+    with assert_returns_index_to_original_and_no_unnecessary_writes(mocker, _servo, table):
+        table.set_value(index, value)
+    with assert_returns_index_to_original_and_no_unnecessary_writes(mocker, _servo, table):
+        read_value = table.get_value(index)
     assert read_value == value
 
     # Test writing and reading at different indices
@@ -162,6 +165,30 @@ def test_table_set_and_get_value(servo_with_table):
     for idx, val in test_data.items():
         read_val = table.get_value(idx)
         assert read_val == val, f"Expected {val} at index {idx}, got {read_val}"
+
+
+@contextmanager
+def assert_returns_index_to_original_and_no_unnecessary_writes(mocker, servo: Servo, table: Table):
+    """Context manager to assert that after an operation, the table index is restored and
+    no unnecessary writes occurred."""
+    write_spy = mocker.patch.object(servo, "write", wraps=servo.write)
+    original_index_value = servo.read(table.index_register)
+    yield
+
+    assert servo.read(table.index_register) == original_index_value, (
+        "Table index was not restored to original value."
+    )
+
+    index_writes = [
+        call for call in write_spy.call_args_list if call.args[0] == table.index_register
+    ]
+
+    restore_writes = [call for call in index_writes if call.args[1] == original_index_value]
+
+    assert len(restore_writes) == 1, (
+        f"Table index was restored {len(restore_writes)} times instead of once. "
+        f"Index writes: {index_writes!r}"
+    )
 
 
 def test_table_set_all_values(servo_with_table):
@@ -204,13 +231,14 @@ def test_table_iteration(servo_with_table):
         )
 
 
-def test_table_bulk_write(servo_with_table):
+def test_table_bulk_write(servo_with_table, mocker):
     """Test that Table.write() method works for writing multiple values at once."""
     _servo, table = servo_with_table
 
     # Test writing a list of values starting from default index (min_index)
     test_values = [10, 20, 30, 40, 50]
-    table.write(test_values)
+    with assert_returns_index_to_original_and_no_unnecessary_writes(mocker, _servo, table):
+        table.write(test_values)
 
     # Verify the values were written correctly
     for idx, expected_val in enumerate(test_values):
@@ -218,14 +246,15 @@ def test_table_bulk_write(servo_with_table):
         assert read_val == expected_val, f"Index {idx}: expected {expected_val}, got {read_val}"
 
 
-def test_table_bulk_write_with_start_index(servo_with_table):
+def test_table_bulk_write_with_start_index(servo_with_table, mocker):
     """Test that Table.write() works with a custom start index."""
     _servo, table = servo_with_table
 
     # Write values starting at index 5
     start_index = 5
     test_values = [100, 200, 300]
-    table.write(test_values, start_index=start_index)
+    with assert_returns_index_to_original_and_no_unnecessary_writes(mocker, _servo, table):
+        table.write(test_values, start_index=start_index)
 
     # Verify the values were written at the correct indices
     for i, expected_val in enumerate(test_values):
@@ -234,7 +263,7 @@ def test_table_bulk_write_with_start_index(servo_with_table):
         assert read_val == expected_val, f"Index {idx}: expected {expected_val}, got {read_val}"
 
 
-def test_table_bulk_read(servo_with_table):
+def test_table_bulk_read(servo_with_table, mocker):
     """Test that Table.read() method works for reading multiple values at once."""
     _servo, table = servo_with_table
 
@@ -244,25 +273,32 @@ def test_table_bulk_read(servo_with_table):
         table.set_value(idx, val)
 
     # Read all values using bulk read
-    read_values = table.read(start_index=0, count=len(test_values))
+    with assert_returns_index_to_original_and_no_unnecessary_writes(mocker, _servo, table):
+        read_values = table.read(start_index=0, count=len(test_values))
 
     # Verify
     assert read_values == test_values, f"Expected {test_values}, got {read_values}"
 
 
-def test_table_bracket_notation(servo_with_table):
+def test_table_bracket_notation(servo_with_table, mocker):
     """Test that Table supports bracket notation for reading and writing."""
     _servo, table = servo_with_table
 
     # Test writing with bracket notation
-    table[0] = 123
-    table[1] = 456
-    table[5] = 789
+    with assert_returns_index_to_original_and_no_unnecessary_writes(mocker, _servo, table):
+        table[0] = 123
+    with assert_returns_index_to_original_and_no_unnecessary_writes(mocker, _servo, table):
+        table[1] = 456
+    with assert_returns_index_to_original_and_no_unnecessary_writes(mocker, _servo, table):
+        table[5] = 789
 
     # Test reading with bracket notation
-    assert table[0] == 123
-    assert table[1] == 456
-    assert table[5] == 789
+    with assert_returns_index_to_original_and_no_unnecessary_writes(mocker, _servo, table):
+        assert table[0] == 123
+    with assert_returns_index_to_original_and_no_unnecessary_writes(mocker, _servo, table):
+        assert table[1] == 456
+    with assert_returns_index_to_original_and_no_unnecessary_writes(mocker, _servo, table):
+        assert table[5] == 789
 
 
 def test_table_len(servo_with_table):
@@ -290,7 +326,7 @@ def test_table_index_out_of_bounds(servo_with_table):
         table[99999] = 123
 
 
-def test_save_and_load_xcf_with_tables(virtual_drive_with_tables, tmp_path, xcf_schema):
+def test_save_and_load_xcf_with_tables(virtual_drive_with_tables, tmp_path, xcf_schema, mocker):
     """Save configuration to XCF from a virtual servo that has tables.
 
     This test writes integer values to a table, saves the servo configuration to an XCF file,
@@ -306,7 +342,8 @@ def test_save_and_load_xcf_with_tables(virtual_drive_with_tables, tmp_path, xcf_
 
     # Save configuration to XCF
     xcf_path = tmp_path / "virt_tables.xcf"
-    servo.save_configuration(str(xcf_path))
+    with assert_returns_index_to_original_and_no_unnecessary_writes(mocker, servo, table):
+        servo.save_configuration(str(xcf_path))
     assert xcf_path.exists()
     xcf_schema.validate(str(xcf_path))
 
@@ -324,14 +361,15 @@ def test_save_and_load_xcf_with_tables(virtual_drive_with_tables, tmp_path, xcf_
     table.set_value(0, 0)
     table.set_value(1, 0)
 
-    servo.load_configuration(str(xcf_path))
+    with assert_returns_index_to_original_and_no_unnecessary_writes(mocker, servo, table):
+        servo.load_configuration(str(xcf_path))
 
     # Verify integer values were restored
     assert table.get_value(0) == val0
     assert table.get_value(1) == val1
 
 
-def test_check_configuration_with_tables(virtual_drive_with_tables, tmp_path, xcf_schema):
+def test_check_configuration_with_tables(virtual_drive_with_tables, tmp_path, xcf_schema, mocker):
     """Verify `check_configuration` compares table contents and raises on mismatch.
 
     Steps:
@@ -344,11 +382,13 @@ def test_check_configuration_with_tables(virtual_drive_with_tables, tmp_path, xc
     servo, table = virtual_drive_with_tables
 
     filename = tmp_path / "table_check.xcf"
-    servo.save_configuration(str(filename))
+    with assert_returns_index_to_original_and_no_unnecessary_writes(mocker, servo, table):
+        servo.save_configuration(str(filename))
     xcf_schema.validate(str(filename))
 
     # Initial check should pass
-    servo.check_configuration(str(filename))
+    with assert_returns_index_to_original_and_no_unnecessary_writes(mocker, servo, table):
+        servo.check_configuration(str(filename))
 
     # Mutate table value
     mutated_val = 123456789
@@ -365,15 +405,17 @@ def test_check_configuration_with_tables(virtual_drive_with_tables, tmp_path, xc
     )
 
     # Restore configuration and verify check passes again
-    servo.load_configuration(str(filename))
-    servo.check_configuration(str(filename))
+    with assert_returns_index_to_original_and_no_unnecessary_writes(mocker, servo, table):
+        servo.load_configuration(str(filename))
+    with assert_returns_index_to_original_and_no_unnecessary_writes(mocker, servo, table):
+        servo.check_configuration(str(filename))
 
 
 @pytest.mark.fsoe
 # Fsoe is not related to tables, but is a modern firmware that does have user memory
 # Not run with servo_with_table fixture, since includes virtual drive,
 # which is not ethercat and not support CSV export
-def test_save_configuration_csv_with_tables(real_servo_with_tables, tmp_path: Path):
+def test_save_configuration_csv_with_tables(real_servo_with_tables, tmp_path: Path, mocker):
     """Save configuration as CSV and verify table index/value sequence is present.
 
     The CSV configuration generated by `save_configuration_csv` should contain
@@ -399,7 +441,8 @@ def test_save_configuration_csv_with_tables(real_servo_with_tables, tmp_path: Pa
     filename = tmp_path / "tables.csv"
 
     # Invoke the CSV save
-    servo.save_configuration_csv(str(filename))
+    with assert_returns_index_to_original_and_no_unnecessary_writes(mocker, servo, table):
+        servo.save_configuration_csv(str(filename))
     assert filename.exists()
 
     with filename.open() as f:
