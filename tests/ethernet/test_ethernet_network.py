@@ -429,7 +429,6 @@ def test_net_status_listener_detects_power_cycle(
 ) -> None:
     """Test that NetStatusListener detects disconnection and reconnection on a real power cycle.
 
-    Ethernet has no PDOs, so only the basic listener detect-and-recover path is exercised.
     The detection latencies are logged at INFO to profile the library's real reconnection
     timing (ping-based ``is_alive`` detection, see ``EthernetNetwork.NetStatusListener``).
     """

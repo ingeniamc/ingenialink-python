@@ -285,9 +285,8 @@ def test_net_status_listener_detects_power_cycle(
 ) -> None:
     """Test that NetStatusListener detects disconnection and reconnection on a real power cycle.
 
-    CANopen has no PDOs on this network, so only the basic listener detect-and-recover path is
-    exercised. Detection is heartbeat-based (NMT timestamp, see the CANopen ``NetStatusListener``),
-    which polls each node with a 1.5 s cadence, so expect longer latencies than EtherCAT/Ethernet.
+    Detection is heartbeat-based (NMT timestamp, see the CANopen ``NetStatusListener``), which
+    polls each node with a 1.5 s cadence, so expect longer latencies than EtherCAT/Ethernet.
     The detection latencies are logged at INFO to profile the library's real reconnection timing.
     """
     node_id = servo.target
