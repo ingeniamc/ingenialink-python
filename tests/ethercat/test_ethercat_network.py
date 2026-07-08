@@ -1226,7 +1226,7 @@ def test_net_status_listener_detects_power_cycle(
     resumes calling process() and completes the same detect-and-recover cycle, leaving PDOs
     stopped after reconnection.
     """
-    with NetStatusRecorder(net, servo.slave_id, "ethercat") as recorder:
+    with NetStatusRecorder(net, servo, "ethercat") as recorder:
         # --- Scenario 1: power cycle without PDOs active ---
         environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
 

@@ -433,7 +433,7 @@ def test_net_status_listener_detects_power_cycle(
     The detection latencies are logged at INFO to profile the library's real reconnection
     timing (ping-based ``is_alive`` detection, see ``EthernetNetwork.NetStatusListener``).
     """
-    with NetStatusRecorder(net, servo.ip_address, "ethernet") as recorder:
+    with NetStatusRecorder(net, servo, "ethernet") as recorder:
         environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
 
         assert recorder.wait_removed(timeout=30.0), (

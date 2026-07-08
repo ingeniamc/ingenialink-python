@@ -11,9 +11,10 @@ import threading
 import time
 from dataclasses import dataclass, field
 from types import TracebackType
-from typing import Optional, Union
+from typing import Optional
 
 from ingenialink.network import NetDevEvt, Network
+from ingenialink.servo import Servo
 
 logger = logging.getLogger(__name__)
 
@@ -31,12 +32,12 @@ class NetStatusRecorder:
 
     Args:
         network: Network the drive is connected through.
-        servo_id: Identifier of the drive within the network (slave id, IP or node id).
+        servo: Drive to monitor; its ``target`` is the id used to subscribe.
         protocol: Communication type name, used to tag the profiling log lines.
     """
 
     network: Network
-    servo_id: Union[int, str]
+    servo: Servo
     protocol: str
     removed_event: threading.Event = field(default_factory=threading.Event)
     added_event: threading.Event = field(default_factory=threading.Event)
@@ -66,7 +67,7 @@ class NetStatusRecorder:
         Returns:
             The recorder itself, to be bound by the ``with`` statement.
         """
-        self.network.subscribe_to_status(self.servo_id, self.callback)
+        self.network.subscribe_to_status(self.servo.target, self.callback)
         self.network.start_status_listener()
         self._latencies.clear()
         self.rearm()
@@ -80,8 +81,8 @@ class NetStatusRecorder:
     ) -> None:
         """Stop the listener and log a summary of the measured latencies.
 
-        The listener is intentionally left subscribed; see
-        https://novantamotion.atlassian.net/browse/CIT-627.
+        The listener thread is stopped, but the status callback is intentionally
+        left subscribed; see https://novantamotion.atlassian.net/browse/CIT-627.
         """
         self.network.stop_status_listener()
         summary = ", ".join(f"{phase} after {sec:.3f} s" for phase, sec in self._latencies.items())
