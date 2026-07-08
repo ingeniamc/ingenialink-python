@@ -1233,21 +1233,15 @@ def test_net_status_listener_detects_power_cycle(
 
     try:
         # --- Scenario 1: power cycle without PDOs active ---
-        started_at = time.perf_counter()
+        recorder.mark()
         environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
 
-        removed_detected, _ = recorder.wait_for(
-            recorder.removed_event, timeout=30.0, since=started_at, phase="disconnection"
-        )
-        assert removed_detected, (
+        assert recorder.wait_removed(timeout=30.0), (
             "NetStatusListener did not detect the drive disconnection within 30 s"
         )
         assert net.get_servo_state(servo.slave_id) == NetState.DISCONNECTED
 
-        added_detected, _ = recorder.wait_for(
-            recorder.added_event, timeout=60.0, since=started_at, phase="reconnection"
-        )
-        assert added_detected, (
+        assert recorder.wait_added(timeout=60.0), (
             "NetStatusListener did not detect the drive reconnection within 60 s"
         )
         assert net.get_servo_state(servo.slave_id) == NetState.CONNECTED
@@ -1278,21 +1272,15 @@ def test_net_status_listener_detects_power_cycle(
 
         # Power cycle while PDOs are running. The PDO thread detects the WKC error and stops
         # PDOs via the exception handler, after which the listener resumes calling process().
-        started_at = time.perf_counter()
+        recorder.mark()
         environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
 
-        removed_detected, _ = recorder.wait_for(
-            recorder.removed_event, timeout=30.0, since=started_at, phase="disconnection (PDO)"
-        )
-        assert removed_detected, (
+        assert recorder.wait_removed(timeout=30.0, note="PDO"), (
             "NetStatusListener did not detect the drive disconnection within 30 s (PDO scenario)"
         )
         assert net.get_servo_state(servo.slave_id) == NetState.DISCONNECTED
 
-        added_detected, _ = recorder.wait_for(
-            recorder.added_event, timeout=60.0, since=started_at, phase="reconnection (PDO)"
-        )
-        assert added_detected, (
+        assert recorder.wait_added(timeout=60.0, note="PDO"), (
             "NetStatusListener did not detect the drive reconnection within 60 s (PDO scenario)"
         )
         assert net.get_servo_state(servo.slave_id) == NetState.CONNECTED

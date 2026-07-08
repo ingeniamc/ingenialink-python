@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 class NetStatusRecorder:
     """Records ``NetStatusListener`` events and times detection latencies.
 
-    Subscribe :meth:`callback` to the network and, after triggering a power
-    cycle, use :meth:`wait_for` to block on the REMOVED/ADDED events while
-    measuring how long the library took to react.
+    Subscribe :meth:`callback` to the network, call :meth:`mark` right before
+    triggering the power cycle, then :meth:`wait_removed` / :meth:`wait_added`
+    to block on each event while the elapsed time is logged for profiling.
 
     Args:
         protocol: Communication type name, used to tag the profiling log lines.
@@ -31,6 +31,7 @@ class NetStatusRecorder:
     protocol: str
     removed_event: threading.Event = field(default_factory=threading.Event)
     added_event: threading.Event = field(default_factory=threading.Event)
+    _marked_at: float = field(default=0.0, init=False)
 
     def callback(self, event: NetDevEvt) -> None:
         """Store a listener event so the test thread can wait on it.
@@ -48,28 +49,42 @@ class NetStatusRecorder:
         self.removed_event.clear()
         self.added_event.clear()
 
-    def wait_for(
-        self, event: threading.Event, timeout: float, since: float, phase: str
-    ) -> tuple[bool, float]:
-        """Wait for an event and log how long the library took to reach it.
+    def mark(self) -> None:
+        """Timestamp the power-cycle trigger; latencies are measured from here."""
+        self._marked_at = time.perf_counter()
+
+    def wait_removed(self, timeout: float, note: str = "") -> bool:
+        """Wait for the REMOVED event, logging how long detection took.
 
         Args:
-            event: The ``removed_event`` or ``added_event`` to wait on.
             timeout: Maximum time to wait, in seconds.
-            since: ``time.perf_counter`` timestamp when the power cycle was triggered.
-            phase: Human-readable phase name, e.g. ``"disconnection"``.
+            note: Optional tag appended to the log line, e.g. ``"PDO"``.
 
         Returns:
-            Tuple of ``(detected, elapsed_seconds)``. ``elapsed_seconds`` is the
-            time from ``since`` until the event fired, or until ``timeout`` if it
-            never did.
+            True if the drive disconnection was detected within ``timeout``.
         """
+        return self._wait(self.removed_event, timeout, "disconnection", note)
+
+    def wait_added(self, timeout: float, note: str = "") -> bool:
+        """Wait for the ADDED event, logging how long detection took.
+
+        Args:
+            timeout: Maximum time to wait, in seconds.
+            note: Optional tag appended to the log line, e.g. ``"PDO"``.
+
+        Returns:
+            True if the drive reconnection was detected within ``timeout``.
+        """
+        return self._wait(self.added_event, timeout, "reconnection", note)
+
+    def _wait(self, event: threading.Event, timeout: float, phase: str, note: str) -> bool:
         detected = event.wait(timeout=timeout)
-        elapsed = time.perf_counter() - since
+        elapsed = time.perf_counter() - self._marked_at
+        tag = f" ({note})" if note else ""
         if detected:
-            logger.info("[%s] drive %s detected after %.3f s", self.protocol, phase, elapsed)
+            logger.info("[%s] drive %s%s detected after %.3f s", self.protocol, phase, tag, elapsed)
         else:
             logger.warning(
-                "[%s] drive %s NOT detected within %.1f s", self.protocol, phase, timeout
+                "[%s] drive %s%s NOT detected within %.1f s", self.protocol, phase, tag, timeout
             )
-        return detected, elapsed
+        return detected
