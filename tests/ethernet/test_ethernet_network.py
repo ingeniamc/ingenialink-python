@@ -26,8 +26,11 @@ from ingenialink.ethernet.network import (
     NetState,
 )
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
+from tests.net_status_helpers import NetStatusRecorder
 
 if TYPE_CHECKING:
+    from summit_testing_framework.environment import Environment
+
     from ingenialink.ethernet.servo import EthernetServo
 
 
@@ -418,3 +421,43 @@ def test_recover_from_disconnection(net: "EthernetNetwork", servo: "EthernetServ
     # Simulate servo reconnection by mocking is_alive to return True again
     mocker.patch.object(servo, "is_alive", return_value=True)
     assert net.recover_from_disconnection(servo) is True
+
+
+@pytest.mark.ethernet
+def test_net_status_listener_detects_power_cycle(
+    net: "EthernetNetwork", servo: "EthernetServo", environment: "Environment"
+) -> None:
+    """Test that NetStatusListener detects disconnection and reconnection on a real power cycle.
+
+    Ethernet has no PDOs, so only the basic listener detect-and-recover path is exercised.
+    The detection latencies are logged at INFO to profile the library's real reconnection
+    timing (ping-based ``is_alive`` detection, see ``EthernetNetwork.NetStatusListener``).
+    """
+    recorder = NetStatusRecorder(protocol="ethernet")
+
+    net.subscribe_to_status(servo.ip_address, recorder.callback)
+    net.start_status_listener()
+
+    try:
+        started_at = time.perf_counter()
+        environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
+
+        removed_detected, _ = recorder.wait_for(
+            recorder.removed_event, timeout=30.0, since=started_at, phase="disconnection"
+        )
+        assert removed_detected, (
+            "NetStatusListener did not detect the drive disconnection within 30 s"
+        )
+        assert net.get_servo_state(servo.ip_address) == NetState.DISCONNECTED
+
+        added_detected, _ = recorder.wait_for(
+            recorder.added_event, timeout=60.0, since=started_at, phase="reconnection"
+        )
+        assert added_detected, (
+            "NetStatusListener did not detect the drive reconnection within 60 s"
+        )
+        assert net.get_servo_state(servo.ip_address) == NetState.CONNECTED
+    finally:
+        # servo/net status listeners are not reset
+        # https://novantamotion.atlassian.net/browse/CIT-627
+        net.stop_status_listener()

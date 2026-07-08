@@ -32,6 +32,7 @@ from ingenialink.network import NetDevEvt, NetState
 from ingenialink.pdo import PDOMap, RPDOMap, TPDOMap
 from tests.conftest import refresh_registers_for_test_rollback
 from tests.ethercat.mock import MockSoemSlave, pysoem_mock_network
+from tests.net_status_helpers import NetStatusRecorder
 
 if TYPE_CHECKING:
     from pytest import FixtureRequest
@@ -1225,35 +1226,34 @@ def test_net_status_listener_detects_power_cycle(
     resumes calling process() and completes the same detect-and-recover cycle, leaving PDOs
     stopped after reconnection.
     """
-    removed_event = threading.Event()
-    added_event = threading.Event()
+    recorder = NetStatusRecorder(protocol="ethercat")
 
-    def status_callback(evt: NetDevEvt) -> None:
-        if evt == NetDevEvt.REMOVED:
-            removed_event.set()
-        elif evt == NetDevEvt.ADDED:
-            added_event.set()
-
-    net.subscribe_to_status(servo.slave_id, status_callback)
+    net.subscribe_to_status(servo.slave_id, recorder.callback)
     net.start_status_listener()
 
     try:
         # --- Scenario 1: power cycle without PDOs active ---
+        started_at = time.perf_counter()
         environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
 
-        assert removed_event.wait(timeout=30.0), (
+        removed_detected, _ = recorder.wait_for(
+            recorder.removed_event, timeout=30.0, since=started_at, phase="disconnection"
+        )
+        assert removed_detected, (
             "NetStatusListener did not detect the drive disconnection within 30 s"
         )
         assert net.get_servo_state(servo.slave_id) == NetState.DISCONNECTED
 
-        assert added_event.wait(timeout=60.0), (
+        added_detected, _ = recorder.wait_for(
+            recorder.added_event, timeout=60.0, since=started_at, phase="reconnection"
+        )
+        assert added_detected, (
             "NetStatusListener did not detect the drive reconnection within 60 s"
         )
         assert net.get_servo_state(servo.slave_id) == NetState.CONNECTED
 
         # --- Scenario 2: power cycle with PDOs active ---
-        removed_event.clear()
-        added_event.clear()
+        recorder.reset()
 
         rpdo_map = RPDOMap()
         tpdo_map = TPDOMap()
@@ -1278,14 +1278,21 @@ def test_net_status_listener_detects_power_cycle(
 
         # Power cycle while PDOs are running. The PDO thread detects the WKC error and stops
         # PDOs via the exception handler, after which the listener resumes calling process().
+        started_at = time.perf_counter()
         environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
 
-        assert removed_event.wait(timeout=30.0), (
+        removed_detected, _ = recorder.wait_for(
+            recorder.removed_event, timeout=30.0, since=started_at, phase="disconnection (PDO)"
+        )
+        assert removed_detected, (
             "NetStatusListener did not detect the drive disconnection within 30 s (PDO scenario)"
         )
         assert net.get_servo_state(servo.slave_id) == NetState.DISCONNECTED
 
-        assert added_event.wait(timeout=60.0), (
+        added_detected, _ = recorder.wait_for(
+            recorder.added_event, timeout=60.0, since=started_at, phase="reconnection (PDO)"
+        )
+        assert added_detected, (
             "NetStatusListener did not detect the drive reconnection within 60 s (PDO scenario)"
         )
         assert net.get_servo_state(servo.slave_id) == NetState.CONNECTED

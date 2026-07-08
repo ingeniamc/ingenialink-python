@@ -1,4 +1,5 @@
 import platform
+import time
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import Mock
@@ -12,9 +13,12 @@ from summit_testing_framework.setups import (
 
 from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 from ingenialink.exceptions import ILError
+from ingenialink.network import NetState
+from tests.net_status_helpers import NetStatusRecorder
 
 if TYPE_CHECKING:
     from pytest import FixtureRequest
+    from summit_testing_framework.environment import Environment
     from summit_testing_framework.setup_fixtures import ConnectionWrapper
     from summit_testing_framework.setups.descriptors import DriveCanOpenSetup
 
@@ -274,3 +278,45 @@ def test_teardown_connection_handles_pcan_bus_off(virtual_network) -> None:
 
     # Assert: teardown remains safe and always clears the connection object.
     assert net._connection is None
+
+
+@pytest.mark.canopen
+def test_net_status_listener_detects_power_cycle(
+    net: "CanopenNetwork", servo: "CanopenServo", environment: "Environment"
+) -> None:
+    """Test that NetStatusListener detects disconnection and reconnection on a real power cycle.
+
+    CANopen has no PDOs on this network, so only the basic listener detect-and-recover path is
+    exercised. Detection is heartbeat-based (NMT timestamp, see the CANopen ``NetStatusListener``),
+    which polls each node with a 1.5 s cadence, so expect longer latencies than EtherCAT/Ethernet.
+    The detection latencies are logged at INFO to profile the library's real reconnection timing.
+    """
+    node_id = servo.target
+    recorder = NetStatusRecorder(protocol="canopen")
+
+    net.subscribe_to_status(node_id, recorder.callback)
+    net.start_status_listener()
+
+    try:
+        started_at = time.perf_counter()
+        environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
+
+        removed_detected, _ = recorder.wait_for(
+            recorder.removed_event, timeout=30.0, since=started_at, phase="disconnection"
+        )
+        assert removed_detected, (
+            "NetStatusListener did not detect the drive disconnection within 30 s"
+        )
+        assert net.get_servo_state(node_id) == NetState.DISCONNECTED
+
+        added_detected, _ = recorder.wait_for(
+            recorder.added_event, timeout=60.0, since=started_at, phase="reconnection"
+        )
+        assert added_detected, (
+            "NetStatusListener did not detect the drive reconnection within 60 s"
+        )
+        assert net.get_servo_state(node_id) == NetState.CONNECTED
+    finally:
+        # servo/net status listeners are not reset
+        # https://novantamotion.atlassian.net/browse/CIT-627
+        net.stop_status_listener()
