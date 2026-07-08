@@ -1226,14 +1226,8 @@ def test_net_status_listener_detects_power_cycle(
     resumes calling process() and completes the same detect-and-recover cycle, leaving PDOs
     stopped after reconnection.
     """
-    recorder = NetStatusRecorder(protocol="ethercat")
-
-    net.subscribe_to_status(servo.slave_id, recorder.callback)
-    net.start_status_listener()
-
-    try:
+    with NetStatusRecorder(net, servo.slave_id, "ethercat") as recorder:
         # --- Scenario 1: power cycle without PDOs active ---
-        recorder.mark()
         environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
 
         assert recorder.wait_removed(timeout=30.0), (
@@ -1247,8 +1241,6 @@ def test_net_status_listener_detects_power_cycle(
         assert net.get_servo_state(servo.slave_id) == NetState.CONNECTED
 
         # --- Scenario 2: power cycle with PDOs active ---
-        recorder.reset()
-
         rpdo_map = RPDOMap()
         tpdo_map = TPDOMap()
         initial_operation_mode = cast("int", servo.read("DRV_OP_CMD"))
@@ -1272,7 +1264,7 @@ def test_net_status_listener_detects_power_cycle(
 
         # Power cycle while PDOs are running. The PDO thread detects the WKC error and stops
         # PDOs via the exception handler, after which the listener resumes calling process().
-        recorder.mark()
+        recorder.rearm()
         environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
 
         assert recorder.wait_removed(timeout=30.0, note="PDO"), (
@@ -1287,10 +1279,6 @@ def test_net_status_listener_detects_power_cycle(
         assert net.pdo_manager.is_active is False, (
             "PDOs should have been stopped by the exception handler during power cycle"
         )
-    finally:
-        # servo/net status listeners are not reset
-        # https://novantamotion.atlassian.net/browse/CIT-627
-        net.stop_status_listener()
 
 
 @pytest.mark.pcap

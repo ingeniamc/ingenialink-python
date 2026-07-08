@@ -433,13 +433,7 @@ def test_net_status_listener_detects_power_cycle(
     The detection latencies are logged at INFO to profile the library's real reconnection
     timing (ping-based ``is_alive`` detection, see ``EthernetNetwork.NetStatusListener``).
     """
-    recorder = NetStatusRecorder(protocol="ethernet")
-
-    net.subscribe_to_status(servo.ip_address, recorder.callback)
-    net.start_status_listener()
-
-    try:
-        recorder.mark()
+    with NetStatusRecorder(net, servo.ip_address, "ethernet") as recorder:
         environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
 
         assert recorder.wait_removed(timeout=30.0), (
@@ -451,7 +445,3 @@ def test_net_status_listener_detects_power_cycle(
             "NetStatusListener did not detect the drive reconnection within 60 s"
         )
         assert net.get_servo_state(servo.ip_address) == NetState.CONNECTED
-    finally:
-        # servo/net status listeners are not reset
-        # https://novantamotion.atlassian.net/browse/CIT-627
-        net.stop_status_listener()
