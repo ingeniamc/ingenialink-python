@@ -4,11 +4,11 @@ import ipaddress
 import os
 import socket
 import time
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from ftplib import FTP
 from threading import Thread
 from time import sleep
-from typing import Any, Callable, Optional, Union
+from typing import Callable, Optional, Union
 
 import ingenialogger
 from multiping import multi_ping
@@ -64,15 +64,13 @@ class NetStatusListener(Thread):
             servo_state = self.__network.get_servo_state(servo_ip)
             is_servo_alive = servo.is_alive(attemps=MAX_NUM_UNSUCCESSFUL_PINGS)
             if servo_state == NetState.CONNECTED and not is_servo_alive:
-                self.__network._notify_status(servo_ip, NetDevEvt.REMOVED)
-                self.__network._set_servo_state(servo_ip, NetState.DISCONNECTED)
+                self.__network._transition_servo_state(servo_ip, NetDevEvt.REMOVED)
             if (
                 servo_state == NetState.DISCONNECTED
                 and is_servo_alive
                 and self.__network.recover_from_disconnection(servo)
             ):
-                self.__network._notify_status(servo_ip, NetDevEvt.ADDED)
-                self.__network._set_servo_state(servo_ip, NetState.CONNECTED)
+                self.__network._transition_servo_state(servo_ip, NetDevEvt.ADDED)
 
     def run(self) -> None:
         """Check the network status."""
@@ -104,7 +102,6 @@ class EthernetNetworkBase(Network):
         else:
             self.__subnet = None
         self.__listener_net_status: Optional[NetStatusListener] = None
-        self.__observers_net_state: dict[str, list[Callable[[NetDevEvt], Any]]] = defaultdict(list)
 
     @staticmethod
     def load_firmware(
@@ -320,6 +317,7 @@ class EthernetNetworkBase(Network):
         servo.stop_status_listener()
         self.close_socket(servo.socket)
         self._set_servo_state(servo.ip_address, NetState.DISCONNECTED)
+        self._clear_observers(servo.ip_address)
         if len(self.servos) == 0:
             self.stop_status_listener()
         # Notify that disconnect_from_slave has been called
@@ -344,11 +342,6 @@ class EthernetNetworkBase(Network):
             self.__listener_net_status.stop()
             self.__listener_net_status.join()
         self.__listener_net_status = None
-
-    def _notify_status(self, ip: str, status: NetDevEvt) -> None:
-        """Notify subscribers of a network state change."""
-        for callback in self.__observers_net_state[ip]:
-            callback(status)
 
     @override
     def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:
@@ -377,32 +370,6 @@ class EthernetNetworkBase(Network):
             logger.warning(f"Failed to recover communication with servo at IP {servo.ip_address}.")
             return False
 
-    def subscribe_to_status(self, ip: str, callback: Callable[[NetDevEvt], Any]) -> None:  # type: ignore [override]
-        """Subscribe to network state changes.
-
-        Args:
-            ip: IP of the drive to subscribe.
-            callback: Callback function.
-
-        """
-        if callback in self.__observers_net_state[ip]:
-            logger.info("Callback already subscribed.")
-            return
-        self.__observers_net_state[ip].append(callback)
-
-    def unsubscribe_from_status(self, ip: str, callback: Callable[[NetDevEvt], Any]) -> None:  # type: ignore [override]
-        """Unsubscribe from network state changes.
-
-        Args:
-            ip: IP of the drive to unsubscribe.
-            callback: Callback function.
-
-        """
-        if callback not in self.__observers_net_state[ip]:
-            logger.info("Callback not subscribed.")
-            return
-        self.__observers_net_state[ip].remove(callback)
-
     def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
         """Get the state of a servo that's a part of network.
 
@@ -420,16 +387,6 @@ class EthernetNetworkBase(Network):
         if not isinstance(servo_id, str):
             raise ValueError("The servo ID must be a string.")
         return self._servos_state[servo_id]
-
-    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
-        """Set the state of a servo that's a part of network.
-
-        Args:
-            servo_id: The servo's IP address.
-            state: The servo's state.
-
-        """
-        self._servos_state[servo_id] = state
 
     def _get_servo_info_for_scan(self, ip_address: str) -> SlaveInfo:
         """Get the product code and revision number of a drive.

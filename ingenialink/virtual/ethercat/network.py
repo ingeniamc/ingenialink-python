@@ -45,15 +45,13 @@ class VirtualNetStatusListener(Thread):
                     servo_state = self.__network.get_servo_state(slave_id)
                     is_servo_alive = servo.is_alive()
                     if servo_state == NetState.CONNECTED and not is_servo_alive:
-                        self.__network._notify_status(slave_id, NetDevEvt.REMOVED)
-                        self.__network._set_servo_state(slave_id, NetState.DISCONNECTED)
+                        self.__network._transition_servo_state(slave_id, NetDevEvt.REMOVED)
                     if (
                         servo_state == NetState.DISCONNECTED
                         and is_servo_alive
                         and self.__network.recover_from_disconnection(servo)
                     ):
-                        self.__network._notify_status(slave_id, NetDevEvt.ADDED)
-                        self.__network._set_servo_state(slave_id, NetState.CONNECTED)
+                        self.__network._transition_servo_state(slave_id, NetDevEvt.ADDED)
             except Exception as e:
                 logger.exception(f"Exception during virtual EtherCAT status check: {e}")
             time.sleep(self.__refresh_time)
@@ -163,6 +161,7 @@ class VirtualEthercatNetwork(EthercatNetworkBase):
         servo.socket.shutdown(socket.SHUT_RDWR)
         servo.socket.close()
         self._set_servo_state(servo.slave_id, NetState.DISCONNECTED)
+        self._clear_observers(servo.slave_id)
         if len(self.servos) == 0:
             self.stop_status_listener()
         servo._disconnect_event_publisher.notify(servo)

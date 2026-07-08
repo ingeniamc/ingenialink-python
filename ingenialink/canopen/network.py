@@ -5,7 +5,7 @@ import platform
 import re
 import tempfile
 import warnings
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from enum import Enum
 from threading import Thread
 from time import sleep
@@ -209,14 +209,12 @@ class NetStatusListener(Thread):
             servo_state = self.__network.get_servo_state(node_id)
             if is_alive:
                 if servo_state != NetState.CONNECTED:
-                    self.__network._notify_status(node_id, NetDevEvt.ADDED)
-                    self.__network._set_servo_state(node_id, NetState.CONNECTED)
+                    self.__network._transition_servo_state(node_id, NetDevEvt.ADDED)
                 timestamps[node_id] = node.nmt.timestamp
             elif servo_state == NetState.DISCONNECTED:
                 self.__network.recover_from_disconnection()
             else:
-                self.__network._notify_status(node_id, NetDevEvt.REMOVED)
-                self.__network._set_servo_state(node_id, NetState.DISCONNECTED)
+                self.__network._transition_servo_state(node_id, NetDevEvt.REMOVED)
         return timestamps
 
     def run(self) -> None:
@@ -268,7 +266,6 @@ class CanopenNetwork(CanopenNetworkBase):
         self.__baudrate = baudrate.value
         self._connection: Optional[NetworkLib] = None
         self.__listener_net_status: Optional[NetStatusListener] = None
-        self.__observers_net_state: dict[int, list[Callable[[NetDevEvt], Any]]] = defaultdict(list)
 
         self.__connection_args = {
             "interface": self.__device,
@@ -463,6 +460,7 @@ class CanopenNetwork(CanopenNetworkBase):
         self.stop_status_listener()
         servo.stop_status_listener()
         self.servos.remove(servo)
+        self._clear_observers(servo.target)
         if not self.servos:
             self._teardown_connection()
         # Notify that disconnect_from_slave has been called
@@ -1050,37 +1048,6 @@ class CanopenNetwork(CanopenNetworkBase):
 
         self._connection.nodes[target_node].nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
 
-    def subscribe_to_status(self, node_id: int, callback: Callable[[NetDevEvt], Any]) -> None:  # type: ignore [override]
-        """Subscribe to network state changes.
-
-        Args:
-            node_id: Drive's node ID.
-            callback: Callback function.
-
-        """
-        if callback in self.__observers_net_state[node_id]:
-            logger.info("Callback already subscribed.")
-            return
-        self.__observers_net_state[node_id].append(callback)
-
-    def unsubscribe_from_status(self, node_id: int, callback: Callable[[NetDevEvt], Any]) -> None:  # type: ignore [override]
-        """Unsubscribe from network state changes.
-
-        Args:
-            node_id: Drive's node ID.
-            callback: Callback function.
-
-        """
-        if callback not in self.__observers_net_state[node_id]:
-            logger.info("Callback not subscribed.")
-            return
-        self.__observers_net_state[node_id].remove(callback)
-
-    def _notify_status(self, node_id: int, status: NetDevEvt) -> None:
-        """Notify subscribers of a network state change."""
-        for callback in self.__observers_net_state[node_id]:
-            callback(status)
-
     def is_listener_started(self) -> bool:
         """Check if the listener has been started.
 
@@ -1183,16 +1150,6 @@ class CanopenNetwork(CanopenNetworkBase):
         if not isinstance(servo_id, int):
             raise ValueError("The servo ID must be an int.")
         return self._servos_state[servo_id]
-
-    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
-        """Set the state of a servo that's a part of network.
-
-        Args:
-            servo_id: The servo's node ID.
-            state: The servo's state.
-
-        """
-        self._servos_state[servo_id] = state
 
     def get_available_devices(self) -> list[tuple[str, Union[str, int]]]:
         """Get the available CAN devices and their channels.

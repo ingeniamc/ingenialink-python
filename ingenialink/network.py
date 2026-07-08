@@ -1,6 +1,6 @@
 import warnings
 from abc import ABC, abstractmethod
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Optional, Union
@@ -54,6 +54,11 @@ class Network(ABC):
 
         self._servos_state: dict[Union[int, str], NetState] = {}
         """Dictionary containing the state of the servos that are a part of the network."""
+
+        self._observers_net_state: dict[Union[int, str], list[Callable[[NetDevEvt], Any]]] = (
+            defaultdict(list)
+        )
+        """Dictionary containing the subscribers to each servo's status changes."""
 
     @abstractmethod
     def scan_slaves(self) -> list[int]:
@@ -116,7 +121,6 @@ class Network(ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def subscribe_to_status(
         self, target: Union[int, str], callback: Callable[[NetDevEvt], Any]
     ) -> None:
@@ -127,9 +131,11 @@ class Network(ABC):
             callback: Callback function.
 
         """
-        raise NotImplementedError
+        if callback in self._observers_net_state[target]:
+            logger.info("Callback already subscribed.")
+            return
+        self._observers_net_state[target].append(callback)
 
-    @abstractmethod
     def unsubscribe_from_status(
         self, target: Union[int, str], callback: Callable[[NetDevEvt], Any]
     ) -> None:
@@ -140,7 +146,33 @@ class Network(ABC):
             callback: Callback function.
 
         """
-        raise NotImplementedError
+        if callback not in self._observers_net_state[target]:
+            logger.info("Callback not subscribed.")
+            return
+        self._observers_net_state[target].remove(callback)
+
+    def _notify_status(self, target: Union[int, str], status: NetDevEvt) -> None:
+        """Notify subscribers of a network state change.
+
+        Args:
+            target: ID of the drive whose state changed.
+            status: New status to notify subscribers with.
+
+        """
+        for callback in self._observers_net_state[target]:
+            callback(status)
+
+    def _clear_observers(self, servo_id: Union[int, str]) -> None:
+        """Discard all subscribers registered for a servo.
+
+        Must be called when a servo disconnects, so its stale subscriber list
+        isn't kept around indefinitely.
+
+        Args:
+            servo_id: The servo's ID.
+
+        """
+        self._observers_net_state.pop(servo_id, None)
 
     @abstractmethod
     def start_status_listener(self, *args: Any, **kwargs: Any) -> None:
@@ -167,9 +199,35 @@ class Network(ABC):
         """
         return self._servos_state[servo_id]
 
-    @abstractmethod
     def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
+        """Set the state of a servo that's a part of network.
+
+        Args:
+            servo_id: The servo's ID.
+            state: The servo's state.
+
+        """
         self._servos_state[servo_id] = state
+
+    def _transition_servo_state(self, servo_id: Union[int, str], event: NetDevEvt) -> None:
+        """Update a servo's state and notify subscribers of the change, in that order.
+
+        The event fully determines the resulting state (``ADDED`` implies
+        ``CONNECTED``, ``REMOVED`` implies ``DISCONNECTED``), so callers only need
+        to pass the event.
+
+        The state must be updated before subscribers are notified so that any thread
+        woken up by the notification already sees the new state when it calls
+        :meth:`get_servo_state`.
+
+        Args:
+            servo_id: The servo's ID.
+            event: The event to notify subscribers with; determines the new state.
+
+        """
+        state = NetState.CONNECTED if event == NetDevEvt.ADDED else NetState.DISCONNECTED
+        self._set_servo_state(servo_id, state)
+        self._notify_status(servo_id, event)
 
     @property
     def protocol(self) -> NetProt:
