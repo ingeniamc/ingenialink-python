@@ -42,6 +42,10 @@ class _Observers(Generic[CallbackT]):
             return
         self.__subscribers.remove(callback)
 
+    def clear(self) -> None:
+        """Discard all subscribers."""
+        self.__subscribers.clear()
+
 
 class _Publisher(Generic[CallbackT]):
     """Publisher for an event, linked to an Observers instance."""

@@ -17,7 +17,7 @@ from typing_extensions import override
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.ethernet.resources import BASIC_ETHERNET_V2_XDF
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
+from ingenialink.network import NetDevEvt, NetProt, NetState, Network, ServoTarget, SlaveInfo
 from ingenialink.servo import Servo
 from ingenialink.utils.udp import UDP
 
@@ -370,23 +370,23 @@ class EthernetNetworkBase(Network):
             logger.warning(f"Failed to recover communication with servo at IP {servo.ip_address}.")
             return False
 
-    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
+    def get_servo_state(self, servo_id: ServoTarget) -> NetState:
         """Get the state of a servo that's a part of network.
 
         The state indicates if the servo is connected or disconnected.
 
         Args:
-            servo_id: The servo's IP address.
+            servo_id: The servo's IP address, or the servo instance itself.
 
         Raises:
-            ValueError: if the servo ID is not a string.
+            ValueError: if the servo ID is not a string or a servo instance.
 
         Returns:
             The servo's state.
         """
-        if not isinstance(servo_id, str):
+        if not isinstance(servo_id, (str, Servo)):
             raise ValueError("The servo ID must be a string.")
-        return self._servos_state[servo_id]
+        return super().get_servo_state(servo_id)
 
     def _get_servo_info_for_scan(self, ip_address: str) -> SlaveInfo:
         """Get the product code and revision number of a drive.

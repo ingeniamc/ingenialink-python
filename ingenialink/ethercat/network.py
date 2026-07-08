@@ -197,18 +197,6 @@ class NetStatusListener(Thread):
 class EthercatNetworkBase(Network):
     """Base class for EtherCAT network communications."""
 
-    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
-        """Get the state of a servo in the network.
-
-        Args:
-            servo_id: Servo ID.
-
-        Returns:
-            Current state of the servo.
-
-        """
-        return self._servos_state[servo_id]
-
     @property
     def protocol(self) -> NetProt:
         """Obtain network protocol."""

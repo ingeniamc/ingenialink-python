@@ -37,6 +37,7 @@ from ingenialink.dictionary import (
     SubnodeType,
 )
 from ingenialink.emcy import EmergencyMessage
+from ingenialink.enums.network import NetDevEvt, NetState
 from ingenialink.enums.register import RegAccess, RegAddressType, RegDtype
 from ingenialink.enums.servo import ServoState
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2, EthercatDictionaryV3
@@ -489,6 +490,10 @@ class Servo:
         ] = []
         # Event and publisher for disconnection events, emitted after the servo is disconnected
         self.disconnect_event, self._disconnect_event_publisher = create_event(Servo)  # type: ignore[type-abstract]
+        self._net_state: Optional[NetState] = None
+        """Network-connection state, owned and mutated only by the servo's Network."""
+        self._net_state_observers, self._net_state_publisher = create_event(NetDevEvt)
+        """Subscribers to this servo's network-connection state changes, owned by Network."""
         if servo_status_listener:
             self.start_status_listener()
         else:

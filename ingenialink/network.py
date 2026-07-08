@@ -1,40 +1,17 @@
 import warnings
 from abc import ABC, abstractmethod
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from dataclasses import dataclass
-from enum import Enum
 from typing import Any, Callable, Optional, Union
 
 import ingenialogger
 
+from ingenialink.enums.network import NetDevEvt as NetDevEvt
+from ingenialink.enums.network import NetProt as NetProt
+from ingenialink.enums.network import NetState as NetState
 from ingenialink.servo import Servo
 
 logger = ingenialogger.get_logger(__name__)
-
-
-class NetProt(Enum):
-    """Network Protocol."""
-
-    EUSB = 0
-    MCB = 1
-    ETH = 2
-    ECAT = 3
-    CAN = 5
-
-
-class NetState(Enum):
-    """Network State."""
-
-    CONNECTED = 0
-    DISCONNECTED = 1
-    FAULTY = 2
-
-
-class NetDevEvt(Enum):
-    """Device Event."""
-
-    ADDED = 0
-    REMOVED = 1
 
 
 @dataclass
@@ -45,6 +22,11 @@ class SlaveInfo:
     revision_number: Optional[int] = None
 
 
+ServoTarget = Union[int, str, Servo]
+"""A servo can be identified either by its raw id (slave id / node id / ip) or by
+the :class:`Servo` instance itself."""
+
+
 class Network(ABC):
     """Declaration of a general Network object."""
 
@@ -52,13 +34,29 @@ class Network(ABC):
         self.servos: list[Any] = []
         """List of the connected servos in the network."""
 
-        self._servos_state: dict[Union[int, str], NetState] = {}
-        """Dictionary containing the state of the servos that are a part of the network."""
+        self._servo_registry: dict[Union[int, str], Servo] = {}
+        """Best-effort id -> last-known Servo mapping, used to resolve raw ids to
+        instances even after a servo has been removed from ``self.servos``."""
 
-        self._observers_net_state: dict[Union[int, str], list[Callable[[NetDevEvt], Any]]] = (
-            defaultdict(list)
-        )
-        """Dictionary containing the subscribers to each servo's status changes."""
+    def _resolve_servo(self, target: ServoTarget) -> Optional[Servo]:
+        """Resolve a raw id or Servo instance to the corresponding Servo.
+
+        Args:
+            target: The servo's id, or the servo instance itself.
+
+        Returns:
+            The resolved Servo, or None if it can't be resolved.
+
+        """
+        if isinstance(target, Servo):
+            self._servo_registry[target.target] = target
+            return target
+        servo: Servo
+        for servo in self.servos:
+            if servo.target == target:
+                self._servo_registry[target] = servo
+                return servo
+        return self._servo_registry.get(target)
 
     @abstractmethod
     def scan_slaves(self) -> list[int]:
@@ -122,57 +120,63 @@ class Network(ABC):
         raise NotImplementedError
 
     def subscribe_to_status(
-        self, target: Union[int, str], callback: Callable[[NetDevEvt], Any]
+        self, target: ServoTarget, callback: Callable[[NetDevEvt], Any]
     ) -> None:
         """Subscribe to network state changes.
 
         Args:
-            target: ID of the drive to subscribe.
+            target: ID of the drive to subscribe, or the servo instance itself.
             callback: Callback function.
 
         """
-        if callback in self._observers_net_state[target]:
-            logger.info("Callback already subscribed.")
+        servo = self._resolve_servo(target)
+        if servo is None:
+            logger.info("Servo not found, cannot subscribe.")
             return
-        self._observers_net_state[target].append(callback)
+        servo._net_state_observers.subscribe(callback)
 
     def unsubscribe_from_status(
-        self, target: Union[int, str], callback: Callable[[NetDevEvt], Any]
+        self, target: ServoTarget, callback: Callable[[NetDevEvt], Any]
     ) -> None:
         """Unsubscribe from network state changes.
 
         Args:
-            target: ID of the drive to subscribe.
+            target: ID of the drive to subscribe, or the servo instance itself.
             callback: Callback function.
 
         """
-        if callback not in self._observers_net_state[target]:
-            logger.info("Callback not subscribed.")
+        servo = self._resolve_servo(target)
+        if servo is None:
             return
-        self._observers_net_state[target].remove(callback)
+        servo._net_state_observers.unsubscribe(callback)
 
-    def _notify_status(self, target: Union[int, str], status: NetDevEvt) -> None:
+    def _notify_status(self, target: ServoTarget, status: NetDevEvt) -> None:
         """Notify subscribers of a network state change.
 
         Args:
-            target: ID of the drive whose state changed.
+            target: ID of the drive whose state changed, or the servo instance itself.
             status: New status to notify subscribers with.
 
         """
-        for callback in self._observers_net_state[target]:
-            callback(status)
+        servo = self._resolve_servo(target)
+        if servo is None:
+            return
+        servo._net_state_publisher.notify(status)
 
-    def _clear_observers(self, servo_id: Union[int, str]) -> None:
+    def _clear_observers(self, servo_id: ServoTarget) -> None:
         """Discard all subscribers registered for a servo.
 
         Must be called when a servo disconnects, so its stale subscriber list
         isn't kept around indefinitely.
 
         Args:
-            servo_id: The servo's ID.
+            servo_id: The servo's ID, or the servo instance itself.
 
         """
-        self._observers_net_state.pop(servo_id, None)
+        servo = self._resolve_servo(servo_id)
+        if servo is None:
+            return
+        servo._net_state_observers.clear()
 
     @abstractmethod
     def start_status_listener(self, *args: Any, **kwargs: Any) -> None:
@@ -185,31 +189,43 @@ class Network(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
+    def get_servo_state(self, servo_id: ServoTarget) -> NetState:
         """Get the state of a servo that's a part of network.
 
         The state indicates if the servo is connected or disconnected.
 
         Args:
-            servo_id: The servo's ID.
+            servo_id: The servo's ID, or the servo instance itself.
+
+        Raises:
+            KeyError: If the servo can't be resolved, or its state was never set.
 
         Returns:
             The servo's state.
 
         """
-        return self._servos_state[servo_id]
+        servo = self._resolve_servo(servo_id)
+        if servo is None or servo._net_state is None:
+            raise KeyError(servo_id)
+        return servo._net_state
 
-    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
+    def _set_servo_state(self, servo_id: ServoTarget, state: NetState) -> None:
         """Set the state of a servo that's a part of network.
 
         Args:
-            servo_id: The servo's ID.
+            servo_id: The servo's ID, or the servo instance itself.
             state: The servo's state.
 
-        """
-        self._servos_state[servo_id] = state
+        Raises:
+            KeyError: If the servo can't be resolved.
 
-    def _transition_servo_state(self, servo_id: Union[int, str], event: NetDevEvt) -> None:
+        """
+        servo = self._resolve_servo(servo_id)
+        if servo is None:
+            raise KeyError(servo_id)
+        servo._net_state = state
+
+    def _transition_servo_state(self, servo_id: ServoTarget, event: NetDevEvt) -> None:
         """Update a servo's state and notify subscribers of the change, in that order.
 
         The event fully determines the resulting state (``ADDED`` implies
@@ -221,7 +237,7 @@ class Network(ABC):
         :meth:`get_servo_state`.
 
         Args:
-            servo_id: The servo's ID.
+            servo_id: The servo's ID, or the servo instance itself.
             event: The event to notify subscribers with; determines the new state.
 
         """

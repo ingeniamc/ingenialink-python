@@ -2,7 +2,7 @@ import socket
 import time
 from collections import OrderedDict
 from threading import Thread
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional
 
 import ingenialogger
 from typing_extensions import override
@@ -68,18 +68,6 @@ class VirtualCanopenNetwork(CanopenNetworkBase):
         super().__init__()
         self._virtual_base = VirtualNetworkBase()
         self.__listener_net_status: Optional[VirtualCanopenNetStatusListener] = None
-
-    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
-        """Get the state of a servo in the network.
-
-        Args:
-            servo_id: Servo ID.
-
-        Returns:
-            Current state of the servo.
-
-        """
-        return self._servos_state[servo_id]
 
     @property
     def protocol(self) -> NetProt:
