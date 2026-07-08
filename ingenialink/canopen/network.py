@@ -236,6 +236,24 @@ class NetStatusListener(Thread):
 class CanopenNetworkBase(Network):
     """Base class for CANopen network communications."""
 
+    def get_servo_state(self, servo_id: ServoTarget) -> NetState:
+        """Get the state of a servo that's a part of network.
+
+        The state indicates if the servo is connected or disconnected.
+
+        Args:
+            servo_id: The servo's node ID, or the servo instance itself.
+
+        Raises:
+            ValueError: if the servo id is not an integer or a servo instance.
+
+        Returns:
+            The servo's state.
+        """
+        if not isinstance(servo_id, (int, Servo)):
+            raise ValueError("The servo ID must be an int or an instance of Servo.")
+        return super().get_servo_state(servo_id)
+
 
 class CanopenNetwork(CanopenNetworkBase):
     """Network of the CANopen communication.
@@ -1131,24 +1149,6 @@ class CanopenNetwork(CanopenNetworkBase):
         except Exception as e:
             logger.warning(f"Failed to recover CANopen communication: {e}")
             return False
-
-    def get_servo_state(self, servo_id: ServoTarget) -> NetState:
-        """Get the state of a servo that's a part of network.
-
-        The state indicates if the servo is connected or disconnected.
-
-        Args:
-            servo_id: The servo's node ID, or the servo instance itself.
-
-        Raises:
-            ValueError: it the servo id is not an integer or a servo instance.
-
-        Returns:
-            The servo's state.
-        """
-        if not isinstance(servo_id, (int, Servo)):
-            raise ValueError("The servo ID must be an int.")
-        return super().get_servo_state(servo_id)
 
     def get_available_devices(self) -> list[tuple[str, Union[str, int]]]:
         """Get the available CAN devices and their channels.

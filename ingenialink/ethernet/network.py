@@ -384,7 +384,7 @@ class EthernetNetworkBase(Network):
             The servo's state.
         """
         if not isinstance(servo_id, (str, Servo)):
-            raise ValueError("The servo ID must be a string.")
+            raise ValueError("The servo ID must be a string or an instance of Servo.")
         return super().get_servo_state(servo_id)
 
     def _get_servo_info_for_scan(self, ip_address: str) -> SlaveInfo:
