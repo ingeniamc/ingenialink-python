@@ -166,7 +166,6 @@ class VirtualCanopenNetwork(CanopenNetworkBase):
         servo.socket.shutdown(socket.SHUT_RDWR)
         servo.socket.close()
         self._set_servo_state(servo.target, NetState.DISCONNECTED)
-        self._clear_observers(servo.target)
         if len(self.servos) == 0:
             self.stop_status_listener()
         servo._disconnect_event_publisher.notify(servo)

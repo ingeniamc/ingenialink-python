@@ -163,21 +163,6 @@ class Network(ABC):
             return
         servo._net_state_publisher.notify(status)
 
-    def _clear_observers(self, servo_id: ServoTarget) -> None:
-        """Discard all subscribers registered for a servo.
-
-        Must be called when a servo disconnects, so its stale subscriber list
-        isn't kept around indefinitely.
-
-        Args:
-            servo_id: The servo's ID, or the servo instance itself.
-
-        """
-        servo = self._resolve_servo(servo_id)
-        if servo is None:
-            return
-        servo._net_state_observers.clear()
-
     @abstractmethod
     def start_status_listener(self, *args: Any, **kwargs: Any) -> None:
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""

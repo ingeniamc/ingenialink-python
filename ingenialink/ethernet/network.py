@@ -317,7 +317,6 @@ class EthernetNetworkBase(Network):
         servo.stop_status_listener()
         self.close_socket(servo.socket)
         self._set_servo_state(servo.ip_address, NetState.DISCONNECTED)
-        self._clear_observers(servo.ip_address)
         if len(self.servos) == 0:
             self.stop_status_listener()
         # Notify that disconnect_from_slave has been called

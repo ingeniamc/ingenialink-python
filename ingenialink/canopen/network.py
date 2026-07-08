@@ -460,7 +460,6 @@ class CanopenNetwork(CanopenNetworkBase):
         self.stop_status_listener()
         servo.stop_status_listener()
         self.servos.remove(servo)
-        self._clear_observers(servo.target)
         if not self.servos:
             self._teardown_connection()
         # Notify that disconnect_from_slave has been called

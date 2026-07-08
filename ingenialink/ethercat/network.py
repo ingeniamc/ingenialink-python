@@ -37,7 +37,7 @@ from ingenialink.exceptions import (
     ILStateError,
     ILWrongWorkingCountError,
 )
-from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
+from ingenialink.network import NetDevEvt, NetProt, NetState, Network, ServoTarget, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -196,6 +196,18 @@ class NetStatusListener(Thread):
 
 class EthercatNetworkBase(Network):
     """Base class for EtherCAT network communications."""
+
+    def get_servo_state(self, servo_id: ServoTarget) -> NetState:
+        """Get the state of a servo in the network.
+
+        Args:
+            servo_id: Servo ID, or the servo instance itself.
+
+        Returns:
+            Current state of the servo.
+
+        """
+        return super().get_servo_state(servo_id)
 
     @property
     def protocol(self) -> NetProt:
@@ -605,7 +617,6 @@ class EthercatNetwork(EthercatNetworkBase):
         servo.teardown()
         self.servos.remove(servo)
         self.__get_servo_by_slave.cache_clear()
-        self._clear_observers(servo.slave_id)
         if not self.servos:
             self.stop_status_listener()
             self.close_ecat_master()
