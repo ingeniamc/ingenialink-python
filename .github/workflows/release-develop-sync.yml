@@ -54,14 +54,9 @@ jobs:
 
           # Body goes in a file so it's normal wrapped text, not one long line.
           cat > pr_body.md <<EOF
-          Automated sync of in-progress release stabilization fixes from
-          \`$BRANCH\` into \`develop\`, via mirror branch \`$MIRROR\`.
+          Automated sync of in-progress release stabilization fixes from \`$BRANCH\` into \`develop\`, via mirror branch \`$MIRROR\`.
 
-          Push conflict fixes directly to \`$MIRROR\` if needed; it keeps
-          receiving new commits from \`$BRANCH\` without losing that work.
-          This does not replace the merge-back into \`develop\` performed by
-          \`git flow release finish\`; merge (do not squash) whenever
-          convenient during stabilization.
+          Push conflict fixes directly to \`$MIRROR\` if needed; it keeps receiving new commits from \`$BRANCH\` without losing that work. This does not replace the merge-back into \`develop\` performed by \`git flow release finish\`; merge (do not squash) whenever convenient during stabilization.
           EOF
 
           gh pr create \
