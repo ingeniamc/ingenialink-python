@@ -68,7 +68,7 @@
 ### Added
 - Implement the scan method for Ethernet networks.
 - GIL release control for EtherCAT functions.
-  Created ConfigurationFile class, used in load_configuration, save_configuration and check_configuration
+- Created ConfigurationFile class, used in load_configuration, save_configuration and check_configuration
 - Functions to update pysoem timeouts
 
 ### Deprecated
