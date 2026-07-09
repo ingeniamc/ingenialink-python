@@ -642,7 +642,9 @@ class DriveContextManager:
                 # Ethercat PDO mapping registers are restored via complete access, not individually.
                 "ETG_COMMS_RPDO_MAP*",
                 "ETG_COMMS_TPDO_MAP*",
-                # Canopen PDO mapping registers are not implemented and are not restorable individually.
+                # Canopen PDO mapping registers are not implemented
+                # and are not restorable individually.
+                # See INGK-733
                 "CIA301_COMMS_RPDO*",
                 "CIA301_COMMS_TPDO*",
             )
