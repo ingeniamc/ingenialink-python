@@ -639,9 +639,12 @@ class DriveContextManager:
                 # Total number of error register should not be restored, only a 0 can be written
                 "ETG_ERROR_FIELD",
                 "CIA301_COMMS_ERROR_FIELD",
-                # PDO mapping registers are restored via complete access, not individually.
+                # Ethercat PDO mapping registers are restored via complete access, not individually.
                 "ETG_COMMS_RPDO_MAP*",
                 "ETG_COMMS_TPDO_MAP*",
+                # Canopen PDO mapping registers are not implemented and are not restorable individually.
+                "CIA301_COMMS_RPDO*",
+                "CIA301_COMMS_TPDO*",
             )
         )
 
