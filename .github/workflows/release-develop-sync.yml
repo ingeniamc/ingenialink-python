@@ -1,5 +1,7 @@
 name: Release → develop sync
 
+# Opens a PR to develop on every push to a release branch, so stabilization
+# fixes land before `git flow release finish` merges back at the end.
 on:
   push:
     branches:
@@ -7,7 +9,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
+  pull-requests: write # needed for gh pr create/list
 
 jobs:
   sync-pr:
@@ -18,14 +20,31 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: |
+          # Strip "refs/heads/" to get the plain branch name gh expects.
           BRANCH="${GITHUB_REF#refs/heads/}"
+
+          # Skip if a sync PR is already open, to avoid one per push.
           EXISTING=$(gh pr list --base develop --head "$BRANCH" --state open --json number --jq '.[0].number')
           if [ -n "$EXISTING" ]; then
             echo "PR #$EXISTING already open for $BRANCH -> develop, nothing to do."
             exit 0
           fi
-          gh pr create --base develop --head "$BRANCH" \
-            --title "Sync $BRANCH into develop" \
-            --body "Automated sync of in-progress release stabilization fixes from \`$BRANCH\` into \`develop\`.
 
-          This PR is opened on every push to the release branch while it is still active, so stabilization fixes reach \`develop\` without waiting for the release to finish. It does not replace the merge-back into \`develop\` performed by \`git flow release finish\`; merge (do not squash, to preserve commit identity) whenever convenient during stabilization."
+          # Body goes in a file so it's normal wrapped text, not one long line.
+          cat > pr_body.md <<EOF
+          Automated sync of in-progress release stabilization fixes from
+          \`$BRANCH\` into \`develop\`.
+
+          This PR is opened on every push to the release branch while it is
+          still active, so stabilization fixes reach \`develop\` without
+          waiting for the release to finish. It does not replace the
+          merge-back into \`develop\` performed by \`git flow release finish\`;
+          merge (do not squash, to preserve commit identity) whenever
+          convenient during stabilization.
+          EOF
+
+          gh pr create \
+            --base develop \
+            --head "$BRANCH" \
+            --title "Sync $BRANCH into develop" \
+            --body-file pr_body.md
