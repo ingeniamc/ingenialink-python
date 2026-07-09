@@ -466,6 +466,8 @@ class DriveRegistersSession:
         Args:
             register: The register to mark as dirty.
         """
+        if register in self._do_not_restore_registers:
+            return
         if register not in self.baseline._values:
             return
 
