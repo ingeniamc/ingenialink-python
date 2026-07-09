@@ -19,9 +19,9 @@ class Table:
 
     The table contains the servo, dictionary table and the index and value registers.
     For mutable operations on the table, a context manager is used to ensure that the index register
-        is restored after the operation.
+    is restored after the operation.
     When doing multiple operations in a sequence, it is recommended to use a single context manager
-        to avoid repeatedly setting the index register.
+    to avoid repeatedly setting the index register.
     """
 
     def __init__(

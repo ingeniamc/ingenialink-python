@@ -109,7 +109,7 @@ sphinx = "==7.4.7"
 sphinx-rtd-theme = "==3.1.0"
 sphinxcontrib-bibtex = "==2.6.2"
 nbsphinx = "==0.9.8"
-m2r2 = "==0.3.4"
+myst-parser = "==3.0.1"
 jinja2 = "==3.1.6"
 
 # Dependencies for tests task
@@ -178,7 +178,7 @@ cmd = "mypy ingenialink examples"
 # ----------------------------- Documentation -----------------------------
 [tool.poe.tasks.docs]
 help = "Build documentation"
-cmd = "python -I -m sphinx -b html docs _docs"
+cmd = "python -I -m sphinx -E -W --keep-going -b html docs _docs"
 
 # ----------------------------- Install wheel -----------------------------
 [tool.poe.tasks.install-wheel]
