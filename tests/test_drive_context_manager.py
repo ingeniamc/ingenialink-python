@@ -114,6 +114,9 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(servo: "Se
             # complete access).  ASSIGN registers are NOT excluded.
             "ETG_COMMS_RPDO_MAP*",
             "ETG_COMMS_TPDO_MAP*",
+            # CANopen PDO mapping registers are not restorable individually (see INGK-733).
+            "CIA301_COMMS_RPDO*",
+            "CIA301_COMMS_TPDO*",
         )
     )
 
@@ -139,6 +142,8 @@ def test_drive_context_manager_with_do_not_restore_registers(servo: "Servo"):
             _USER_OVER_VOLTAGE_UID,
             "ETG_COMMS_RPDO_MAP*",
             "ETG_COMMS_TPDO_MAP*",
+            "CIA301_COMMS_RPDO*",
+            "CIA301_COMMS_TPDO*",
         )
     )
 
