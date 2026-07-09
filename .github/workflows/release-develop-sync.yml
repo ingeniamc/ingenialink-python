@@ -1,0 +1,31 @@
+name: Release → develop sync
+
+on:
+  push:
+    branches:
+      - 'release/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  sync-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open or update sync PR into develop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          EXISTING=$(gh pr list --base develop --head "$BRANCH" --state open --json number --jq '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            echo "PR #$EXISTING already open for $BRANCH -> develop, nothing to do."
+            exit 0
+          fi
+          gh pr create --base develop --head "$BRANCH" \
+            --title "Sync $BRANCH into develop" \
+            --body "Automated sync of in-progress release stabilization fixes from \`$BRANCH\` into \`develop\`.
+
+          This PR is opened on every push to the release branch while it is still active, so stabilization fixes reach \`develop\` without waiting for the release to finish. It does not replace the merge-back into \`develop\` performed by \`git flow release finish\`; merge (do not squash, to preserve commit identity) whenever convenient during stabilization."
