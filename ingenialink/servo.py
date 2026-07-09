@@ -1576,11 +1576,6 @@ class Servo:
         if _reg.access == RegAccess.RO:
             raise ILAccessError("Register is Read-only")
         data_bytes = data if isinstance(data, bytes) else convert_dtype_to_bytes(data, _reg.dtype)
-        if _reg.identifier is not None and _reg.identifier.startswith((
-            "CIA301_COMMS_TPDO",
-            "CIA301_COMMS_RPDO",
-        )):
-            logger.warning(f"DEBUG: about to write {_reg.identifier}={data!r}", stack_info=True)
         self._write_raw(_reg, data_bytes)
         self._notify_register_update(_reg, data)
 
