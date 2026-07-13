@@ -77,7 +77,8 @@ TestGroup WIN_DOCKER_TESTS = testManager.createGroup("WIN_DOCKER_TEST_SESSIONS",
  */
 def NIGHTLY_CRON   = '0 19,23 * * * % PYTHON_VERSIONS=All;RUN_POLICY_NIGHTLY=true'
 def WEEKEND_CRON   = '0 8,14 * * 6-7 % PYTHON_VERSIONS=All;RUN_POLICY_NIGHTLY=true;RUN_POLICY_WEEKEND=true'
-def CRON_SETTINGS  = BRANCH_NAME == "develop" ? "${NIGHTLY_CRON}\n${WEEKEND_CRON}" : ""
+//def CRON_SETTINGS  = BRANCH_NAME == "develop" ? "${NIGHTLY_CRON}\n${WEEKEND_CRON}" : ""
+def CRON_SETTINGS  = "0 * * * * % PYTHON_VERSIONS=All;RUN_POLICY_NIGHTLY=RUN_POLICY_NIGHTLY:selected"
 
 def pipelineParams = PyTestParams.pytestParams(this, currentBuild, [
     branchName: env.BRANCH_NAME,
