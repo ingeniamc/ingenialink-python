@@ -36,7 +36,7 @@ class Network(ABC):
 
         self._servo_registry: dict[Union[int, str], Servo] = {}
         """Best-effort id -> last-known Servo mapping, used to resolve raw ids to
-        instances even after a servo has been removed from ``self.servos``."""
+        instances."""
 
     def _resolve_servo(self, target: ServoTarget) -> Optional[Servo]:
         """Resolve a raw id or Servo instance to the corresponding Servo.
@@ -227,6 +227,7 @@ class Network(ABC):
 
         """
         state = NetState.CONNECTED if event == NetDevEvt.ADDED else NetState.DISCONNECTED
+
         self._set_servo_state(servo_id, state)
         self._notify_status(servo_id, event)
 

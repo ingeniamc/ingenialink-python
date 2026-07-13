@@ -280,6 +280,7 @@ def test_teardown_connection_handles_pcan_bus_off(virtual_network) -> None:
 
 
 @pytest.mark.canopen
+@pytest.mark.skip("INGK-1285 PCAN controller gets stuck in bus-off state on power cycle")
 def test_net_status_listener_detects_power_cycle(
     net: "CanopenNetwork", servo: "CanopenServo", environment: "Environment"
 ) -> None:
