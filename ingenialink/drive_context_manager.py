@@ -656,6 +656,9 @@ class DriveContextManager:
                 # See INGK-733
                 "CIA301_COMMS_RPDO*",
                 "CIA301_COMMS_TPDO*",
+                # Safety project CRC is declared as storable but
+                # its actually recalculated from other values
+                "FSOE_SAFETY_PROJECT_CRC",
             )
         )
 
