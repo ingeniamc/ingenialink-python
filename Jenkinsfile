@@ -385,13 +385,12 @@ pipeline {
                                                 venv.run("poetry run poe docs")
                                             }
                                             venvManager.copyFromWorkingFolder("_docs/")
-                                            sh 'zip -r docs.zip _docs'
                                         }
-                                        archiveArtifacts artifacts: 'docs.zip'
                                     }
                                     post {
                                         success {
-                                            stash includes: 'docs.zip', name: 'docs'
+                                            archiveArtifacts artifacts: '_docs/**'
+                                            stash includes: '_docs/**', name: 'docs'
                                         }
                                     }
                                 }
@@ -459,7 +458,6 @@ pipeline {
                     }
                     steps {
                         unstash 'docs'
-                        unzip zipFile: 'docs.zip', dir: '.'
                         publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
                     }
                 }
