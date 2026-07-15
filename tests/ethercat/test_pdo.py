@@ -601,7 +601,10 @@ def test_start_stop_pdo(servo, net):
 
 @pytest.mark.ethercat
 def test_start_pdo_error_rpdo_values_not_set(servo, net, create_pdo_map):
-    with refresh_registers_for_test_rollback(servo, ["CL_POS_SET_POINT_VALUE"]):
+    with refresh_registers_for_test_rollback(
+        servo,
+        ["CL_POS_SET_POINT_VALUE", "ETG_COMMS_SM_OUTPUT_SYNC_TYPE", "ETG_COMMS_SM_INPUT_SYNC_TYPE"],
+    ):
         tpdo_map, rpdo_map = create_pdo_map
         servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
         with pytest.raises(ILError):

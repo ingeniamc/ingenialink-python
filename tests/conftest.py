@@ -13,6 +13,7 @@ from virtual_drive.core import VirtualDrive
 from virtual_drive.resources import VIRTUAL_DRIVE_CAN_V2_XDF
 
 from ingenialink.dictionary import Interface
+from ingenialink.exceptions import ILRegisterNotFoundError
 from ingenialink.servo import Servo
 from ingenialink.virtual.canopen.network import VirtualCanopenNetwork
 from ingenialink.virtual.ethercat.network import VirtualEthercatNetwork
@@ -23,7 +24,7 @@ pytest_plugins = [
     "summit_testing_framework.pytest_addoptions",
     "summit_testing_framework.setup_fixtures",
 ]
-
+logger = logging.getLogger(__name__)
 
 # Pytest runs with importlib import mode, which means that it will run the tests with the installed
 # version of the package. Therefore, modules that are not included in the package cannot be imported
@@ -225,4 +226,9 @@ def refresh_registers_for_test_rollback(servo: Servo, register_uids: list[str]):
     """
     yield
     for register_uid in register_uids:
-        servo.read(register_uid)
+        try:
+            servo.read(register_uid)
+        except ILRegisterNotFoundError:  # noqa: PERF203
+            logger.warning(
+                f"Register {register_uid} not found during refresh after test execution."
+            )
