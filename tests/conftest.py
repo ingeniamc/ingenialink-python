@@ -225,4 +225,4 @@ def refresh_registers_for_test_rollback(servo: Servo, register_uids: list[str]):
     """
     yield
     for register_uid in register_uids:
-        servo.read_register(register_uid)
+        servo.read(register_uid)

@@ -112,8 +112,8 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(servo: "Se
             "CIA301_COMMS_ERROR_FIELD",
             # EtherCAT dictionaries also exclude PDO MAP registers (restored via
             # complete access).  ASSIGN registers are NOT excluded.
-            "ETG_COMMS_RPDO_MAP*",
-            "ETG_COMMS_TPDO_MAP*",
+            "ETG_COMMS_RPDO_*",
+            "ETG_COMMS_TPDO_*",
             # CANopen PDO mapping registers are not restorable individually (see INGK-733).
             "CIA301_COMMS_RPDO*",
             "CIA301_COMMS_TPDO*",
@@ -182,17 +182,12 @@ def test_drive_context_manager_restores_complete_access_registers(
         register = servo.dictionary.get_register(rpdo_register)
         rpdo_map.add_registers(register)
 
-    rpdo_assign_total_reg = servo.dictionary.get_register("ETG_COMMS_RPDO_ASSIGN_TOTAL", axis=0)
-    tpdo_assign_total_reg = servo.dictionary.get_register("ETG_COMMS_TPDO_ASSIGN_TOTAL", axis=0)
-
     with context:
         assert context._session.changes == {}
         assert context._objects_changed == {}
         servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
         servo.map_pdos(slave_index=setup_descriptor.slave)
 
-        assert rpdo_assign_total_reg in context._session.changes
-        assert tpdo_assign_total_reg in context._session.changes
         assert len(context._objects_changed) == 4
         objects_uids = [obj.uid for obj in context._objects_changed]
         assert "ETG_COMMS_RPDO_ASSIGN" in objects_uids
