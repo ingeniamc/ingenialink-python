@@ -117,6 +117,8 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(servo: "Se
             # CANopen PDO mapping registers are not restorable individually (see INGK-733).
             "CIA301_COMMS_RPDO*",
             "CIA301_COMMS_TPDO*",
+            "ETG_COMMS_SM_INPUT_SYNC_TYPE",
+            "ETG_COMMS_SM_OUTPUT_SYNC_TYPE",
         )
     )
 
