@@ -660,6 +660,9 @@ class DriveContextManager:
                 # Safety project CRC is declared as storable but
                 # its actually recalculated from other values
                 "FSOE_SAFETY_PROJECT_CRC",
+                # CIT-751 PDO related registers that are changed by the drive
+                "ETG_COMMS_SM_OUTPUT_SYNC_TYPE",
+                "ETG_COMMS_SM_INPUT_SYNC_TYPE",
             )
         )
 

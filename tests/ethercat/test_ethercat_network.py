@@ -1128,9 +1128,9 @@ def test_slave_is_in_preop_state_if_exception_in_pdo_thread(
     net: "EthercatNetwork", servo: "EthercatServo", mocker: "MockerFixture"
 ) -> None:
     with refresh_registers_for_test_rollback(
-        # CIT-751
+        # CIT-752
         servo,
-        ["ETG_COMMS_SM_OUTPUT_SYNC_TYPE", "ETG_COMMS_SM_INPUT_SYNC_TYPE", "DRV_OP_CMD"],
+        ["DRV_OP_CMD"],
     ):
         rpdo_map: RPDOMap = RPDOMap()
         tpdo_map: TPDOMap = TPDOMap()

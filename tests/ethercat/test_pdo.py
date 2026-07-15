@@ -343,7 +343,7 @@ def test_modifying_pdos_prevented_if_servo_is_not_in_preoperational_state(
     with refresh_registers_for_test_rollback(
         # CIT-751
         servo,
-        ["ETG_COMMS_SM_OUTPUT_SYNC_TYPE", "ETG_COMMS_SM_INPUT_SYNC_TYPE", "DRV_OP_CMD"],
+        ["DRV_OP_CMD"],
     ):
         servo = net.servos[0]
         operation_mode_uid = "DRV_OP_CMD"
@@ -603,7 +603,7 @@ def test_start_stop_pdo(servo, net):
 def test_start_pdo_error_rpdo_values_not_set(servo, net, create_pdo_map):
     with refresh_registers_for_test_rollback(
         servo,
-        ["CL_POS_SET_POINT_VALUE", "ETG_COMMS_SM_OUTPUT_SYNC_TYPE", "ETG_COMMS_SM_INPUT_SYNC_TYPE"],
+        ["CL_POS_SET_POINT_VALUE"],
     ):
         tpdo_map, rpdo_map = create_pdo_map
         servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
@@ -716,71 +716,67 @@ def test_multiple_pdo_maps_insertion_order_matches_processing_order(
     Both RPDO values are validated via SDO reads and both TPDO item values are
     cross-checked against their corresponding SDO registers.
     """
-    with refresh_registers_for_test_rollback(
-        # CIT-751
-        servo,
-        ["ETG_COMMS_SM_OUTPUT_SYNC_TYPE", "ETG_COMMS_SM_INPUT_SYNC_TYPE"],
-    ):
-        drv_op_cmd = servo.dictionary.get_register("DRV_OP_CMD")
-        cl_pos_set_point = servo.dictionary.get_register("CL_POS_SET_POINT_VALUE")
-        drv_op_value = servo.dictionary.get_register("DRV_OP_VALUE")
-        cl_vel_fbk = servo.dictionary.get_register("CL_VEL_FBK_VALUE")
 
-        initial_op_mode = servo.read(drv_op_cmd)
-        target_op_mode = 1 if initial_op_mode != 1 else 2
-        target_pos_set_point = 12345
+    drv_op_cmd = servo.dictionary.get_register("DRV_OP_CMD")
+    cl_pos_set_point = servo.dictionary.get_register("CL_POS_SET_POINT_VALUE")
+    drv_op_value = servo.dictionary.get_register("DRV_OP_VALUE")
+    cl_vel_fbk = servo.dictionary.get_register("CL_VEL_FBK_VALUE")
 
-        rpdo_map1 = RPDOMap()
-        rpdo_map1.map_register_index = 0x1600
-        pos_item = RPDOMapItem(cl_pos_set_point)
-        pos_item.value = target_pos_set_point
-        rpdo_map1.add_item(pos_item)
+    initial_op_mode = servo.read(drv_op_cmd)
+    target_op_mode = 1 if initial_op_mode != 1 else 2
+    target_pos_set_point = 12345
 
-        rpdo_map2 = RPDOMap()
-        rpdo_map2.map_register_index = 0x1601
-        op_cmd_item = RPDOMapItem(drv_op_cmd)
-        op_cmd_item.value = target_op_mode
-        rpdo_map2.add_item(op_cmd_item)
+    rpdo_map1 = RPDOMap()
+    rpdo_map1.map_register_index = 0x1600
+    pos_item = RPDOMapItem(cl_pos_set_point)
+    pos_item.value = target_pos_set_point
+    rpdo_map1.add_item(pos_item)
 
-        tpdo_map1 = TPDOMap()
-        tpdo_map1.map_register_index = 0x1A00
-        vel_fbk_item = TPDOMapItem(cl_vel_fbk)
-        tpdo_map1.add_item(vel_fbk_item)
+    rpdo_map2 = RPDOMap()
+    rpdo_map2.map_register_index = 0x1601
+    op_cmd_item = RPDOMapItem(drv_op_cmd)
+    op_cmd_item.value = target_op_mode
+    rpdo_map2.add_item(op_cmd_item)
 
-        tpdo_map2 = TPDOMap()
-        tpdo_map2.map_register_index = 0x1A01
-        op_value_item = TPDOMapItem(drv_op_value)
-        tpdo_map2.add_item(op_value_item)
+    tpdo_map1 = TPDOMap()
+    tpdo_map1.map_register_index = 0x1A00
+    vel_fbk_item = TPDOMapItem(cl_vel_fbk)
+    tpdo_map1.add_item(vel_fbk_item)
 
-        if reverse_order:
-            rpdo_maps = [rpdo_map2, rpdo_map1]
-            tpdo_maps = [tpdo_map2, tpdo_map1]
-        else:
-            rpdo_maps = [rpdo_map1, rpdo_map2]
-            tpdo_maps = [tpdo_map1, tpdo_map2]
+    tpdo_map2 = TPDOMap()
+    tpdo_map2.map_register_index = 0x1A01
+    op_value_item = TPDOMapItem(drv_op_value)
+    tpdo_map2.add_item(op_value_item)
 
-        servo.set_pdo_map_to_slave(rpdo_maps=rpdo_maps, tpdo_maps=tpdo_maps)
+    if reverse_order:
+        rpdo_maps = [rpdo_map2, rpdo_map1]
+        tpdo_maps = [tpdo_map2, tpdo_map1]
+    else:
+        rpdo_maps = [rpdo_map1, rpdo_map2]
+        tpdo_maps = [tpdo_map1, tpdo_map2]
 
-        start_stop_pdos(net)
+    servo.set_pdo_map_to_slave(rpdo_maps=rpdo_maps, tpdo_maps=tpdo_maps)
 
-        # Validate RPDO map 1: CL_POS_SET_POINT_VALUE received the correct value
-        actual_pos_set_point = servo.read(cl_pos_set_point)
-        assert actual_pos_set_point == target_pos_set_point, (
-            f"CL_POS_SET_POINT_VALUE: expected {target_pos_set_point}, got {actual_pos_set_point}. "
-            "RPDO map 1 data was placed at the wrong position."
-        )
-        # Validate RPDO map 2: DRV_OP_CMD received the correct value
-        actual_op_mode = servo.read(drv_op_cmd)
-        assert actual_op_mode == target_op_mode, (
-            f"DRV_OP_CMD: expected {target_op_mode}, got {actual_op_mode}. "
-            "RPDO map 2 data was placed at the wrong position."
-        )
-        # Validate TPDO map 2: DRV_OP_VALUE item matches the SDO read
-        actual_drv_op_value = servo.read(drv_op_value)
-        assert op_value_item.value == actual_drv_op_value, (
-            f"DRV_OP_VALUE TPDO item: expected {actual_drv_op_value}, got {op_value_item.value}. "
-            "TPDO map 2 data was read from the wrong position."
-        )
+    start_stop_pdos(net)
+
+    # Validate RPDO map 1: CL_POS_SET_POINT_VALUE received the correct value
+    actual_pos_set_point = servo.read(cl_pos_set_point)
+    assert actual_pos_set_point == target_pos_set_point, (
+        f"CL_POS_SET_POINT_VALUE: expected {target_pos_set_point}, got {actual_pos_set_point}. "
+        "RPDO map 1 data was placed at the wrong position."
+    )
+    # Validate RPDO map 2: DRV_OP_CMD received the correct value
+    actual_op_mode = servo.read(drv_op_cmd)
+    assert actual_op_mode == target_op_mode, (
+        f"DRV_OP_CMD: expected {target_op_mode}, got {actual_op_mode}. "
+        "RPDO map 2 data was placed at the wrong position."
+    )
+    # Validate TPDO map 2: DRV_OP_VALUE item matches the SDO read
+    actual_drv_op_value = servo.read(drv_op_value)
+    assert op_value_item.value == actual_drv_op_value, (
+        f"DRV_OP_VALUE TPDO item: expected {actual_drv_op_value}, got {op_value_item.value}. "
+        "TPDO map 2 data was read from the wrong position."
+    )
 
 
 def test_pdo_item_custom_size_wrong_length(open_dictionary):

@@ -19,7 +19,6 @@ from ingenialink.ethercat.state import SlaveState
 from ingenialink.pdo import RPDOMap, TPDOMap
 from ingenialink.register import Register
 from ingenialink.servo import Servo
-from tests.conftest import refresh_registers_for_test_rollback
 
 _USER_OVER_VOLTAGE_UID = "DRV_PROT_USER_OVER_VOLT"
 _USER_UNDER_VOLTAGE_UID = "DRV_PROT_USER_UNDER_VOLT"
@@ -863,38 +862,36 @@ class TestDirtyMappedPdoRegisters:
         net,
     ) -> None:
         """A real PDO exchange marks mapped RPDO registers dirty for restore."""
-        with refresh_registers_for_test_rollback(
-            servo, ["ETG_COMMS_SM_OUTPUT_SYNC_TYPE", "ETG_COMMS_SM_INPUT_SYNC_TYPE"]
-        ):
-            rpdo_register = servo.dictionary.get_register("CL_POS_SET_POINT_VALUE")
-            tpdo_register = servo.dictionary.get_register("CL_POS_FBK_VALUE")
-            baseline_value = servo.read(rpdo_register)
 
-            servo.reset_rpdo_mapping()
-            servo.reset_tpdo_mapping()
+        rpdo_register = servo.dictionary.get_register("CL_POS_SET_POINT_VALUE")
+        tpdo_register = servo.dictionary.get_register("CL_POS_FBK_VALUE")
+        baseline_value = servo.read(rpdo_register)
 
-            rpdo_map = RPDOMap()
-            rpdo_map.add_registers(rpdo_register)
-            rpdo_map.items[0].value = baseline_value
-            tpdo_map = TPDOMap()
-            tpdo_map.add_registers(tpdo_register)
-            servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+        servo.reset_rpdo_mapping()
+        servo.reset_tpdo_mapping()
 
-            context = DriveContextManager(servo, track_objects=False)
+        rpdo_map = RPDOMap()
+        rpdo_map.add_registers(rpdo_register)
+        rpdo_map.items[0].value = baseline_value
+        tpdo_map = TPDOMap()
+        tpdo_map.add_registers(tpdo_register)
+        servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
 
-            with context:
-                net.start_pdos()
-                assert context.changes == {
-                    # only the rpdo assign register has been reset to unknown state,
-                    # since it is assumed it will constantly change while it's on OP state
-                    rpdo_register: None,
-                }
-                assert context.pending_changes is True
-                net.stop_pdos()
+        context = DriveContextManager(servo, track_objects=False)
 
-            assert context.changes == {}
-            assert context.pending_changes is False
-            assert servo.read(rpdo_register) == baseline_value
+        with context:
+            net.start_pdos()
+            assert context.changes == {
+                # only the rpdo assign register has been reset to unknown state,
+                # since it is assumed it will constantly change while it's on OP state
+                rpdo_register: None,
+            }
+            assert context.pending_changes is True
+            net.stop_pdos()
+
+        assert context.changes == {}
+        assert context.pending_changes is False
+        assert servo.read(rpdo_register) == baseline_value
 
     @pytest.mark.ethercat
     def test_state_request_dirty_tracking_can_be_disabled(

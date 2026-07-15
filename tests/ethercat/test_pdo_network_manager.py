@@ -11,7 +11,6 @@ from ingenialink.exceptions import ILError, ILWrongWorkingCountError
 from ingenialink.pdo import PDOMap, RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.pdo_network_manager import PDONetworkManager
 from ingenialink.utils.timeout import Timeout
-from tests.conftest import refresh_registers_for_test_rollback
 
 if TYPE_CHECKING:
     from ingenialink.ethercat.servo import EthercatServo
@@ -185,72 +184,68 @@ def test_subscribe_to_pdo_thread_status(net: "EthercatNetwork", mocker) -> None:
 
 @pytest.mark.ethercat
 def test_subscribe_callbacks(net: "EthercatNetwork", servo: "EthercatServo", mocker) -> None:
-    with refresh_registers_for_test_rollback(
-        # CIT-751
-        servo,
-        ["ETG_COMMS_SM_OUTPUT_SYNC_TYPE", "ETG_COMMS_SM_INPUT_SYNC_TYPE"],
-    ):
-        # Network callbacks - notifications for all PDO maps
-        send_callback = mocker.Mock()
-        receive_callback = mocker.Mock()
-        # PDO map callbacks
-        rpdo_callback = mocker.Mock()
-        tpdo_callback = mocker.Mock()
 
-        rpdo_map = RPDOMap()
-        tpdo_map = TPDOMap()
-        initial_operation_mode = servo.read("DRV_OP_CMD")
-        operation_mode = PDOMap.create_item_from_register_uid(
-            uid="DRV_OP_CMD", dictionary=servo.dictionary, value=initial_operation_mode
-        )
-        actual_position = PDOMap.create_item_from_register_uid(
-            uid="CL_POS_FBK_VALUE", dictionary=servo.dictionary
-        )
-        rpdo_map.add_item(operation_mode)
-        tpdo_map.add_item(actual_position)
-        servo.set_pdo_map_to_slave(rpdo_maps=[rpdo_map], tpdo_maps=[tpdo_map])
+    # Network callbacks - notifications for all PDO maps
+    send_callback = mocker.Mock()
+    receive_callback = mocker.Mock()
+    # PDO map callbacks
+    rpdo_callback = mocker.Mock()
+    tpdo_callback = mocker.Mock()
 
-        # Subscribe to PDO map process data events
-        rpdo_map.subscribe_to_process_data_event(rpdo_callback)
-        tpdo_map.subscribe_to_process_data_event(tpdo_callback)
+    rpdo_map = RPDOMap()
+    tpdo_map = TPDOMap()
+    initial_operation_mode = servo.read("DRV_OP_CMD")
+    operation_mode = PDOMap.create_item_from_register_uid(
+        uid="DRV_OP_CMD", dictionary=servo.dictionary, value=initial_operation_mode
+    )
+    actual_position = PDOMap.create_item_from_register_uid(
+        uid="CL_POS_FBK_VALUE", dictionary=servo.dictionary
+    )
+    rpdo_map.add_item(operation_mode)
+    tpdo_map.add_item(actual_position)
+    servo.set_pdo_map_to_slave(rpdo_maps=[rpdo_map], tpdo_maps=[tpdo_map])
 
-        # Subscribe to all PDO map process data events - network subscription
-        net.pdo_manager.subscribe_to_receive_process_data(receive_callback)
-        net.pdo_manager.subscribe_to_send_process_data(send_callback)
+    # Subscribe to PDO map process data events
+    rpdo_map.subscribe_to_process_data_event(rpdo_callback)
+    tpdo_map.subscribe_to_process_data_event(tpdo_callback)
 
-        assert rpdo_callback.call_count == 0
-        assert tpdo_callback.call_count == 0
-        assert receive_callback.call_count == 0
-        assert send_callback.call_count == 0
+    # Subscribe to all PDO map process data events - network subscription
+    net.pdo_manager.subscribe_to_receive_process_data(receive_callback)
+    net.pdo_manager.subscribe_to_send_process_data(send_callback)
 
-        assert not net.pdo_manager.is_active
-        refresh_rate = 0.5
-        net.activate_pdos(refresh_rate=refresh_rate)
-        assert net.pdo_manager.is_active
-        time.sleep(5 * refresh_rate)
-        assert rpdo_callback.call_count > 0
-        assert tpdo_callback.call_count > 0
-        assert receive_callback.call_count > 0
-        assert send_callback.call_count > 0
+    assert rpdo_callback.call_count == 0
+    assert tpdo_callback.call_count == 0
+    assert receive_callback.call_count == 0
+    assert send_callback.call_count == 0
 
-        # If unsubscribe from network, PDO map notifications are still sent
-        net.pdo_manager.unsubscribe_to_send_process_data(send_callback)
-        net.pdo_manager.unsubscribe_to_receive_process_data(receive_callback)
-        n_send_callbacks = send_callback.call_count
-        n_receive_callbacks = receive_callback.call_count
-        n_rpdo_callbacks = rpdo_callback.call_count
-        n_tpdo_callbacks = tpdo_callback.call_count
-        # Sleep to allow more notifications to be sent
-        time.sleep(5 * refresh_rate)
-        # PDO map notifications have been sent
-        assert rpdo_callback.call_count > n_rpdo_callbacks
-        assert tpdo_callback.call_count > n_tpdo_callbacks
-        # No new notifications have been received for send and receive callbacks
-        assert receive_callback.call_count < rpdo_callback.call_count
-        assert send_callback.call_count < tpdo_callback.call_count
-        assert receive_callback.call_count == n_receive_callbacks
-        assert send_callback.call_count == n_send_callbacks
-        net.deactivate_pdos()
+    assert not net.pdo_manager.is_active
+    refresh_rate = 0.5
+    net.activate_pdos(refresh_rate=refresh_rate)
+    assert net.pdo_manager.is_active
+    time.sleep(5 * refresh_rate)
+    assert rpdo_callback.call_count > 0
+    assert tpdo_callback.call_count > 0
+    assert receive_callback.call_count > 0
+    assert send_callback.call_count > 0
+
+    # If unsubscribe from network, PDO map notifications are still sent
+    net.pdo_manager.unsubscribe_to_send_process_data(send_callback)
+    net.pdo_manager.unsubscribe_to_receive_process_data(receive_callback)
+    n_send_callbacks = send_callback.call_count
+    n_receive_callbacks = receive_callback.call_count
+    n_rpdo_callbacks = rpdo_callback.call_count
+    n_tpdo_callbacks = tpdo_callback.call_count
+    # Sleep to allow more notifications to be sent
+    time.sleep(5 * refresh_rate)
+    # PDO map notifications have been sent
+    assert rpdo_callback.call_count > n_rpdo_callbacks
+    assert tpdo_callback.call_count > n_tpdo_callbacks
+    # No new notifications have been received for send and receive callbacks
+    assert receive_callback.call_count < rpdo_callback.call_count
+    assert send_callback.call_count < tpdo_callback.call_count
+    assert receive_callback.call_count == n_receive_callbacks
+    assert send_callback.call_count == n_send_callbacks
+    net.deactivate_pdos()
 
 
 @pytest.mark.ethercat
