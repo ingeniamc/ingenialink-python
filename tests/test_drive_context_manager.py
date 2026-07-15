@@ -140,8 +140,8 @@ def test_drive_context_manager_with_do_not_restore_registers(servo: "Servo"):
             "ETG_ERROR_FIELD",
             "CIA301_COMMS_ERROR_FIELD",
             _USER_OVER_VOLTAGE_UID,
-            "ETG_COMMS_RPDO_MAP*",
-            "ETG_COMMS_TPDO_MAP*",
+            "ETG_COMMS_RPDO_*",
+            "ETG_COMMS_TPDO_*",
             "CIA301_COMMS_RPDO*",
             "CIA301_COMMS_TPDO*",
         )
@@ -862,10 +862,6 @@ class TestDirtyMappedPdoRegisters:
         net,
     ) -> None:
         """A real PDO exchange marks mapped RPDO registers dirty for restore."""
-
-        rpdo_assign = servo.dictionary.get_register("ETG_COMMS_RPDO_ASSIGN_TOTAL")
-        tpdo_assign = servo.dictionary.get_register("ETG_COMMS_TPDO_ASSIGN_TOTAL")
-
         rpdo_register = servo.dictionary.get_register("CL_POS_SET_POINT_VALUE")
         tpdo_register = servo.dictionary.get_register("CL_POS_FBK_VALUE")
         baseline_value = servo.read(rpdo_register)
@@ -888,10 +884,6 @@ class TestDirtyMappedPdoRegisters:
                 # only the rpdo assign register has been reset to unknown state,
                 # since it is assumed it will constantly change while it's on OP state
                 rpdo_register: None,
-                # The assign index registers have been tracked via regular
-                # register update callbacks too
-                rpdo_assign: 1,  # rpdo assign total register
-                tpdo_assign: 1,  # tpdo assign total register
             }
             assert context.pending_changes is True
             net.stop_pdos()

@@ -30,6 +30,7 @@ from ingenialink.ethercat.network import (
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetState
 from ingenialink.pdo import PDOMap, RPDOMap, TPDOMap
+from tests.conftest import refresh_registers_for_test_rollback
 from tests.ethercat.mock import MockSoemSlave, pysoem_mock_network
 
 if TYPE_CHECKING:
@@ -1126,56 +1127,61 @@ def test_net_status_listener_recovery_called_once_for_multiple_disconnected_slav
 def test_slave_is_in_preop_state_if_exception_in_pdo_thread(
     net: "EthercatNetwork", servo: "EthercatServo", mocker: "MockerFixture"
 ) -> None:
-    rpdo_map: RPDOMap = RPDOMap()
-    tpdo_map: TPDOMap = TPDOMap()
-    initial_operation_mode: int = cast("int", servo.read("DRV_OP_CMD"))
-    operation_mode = PDOMap.create_item_from_register_uid(
-        "DRV_OP_CMD", dictionary=servo.dictionary, value=initial_operation_mode, axis=1
-    )
-    actual_position = PDOMap.create_item_from_register_uid(
-        "CL_POS_FBK_VALUE", dictionary=servo.dictionary, axis=1
-    )
-    rpdo_map.add_item(operation_mode)
-    tpdo_map.add_item(actual_position)
-    servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
-    pdo_map_items = (operation_mode, actual_position)
-    # Choose a random operation mode: [voltage, current, velocity, position]
-    random_op_mode = random.choice([
-        op_mode for op_mode in [0x00, 0x02, 0x03, 0x04] if op_mode != initial_operation_mode
-    ])
-    initial_operation_mode = initial_operation_mode
-    rpdo_value = random_op_mode
+    with refresh_registers_for_test_rollback(
+        # CIT-751
+        servo,
+        ["ETG_COMMS_SM_OUTPUT_SYNC_TYPE", "ETG_COMMS_SM_INPUT_SYNC_TYPE", "DRV_OP_CMD"],
+    ):
+        rpdo_map: RPDOMap = RPDOMap()
+        tpdo_map: TPDOMap = TPDOMap()
+        initial_operation_mode: int = cast("int", servo.read("DRV_OP_CMD"))
+        operation_mode = PDOMap.create_item_from_register_uid(
+            "DRV_OP_CMD", dictionary=servo.dictionary, value=initial_operation_mode, axis=1
+        )
+        actual_position = PDOMap.create_item_from_register_uid(
+            "CL_POS_FBK_VALUE", dictionary=servo.dictionary, axis=1
+        )
+        rpdo_map.add_item(operation_mode)
+        tpdo_map.add_item(actual_position)
+        servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+        pdo_map_items = (operation_mode, actual_position)
+        # Choose a random operation mode: [voltage, current, velocity, position]
+        random_op_mode = random.choice([
+            op_mode for op_mode in [0x00, 0x02, 0x03, 0x04] if op_mode != initial_operation_mode
+        ])
+        initial_operation_mode = initial_operation_mode
+        rpdo_value = random_op_mode
 
-    def send_callback() -> None:
-        rpdo_map_item, _ = pdo_map_items
-        rpdo_map_item.value = rpdo_value  # type: ignore[misc]
+        def send_callback() -> None:
+            rpdo_map_item, _ = pdo_map_items
+            rpdo_map_item.value = rpdo_value  # type: ignore[misc]
 
-    def receive_callback() -> None:
-        return
+        def receive_callback() -> None:
+            return
 
-    rpdo_map.subscribe_to_process_data_event(send_callback)
-    tpdo_map.subscribe_to_process_data_event(receive_callback)
+        rpdo_map.subscribe_to_process_data_event(send_callback)
+        tpdo_map.subscribe_to_process_data_event(receive_callback)
 
-    def mock_send_receive_processdata(*args, **kwargs) -> None:  # type: ignore [no-untyped-def]  # noqa: ARG001
-        raise RuntimeError("Test error in PDO thread")
+        def mock_send_receive_processdata(*args, **kwargs) -> None:  # type: ignore [no-untyped-def]  # noqa: ARG001
+            raise RuntimeError("Test error in PDO thread")
 
-    refresh_rate: float = 0.5
-    net.activate_pdos(refresh_rate=refresh_rate)
-    time.sleep(2 * refresh_rate)
-    assert net._EthercatNetwork__exceptions_in_thread == 0
+        refresh_rate: float = 0.5
+        net.activate_pdos(refresh_rate=refresh_rate)
+        time.sleep(2 * refresh_rate)
+        assert net._EthercatNetwork__exceptions_in_thread == 0
 
-    # Mock to raise an exception
-    mocker.patch.object(
-        EthercatNetwork,
-        "send_receive_processdata",
-        side_effect=mock_send_receive_processdata,
-    )
-    time.sleep(4 * refresh_rate)
-    assert net._EthercatNetwork__exceptions_in_thread > 0
+        # Mock to raise an exception
+        mocker.patch.object(
+            EthercatNetwork,
+            "send_receive_processdata",
+            side_effect=mock_send_receive_processdata,
+        )
+        time.sleep(4 * refresh_rate)
+        assert net._EthercatNetwork__exceptions_in_thread > 0
 
-    # Net should restore servos to PREOP state
-    assert servo.slave is not None
-    assert servo.slave.state is pysoem.PREOP_STATE
+        # Net should restore servos to PREOP state
+        assert servo.slave is not None
+        assert servo.slave.state is pysoem.PREOP_STATE
 
 
 @pytest.mark.ethercat
