@@ -29,6 +29,7 @@ from ingenialink.exceptions import (
 from ingenialink.register import RegAddressType
 from ingenialink.servo import Servo, ServoState, StoreRestoreManager
 from ingenialink.utils._utils import convert_bytes_to_dtype
+from tests.conftest import refresh_registers_for_test_rollback
 
 if TYPE_CHECKING:
     from summit_testing_framework.environment import Environment
@@ -85,16 +86,18 @@ def create_monitoring(servo):
 
 @pytest.fixture()
 def create_disturbance(servo):
-
-    data = list(range(DISTURBANCE_NUM_SAMPLES))
-    servo.disturbance_disable()
-    servo.disturbance_remove_all_mapped_registers()
-    servo.disturbance_set_mapped_register(
-        channel=0, uid="CL_POS_SET_POINT_VALUE", size=DISTURBANCE_CH_DATA_SIZE
-    )
-    servo.disturbance_write_data(0, RegDtype.S32, data)
-    yield servo
-    servo.disturbance_disable()
+    # refresh registers for rollback as disturbance mapped registers
+    # are not detected by drive context manager (CIT-749)
+    with refresh_registers_for_test_rollback(servo, ["CL_POS_SET_POINT_VALUE"]):
+        data = list(range(DISTURBANCE_NUM_SAMPLES))
+        servo.disturbance_disable()
+        servo.disturbance_remove_all_mapped_registers()
+        servo.disturbance_set_mapped_register(
+            channel=0, uid="CL_POS_SET_POINT_VALUE", size=DISTURBANCE_CH_DATA_SIZE
+        )
+        servo.disturbance_write_data(0, RegDtype.S32, data)
+        yield servo
+        servo.disturbance_disable()
 
 
 @pytest.mark.canopen

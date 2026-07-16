@@ -473,7 +473,9 @@ class DriveRegistersSession:
 
         self._changes[register] = None
 
-    def reconcile_registers(self, registers: Optional[Container[Register]] = None) -> None:
+    def reconcile_registers(
+        self, registers: Optional[Container[Register]] = None
+    ) -> dict[Register, tuple[REG_VALUE, REG_VALUE]]:
         """Reconcile tracked changes for specific registers by re-reading their current values.
 
         Sometimes, external factors (e.g., PDO updates, complete access writes) may change
@@ -484,6 +486,9 @@ class DriveRegistersSession:
         Args:
             registers: Iterable of registers to reconcile. If ``None``,
             reconciles all currently tracked registers.
+
+        Returns:
+            dictionary mapping registers to tuples of (baseline_value, current_value)
         """
         registers = registers or self.__tracked_registers
         current_state = DriveRegistersValue.from_hardware(
@@ -495,6 +500,8 @@ class DriveRegistersSession:
 
         for register, (_baseline_value, current_value) in differences.items():
             self._changes[register] = current_value
+
+        return differences
 
     def _on_ecat_state_requested(self, state: "SlaveState") -> None:
         """Callback for Ethercat state changes.
@@ -641,14 +648,21 @@ class DriveContextManager:
                 # Total number of error register should not be restored, only a 0 can be written
                 "ETG_ERROR_FIELD",
                 "CIA301_COMMS_ERROR_FIELD",
-                # Ethercat PDO mapping registers are restored via complete access, not individually.
-                "ETG_COMMS_RPDO_MAP*",
-                "ETG_COMMS_TPDO_MAP*",
+                # Ethercat PDO mapping/assign registers are restored via complete access,
+                # not individually.
+                "ETG_COMMS_RPDO_*",
+                "ETG_COMMS_TPDO_*",
                 # Canopen PDO mapping registers are not implemented
                 # and are not restorable individually.
                 # See INGK-733
                 "CIA301_COMMS_RPDO*",
                 "CIA301_COMMS_TPDO*",
+                # Safety project CRC is declared as storable but
+                # its actually recalculated from other values
+                "FSOE_SAFETY_PROJECT_CRC",
+                # CIT-751 PDO related registers that are changed by the drive
+                "ETG_COMMS_SM_OUTPUT_SYNC_TYPE",
+                "ETG_COMMS_SM_INPUT_SYNC_TYPE",
             )
         )
 
@@ -983,6 +997,18 @@ class DriveContextManager:
 
         if rearm:
             self.start()
+
+    def reconcile(self) -> dict[Register, tuple[REG_VALUE, REG_VALUE]]:
+        """Reconcile tracked changes by re-reading their current values.
+
+        Returns:
+            dictionary mapping registers to tuples of (baseline_value, current_value)
+        """
+        if self._session is None:
+            # Session has not been started
+            return {}
+
+        return self._session.reconcile_registers()
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:  # type: ignore [no-untyped-def]
         """Unsubscribes from register updates and restores the drive values."""

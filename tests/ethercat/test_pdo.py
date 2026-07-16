@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Optional
 from bitarray import bitarray
 
 import tests.resources.ethercat
+from tests.conftest import refresh_registers_for_test_rollback
 
 with contextlib.suppress(ImportError):
     import pysoem
@@ -339,44 +340,49 @@ def test_servo_add_maps(servo, create_pdo_map):
 def test_modifying_pdos_prevented_if_servo_is_not_in_preoperational_state(
     net: "EthercatNetwork", servo: "EthercatServo"
 ):
-    servo = net.servos[0]
-    operation_mode_uid = "DRV_OP_CMD"
-    rpdo_registers = [operation_mode_uid]
-    operation_mode_display_uid = "DRV_OP_VALUE"
-    tpdo_registers = [operation_mode_display_uid]
-    default_operation_mode = 1
+    with refresh_registers_for_test_rollback(
+        # CIT-751
+        servo,
+        ["DRV_OP_CMD"],
+    ):
+        servo = net.servos[0]
+        operation_mode_uid = "DRV_OP_CMD"
+        rpdo_registers = [operation_mode_uid]
+        operation_mode_display_uid = "DRV_OP_VALUE"
+        tpdo_registers = [operation_mode_display_uid]
+        default_operation_mode = 1
 
-    current_operation_mode = servo.read(operation_mode_uid)
-    new_operation_mode = default_operation_mode
-    if current_operation_mode == default_operation_mode:
-        new_operation_mode += 1
-    rpdo_map, tpdo_map = create_pdo_maps(servo, rpdo_registers, tpdo_registers)
-    for item in rpdo_map.items:
-        item.value = new_operation_mode
-    servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+        current_operation_mode = servo.read(operation_mode_uid)
+        new_operation_mode = default_operation_mode
+        if current_operation_mode == default_operation_mode:
+            new_operation_mode += 1
+        rpdo_map, tpdo_map = create_pdo_maps(servo, rpdo_registers, tpdo_registers)
+        for item in rpdo_map.items:
+            item.value = new_operation_mode
+        servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
 
-    net._ecat_master.read_state()
-    assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
-    net.start_pdos()
-    net._ecat_master.read_state()
-    start_time = time.time()
-    timeout = 1
-    while time.time() < start_time + timeout:
-        net.send_receive_processdata()
-    assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
+        net._ecat_master.read_state()
+        assert servo.slave.state_check(pysoem.PREOP_STATE) == pysoem.PREOP_STATE
+        net.start_pdos()
+        net._ecat_master.read_state()
+        start_time = time.time()
+        timeout = 1
+        while time.time() < start_time + timeout:
+            net.send_receive_processdata()
+        assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
 
-    locked_methods = {
-        "reset_pdo_mapping": {"kwargs": {}},
-        "reset_rpdo_mapping": {"kwargs": {}},
-        "reset_tpdo_mapping": {"kwargs": {}},
-        "map_pdos": {"kwargs": {"slave_index": 1}},
-        "map_rpdos": {"kwargs": {}},
-        "map_tpdos": {"kwargs": {}},
-    }
+        locked_methods = {
+            "reset_pdo_mapping": {"kwargs": {}},
+            "reset_rpdo_mapping": {"kwargs": {}},
+            "reset_tpdo_mapping": {"kwargs": {}},
+            "map_pdos": {"kwargs": {"slave_index": 1}},
+            "map_rpdos": {"kwargs": {}},
+            "map_tpdos": {"kwargs": {}},
+        }
 
-    for method, method_args in locked_methods.items():
-        with pytest.raises(ILEcatStateError):
-            getattr(servo, method)(**method_args["kwargs"])
+        for method, method_args in locked_methods.items():
+            with pytest.raises(ILEcatStateError):
+                getattr(servo, method)(**method_args["kwargs"])
 
 
 @pytest.mark.ethercat
@@ -594,11 +600,15 @@ def test_start_stop_pdo(servo, net):
 
 
 @pytest.mark.ethercat
-def test_start_pdo_error_rpod_values_not_set(servo, net, create_pdo_map):
-    tpdo_map, rpdo_map = create_pdo_map
-    servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
-    with pytest.raises(ILError):
-        net.start_pdos()
+def test_start_pdo_error_rpdo_values_not_set(servo, net, create_pdo_map):
+    with refresh_registers_for_test_rollback(
+        servo,
+        ["CL_POS_SET_POINT_VALUE"],
+    ):
+        tpdo_map, rpdo_map = create_pdo_map
+        servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+        with pytest.raises(ILError):
+            net.start_pdos()
 
 
 @pytest.mark.ethercat
@@ -706,6 +716,7 @@ def test_multiple_pdo_maps_insertion_order_matches_processing_order(
     Both RPDO values are validated via SDO reads and both TPDO item values are
     cross-checked against their corresponding SDO registers.
     """
+
     drv_op_cmd = servo.dictionary.get_register("DRV_OP_CMD")
     cl_pos_set_point = servo.dictionary.get_register("CL_POS_SET_POINT_VALUE")
     drv_op_value = servo.dictionary.get_register("DRV_OP_VALUE")
