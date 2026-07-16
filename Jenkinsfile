@@ -14,7 +14,7 @@ def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
-def LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.6"
+def LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:dev"
 def WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.7"
 def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
 
@@ -349,7 +349,20 @@ pipeline {
                                         }
                                     }
                                 }
-                                stage('Archive artifacts') {
+                                stage('Publish Novanta PyPi') {
+                                    steps {
+                                        publishNovantaPyPi('dist/*')
+                                    }
+                                }
+                                stage('Publish PyPi') {
+                                    when {
+                                        branch 'master'
+                                    }
+                                    steps {
+                                        publishPyPi('dist/*')
+                                    }
+                                }
+                                stage('Archive Wheels') {
                                     steps {
                                         archiveArtifacts(artifacts: "dist/*", followSymlinks: false)
                                         script {
@@ -459,40 +472,6 @@ pipeline {
                     steps {
                         unstash 'docs'
                         publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
-                    }
-                }
-                stage('Publish wheels') {
-                    agent {
-                        docker {
-                            label 'lin-worker'
-                            image PUBLISHER_DOCKER_IMAGE
-                        }
-                    }
-                    stages {
-                        stage('Unstash')
-                        {
-                            steps {
-                                sh "git clean -fdx"
-                                script {
-                                    for (stash_name in wheel_stashes) {
-                                        unstash stash_name
-                                    }
-                                }
-                            }
-                        }
-                        stage('Publish Novanta PyPi') {
-                            steps {
-                                publishNovantaPyPi('dist/*')
-                            }
-                        }
-                        stage('Publish PyPi') {
-                            when {
-                                branch 'master'
-                            }
-                            steps {
-                                publishPyPi('dist/*')
-                            }
-                        }
                     }
                 }
             }
