@@ -269,24 +269,6 @@ pipeline {
                                         }
                                     }
                                 }
-                                stage('Make a static type analysis') {
-                                    steps {
-                                        script {
-                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                                                venv.run("poetry run poe type")
-                                            }
-                                        }
-                                    }
-                                }
-                                stage('Check formatting') {
-                                    steps {
-                                        script {
-                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                                                venv.run("poetry run poe format")
-                                            }
-                                        }
-                                    }
-                                }
                                 stage('Archive artifacts') {
                                     steps {
                                         archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
@@ -294,25 +276,6 @@ pipeline {
                                             stash_name = "publish_wheels-windows"
                                             wheel_stashes.add(stash_name)
                                             stash includes: "dist\\*", name: stash_name
-                                        }
-                                    }
-                                }
-                                stage('Generate documentation') {
-                                    steps {
-                                        script {
-                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                                                venv.run("poetry run poe install-wheel")
-                                                venv.run("poetry run poe docs")
-                                            }
-                                        }
-                                    }
-                                    post {
-                                        success {
-                                            script {
-                                                venvManager.runInWorkingFolder('"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256')
-                                                venvManager.copyFromWorkingFolder("docs.zip")
-                                            }
-                                            stash includes: 'docs.zip', name: 'docs'
                                         }
                                     }
                                 }
@@ -400,6 +363,41 @@ pipeline {
                                         }
                                     }
                                 }
+                                stage('Make a static type analysis') {
+                                    steps {
+                                        script {
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                venv.run("poetry run poe type")
+                                            }
+                                        }
+                                    }
+                                }
+                                stage('Check formatting') {
+                                    steps {
+                                        script {
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                venv.run("poetry run poe format")
+                                            }
+                                        }
+                                    }
+                                }
+                                stage('Generate documentation') {
+                                    steps {
+                                        script {
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                venv.run("poetry run poe install-wheel")
+                                                venv.run("poetry run poe docs")
+                                            }
+                                            venvManager.copyFromWorkingFolder("_docs/")
+                                        }
+                                    }
+                                    post {
+                                        success {
+                                            archiveArtifacts artifacts: '_docs/**'
+                                            stash includes: '_docs/**', name: 'docs'
+                                        }
+                                    }
+                                }
                                 stage('Prepare test sessions') {
                                     steps {
                                         script {
@@ -464,7 +462,6 @@ pipeline {
                     }
                     steps {
                         unstash 'docs'
-                        unzip zipFile: 'docs.zip', dir: '.'
                         publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
                     }
                 }
