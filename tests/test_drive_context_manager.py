@@ -148,8 +148,6 @@ def test_drive_context_manager_with_do_not_restore_registers(servo: "Servo"):
             "CIA301_COMMS_TPDO*",
             "ETG_COMMS_SM_INPUT_SYNC_TYPE",
             "ETG_COMMS_SM_OUTPUT_SYNC_TYPE",
-            "CIA301_COMMS_RPDO*",
-            "CIA301_COMMS_TPDO*",
         )
     )
 
