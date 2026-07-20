@@ -1,11 +1,20 @@
-import importlib
 import os
 import platform
 import re
 import socket
 import struct
 import time
-from typing import cast
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ingenialink.get_adapters_addresses import CyAdapter
+
+if TYPE_CHECKING or platform.system() == "Windows":
+    from ingenialink.get_adapters_addresses import (
+        AdapterFamily,
+        ScanFlags,
+        get_adapters_addresses,
+    )
 
 ALL_NODES_MULTICAST_ADDRESS = "ff02::1"
 ICMPV6_ECHO_REQUEST = 128
@@ -80,34 +89,28 @@ def _get_interface_index(interface: str) -> int:
     if guid_match is None:
         return socket.if_nametoindex(interface)
 
-    get_adapters_addresses = importlib.import_module("ingenialink.get_adapters_addresses")
-
     interface_guid = guid_match.group(1).upper()
-    adapters = get_adapters_addresses.get_adapters_addresses(
-        adapter_families=get_adapters_addresses.AdapterFamily.INET6,
-        scan_flags=[get_adapters_addresses.ScanFlags.INCLUDE_ALL_INTERFACES],
-    )
-    for adapter in adapters:
+    for adapter in _get_windows_ipv6_adapters():
         if adapter.AdapterName == interface_guid:
-            return cast("int", adapter.Ipv6IfIndex)
+            return adapter.Ipv6IfIndex
     raise OSError(f"The Npcap interface '{interface}' could not be found.")
+
+
+def _get_windows_ipv6_adapters() -> list["CyAdapter"]:
+    return get_adapters_addresses(
+        adapter_families=AdapterFamily.INET6,
+        scan_flags=[ScanFlags.INCLUDE_ALL_INTERFACES],
+    )
 
 
 def _is_echo_reply(response: bytes, identifier: int) -> bool:
     if len(response) < struct.calcsize(ICMPV6_HEADER_FORMAT):
         return False
-    message_type, code, _, response_identifier, sequence_number = cast(
-        "tuple[int, int, int, int, int]",
-        struct.unpack(
-            ICMPV6_HEADER_FORMAT,
-            response[: struct.calcsize(ICMPV6_HEADER_FORMAT)],
-        ),
-    )
     return (
-        message_type == ICMPV6_ECHO_REPLY
-        and code == 0
-        and response_identifier == identifier
-        and sequence_number == ICMPV6_SEQUENCE_NUMBER
+        response[0] == ICMPV6_ECHO_REPLY
+        and response[1] == 0
+        and int.from_bytes(response[4:6], "big") == identifier
+        and int.from_bytes(response[6:8], "big") == ICMPV6_SEQUENCE_NUMBER
     )
 
 

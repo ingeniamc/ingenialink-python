@@ -60,25 +60,17 @@ def test_discover_ipv6_devices_rejects_invalid_timeout(timeout_s):
 
 
 def test_get_interface_index_uses_npcap_guid_on_windows(mocker):
-    adapter = mocker.Mock(NetworkGuid="{AB6ECF19-612D-4265-ABD5-0F9A286A6962}", Ipv6IfIndex=7)
-    adapters_module = mocker.Mock()
-    adapters_module.AdapterFamily.INET6 = "inet6"
-    adapters_module.ScanFlags.INCLUDE_ALL_INTERFACES = "all"
-    adapters_module.get_adapters_addresses.return_value = [adapter]
+    adapter = mocker.Mock(AdapterName="{AB6ECF19-612D-4265-ABD5-0F9A286A6962}", Ipv6IfIndex=7)
     mocker.patch("ingenialink.utils.ipv6_discovery.platform.system", return_value="Windows")
-    import_module = mocker.patch(
-        "ingenialink.utils.ipv6_discovery.importlib.import_module",
-        return_value=adapters_module,
+    get_windows_ipv6_adapters = mocker.patch(
+        "ingenialink.utils.ipv6_discovery._get_windows_ipv6_adapters",
+        return_value=[adapter],
     )
 
     interface_index = _get_interface_index(r"\Device\NPF_{AB6ECF19-612D-4265-ABD5-0F9A286A6962}")
 
     assert interface_index == 7
-    import_module.assert_called_once_with("ingenialink.get_adapters_addresses")
-    adapters_module.get_adapters_addresses.assert_called_once_with(
-        adapter_families="inet6",
-        scan_flags=["all"],
-    )
+    get_windows_ipv6_adapters.assert_called_once_with()
 
 
 def test_get_interface_index_uses_native_interface_name_outside_windows(mocker):
