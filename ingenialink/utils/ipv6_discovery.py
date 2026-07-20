@@ -24,8 +24,8 @@ ICMPV6_ECHO_REPLY = 129
 ICMPV6_HEADER_FORMAT = "!BBHHH"
 ICMPV6_SEQUENCE_NUMBER = 0
 MAX_ICMPV6_PACKET_SIZE = 65_535
-NPCAP_INTERFACE_GUID_PATTERN = re.compile(r"^\\Device\\NPF_(\{[^}]+\})$", re.IGNORECASE)
-NPCAP_READ_TIMEOUT_MS = 10
+PCAP_INTERFACE_GUID_PATTERN = re.compile(r"^\\Device\\NPF_(\{[^}]+\})$", re.IGNORECASE)
+PCAP_READ_TIMEOUT_MS = 10
 PCAP_ERRBUF_SIZE = 256
 DLT_EN10MB = 1
 ETHERNET_HEADER_SIZE = 14
@@ -79,7 +79,7 @@ class _PcapCapture:
             interface.encode(),
             MAX_ICMPV6_PACKET_SIZE,
             0,
-            NPCAP_READ_TIMEOUT_MS,
+            PCAP_READ_TIMEOUT_MS,
             error_buffer,
         )
         if not self._handle:
@@ -183,20 +183,20 @@ class _PcapCapture:
 
 def _load_pcap_library() -> ctypes.CDLL:
     system_root = os.environ.get("SYSTEMROOT", r"C:\Windows")
-    npcap_library_path = os.path.join(system_root, "System32", "Npcap", "wpcap.dll")
-    npcap_directory = os.path.dirname(npcap_library_path)
-    if os.path.isdir(npcap_directory):
+    pcap_library_path = os.path.join(system_root, "System32", "Npcap", "wpcap.dll")
+    pcap_directory = os.path.dirname(pcap_library_path)
+    if os.path.isdir(pcap_directory):
         try:
-            with os.add_dll_directory(npcap_directory):
-                return ctypes.CDLL(npcap_library_path)
+            with os.add_dll_directory(pcap_directory):
+                return ctypes.CDLL(pcap_library_path)
         except OSError:
             pass
     try:
         return ctypes.CDLL("wpcap.dll")
     except OSError as error:
         raise OSError(
-            "Npcap or WinPcap is required for IPv6 discovery on Windows. "
-            "Install Npcap or WinPcap and ensure wpcap.dll is available."
+            "A pcap-compatible library is required for IPv6 discovery on Windows. "
+            "Install a pcap-compatible library and ensure wpcap.dll is available."
         ) from error
 
 
@@ -221,7 +221,6 @@ def discover_ipv6_devices(
     """
     _validate_timeout(timeout_s)
     interface_index = _get_interface_index(interface)
-    discovered_devices: dict[str, None] = {}
     echo_identifier = secrets.randbelow(0xFFFF) + 1
     echo_request = struct.pack(
         ICMPV6_HEADER_FORMAT,
@@ -238,55 +237,51 @@ def discover_ipv6_devices(
             socket.IPV6_MULTICAST_IF,
             interface_index,
         )
-        if platform.system() == "Windows":
-            return _discover_windows_devices(
-                discovery_socket,
-                interface,
+        capture = _PcapCapture(interface) if platform.system() == "Windows" else None
+        try:
+            deadline = time.monotonic() + timeout_s
+            discovery_socket.sendto(
                 echo_request,
-                echo_identifier,
-                interface_index,
-                timeout_s,
+                (ALL_NODES_MULTICAST_ADDRESS, 0, 0, interface_index),
             )
-        deadline = time.monotonic() + timeout_s
-        discovery_socket.sendto(
-            echo_request,
-            (ALL_NODES_MULTICAST_ADDRESS, 0, 0, interface_index),
-        )
+            if capture is not None:
+                return _retrieve_windows_responses(capture, echo_identifier, deadline)
+            return _retrieve_non_windows_responses(discovery_socket, echo_identifier, deadline)
+        finally:
+            if capture is not None:
+                capture.close()
 
-        while (remaining_time_s := deadline - time.monotonic()) > 0:
-            discovery_socket.settimeout(remaining_time_s)
-            try:
-                response, source_address = discovery_socket.recvfrom(MAX_ICMPV6_PACKET_SIZE)
-            except socket.timeout:
-                break
-            if _is_echo_reply(response, echo_identifier):
-                discovered_devices[source_address[0]] = None
 
+def _retrieve_windows_responses(
+    capture: _PcapCapture,
+    echo_identifier: int,
+    deadline: float,
+) -> list[str]:
+    discovered_devices: dict[str, None] = {}
+    while time.monotonic() < deadline:
+        packet = capture.read_packet()
+        if packet is None:
+            continue
+        source_address = _get_echo_reply_source_address(packet, echo_identifier)
+        if source_address is not None:
+            discovered_devices[source_address] = None
     return list(discovered_devices)
 
 
-def _discover_windows_devices(
+def _retrieve_non_windows_responses(
     discovery_socket: socket.socket,
-    interface: str,
-    echo_request: bytes,
     echo_identifier: int,
-    interface_index: int,
-    timeout_s: float,
+    deadline: float,
 ) -> list[str]:
     discovered_devices: dict[str, None] = {}
-    with _PcapCapture(interface) as capture:
-        deadline = time.monotonic() + timeout_s
-        discovery_socket.sendto(
-            echo_request,
-            (ALL_NODES_MULTICAST_ADDRESS, 0, 0, interface_index),
-        )
-        while time.monotonic() < deadline:
-            packet = capture.read_packet()
-            if packet is None:
-                continue
-            source_address = _get_echo_reply_source_address(packet, echo_identifier)
-            if source_address is not None:
-                discovered_devices[source_address] = None
+    while (remaining_time_s := deadline - time.monotonic()) > 0:
+        discovery_socket.settimeout(remaining_time_s)
+        try:
+            response, source_address = discovery_socket.recvfrom(MAX_ICMPV6_PACKET_SIZE)
+        except socket.timeout:
+            break
+        if _is_echo_reply(response, echo_identifier):
+            discovered_devices[source_address[0]] = None
     return list(discovered_devices)
 
 
@@ -294,7 +289,7 @@ def _get_interface_index(interface: str) -> int:
     if platform.system() != "Windows":
         return socket.if_nametoindex(interface)
 
-    guid_match = NPCAP_INTERFACE_GUID_PATTERN.fullmatch(interface)
+    guid_match = PCAP_INTERFACE_GUID_PATTERN.fullmatch(interface)
     if guid_match is None:
         return socket.if_nametoindex(interface)
 
@@ -302,7 +297,7 @@ def _get_interface_index(interface: str) -> int:
     for adapter in _get_windows_ipv6_adapters():
         if adapter.AdapterName == interface_guid:
             return adapter.Ipv6IfIndex
-    raise OSError(f"The Npcap interface '{interface}' could not be found.")
+    raise OSError(f"The pcap interface '{interface}' could not be found.")
 
 
 def _get_windows_ipv6_adapters() -> list["CyAdapter"]:
