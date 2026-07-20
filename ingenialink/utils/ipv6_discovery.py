@@ -2,21 +2,29 @@
 
 import ctypes
 import os
+import platform
 import re
 import secrets
 import socket
 import struct
-import sys
 import time
-from typing import TYPE_CHECKING, Optional
+from collections.abc import Sequence
+from typing import Optional, Protocol
 
-if TYPE_CHECKING or sys.platform == "win32":
+RUNNING_ON_WINDOWS = platform.system() == "Windows"
+
+if RUNNING_ON_WINDOWS:
     from ingenialink.get_adapters_addresses import (
         AdapterFamily,
-        CyAdapter,
         ScanFlags,
         get_adapters_addresses,
     )
+
+
+class _WindowsIpv6Adapter(Protocol):
+    AdapterName: str
+    Ipv6IfIndex: int
+
 
 # Discovery constants
 ALL_NODES_IPV6_ADDRESS = "ff02::1"
@@ -189,7 +197,7 @@ def _load_pcap_library() -> ctypes.CDLL:
     system_root = os.environ.get("SYSTEMROOT", r"C:\Windows")
     pcap_library_path = os.path.join(system_root, "System32", "Npcap", "wpcap.dll")
     pcap_directory = os.path.dirname(pcap_library_path)
-    if sys.platform == "win32" and os.path.isdir(pcap_directory):
+    if RUNNING_ON_WINDOWS and os.path.isdir(pcap_directory):
         try:
             with os.add_dll_directory(pcap_directory):
                 return ctypes.CDLL(pcap_library_path)
@@ -241,7 +249,7 @@ def discover_ipv6_devices(
             socket.IPV6_MULTICAST_IF,
             interface_index,
         )
-        if sys.platform == "win32":
+        if RUNNING_ON_WINDOWS:
             # Windows raw sockets cannot receive multicast ICMPv6 replies.
             with _PcapCapture(interface) as capture:
                 deadline = time.monotonic() + timeout_s
@@ -298,7 +306,7 @@ def _get_interface_index(interface: str) -> int:
     Raises:
         OSError: If the interface cannot be resolved.
     """
-    if sys.platform == "win32":
+    if RUNNING_ON_WINDOWS:
         guid_match = PCAP_INTERFACE_GUID_PATTERN.fullmatch(interface)
         if guid_match is None:
             return socket.if_nametoindex(interface)
@@ -312,13 +320,13 @@ def _get_interface_index(interface: str) -> int:
     return socket.if_nametoindex(interface)
 
 
-def _get_windows_ipv6_adapters() -> list["CyAdapter"]:
+def _get_windows_ipv6_adapters() -> Sequence[_WindowsIpv6Adapter]:
     """Return all Windows adapters with IPv6 information.
 
     Raises:
         OSError: If called outside Windows.
     """
-    if sys.platform != "win32":
+    if not RUNNING_ON_WINDOWS:
         raise OSError("Windows IPv6 adapters are only available on Windows.")
 
     return get_adapters_addresses(
