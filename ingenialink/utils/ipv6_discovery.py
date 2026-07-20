@@ -312,13 +312,19 @@ def _get_interface_index(interface: str) -> int:
     return socket.if_nametoindex(interface)
 
 
-if sys.platform == "win32":
+def _get_windows_ipv6_adapters() -> list["CyAdapter"]:
+    """Return all Windows adapters with IPv6 information.
 
-    def _get_windows_ipv6_adapters() -> list[CyAdapter]:
-        return get_adapters_addresses(
-            adapter_families=AdapterFamily.INET6,
-            scan_flags=[ScanFlags.INCLUDE_ALL_INTERFACES],
-        )
+    Raises:
+        OSError: If called outside Windows.
+    """
+    if sys.platform != "win32":
+        raise OSError("Windows IPv6 adapters are only available on Windows.")
+
+    return get_adapters_addresses(
+        adapter_families=AdapterFamily.INET6,
+        scan_flags=[ScanFlags.INCLUDE_ALL_INTERFACES],
+    )
 
 
 def _is_echo_reply(response: bytes, identifier: int) -> bool:
