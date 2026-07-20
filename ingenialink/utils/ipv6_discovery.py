@@ -322,7 +322,7 @@ def _get_windows_ipv6_adapters() -> Sequence[_WindowsIpv6Adapter]:
     if sys.platform != "win32":
         raise OSError("Windows IPv6 adapters are only available on Windows.")
 
-    from ingenialink.get_adapters_addresses import (  # noqa: PLC0415
+    from ingenialink.get_adapters_addresses import (  # noqa: PLC0415 # type: ignore[import-not-found]
         AdapterFamily,
         ScanFlags,
         get_adapters_addresses,
