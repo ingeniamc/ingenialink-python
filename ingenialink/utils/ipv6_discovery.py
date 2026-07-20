@@ -2,18 +2,16 @@
 
 import ctypes
 import os
-import platform
 import re
 import secrets
 import socket
 import struct
+import sys
 import time
 from collections.abc import Sequence
 from typing import Optional, Protocol
 
-RUNNING_ON_WINDOWS = platform.system() == "Windows"
-
-if RUNNING_ON_WINDOWS:
+if sys.platform == "win32":
     from ingenialink.get_adapters_addresses import (
         AdapterFamily,
         ScanFlags,
@@ -197,7 +195,7 @@ def _load_pcap_library() -> ctypes.CDLL:
     system_root = os.environ.get("SYSTEMROOT", r"C:\Windows")
     pcap_library_path = os.path.join(system_root, "System32", "Npcap", "wpcap.dll")
     pcap_directory = os.path.dirname(pcap_library_path)
-    if RUNNING_ON_WINDOWS and os.path.isdir(pcap_directory):
+    if sys.platform == "win32" and os.path.isdir(pcap_directory):
         try:
             with os.add_dll_directory(pcap_directory):
                 return ctypes.CDLL(pcap_library_path)
@@ -249,7 +247,7 @@ def discover_ipv6_devices(
             socket.IPV6_MULTICAST_IF,
             interface_index,
         )
-        if RUNNING_ON_WINDOWS:
+        if sys.platform == "win32":
             # Windows raw sockets cannot receive multicast ICMPv6 replies.
             with _PcapCapture(interface) as capture:
                 deadline = time.monotonic() + timeout_s
@@ -306,7 +304,7 @@ def _get_interface_index(interface: str) -> int:
     Raises:
         OSError: If the interface cannot be resolved.
     """
-    if RUNNING_ON_WINDOWS:
+    if sys.platform == "win32":
         guid_match = PCAP_INTERFACE_GUID_PATTERN.fullmatch(interface)
         if guid_match is None:
             return socket.if_nametoindex(interface)
@@ -326,7 +324,7 @@ def _get_windows_ipv6_adapters() -> Sequence[_WindowsIpv6Adapter]:
     Raises:
         OSError: If called outside Windows.
     """
-    if not RUNNING_ON_WINDOWS:
+    if sys.platform != "win32":
         raise OSError("Windows IPv6 adapters are only available on Windows.")
 
     return get_adapters_addresses(
