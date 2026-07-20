@@ -101,6 +101,7 @@ def test_get_interface_index_uses_pcap_guid_on_windows(mocker):
     get_windows_ipv6_adapters = mocker.patch(
         "ingenialink.utils.ipv6_discovery._get_windows_ipv6_adapters",
         return_value=[adapter],
+        create=True,
     )
 
     interface_index = _get_interface_index(r"\Device\NPF_{DEADC0FF-EEEE-4444-8888-2BF6900CBFA0}")
@@ -192,9 +193,13 @@ def test_pcap_capture_reports_missing_library(mocker):
 def test_load_pcap_library_uses_preferred_directory_first(mocker):
     """Prefer Npcap's system directory when it is available."""
     library = mocker.Mock()
+    mocker.patch("ingenialink.utils.ipv6_discovery.sys.platform", "win32")
     mocker.patch.dict("os.environ", {"SYSTEMROOT": r"C:\Windows"})
     mocker.patch("ingenialink.utils.ipv6_discovery.os.path.isdir", return_value=True)
-    add_dll_directory = mocker.patch("ingenialink.utils.ipv6_discovery.os.add_dll_directory")
+    add_dll_directory = mocker.patch(
+        "ingenialink.utils.ipv6_discovery.os.add_dll_directory",
+        create=True,
+    )
     load_library = mocker.patch(
         "ingenialink.utils.ipv6_discovery.ctypes.CDLL",
         return_value=library,
@@ -208,9 +213,10 @@ def test_load_pcap_library_uses_preferred_directory_first(mocker):
 def test_load_pcap_library_falls_back_to_default_search_path(mocker):
     """Fall back to the loader's standard search path when necessary."""
     library = mocker.Mock()
+    mocker.patch("ingenialink.utils.ipv6_discovery.sys.platform", "win32")
     mocker.patch.dict("os.environ", {"SYSTEMROOT": r"C:\Windows"})
     mocker.patch("ingenialink.utils.ipv6_discovery.os.path.isdir", return_value=True)
-    mocker.patch("ingenialink.utils.ipv6_discovery.os.add_dll_directory")
+    mocker.patch("ingenialink.utils.ipv6_discovery.os.add_dll_directory", create=True)
     load_library = mocker.patch(
         "ingenialink.utils.ipv6_discovery.ctypes.CDLL",
         side_effect=[OSError("not found"), library],
