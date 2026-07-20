@@ -9,17 +9,12 @@ import struct
 import sys
 import time
 from collections.abc import Sequence
-from typing import Optional, Protocol
-
-if sys.platform == "win32":
-    from ingenialink.get_adapters_addresses import (
-        AdapterFamily,
-        ScanFlags,
-        get_adapters_addresses,
-    )
+from dataclasses import dataclass
+from typing import Optional
 
 
-class _WindowsIpv6Adapter(Protocol):
+@dataclass(frozen=True)
+class _WindowsIpv6Adapter:
     AdapterName: str
     Ipv6IfIndex: int
 
@@ -327,10 +322,24 @@ def _get_windows_ipv6_adapters() -> Sequence[_WindowsIpv6Adapter]:
     if sys.platform != "win32":
         raise OSError("Windows IPv6 adapters are only available on Windows.")
 
-    return get_adapters_addresses(
+    from ingenialink.get_adapters_addresses import (  # noqa: PLC0415
+        AdapterFamily,
+        ScanFlags,
+        get_adapters_addresses,
+    )
+
+    adapters = get_adapters_addresses(
         adapter_families=AdapterFamily.INET6,
         scan_flags=[ScanFlags.INCLUDE_ALL_INTERFACES],
     )
+
+    return [
+        _WindowsIpv6Adapter(
+            AdapterName=adapter.AdapterName,
+            Ipv6IfIndex=adapter.Ipv6IfIndex,
+        )
+        for adapter in adapters
+    ]
 
 
 def _is_echo_reply(response: bytes, identifier: int) -> bool:
