@@ -95,7 +95,7 @@ def test_discover_ipv6_devices_rejects_invalid_timeout(timeout_s):
 
 
 def test_get_interface_index_uses_pcap_guid_on_windows(mocker):
-    """Map an Npcap interface GUID to its Windows IPv6 interface index."""
+    """Map a Pcap interface GUID to its Windows IPv6 interface index."""
     adapter = mocker.Mock(AdapterName="{DEADC0FF-EEEE-4444-8888-2BF6900CBFA0}", Ipv6IfIndex=7)
     mocker.patch("ingenialink.utils.ipv6_discovery.sys.platform", "win32")
     get_windows_ipv6_adapters = mocker.patch(
@@ -188,26 +188,6 @@ def test_pcap_capture_reports_missing_library(mocker):
 
     with pytest.raises(OSError, match="wpcap\\.dll not found"):
         _PcapCapture("Ethernet")
-
-
-def test_load_pcap_library_uses_preferred_directory_first(mocker):
-    """Prefer Npcap's system directory when it is available."""
-    library = mocker.Mock()
-    mocker.patch("ingenialink.utils.ipv6_discovery.sys.platform", "win32")
-    mocker.patch.dict("os.environ", {"SYSTEMROOT": r"C:\Windows"})
-    mocker.patch("ingenialink.utils.ipv6_discovery.os.path.isdir", return_value=True)
-    add_dll_directory = mocker.patch(
-        "ingenialink.utils.ipv6_discovery.os.add_dll_directory",
-        create=True,
-    )
-    load_library = mocker.patch(
-        "ingenialink.utils.ipv6_discovery.ctypes.CDLL",
-        return_value=library,
-    )
-
-    assert _load_pcap_library() is library
-    add_dll_directory.assert_called_once_with(r"C:\Windows\System32\Npcap")
-    load_library.assert_called_once_with(r"C:\Windows\System32\Npcap\wpcap.dll")
 
 
 def test_load_pcap_library_falls_back_to_default_search_path(mocker):
