@@ -1,3 +1,5 @@
+"""Discover IPv6 devices using raw sockets on Linux and pcap capture on Windows."""
+
 import ctypes
 import os
 import platform
@@ -18,30 +20,37 @@ if TYPE_CHECKING or platform.system() == "Windows":
         get_adapters_addresses,
     )
 
-ALL_NODES_MULTICAST_ADDRESS = "ff02::1"
+# Discovery constants
+ALL_NODES_IPV6_ADDRESS = "ff02::1"
 ICMPV6_ECHO_REQUEST = 128
 ICMPV6_ECHO_REPLY = 129
 ICMPV6_HEADER_FORMAT = "!BBHHH"
+ICMPV6_HEADER_SIZE = struct.calcsize(ICMPV6_HEADER_FORMAT)
 ICMPV6_SEQUENCE_NUMBER = 0
 MAX_ICMPV6_PACKET_SIZE = 65_535
 PCAP_INTERFACE_GUID_PATTERN = re.compile(r"^\\Device\\NPF_(\{[^}]+\})$", re.IGNORECASE)
+
+# Pcap constants
 PCAP_READ_TIMEOUT_MS = 10
 PCAP_ERRBUF_SIZE = 256
 DLT_EN10MB = 1
+
+# Ethernet constants
 ETHERNET_HEADER_SIZE = 14
 ETHERNET_TYPE_OFFSET = 12
-ETHERNET_TYPE_IPV6 = 0x86DD
-ETHERNET_TYPE_VLAN = {0x8100, 0x88A8, 0x9100}
+ETHERTYPE_IPV6 = 0x86DD
+VLAN_ETHERTYPES = {0x8100, 0x88A8, 0x9100}
+
+# IPv6 constants
 IPV6_HEADER_SIZE = 40
 IPV6_NEXT_HEADER_OFFSET = 6
 IPV6_SOURCE_ADDRESS_OFFSET = 8
 IPV6_HOP_BY_HOP = 0
 IPV6_ROUTING = 43
 IPV6_FRAGMENT = 44
-IPV6_ESP = 50
 IPV6_AUTHENTICATION = 51
 IPV6_DESTINATION_OPTIONS = 60
-IPV6_ICMP = 58
+IPV6_NEXT_HEADER_ICMPV6 = 58
 IPV6_FRAGMENT_OFFSET_MASK = 0xFFF8
 
 
@@ -115,13 +124,10 @@ class _PcapCapture:
             ctypes.byref(packet_header),
             ctypes.byref(packet_data),
         )
-        if result == 0:
-            return None
         if result == 1:
             return ctypes.string_at(packet_data, packet_header.contents.caplen)
-        if result == -1:
-            error_message = self._library.pcap_geterr(self._handle).decode(errors="replace")
-            raise OSError(error_message)
+        if result == 0:
+            return None
         if result == -2:
             raise OSError("Pcap capture terminated unexpectedly.")
         error_message = self._library.pcap_geterr(self._handle).decode(errors="replace")
@@ -167,7 +173,7 @@ class _PcapCapture:
             self._library.pcap_compile(
                 self._handle,
                 ctypes.byref(filter_program),
-                b"ip6",
+                b"ip6 or (vlan and ip6)",
                 1,
                 0,
             )
@@ -208,7 +214,7 @@ def discover_ipv6_devices(
 
     Args:
         interface: Network interface to scan. On Windows, this accepts the
-            Npcap device path used by EtherCAT, for example
+            Pcap device path used by EtherCAT, for example
             ``\\Device\\NPF_{DEADC0FF-EEEE-4444-8888-2BF6900CBFA0}``.
         timeout_s: Maximum time in seconds to collect responses.
 
@@ -237,22 +243,25 @@ def discover_ipv6_devices(
             socket.IPV6_MULTICAST_IF,
             interface_index,
         )
-        capture = _PcapCapture(interface) if platform.system() == "Windows" else None
-        try:
-            deadline = time.monotonic() + timeout_s
-            discovery_socket.sendto(
-                echo_request,
-                (ALL_NODES_MULTICAST_ADDRESS, 0, 0, interface_index),
-            )
-            if capture is not None:
-                return _retrieve_windows_responses(capture, echo_identifier, deadline)
-            return _retrieve_non_windows_responses(discovery_socket, echo_identifier, deadline)
-        finally:
-            if capture is not None:
-                capture.close()
+        if platform.system() == "Windows":
+            # Windows raw sockets cannot receive multicast ICMPv6 replies.
+            with _PcapCapture(interface) as capture:
+                deadline = time.monotonic() + timeout_s
+                discovery_socket.sendto(
+                    echo_request,
+                    (ALL_NODES_IPV6_ADDRESS, 0, 0, interface_index),
+                )
+                return _capture_pcap_responses(capture, echo_identifier, deadline)
+
+        deadline = time.monotonic() + timeout_s
+        discovery_socket.sendto(
+            echo_request,
+            (ALL_NODES_IPV6_ADDRESS, 0, 0, interface_index),
+        )
+        return _receive_socket_responses(discovery_socket, echo_identifier, deadline)
 
 
-def _retrieve_windows_responses(
+def _capture_pcap_responses(
     capture: _PcapCapture,
     echo_identifier: int,
     deadline: float,
@@ -268,7 +277,7 @@ def _retrieve_windows_responses(
     return list(discovered_devices)
 
 
-def _retrieve_non_windows_responses(
+def _receive_socket_responses(
     discovery_socket: socket.socket,
     echo_identifier: int,
     deadline: float,
@@ -286,6 +295,11 @@ def _retrieve_non_windows_responses(
 
 
 def _get_interface_index(interface: str) -> int:
+    """Return the IPv6 index for a system interface or Pcap device path.
+
+    Raises:
+        OSError: If the interface cannot be resolved.
+    """
     if platform.system() != "Windows":
         return socket.if_nametoindex(interface)
 
@@ -308,7 +322,7 @@ def _get_windows_ipv6_adapters() -> list["CyAdapter"]:
 
 
 def _is_echo_reply(response: bytes, identifier: int) -> bool:
-    if len(response) < struct.calcsize(ICMPV6_HEADER_FORMAT):
+    if len(response) < ICMPV6_HEADER_SIZE:
         return False
     return (
         response[0] == ICMPV6_ECHO_REPLY
@@ -319,6 +333,11 @@ def _is_echo_reply(response: bytes, identifier: int) -> bool:
 
 
 def _get_echo_reply_source_address(packet: bytes, identifier: int) -> Optional[str]:
+    """Extract the source from a matching echo reply in an Ethernet frame.
+
+    Returns:
+        The source address, or ``None`` when the packet is not a matching reply.
+    """
     ipv6_offset = _get_ipv6_offset(packet)
     if ipv6_offset is None or len(packet) < ipv6_offset + IPV6_HEADER_SIZE:
         return None
@@ -326,7 +345,7 @@ def _get_echo_reply_source_address(packet: bytes, identifier: int) -> Optional[s
         return None
     next_header = packet[ipv6_offset + IPV6_NEXT_HEADER_OFFSET]
     icmp_offset = ipv6_offset + IPV6_HEADER_SIZE
-    while next_header != IPV6_ICMP:
+    while next_header != IPV6_NEXT_HEADER_ICMPV6:
         extension_header = _get_ipv6_extension_header(packet, icmp_offset, next_header)
         if extension_header is None:
             return None
@@ -340,6 +359,11 @@ def _get_echo_reply_source_address(packet: bytes, identifier: int) -> Optional[s
 
 
 def _get_ipv6_offset(packet: bytes) -> Optional[int]:
+    """Locate an IPv6 header after Ethernet and optional VLAN headers.
+
+    Returns:
+        The IPv6 header offset, or ``None`` when the frame does not contain IPv6.
+    """
     if len(packet) < ETHERNET_HEADER_SIZE:
         return None
     ethernet_type = int.from_bytes(
@@ -347,12 +371,12 @@ def _get_ipv6_offset(packet: bytes) -> Optional[int]:
         "big",
     )
     ipv6_offset = ETHERNET_HEADER_SIZE
-    while ethernet_type in ETHERNET_TYPE_VLAN:
+    while ethernet_type in VLAN_ETHERTYPES:
         if len(packet) < ipv6_offset + 4:
             return None
         ethernet_type = int.from_bytes(packet[ipv6_offset + 2 : ipv6_offset + 4], "big")
         ipv6_offset += 4
-    if ethernet_type != ETHERNET_TYPE_IPV6:
+    if ethernet_type != ETHERTYPE_IPV6:
         return None
     return ipv6_offset
 
@@ -362,10 +386,13 @@ def _get_ipv6_extension_header(
     offset: int,
     header_type: int,
 ) -> Optional[tuple[int, int]]:
-    if header_type == IPV6_ESP or len(packet) < offset + 2:
+    """Return the next header and offset after a supported extension header."""
+    if len(packet) < offset + 2:
         return None
     next_header = packet[offset]
     if header_type == IPV6_FRAGMENT:
+        if len(packet) < offset + 8:
+            return None
         fragment_offset = int.from_bytes(packet[offset + 2 : offset + 4], "big")
         if fragment_offset & IPV6_FRAGMENT_OFFSET_MASK:
             return None

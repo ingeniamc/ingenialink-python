@@ -4,7 +4,7 @@ import struct
 import pytest
 
 from ingenialink.utils.ipv6_discovery import (
-    ALL_NODES_MULTICAST_ADDRESS,
+    ALL_NODES_IPV6_ADDRESS,
     ICMPV6_ECHO_REPLY,
     ICMPV6_ECHO_REQUEST,
     ICMPV6_HEADER_FORMAT,
@@ -78,7 +78,7 @@ def test_discover_ipv6_devices_collects_unique_responses(mocker, discovery_socke
     )
     request, destination = discovery_socket.sendto.call_args.args
     assert request[0] == ICMPV6_ECHO_REQUEST
-    assert destination == (ALL_NODES_MULTICAST_ADDRESS, 0, 0, 4)
+    assert destination == (ALL_NODES_IPV6_ADDRESS, 0, 0, 4)
 
 
 @pytest.mark.parametrize(
@@ -173,7 +173,7 @@ def test_pcap_capture_applies_ipv6_filter(mocker):
 
     capture = _PcapCapture(r"\Device\NPF_{DEADC0FF-EEEE-4444-8888-2BF6900CBFA0}")
 
-    assert library.pcap_compile.call_args.args[2] == b"ip6"
+    assert library.pcap_compile.call_args.args[2] == b"ip6 or (vlan and ip6)"
     library.pcap_freecode.assert_called_once()
     capture.__exit__()
 
