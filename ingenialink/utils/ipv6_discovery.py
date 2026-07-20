@@ -8,9 +8,9 @@ import socket
 import struct
 import sys
 import time
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-if sys.platform == "win32":
+if TYPE_CHECKING or sys.platform == "win32":
     from ingenialink.get_adapters_addresses import (
         AdapterFamily,
         CyAdapter,
