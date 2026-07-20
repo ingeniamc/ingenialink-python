@@ -2,6 +2,7 @@ import ctypes
 import os
 import platform
 import re
+import secrets
 import socket
 import struct
 import time
@@ -41,6 +42,7 @@ IPV6_ESP = 50
 IPV6_AUTHENTICATION = 51
 IPV6_DESTINATION_OPTIONS = 60
 IPV6_ICMP = 58
+IPV6_FRAGMENT_OFFSET_MASK = 0xFFF8
 
 
 class _TimeVal(ctypes.Structure):
@@ -65,17 +67,12 @@ class _BpfProgram(ctypes.Structure):
     ]
 
 
-class _NpcapCapture:
-    """Npcap packet capture for a single network interface."""
+class _PcapCapture:
+    """Pcap packet capture for a single network interface."""
 
     def __init__(self, interface: str) -> None:
-        try:
-            self._library = ctypes.CDLL("wpcap.dll")
-        except OSError as error:
-            raise OSError(
-                "Npcap is required for IPv6 discovery on Windows. "
-                "Install Npcap and ensure wpcap.dll is available."
-            ) from error
+        self._library = _load_pcap_library()
+        self._handle: Optional[int] = None
         self._configure_library()
         error_buffer = ctypes.create_string_buffer(PCAP_ERRBUF_SIZE)
         self._handle = self._library.pcap_open_live(
@@ -88,21 +85,29 @@ class _NpcapCapture:
         if not self._handle:
             raise OSError(error_buffer.value.decode(errors="replace"))
         if self._library.pcap_datalink(self._handle) != DLT_EN10MB:
-            self._library.pcap_close(self._handle)
-            raise OSError("Npcap discovery requires an Ethernet interface.")
+            self.close()
+            raise OSError("Pcap discovery requires an Ethernet interface.")
         try:
-            self._apply_icmp6_filter()
+            self._apply_ipv6_filter()
         except OSError:
-            self._library.pcap_close(self._handle)
+            self.close()
             raise
 
-    def __enter__(self) -> "_NpcapCapture":
+    def __enter__(self) -> "_PcapCapture":
         return self
 
     def __exit__(self, *args: object) -> None:
-        self._library.pcap_close(self._handle)
+        self.close()
+
+    def close(self) -> None:
+        """Close the pcap capture handle once."""
+        if self._handle is not None:
+            self._library.pcap_close(self._handle)
+            self._handle = None
 
     def read_packet(self) -> Optional[bytes]:
+        if self._handle is None:
+            raise OSError("Pcap capture handle is closed.")
         packet_header = ctypes.POINTER(_PcapPacketHeader)()
         packet_data = ctypes.POINTER(ctypes.c_ubyte)()
         result = self._library.pcap_next_ex(
@@ -110,10 +115,15 @@ class _NpcapCapture:
             ctypes.byref(packet_header),
             ctypes.byref(packet_data),
         )
-        if result in (0, -2):
+        if result == 0:
             return None
         if result == 1:
             return ctypes.string_at(packet_data, packet_header.contents.caplen)
+        if result == -1:
+            error_message = self._library.pcap_geterr(self._handle).decode(errors="replace")
+            raise OSError(error_message)
+        if result == -2:
+            raise OSError("Pcap capture terminated unexpectedly.")
         error_message = self._library.pcap_geterr(self._handle).decode(errors="replace")
         raise OSError(error_message)
 
@@ -151,13 +161,13 @@ class _NpcapCapture:
         self._library.pcap_freecode.argtypes = [ctypes.POINTER(_BpfProgram)]
         self._library.pcap_freecode.restype = None
 
-    def _apply_icmp6_filter(self) -> None:
+    def _apply_ipv6_filter(self) -> None:
         filter_program = _BpfProgram()
         if (
             self._library.pcap_compile(
                 self._handle,
                 ctypes.byref(filter_program),
-                b"icmp6",
+                b"ip6",
                 1,
                 0,
             )
@@ -171,6 +181,25 @@ class _NpcapCapture:
             self._library.pcap_freecode(ctypes.byref(filter_program))
 
 
+def _load_pcap_library() -> ctypes.CDLL:
+    system_root = os.environ.get("SYSTEMROOT", r"C:\Windows")
+    npcap_library_path = os.path.join(system_root, "System32", "Npcap", "wpcap.dll")
+    npcap_directory = os.path.dirname(npcap_library_path)
+    if os.path.isdir(npcap_directory):
+        try:
+            with os.add_dll_directory(npcap_directory):
+                return ctypes.CDLL(npcap_library_path)
+        except OSError:
+            pass
+    try:
+        return ctypes.CDLL("wpcap.dll")
+    except OSError as error:
+        raise OSError(
+            "Npcap or WinPcap is required for IPv6 discovery on Windows. "
+            "Install Npcap or WinPcap and ensure wpcap.dll is available."
+        ) from error
+
+
 def discover_ipv6_devices(
     interface: str,
     timeout_s: float = 1.0,
@@ -180,7 +209,7 @@ def discover_ipv6_devices(
     Args:
         interface: Network interface to scan. On Windows, this accepts the
             Npcap device path used by EtherCAT, for example
-            ``\\Device\\NPF_{AB6ECF19-612D-4265-ABD5-0F9A286A6962}``.
+            ``\\Device\\NPF_{DEADC0FF-EEEE-4444-8888-2BF6900CBFA0}``.
         timeout_s: Maximum time in seconds to collect responses.
 
     Returns:
@@ -193,7 +222,7 @@ def discover_ipv6_devices(
     _validate_timeout(timeout_s)
     interface_index = _get_interface_index(interface)
     discovered_devices: dict[str, None] = {}
-    echo_identifier = os.getpid() & 0xFFFF
+    echo_identifier = secrets.randbelow(0xFFFF) + 1
     echo_request = struct.pack(
         ICMPV6_HEADER_FORMAT,
         ICMPV6_ECHO_REQUEST,
@@ -245,7 +274,7 @@ def _discover_windows_devices(
     timeout_s: float,
 ) -> list[str]:
     discovered_devices: dict[str, None] = {}
-    with _NpcapCapture(interface) as capture:
+    with _PcapCapture(interface) as capture:
         deadline = time.monotonic() + timeout_s
         discovery_socket.sendto(
             echo_request,
@@ -298,6 +327,8 @@ def _get_echo_reply_source_address(packet: bytes, identifier: int) -> Optional[s
     ipv6_offset = _get_ipv6_offset(packet)
     if ipv6_offset is None or len(packet) < ipv6_offset + IPV6_HEADER_SIZE:
         return None
+    if packet[ipv6_offset] >> 4 != 6:
+        return None
     next_header = packet[ipv6_offset + IPV6_NEXT_HEADER_OFFSET]
     icmp_offset = ipv6_offset + IPV6_HEADER_SIZE
     while next_header != IPV6_ICMP:
@@ -340,6 +371,9 @@ def _get_ipv6_extension_header(
         return None
     next_header = packet[offset]
     if header_type == IPV6_FRAGMENT:
+        fragment_offset = int.from_bytes(packet[offset + 2 : offset + 4], "big")
+        if fragment_offset & IPV6_FRAGMENT_OFFSET_MASK:
+            return None
         header_size = 8
     elif header_type == IPV6_AUTHENTICATION:
         header_size = (packet[offset + 1] + 2) * 4
