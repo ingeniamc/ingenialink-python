@@ -2,20 +2,18 @@
 
 import ctypes
 import os
-import platform
 import re
 import secrets
 import socket
 import struct
+import sys
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
-if TYPE_CHECKING:
-    from ingenialink.get_adapters_addresses import CyAdapter
-
-if TYPE_CHECKING or platform.system() == "Windows":
+if sys.platform == "win32":
     from ingenialink.get_adapters_addresses import (
         AdapterFamily,
+        CyAdapter,
         ScanFlags,
         get_adapters_addresses,
     )
@@ -191,7 +189,7 @@ def _load_pcap_library() -> ctypes.CDLL:
     system_root = os.environ.get("SYSTEMROOT", r"C:\Windows")
     pcap_library_path = os.path.join(system_root, "System32", "Npcap", "wpcap.dll")
     pcap_directory = os.path.dirname(pcap_library_path)
-    if os.path.isdir(pcap_directory):
+    if sys.platform == "win32" and os.path.isdir(pcap_directory):
         try:
             with os.add_dll_directory(pcap_directory):
                 return ctypes.CDLL(pcap_library_path)
@@ -243,7 +241,7 @@ def discover_ipv6_devices(
             socket.IPV6_MULTICAST_IF,
             interface_index,
         )
-        if platform.system() == "Windows":
+        if sys.platform == "win32":
             # Windows raw sockets cannot receive multicast ICMPv6 replies.
             with _PcapCapture(interface) as capture:
                 deadline = time.monotonic() + timeout_s
@@ -300,25 +298,27 @@ def _get_interface_index(interface: str) -> int:
     Raises:
         OSError: If the interface cannot be resolved.
     """
-    if platform.system() != "Windows":
-        return socket.if_nametoindex(interface)
+    if sys.platform == "win32":
+        guid_match = PCAP_INTERFACE_GUID_PATTERN.fullmatch(interface)
+        if guid_match is None:
+            return socket.if_nametoindex(interface)
 
-    guid_match = PCAP_INTERFACE_GUID_PATTERN.fullmatch(interface)
-    if guid_match is None:
-        return socket.if_nametoindex(interface)
+        interface_guid = guid_match.group(1).upper()
+        for adapter in _get_windows_ipv6_adapters():
+            if adapter.AdapterName == interface_guid:
+                return adapter.Ipv6IfIndex
+        raise OSError(f"The pcap interface '{interface}' could not be found.")
 
-    interface_guid = guid_match.group(1).upper()
-    for adapter in _get_windows_ipv6_adapters():
-        if adapter.AdapterName == interface_guid:
-            return adapter.Ipv6IfIndex
-    raise OSError(f"The pcap interface '{interface}' could not be found.")
+    return socket.if_nametoindex(interface)
 
 
-def _get_windows_ipv6_adapters() -> list["CyAdapter"]:
-    return get_adapters_addresses(
-        adapter_families=AdapterFamily.INET6,
-        scan_flags=[ScanFlags.INCLUDE_ALL_INTERFACES],
-    )
+if sys.platform == "win32":
+
+    def _get_windows_ipv6_adapters() -> list[CyAdapter]:
+        return get_adapters_addresses(
+            adapter_families=AdapterFamily.INET6,
+            scan_flags=[ScanFlags.INCLUDE_ALL_INTERFACES],
+        )
 
 
 def _is_echo_reply(response: bytes, identifier: int) -> bool:
