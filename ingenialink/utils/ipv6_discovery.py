@@ -58,11 +58,24 @@ class _PcapPacketHeader(ctypes.Structure):
     ]
 
 
+class _BpfProgram(ctypes.Structure):
+    _fields_ = [
+        ("bf_len", ctypes.c_uint),
+        ("bf_insns", ctypes.c_void_p),
+    ]
+
+
 class _NpcapCapture:
     """Npcap packet capture for a single network interface."""
 
     def __init__(self, interface: str) -> None:
-        self._library = ctypes.CDLL("wpcap.dll")
+        try:
+            self._library = ctypes.CDLL("wpcap.dll")
+        except OSError as error:
+            raise OSError(
+                "Npcap is required for IPv6 discovery on Windows. "
+                "Install Npcap and ensure wpcap.dll is available."
+            ) from error
         self._configure_library()
         error_buffer = ctypes.create_string_buffer(PCAP_ERRBUF_SIZE)
         self._handle = self._library.pcap_open_live(
@@ -77,6 +90,11 @@ class _NpcapCapture:
         if self._library.pcap_datalink(self._handle) != DLT_EN10MB:
             self._library.pcap_close(self._handle)
             raise OSError("Npcap discovery requires an Ethernet interface.")
+        try:
+            self._apply_icmp6_filter()
+        except OSError:
+            self._library.pcap_close(self._handle)
+            raise
 
     def __enter__(self) -> "_NpcapCapture":
         return self
@@ -120,6 +138,37 @@ class _NpcapCapture:
         self._library.pcap_next_ex.restype = ctypes.c_int
         self._library.pcap_geterr.argtypes = [ctypes.c_void_p]
         self._library.pcap_geterr.restype = ctypes.c_char_p
+        self._library.pcap_compile.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(_BpfProgram),
+            ctypes.c_char_p,
+            ctypes.c_int,
+            ctypes.c_uint32,
+        ]
+        self._library.pcap_compile.restype = ctypes.c_int
+        self._library.pcap_setfilter.argtypes = [ctypes.c_void_p, ctypes.POINTER(_BpfProgram)]
+        self._library.pcap_setfilter.restype = ctypes.c_int
+        self._library.pcap_freecode.argtypes = [ctypes.POINTER(_BpfProgram)]
+        self._library.pcap_freecode.restype = None
+
+    def _apply_icmp6_filter(self) -> None:
+        filter_program = _BpfProgram()
+        if (
+            self._library.pcap_compile(
+                self._handle,
+                ctypes.byref(filter_program),
+                b"icmp6",
+                1,
+                0,
+            )
+            != 0
+        ):
+            raise OSError(self._library.pcap_geterr(self._handle).decode(errors="replace"))
+        try:
+            if self._library.pcap_setfilter(self._handle, ctypes.byref(filter_program)) != 0:
+                raise OSError(self._library.pcap_geterr(self._handle).decode(errors="replace"))
+        finally:
+            self._library.pcap_freecode(ctypes.byref(filter_program))
 
 
 def discover_ipv6_devices(
@@ -143,7 +192,6 @@ def discover_ipv6_devices(
     """
     _validate_timeout(timeout_s)
     interface_index = _get_interface_index(interface)
-    deadline = time.monotonic() + timeout_s
     discovered_devices: dict[str, None] = {}
     echo_identifier = os.getpid() & 0xFFFF
     echo_request = struct.pack(
@@ -159,7 +207,7 @@ def discover_ipv6_devices(
         discovery_socket.setsockopt(
             socket.IPPROTO_IPV6,
             socket.IPV6_MULTICAST_IF,
-            struct.pack("=I", interface_index),
+            interface_index,
         )
         if platform.system() == "Windows":
             return _discover_windows_devices(
@@ -168,8 +216,9 @@ def discover_ipv6_devices(
                 echo_request,
                 echo_identifier,
                 interface_index,
-                deadline,
+                timeout_s,
             )
+        deadline = time.monotonic() + timeout_s
         discovery_socket.sendto(
             echo_request,
             (ALL_NODES_MULTICAST_ADDRESS, 0, 0, interface_index),
@@ -193,10 +242,11 @@ def _discover_windows_devices(
     echo_request: bytes,
     echo_identifier: int,
     interface_index: int,
-    deadline: float,
+    timeout_s: float,
 ) -> list[str]:
     discovered_devices: dict[str, None] = {}
     with _NpcapCapture(interface) as capture:
+        deadline = time.monotonic() + timeout_s
         discovery_socket.sendto(
             echo_request,
             (ALL_NODES_MULTICAST_ADDRESS, 0, 0, interface_index),

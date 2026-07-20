@@ -10,6 +10,7 @@ from ingenialink.utils.ipv6_discovery import (
     ICMPV6_HEADER_FORMAT,
     _get_echo_reply_source_address,
     _get_interface_index,
+    _NpcapCapture,
     discover_ipv6_devices,
 )
 
@@ -44,6 +45,11 @@ def test_discover_ipv6_devices_collects_unique_responses(mocker):
 
     assert devices == ["fe80::1", "fe80::2"]
     socket_factory.assert_called_once_with(socket.AF_INET6, socket.SOCK_RAW, socket.IPPROTO_ICMPV6)
+    discovery_socket.setsockopt.assert_called_once_with(
+        socket.IPPROTO_IPV6,
+        socket.IPV6_MULTICAST_IF,
+        4,
+    )
     request, destination = discovery_socket.sendto.call_args.args
     assert request[0] == ICMPV6_ECHO_REQUEST
     assert destination == (ALL_NODES_MULTICAST_ADDRESS, 0, 0, 4)
@@ -128,3 +134,28 @@ def test_get_echo_reply_source_address_returns_matching_ipv6_source():
         _get_echo_reply_source_address(ethernet_header + ipv6_header + echo_reply, 123)
         == source_address
     )
+
+
+def test_npcap_capture_applies_icmp6_filter(mocker):
+    library = mocker.MagicMock()
+    library.pcap_open_live.return_value = 1
+    library.pcap_datalink.return_value = 1
+    library.pcap_compile.return_value = 0
+    library.pcap_setfilter.return_value = 0
+    mocker.patch("ingenialink.utils.ipv6_discovery.ctypes.CDLL", return_value=library)
+
+    capture = _NpcapCapture(r"\Device\NPF_{AB6ECF19-612D-4265-ABD5-0F9A286A6962}")
+
+    assert library.pcap_compile.call_args.args[2] == b"icmp6"
+    library.pcap_freecode.assert_called_once()
+    capture.__exit__()
+
+
+def test_npcap_capture_reports_missing_library(mocker):
+    mocker.patch(
+        "ingenialink.utils.ipv6_discovery.ctypes.CDLL",
+        side_effect=OSError("wpcap.dll not found"),
+    )
+
+    with pytest.raises(OSError, match="Npcap is required for IPv6 discovery on Windows"):
+        _NpcapCapture("Ethernet")
