@@ -1,7 +1,5 @@
 """Discover IPv6 devices using raw sockets on Linux and pcap capture on Windows."""
 
-import ctypes
-import os
 import re
 import secrets
 import socket
@@ -11,6 +9,9 @@ import time
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Optional
+
+if sys.platform == "win32":
+    import cypcap  # type: ignore[import-untyped]
 
 
 @dataclass(frozen=True)
@@ -30,9 +31,7 @@ MAX_ICMPV6_PACKET_SIZE = 65_535
 PCAP_INTERFACE_GUID_PATTERN = re.compile(r"^\\Device\\NPF_(\{[^}]+\})$", re.IGNORECASE)
 
 # Pcap constants
-PCAP_READ_TIMEOUT_MS = 10
-PCAP_ERRBUF_SIZE = 256
-DLT_EN10MB = 1
+PCAP_READ_TIMEOUT_S = 0.01
 
 # Ethernet constants
 ETHERNET_HEADER_SIZE = 14
@@ -53,50 +52,23 @@ IPV6_NEXT_HEADER_ICMPV6 = 58
 IPV6_FRAGMENT_OFFSET_MASK = 0xFFF8
 
 
-class _TimeVal(ctypes.Structure):
-    _fields_ = [
-        ("tv_sec", ctypes.c_long),
-        ("tv_usec", ctypes.c_long),
-    ]
-
-
-class _PcapPacketHeader(ctypes.Structure):
-    _fields_ = [
-        ("ts", _TimeVal),
-        ("caplen", ctypes.c_uint32),
-        ("len", ctypes.c_uint32),
-    ]
-
-
-class _BpfProgram(ctypes.Structure):
-    _fields_ = [
-        ("bf_len", ctypes.c_uint),
-        ("bf_insns", ctypes.c_void_p),
-    ]
-
-
 class _PcapCapture:
     """Pcap packet capture for a single network interface."""
 
     def __init__(self, interface: str) -> None:
-        self._library = _load_pcap_library()
-        self._handle: Optional[int] = None
-        self._configure_library()
-        error_buffer = ctypes.create_string_buffer(PCAP_ERRBUF_SIZE)
-        self._handle = self._library.pcap_open_live(
-            interface.encode(),
-            MAX_ICMPV6_PACKET_SIZE,
-            0,
-            PCAP_READ_TIMEOUT_MS,
-            error_buffer,
-        )
-        if not self._handle:
-            raise OSError(error_buffer.value.decode(errors="replace"))
-        if self._library.pcap_datalink(self._handle) != DLT_EN10MB:
-            self.close()
-            raise OSError("Pcap discovery requires an Ethernet interface.")
+        self._capture = None
         try:
-            self._apply_ipv6_filter()
+            self._capture = cypcap.create(interface)
+            self._capture.set_snaplen(MAX_ICMPV6_PACKET_SIZE)
+            self._capture.set_promisc(False)
+            self._capture.set_timeout(PCAP_READ_TIMEOUT_S)
+            self._capture.activate()
+            if self._capture.datalink() != cypcap.DatalinkType.EN10MB:
+                raise OSError("Pcap discovery requires an Ethernet interface.")
+            self._capture.setfilter("ip6 or (vlan and ip6)")
+        except cypcap.Error as error:
+            self.close()
+            raise OSError(f"Unable to configure pcap capture: {error}") from error
         except OSError:
             self.close()
             raise
@@ -108,101 +80,31 @@ class _PcapCapture:
         self.close()
 
     def close(self) -> None:
-        """Close the pcap capture handle once."""
-        if self._handle is not None:
-            self._library.pcap_close(self._handle)
-            self._handle = None
+        """Close the pcap capture handle once.
+
+        Raises:
+            OSError: If cypcap cannot close the capture.
+        """
+        if self._capture is not None:
+            capture = self._capture
+            self._capture = None
+            try:
+                capture.close()
+            except cypcap.Error as error:
+                raise OSError(f"Unable to close pcap capture: {error}") from error
 
     def read_packet(self) -> Optional[bytes]:
-        if self._handle is None:
+        if self._capture is None:
             raise OSError("Pcap capture handle is closed.")
-        packet_header = ctypes.POINTER(_PcapPacketHeader)()
-        packet_data = ctypes.POINTER(ctypes.c_ubyte)()
-        result = self._library.pcap_next_ex(
-            self._handle,
-            ctypes.byref(packet_header),
-            ctypes.byref(packet_data),
-        )
-        if result == 1:
-            return ctypes.string_at(packet_data, packet_header.contents.caplen)
-        if result == 0:
+        try:
+            packet_header, packet_data = next(self._capture)
+        except cypcap.Error as error:
+            raise OSError(f"Unable to read pcap packet: {error}") from error
+        except StopIteration as error:
+            raise OSError("Pcap capture terminated unexpectedly.") from error
+        if packet_header is None:
             return None
-        if result == -2:
-            raise OSError("Pcap capture terminated unexpectedly.")
-        error_message = self._library.pcap_geterr(self._handle).decode(errors="replace")
-        raise OSError(error_message)
-
-    def _configure_library(self) -> None:
-        self._library.pcap_open_live.argtypes = [
-            ctypes.c_char_p,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.POINTER(ctypes.c_char),
-        ]
-        self._library.pcap_open_live.restype = ctypes.c_void_p
-        self._library.pcap_datalink.argtypes = [ctypes.c_void_p]
-        self._library.pcap_datalink.restype = ctypes.c_int
-        self._library.pcap_close.argtypes = [ctypes.c_void_p]
-        self._library.pcap_close.restype = None
-        self._library.pcap_next_ex.argtypes = [
-            ctypes.c_void_p,
-            ctypes.POINTER(ctypes.POINTER(_PcapPacketHeader)),
-            ctypes.POINTER(ctypes.POINTER(ctypes.c_ubyte)),
-        ]
-        self._library.pcap_next_ex.restype = ctypes.c_int
-        self._library.pcap_geterr.argtypes = [ctypes.c_void_p]
-        self._library.pcap_geterr.restype = ctypes.c_char_p
-        self._library.pcap_compile.argtypes = [
-            ctypes.c_void_p,
-            ctypes.POINTER(_BpfProgram),
-            ctypes.c_char_p,
-            ctypes.c_int,
-            ctypes.c_uint32,
-        ]
-        self._library.pcap_compile.restype = ctypes.c_int
-        self._library.pcap_setfilter.argtypes = [ctypes.c_void_p, ctypes.POINTER(_BpfProgram)]
-        self._library.pcap_setfilter.restype = ctypes.c_int
-        self._library.pcap_freecode.argtypes = [ctypes.POINTER(_BpfProgram)]
-        self._library.pcap_freecode.restype = None
-
-    def _apply_ipv6_filter(self) -> None:
-        filter_program = _BpfProgram()
-        if (
-            self._library.pcap_compile(
-                self._handle,
-                ctypes.byref(filter_program),
-                b"ip6 or (vlan and ip6)",
-                1,
-                0,
-            )
-            != 0
-        ):
-            raise OSError(self._library.pcap_geterr(self._handle).decode(errors="replace"))
-        try:
-            if self._library.pcap_setfilter(self._handle, ctypes.byref(filter_program)) != 0:
-                raise OSError(self._library.pcap_geterr(self._handle).decode(errors="replace"))
-        finally:
-            self._library.pcap_freecode(ctypes.byref(filter_program))
-
-
-def _load_pcap_library() -> ctypes.CDLL:
-    system_root = os.environ.get("SYSTEMROOT", r"C:\Windows")
-    pcap_library_path = os.path.join(system_root, "System32", "Npcap", "wpcap.dll")
-    pcap_directory = os.path.dirname(pcap_library_path)
-    if sys.platform == "win32" and os.path.isdir(pcap_directory):
-        try:
-            with os.add_dll_directory(pcap_directory):
-                return ctypes.CDLL(pcap_library_path)
-        except OSError:
-            pass
-    try:
-        return ctypes.CDLL("wpcap.dll")
-    except OSError as error:
-        raise OSError(
-            "A pcap-compatible library is required for IPv6 discovery on Windows. "
-            "Install a pcap-compatible library and ensure wpcap.dll is available."
-        ) from error
+        return bytes(packet_data)
 
 
 def discover_ipv6_devices(
@@ -322,7 +224,7 @@ def _get_windows_ipv6_adapters() -> Sequence[_WindowsIpv6Adapter]:
     if sys.platform != "win32":
         raise OSError("Windows IPv6 adapters are only available on Windows.")
 
-    from ingenialink.get_adapters_addresses import (  # type: ignore[import-not-found]  # noqa: PLC0415
+    from ingenialink.get_adapters_addresses import (  # noqa: PLC0415
         AdapterFamily,
         ScanFlags,
         get_adapters_addresses,
