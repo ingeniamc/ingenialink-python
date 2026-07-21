@@ -6,9 +6,7 @@ if sys.platform == "win32":
     from ingenialink.utils.ipv6_pcap_capture import PcapCapture
 
 
-pytestmark = pytest.mark.skipif(sys.platform != "win32", reason="Windows-only pcap capture")
-
-
+@pytest.mark.pcap
 def test_pcap_capture_applies_ipv6_filter(mocker):
     """Configure an Ethernet capture with the IPv6 and VLAN filter."""
     capture = mocker.MagicMock()
@@ -29,6 +27,7 @@ def test_pcap_capture_applies_ipv6_filter(mocker):
     pcap_capture.close()
 
 
+@pytest.mark.pcap
 def test_pcap_capture_converts_library_errors(mocker):
     """Convert cypcap configuration errors into OS errors."""
     cypcap = mocker.MagicMock()
@@ -40,6 +39,7 @@ def test_pcap_capture_converts_library_errors(mocker):
         PcapCapture("Ethernet")
 
 
+@pytest.mark.pcap
 def test_pcap_capture_reports_unexpected_termination(mocker):
     """Convert pcap's termination status into a descriptive OS error."""
     capture = PcapCapture.__new__(PcapCapture)
@@ -53,6 +53,7 @@ def test_pcap_capture_reports_unexpected_termination(mocker):
         capture.read_packet()
 
 
+@pytest.mark.pcap
 def test_pcap_capture_reports_read_errors(mocker):
     """Expose the error returned by pcap when packet capture fails."""
     capture = PcapCapture.__new__(PcapCapture)
@@ -66,6 +67,7 @@ def test_pcap_capture_reports_read_errors(mocker):
         capture.read_packet()
 
 
+@pytest.mark.pcap
 def test_pcap_capture_close_is_idempotent(mocker):
     """Close an active pcap handle no more than once."""
     capture = PcapCapture.__new__(PcapCapture)
