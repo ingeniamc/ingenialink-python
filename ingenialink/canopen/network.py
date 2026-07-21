@@ -179,6 +179,9 @@ class CustomListener(can.Listener):
         logger.error(f"An exception occurred with the IXXAT or KVASER connection. Exception: {exc}")
 
 
+CanopenServoT = TypeVar("CanopenServoT", bound=CanopenServoBase, default=CanopenServoBase)
+
+
 class NetStatusListener(Thread):
     """Network status listener thread to check if the drive is alive.
 
@@ -187,7 +190,7 @@ class NetStatusListener(Thread):
 
     """
 
-    def __init__(self, network: "CanopenNetwork"):
+    def __init__(self, network: "CanopenNetwork") -> None:
         super().__init__()
         self.__network = network
         self.__stop = False
@@ -240,9 +243,6 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-CanopenServoT = TypeVar("CanopenServoT", bound=CanopenServoBase, default=CanopenServoBase)
-
-
 class CanopenNetworkBase(Generic[CanopenServoT], Network[CanopenServoT]):
     """Base class for CANopen network communications."""
 
@@ -265,7 +265,7 @@ class CanopenNetworkBase(Generic[CanopenServoT], Network[CanopenServoT]):
         return super().get_servo_state(servo_id)
 
 
-class CanopenNetwork(CanopenNetworkBase):
+class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
     """Network of the CANopen communication.
 
     Args:

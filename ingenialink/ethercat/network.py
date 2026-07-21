@@ -108,6 +108,9 @@ class GilReleaseConfig:
         return instance
 
 
+EthercatServoT = TypeVar("EthercatServoT", bound=EthercatServoBase, default=EthercatServoBase)
+
+
 class NetStatusListener(Thread):
     """Network status listener thread to check if the drive is alive.
 
@@ -121,7 +124,7 @@ class NetStatusListener(Thread):
 
     """
 
-    def __init__(self, network: "EthercatNetwork", refresh_time: float = 0.25):
+    def __init__(self, network: "EthercatNetwork", refresh_time: float = 0.25) -> None:
         super().__init__()
         self.__network = network
         self.__refresh_time = refresh_time
@@ -150,6 +153,10 @@ class NetStatusListener(Thread):
 
         # Phase 1: per-slave disconnection detection
         for servo in self.__network.servos:
+            if not isinstance(servo, EthercatServo):
+                # Virtual servos do not have slave id
+                # https://novantamotion.atlassian.net/browse/INGK-1286
+                continue
             slave_id = servo.slave_id
             servo_state = self.__network.get_servo_state(slave_id)
             is_servo_alive = servo.slave_exists and (servo.slave.state != pysoem.NONE_STATE)
@@ -158,7 +165,8 @@ class NetStatusListener(Thread):
 
         # Phase 2: skip recovery if every slave is already connected
         if not any(
-            self.__network.get_servo_state(servo.slave_id) == NetState.DISCONNECTED
+            isinstance(servo, EthercatServo)  # INGK-1286
+            and self.__network.get_servo_state(servo.slave_id) == NetState.DISCONNECTED
             for servo in self.__network.servos
         ):
             return
@@ -169,6 +177,9 @@ class NetStatusListener(Thread):
 
         # Phase 4: emit ADDED only for slaves that are actually alive after recovery
         for servo in self.__network.servos:
+            if not isinstance(servo, EthercatServo):
+                # INGK-1286
+                continue
             slave_id = servo.slave_id
             servo_state = self.__network.get_servo_state(slave_id)
             is_servo_alive = servo.slave_exists and (servo.slave.state != pysoem.NONE_STATE)
@@ -194,9 +205,6 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-EthercatServoT = TypeVar("EthercatServoT", bound=EthercatServoBase, default=EthercatServoBase)
-
-
 class EthercatNetworkBase(Generic[EthercatServoT], Network[EthercatServoT]):
     """Base class for EtherCAT network communications."""
 
@@ -218,7 +226,7 @@ class EthercatNetworkBase(Generic[EthercatServoT], Network[EthercatServoT]):
         return NetProt.ECAT
 
 
-class EthercatNetwork(EthercatNetworkBase):
+class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
     """Network for all EtherCAT communications.
 
     Args:

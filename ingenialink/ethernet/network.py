@@ -4,6 +4,7 @@ import ipaddress
 import os
 import socket
 import time
+from abc import abstractmethod
 from collections import OrderedDict
 from ftplib import FTP
 from threading import Thread
@@ -12,7 +13,7 @@ from typing import Callable, Generic, Optional, Union
 
 import ingenialogger
 from multiping import multi_ping
-from typing_extensions import TypeVar, override, reveal_type
+from typing_extensions import TypeVar, override
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.ethernet.resources import BASIC_ETHERNET_V2_XDF
@@ -29,7 +30,6 @@ from ingenialink.servo import Servo
 from ingenialink.utils.udp import UDP
 
 from .servo import EthernetServo, EthernetServoBase
-from ..virtual.ethernet import VirtualEthernetServo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -47,7 +47,10 @@ MAX_NUMBER_OF_SCAN_TRIES = 2
 SCAN_CONNECTION_TIMEOUT = 0.5
 
 
-class NetStatusListener(Thread):
+EthernetServoT = TypeVar("EthernetServoT", bound=EthernetServoBase, default=EthernetServoBase)
+
+
+class NetStatusListener(Thread, Generic[EthernetServoT]):
     """Network status listener thread to check if the drive is alive.
 
     Args:
@@ -55,7 +58,9 @@ class NetStatusListener(Thread):
 
     """
 
-    def __init__(self, network: "EthernetNetworkBase", refresh_time: float = 0.25) -> None:
+    def __init__(
+        self, network: "EthernetNetworkBase[EthernetServoT]", refresh_time: float = 0.25
+    ) -> None:
         super().__init__()
         self.__network = network
         self.__refresh_time = refresh_time
@@ -69,7 +74,8 @@ class NetStatusListener(Thread):
         """
         for servo in self.__network.servos:
             if not isinstance(servo, EthernetServo):
-                # Virtual ethernet servos do not yet implement ip address
+                # Virtual ethernet servos do not yet implement ip address attr
+                # https://novantamotion.atlassian.net/browse/INGK-1286
                 continue
 
             servo_ip = servo.ip_address
@@ -98,9 +104,6 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-EthernetServoT = TypeVar("EthernetServoT", bound=EthernetServoBase, default=EthernetServoBase)
-
-
 class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
     """Network for all Ethernet communications.
 
@@ -116,7 +119,7 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
             self.__subnet = ipaddress.ip_network(subnet, strict=False)
         else:
             self.__subnet = None
-        self.__listener_net_status: Optional[NetStatusListener] = None
+        self.__listener_net_status: Optional[NetStatusListener[EthernetServoT]] = None
 
     @staticmethod
     def load_firmware(
@@ -247,6 +250,21 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
                 detected_slaves.update(ping_responses)
         return list(detected_slaves.keys())
 
+    @abstractmethod
+    def _create_servo(
+        self,
+        *,
+        target: str,
+        dictionary: str,
+        port: int,
+        connection_timeout: float,
+        servo_status_listener: bool,
+        is_eoe: bool,
+        disconnect_callback: Optional[Callable[[Servo], None]],
+    ) -> EthernetServoT:
+        """Create a servo for this Ethernet network implementation."""
+        raise NotImplementedError
+
     def scan_slaves(self) -> list[str]:  # type: ignore [override]
         """Scan drives connected to the network.
 
@@ -276,7 +294,7 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
         net_status_listener: bool = False,
         is_eoe: bool = False,
         disconnect_callback: Optional[Callable[[Servo], None]] = None,
-    ) -> EthernetServo:
+    ) -> EthernetServoT:
         """Connects to a slave through the given network settings.
 
         Args:
@@ -298,13 +316,13 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
         Returns:
             EthernetServo: Instance of the servo connected.
         """
-        servo = EthernetServo(
-            target,
-            dictionary,
-            port,
-            connection_timeout,
-            servo_status_listener,
-            is_eoe,
+        servo = self._create_servo(
+            target=target,
+            dictionary=dictionary,
+            port=port,
+            connection_timeout=connection_timeout,
+            servo_status_listener=servo_status_listener,
+            is_eoe=is_eoe,
             disconnect_callback=disconnect_callback,
         )
         try:
@@ -321,16 +339,19 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
             self.stop_status_listener()
         return servo
 
-    def disconnect_from_slave(self, servo: EthernetServo) -> None:  # type: ignore [override]
+    def disconnect_from_slave(self, servo: EthernetServoT) -> None:  # type: ignore [override]
         """Disconnects the slave from the network.
 
         Args:
             servo: Instance of the servo connected.
 
+        Raises:
+            ValueError: If the provided servo is not an Ethernet servo.
+
         """
         servo.stop_status_listener()
         self.close_socket(servo.socket)
-        self._set_servo_state(servo.ip_address, NetState.DISCONNECTED)
+        self._set_servo_state(servo, NetState.DISCONNECTED)
         self.servos.remove(servo)
         if len(self.servos) == 0:
             self.stop_status_listener()
@@ -346,7 +367,7 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
     def start_status_listener(self) -> None:
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
         if self.__listener_net_status is None:
-            listener = NetStatusListener(self)
+            listener = NetStatusListener[EthernetServoT](self)
             listener.start()
             self.__listener_net_status = listener
 
@@ -441,5 +462,26 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
         return NetProt.ETH
 
 
-class EthernetNetwork(EthernetNetworkBase):
+class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
     """Network for all Ethernet communications."""
+
+    def _create_servo(
+        self,
+        *,
+        target: str,
+        dictionary: str,
+        port: int,
+        connection_timeout: float,
+        servo_status_listener: bool,
+        is_eoe: bool,
+        disconnect_callback: Optional[Callable[[Servo], None]],
+    ) -> EthernetServo:
+        return EthernetServo(
+            target,
+            dictionary,
+            port,
+            connection_timeout,
+            servo_status_listener,
+            is_eoe,
+            disconnect_callback=disconnect_callback,
+        )

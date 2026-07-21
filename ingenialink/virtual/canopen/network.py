@@ -61,7 +61,7 @@ class VirtualCanopenNetStatusListener(Thread):
         self.__stop = True
 
 
-class VirtualCanopenNetwork(CanopenNetworkBase):
+class VirtualCanopenNetwork(CanopenNetworkBase[VirtualCanopenServo]):
     """Network for all virtual CANopen drive communications."""
 
     def __init__(self) -> None:
@@ -81,9 +81,7 @@ class VirtualCanopenNetwork(CanopenNetworkBase):
             List of discovered target node IDs.
 
         """
-        if self.servos:
-            return [servo.target for servo in self.servos]
-        return []
+        return [servo.target for servo in self.servos if isinstance(servo.target, int)]
 
     def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
         """Scan for virtual CANopen drives and retrieve basic info.
