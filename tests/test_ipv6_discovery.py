@@ -10,7 +10,6 @@ from ingenialink.utils.ipv6_discovery import (
     ICMPV6_HEADER_FORMAT,
     _get_echo_reply_source_address,
     _get_interface_index,
-    _PcapCapture,
     discover_ipv6_devices,
 )
 
@@ -132,8 +131,9 @@ def test_discover_ipv6_devices_uses_pcap_on_windows(mocker, discovery_socket):
     mocker.patch("ingenialink.utils.ipv6_discovery.sys.platform", "win32")
     mocker.patch("ingenialink.utils.ipv6_discovery._get_interface_index", return_value=4)
     pcap_capture = mocker.patch(
-        "ingenialink.utils.ipv6_discovery._PcapCapture",
+        "ingenialink.utils.ipv6_discovery.PcapCapture",
         side_effect=lambda _: events.append("capture_started") or capture,
+        create=True,
     )
     discovery_socket.sendto.side_effect = lambda *_: events.append("request_sent")
     mocker.patch(
@@ -162,78 +162,6 @@ def test_get_echo_reply_source_address_returns_matching_ipv6_source():
         )
         == source_address
     )
-
-
-def test_pcap_capture_applies_ipv6_filter(mocker):
-    """Configure an Ethernet capture with the IPv6 and VLAN filter."""
-    capture = mocker.MagicMock()
-    capture.datalink.return_value = 1
-    cypcap = mocker.MagicMock()
-    cypcap.create.return_value = capture
-    cypcap.DatalinkType.EN10MB = 1
-    mocker.patch("ingenialink.utils.ipv6_discovery.cypcap", cypcap, create=True)
-
-    pcap_capture = _PcapCapture(r"\Device\NPF_{DEADC0FF-EEEE-4444-8888-2BF6900CBFA0}")
-
-    cypcap.create.assert_called_once_with(r"\Device\NPF_{DEADC0FF-EEEE-4444-8888-2BF6900CBFA0}")
-    capture.set_snaplen.assert_called_once_with(65_535)
-    capture.set_promisc.assert_called_once_with(False)
-    capture.set_timeout.assert_called_once_with(0.01)
-    capture.activate.assert_called_once_with()
-    capture.setfilter.assert_called_once_with("ip6 or (vlan and ip6)")
-    pcap_capture.close()
-
-
-def test_pcap_capture_converts_library_errors(mocker):
-    """Convert cypcap configuration errors into OS errors."""
-    cypcap = mocker.MagicMock()
-    cypcap.Error = RuntimeError
-    cypcap.create.side_effect = RuntimeError("unable to open capture")
-    mocker.patch("ingenialink.utils.ipv6_discovery.cypcap", cypcap, create=True)
-
-    with pytest.raises(OSError, match="unable to open capture"):
-        _PcapCapture("Ethernet")
-
-
-def test_pcap_capture_reports_unexpected_termination(mocker):
-    """Convert pcap's termination status into a descriptive OS error."""
-    capture = _PcapCapture.__new__(_PcapCapture)
-    capture._capture = mocker.MagicMock()
-    capture._capture.__next__.side_effect = StopIteration
-    cypcap = mocker.MagicMock()
-    cypcap.Error = RuntimeError
-    mocker.patch("ingenialink.utils.ipv6_discovery.cypcap", cypcap, create=True)
-
-    with pytest.raises(OSError, match="terminated unexpectedly"):
-        capture.read_packet()
-
-
-def test_pcap_capture_reports_read_errors(mocker):
-    """Expose the error returned by pcap when packet capture fails."""
-    capture = _PcapCapture.__new__(_PcapCapture)
-    capture._capture = mocker.MagicMock()
-    capture._capture.__next__.side_effect = RuntimeError("read failure")
-    cypcap = mocker.MagicMock()
-    cypcap.Error = RuntimeError
-    mocker.patch("ingenialink.utils.ipv6_discovery.cypcap", cypcap, create=True)
-
-    with pytest.raises(OSError, match="read failure"):
-        capture.read_packet()
-
-
-def test_pcap_capture_close_is_idempotent(mocker):
-    """Close an active pcap handle no more than once."""
-    capture = _PcapCapture.__new__(_PcapCapture)
-    pcap = mocker.Mock()
-    capture._capture = pcap
-    cypcap = mocker.MagicMock()
-    cypcap.Error = RuntimeError
-    mocker.patch("ingenialink.utils.ipv6_discovery.cypcap", cypcap, create=True)
-
-    capture.close()
-    capture.close()
-
-    pcap.close.assert_called_once_with()
 
 
 def test_get_echo_reply_source_address_rejects_invalid_ipv6_version():

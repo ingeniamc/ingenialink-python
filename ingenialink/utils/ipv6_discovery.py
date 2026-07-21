@@ -8,10 +8,10 @@ import sys
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Protocol
 
 if sys.platform == "win32":
-    import cypcap  # type: ignore[import-untyped]
+    from ingenialink.utils.ipv6_pcap_capture import PcapCapture
 
 
 @dataclass(frozen=True)
@@ -29,9 +29,6 @@ ICMPV6_HEADER_SIZE = struct.calcsize(ICMPV6_HEADER_FORMAT)
 ICMPV6_SEQUENCE_NUMBER = 0
 MAX_ICMPV6_PACKET_SIZE = 65_535
 PCAP_INTERFACE_GUID_PATTERN = re.compile(r"^\\Device\\NPF_(\{[^}]+\})$", re.IGNORECASE)
-
-# Pcap constants
-PCAP_READ_TIMEOUT_S = 0.01
 
 # Ethernet constants
 ETHERNET_HEADER_SIZE = 14
@@ -52,69 +49,11 @@ IPV6_NEXT_HEADER_ICMPV6 = 58
 IPV6_FRAGMENT_OFFSET_MASK = 0xFFF8
 
 
-class _PcapCapture:
-    """Pcap packet capture for a single network interface."""
-
-    def __init__(self, interface: str) -> None:
-        self._capture = None
-        try:
-            self._capture = cypcap.create(interface)
-            self._capture.set_snaplen(MAX_ICMPV6_PACKET_SIZE)
-            self._capture.set_promisc(False)
-            self._capture.set_timeout(PCAP_READ_TIMEOUT_S)
-            self._capture.activate()
-            if self._capture.datalink() != cypcap.DatalinkType.EN10MB:
-                raise OSError("Pcap discovery requires an Ethernet interface.")
-            self._capture.setfilter("ip6 or (vlan and ip6)")
-        except cypcap.Error as error:
-            self.close()
-            raise OSError(f"Unable to configure pcap capture: {error}") from error
-        except OSError:
-            self.close()
-            raise
-
-    def __enter__(self) -> "_PcapCapture":
-        """Return the active capture for use in a context manager."""
-        return self
-
-    def __exit__(self, *args: object) -> None:
-        """Close the capture when leaving its context manager."""
-        self.close()
-
-    def close(self) -> None:
-        """Close the pcap capture handle once.
-
-        Raises:
-            OSError: If cypcap cannot close the capture.
-        """
-        if self._capture is not None:
-            capture = self._capture
-            self._capture = None
-            try:
-                capture.close()
-            except cypcap.Error as error:
-                raise OSError(f"Unable to close pcap capture: {error}") from error
+class _PacketCapture(Protocol):
+    """Packet capture capable of yielding one packet at a time."""
 
     def read_packet(self) -> Optional[bytes]:
-        """Read one packet, returning ``None`` when the capture times out.
-
-        Returns:
-            The captured packet bytes, or ``None`` on a read timeout.
-
-        Raises:
-            OSError: If the capture is closed or cannot read a packet.
-        """
-        if self._capture is None:
-            raise OSError("Pcap capture handle is closed.")
-        try:
-            packet_header, packet_data = next(self._capture)
-        except cypcap.Error as error:
-            raise OSError(f"Unable to read pcap packet: {error}") from error
-        except StopIteration as error:
-            raise OSError("Pcap capture terminated unexpectedly.") from error
-        if packet_header is None:
-            return None
-        return bytes(packet_data)
+        """Read one packet, or return ``None`` when no packet is available."""
 
 
 def discover_ipv6_devices(
@@ -157,7 +96,7 @@ def discover_ipv6_devices(
         )
         if sys.platform == "win32":
             # Windows raw sockets cannot receive multicast ICMPv6 replies.
-            with _PcapCapture(interface) as capture:
+            with PcapCapture(interface) as capture:
                 deadline = time.monotonic() + timeout_s
                 discovery_socket.sendto(
                     echo_request,
@@ -174,7 +113,7 @@ def discover_ipv6_devices(
 
 
 def _capture_pcap_responses(
-    capture: _PcapCapture,
+    capture: _PacketCapture,
     echo_identifier: int,
     deadline: float,
 ) -> list[str]:
