@@ -43,6 +43,7 @@ def discovery_socket(mocker):
 
 
 def test_discover_ipv6_devices_collects_unique_responses(mocker, discovery_socket):
+    """Collect matching Linux responses once and preserve their response order."""
     mocker.patch("ingenialink.utils.ipv6_discovery.secrets.randbelow", return_value=122)
     mocker.patch("ingenialink.utils.ipv6_discovery.sys.platform", "linux")
     discovery_socket.recvfrom.side_effect = [
@@ -164,6 +165,7 @@ def test_get_echo_reply_source_address_returns_matching_ipv6_source():
 
 
 def test_pcap_capture_applies_ipv6_filter(mocker):
+    """Configure an Ethernet capture with the IPv6 and VLAN filter."""
     capture = mocker.MagicMock()
     capture.datalink.return_value = 1
     cypcap = mocker.MagicMock()

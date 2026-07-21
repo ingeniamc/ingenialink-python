@@ -74,9 +74,11 @@ class _PcapCapture:
             raise
 
     def __enter__(self) -> "_PcapCapture":
+        """Return the active capture for use in a context manager."""
         return self
 
     def __exit__(self, *args: object) -> None:
+        """Close the capture when leaving its context manager."""
         self.close()
 
     def close(self) -> None:
@@ -94,6 +96,14 @@ class _PcapCapture:
                 raise OSError(f"Unable to close pcap capture: {error}") from error
 
     def read_packet(self) -> Optional[bytes]:
+        """Read one packet, returning ``None`` when the capture times out.
+
+        Returns:
+            The captured packet bytes, or ``None`` on a read timeout.
+
+        Raises:
+            OSError: If the capture is closed or cannot read a packet.
+        """
         if self._capture is None:
             raise OSError("Pcap capture handle is closed.")
         try:
@@ -168,6 +178,11 @@ def _capture_pcap_responses(
     echo_identifier: int,
     deadline: float,
 ) -> list[str]:
+    """Collect unique matching IPv6 responses from a pcap capture.
+
+    Returns:
+        Unique IPv6 addresses in response order.
+    """
     discovered_devices: dict[str, None] = {}
     while time.monotonic() < deadline:
         packet = capture.read_packet()
@@ -184,6 +199,11 @@ def _receive_socket_responses(
     echo_identifier: int,
     deadline: float,
 ) -> list[str]:
+    """Collect unique matching IPv6 responses from a raw socket.
+
+    Returns:
+        Unique IPv6 addresses in response order.
+    """
     discovered_devices: dict[str, None] = {}
     while (remaining_time_s := deadline - time.monotonic()) > 0:
         discovery_socket.settimeout(remaining_time_s)
@@ -246,6 +266,7 @@ def _get_windows_ipv6_adapters() -> Sequence[_WindowsIpv6Adapter]:
 
 
 def _is_echo_reply(response: bytes, identifier: int) -> bool:
+    """Return whether a packet is an ICMPv6 echo reply for the identifier."""
     if len(response) < ICMPV6_HEADER_SIZE:
         return False
     return (
@@ -337,5 +358,10 @@ def _get_ipv6_extension_header(
 
 
 def _validate_timeout(timeout_s: float) -> None:
+    """Reject discovery timeouts that cannot provide a response window.
+
+    Raises:
+        ValueError: If the timeout is zero or negative.
+    """
     if timeout_s <= 0:
         raise ValueError("The discovery timeout must be greater than zero.")
