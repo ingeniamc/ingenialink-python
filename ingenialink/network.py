@@ -56,7 +56,9 @@ class Network(ABC):
             if servo.target == target:
                 self._servo_registry[target] = servo
                 return servo
-        return self._servo_registry.get(target)
+
+        # not found
+        return None
 
     @abstractmethod
     def scan_slaves(self) -> list[int]:
