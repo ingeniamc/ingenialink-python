@@ -6,10 +6,10 @@ from typing import Any, Callable, Optional, Union
 
 import ingenialogger
 
-from ingenialink.enums.network import NetDevEvt as NetDevEvt
-from ingenialink.enums.network import NetProt as NetProt
-from ingenialink.enums.network import NetState as NetState
+from ingenialink.enums.network import NetDevEvt, NetProt, NetState
 from ingenialink.servo import Servo
+
+__all__ = ["NetDevEvt", "NetProt", "NetState", "SlaveInfo", "Network"]
 
 logger = ingenialogger.get_logger(__name__)
 
