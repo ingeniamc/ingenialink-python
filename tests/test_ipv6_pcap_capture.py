@@ -1,9 +1,6 @@
-import sys
-
 import pytest
 
-if sys.platform == "win32":
-    from ingenialink.utils.ipv6_pcap_capture import PcapCapture
+from ingenialink.utils.ipv6_pcap_capture import PcapCapture
 
 
 @pytest.mark.pcap
@@ -36,6 +33,21 @@ def test_pcap_capture_converts_library_errors(mocker):
     mocker.patch("ingenialink.utils.ipv6_pcap_capture.cypcap", cypcap)
 
     with pytest.raises(OSError, match="unable to open capture"):
+        PcapCapture("Ethernet")
+
+
+@pytest.mark.pcap
+def test_pcap_capture_defers_missing_npcap_error(mocker):
+    """Raise the stored import error only when pcap capture is used."""
+    import_error = ImportError("Failed to load Npcap")
+    mocker.patch("ingenialink.utils.ipv6_pcap_capture.cypcap", None)
+    mocker.patch(
+        "ingenialink.utils.ipv6_pcap_capture.cypcap_import_error",
+        import_error,
+        create=True,
+    )
+
+    with pytest.raises(ImportError, match="Failed to load Npcap"):
         PcapCapture("Ethernet")
 
 

@@ -2,7 +2,11 @@
 
 from typing import Optional
 
-import cypcap  # type: ignore[import-not-found, import-untyped, unused-ignore]
+try:
+    import cypcap  # type: ignore[import-not-found, import-untyped, unused-ignore]
+except ImportError as ex:
+    cypcap = None
+    cypcap_import_error = ex
 
 MAX_PACKET_SIZE = 65_535
 READ_TIMEOUT_S = 0.01
@@ -12,6 +16,8 @@ class PcapCapture:
     """Pcap packet capture for a single Windows network interface."""
 
     def __init__(self, interface: str) -> None:
+        if not cypcap:
+            raise cypcap_import_error
         self._capture = None
         try:
             self._capture = cypcap.create(interface)
