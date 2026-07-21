@@ -8,20 +8,28 @@ from collections import OrderedDict
 from ftplib import FTP
 from threading import Thread
 from time import sleep
-from typing import Callable, Optional, Union
+from typing import Callable, Generic, Optional, Union
 
 import ingenialogger
 from multiping import multi_ping
-from typing_extensions import override
+from typing_extensions import TypeVar, override, reveal_type
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.ethernet.resources import BASIC_ETHERNET_V2_XDF
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.network import NetDevEvt, NetProt, NetState, Network, ServoTarget, SlaveInfo
+from ingenialink.network import (
+    NetDevEvt,
+    NetProt,
+    NetState,
+    Network,
+    ServoTarget,
+    SlaveInfo,
+)
 from ingenialink.servo import Servo
 from ingenialink.utils.udp import UDP
 
-from .servo import EthernetServo
+from .servo import EthernetServo, EthernetServoBase
+from ..virtual.ethernet import VirtualEthernetServo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -60,6 +68,10 @@ class NetStatusListener(Thread):
         subscribers of any state changes (connection/disconnection).
         """
         for servo in self.__network.servos:
+            if not isinstance(servo, EthernetServo):
+                # Virtual ethernet servos do not yet implement ip address
+                continue
+
             servo_ip = servo.ip_address
             servo_state = self.__network.get_servo_state(servo_ip)
             is_servo_alive = servo.is_alive(attemps=MAX_NUM_UNSUCCESSFUL_PINGS)
@@ -86,7 +98,10 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-class EthernetNetworkBase(Network):
+EthernetServoT = TypeVar("EthernetServoT", bound=EthernetServoBase, default=EthernetServoBase)
+
+
+class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
     """Network for all Ethernet communications.
 
     Args:

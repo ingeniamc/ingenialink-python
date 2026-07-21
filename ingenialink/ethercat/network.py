@@ -8,10 +8,10 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from functools import lru_cache
 from threading import Thread
-from typing import TYPE_CHECKING, Callable, Optional, Union, cast
+from typing import TYPE_CHECKING, Callable, Generic, Optional, Union, cast
 
 import ingenialogger
-from typing_extensions import override
+from typing_extensions import TypeVar, override
 
 from ingenialink.pdo_network_manager import PDONetworkManager
 from ingenialink.servo import Servo
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 from dataclasses import dataclass, field
 
 from ingenialink.constants import ECAT_STATE_CHANGE_TIMEOUT_US
-from ingenialink.ethercat.servo import EthercatServo
+from ingenialink.ethercat.servo import EthercatServo, EthercatServoBase
 from ingenialink.ethercat.state import SlaveState
 from ingenialink.exceptions import (
     ILError,
@@ -194,7 +194,10 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-class EthercatNetworkBase(Network):
+EthercatServoT = TypeVar("EthercatServoT", bound=EthercatServoBase, default=EthercatServoBase)
+
+
+class EthercatNetworkBase(Generic[EthercatServoT], Network[EthercatServoT]):
     """Base class for EtherCAT network communications."""
 
     def get_servo_state(self, servo_id: ServoTarget) -> NetState:

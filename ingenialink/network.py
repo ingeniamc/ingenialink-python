@@ -2,9 +2,10 @@ import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any, Callable, Optional, Union
+from typing import Callable, Generic, Optional, Union
 
 import ingenialogger
+from typing_extensions import Any, TypeVar
 
 from ingenialink.enums.network import NetDevEvt, NetProt, NetState
 from ingenialink.servo import Servo
@@ -27,11 +28,14 @@ ServoTarget = Union[int, str, Servo]
 the :class:`Servo` instance itself."""
 
 
-class Network(ABC):
+ServoT = TypeVar("ServoT", bound=Servo, default=Servo)
+
+
+class Network(ABC, Generic[ServoT]):
     """Declaration of a general Network object."""
 
     def __init__(self) -> None:
-        self.servos: list[Any] = []
+        self.servos: list[ServoT] = []
         """List of the connected servos in the network."""
 
         self._servo_registry: dict[Union[int, str], Servo] = {}
