@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-import cypcap
+import cypcap  # type: ignore[import-not-found, import-untyped, unused-ignore]
 
 MAX_PACKET_SIZE = 65_535
 READ_TIMEOUT_S = 0.01
