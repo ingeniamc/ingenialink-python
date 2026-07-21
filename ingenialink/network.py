@@ -49,9 +49,12 @@ class Network(ABC):
 
         """
         if isinstance(target, Servo):
+            # an instance of servo was passed, save it and return the same (NoOp)
             self._servo_registry[target.target] = target
             return target
         servo: Servo
+
+        # Try to find the servo corresponding to the target
         for servo in self.servos:
             if servo.target == target:
                 self._servo_registry[target] = servo
@@ -184,16 +187,13 @@ class Network(ABC):
         Args:
             servo_id: The servo's ID, or the servo instance itself.
 
-        Raises:
-            KeyError: If the servo can't be resolved, or its state was never set.
-
         Returns:
             The servo's state.
 
         """
         servo = self._resolve_servo(servo_id)
         if servo is None or servo._net_state is None:
-            raise KeyError(servo_id)
+            return NetState.DISCONNECTED
         return servo._net_state
 
     def _set_servo_state(self, servo_id: ServoTarget, state: NetState) -> None:

@@ -161,11 +161,11 @@ class VirtualCanopenNetwork(CanopenNetworkBase):
         """
         if not isinstance(servo, VirtualCanopenServo):
             raise ValueError("Virtual CANopen Servo instance must be provided.")
-        self.servos.remove(servo)
         servo.stop_status_listener()
         servo.socket.shutdown(socket.SHUT_RDWR)
         servo.socket.close()
         self._set_servo_state(servo.target, NetState.DISCONNECTED)
+        self.servos.remove(servo)
         if len(self.servos) == 0:
             self.stop_status_listener()
         servo._disconnect_event_publisher.notify(servo)

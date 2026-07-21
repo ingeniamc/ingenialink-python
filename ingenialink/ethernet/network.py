@@ -313,10 +313,10 @@ class EthernetNetworkBase(Network):
             servo: Instance of the servo connected.
 
         """
-        self.servos.remove(servo)
         servo.stop_status_listener()
         self.close_socket(servo.socket)
         self._set_servo_state(servo.ip_address, NetState.DISCONNECTED)
+        self.servos.remove(servo)
         if len(self.servos) == 0:
             self.stop_status_listener()
         # Notify that disconnect_from_slave has been called
