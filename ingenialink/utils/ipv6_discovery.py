@@ -114,8 +114,9 @@ def discover_ipv6_devices(
     r"""Discover IPv6 devices that reply to an ICMPv6 all-nodes echo request.
 
     Args:
-        interface: Network interface to scan. On Windows, this accepts the
-            Pcap device path used by EtherCAT, for example
+        interface: Network interface to scan. On Linux, provide the native
+            interface name, such as ``eth0`` or ``enp3s0``. On Windows,
+            provide the Npcap device path used by EtherCAT, such as
             ``\\Device\\NPF_{DEADC0FF-EEEE-4444-8888-2BF6900CBFA0}``.
         timeout_s: Maximum time in seconds to collect responses.
 
