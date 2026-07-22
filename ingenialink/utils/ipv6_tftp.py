@@ -77,6 +77,7 @@ class TftpUploader:
             with socket.socket(
                 socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP
             ) as tftp_socket:
+                tftp_socket.settimeout(TFTP_TIMEOUT_S)
                 if sys.platform == "win32":
                     with PcapCapture(self._interface) as capture:
                         transfer_address = self._send_write_request(
@@ -86,7 +87,6 @@ class TftpUploader:
                     transfer_address = self._send_write_request(
                         tftp_socket, server_address, path.name
                     )
-                tftp_socket.settimeout(TFTP_TIMEOUT_S)
                 self._upload_blocks(tftp_socket, transfer_address, path)
         except OSError as exc:
             raise ILFirmwareLoadError("Unable to upload firmware through IPv6 TFTP.") from exc
@@ -112,18 +112,27 @@ class TftpUploader:
         tftp_socket.sendto(write_request, server_address)
         host, _, flowinfo, scopeid = server_address
         transfer_address = (host, TFTP_TRANSFER_PORT, flowinfo, scopeid)
-        if capture is None:
-            return transfer_address
+        if capture is not None:
+            local_port = tftp_socket.getsockname()[1]
+            deadline = time.monotonic() + TFTP_TIMEOUT_S
+            while time.monotonic() < deadline:
+                packet = capture.read_packet()
+                if packet is not None and TftpUploader._is_tftp_acknowledgement(
+                    packet, host, local_port
+                ):
+                    return transfer_address
+            raise ILFirmwareLoadError("No TFTP ACK received for block 0.")
 
-        local_port = tftp_socket.getsockname()[1]
-        deadline = time.monotonic() + TFTP_TIMEOUT_S
-        while time.monotonic() < deadline:
-            packet = capture.read_packet()
-            if packet is not None and TftpUploader._is_tftp_acknowledgement(
-                packet, host, local_port
-            ):
-                return transfer_address
-        raise ILFirmwareLoadError("No TFTP ACK received for block 0.")
+        try:
+            while True:
+                response, sender_address = tftp_socket.recvfrom(TFTP_MAX_PACKET_SIZE)
+                if sender_address != transfer_address:
+                    continue
+                TftpUploader._raise_if_tftp_error(response)
+                if TftpUploader._get_acknowledged_block(response) == 0:
+                    return transfer_address
+        except socket.timeout as exc:
+            raise ILFirmwareLoadError("No TFTP ACK received for block 0.") from exc
 
     @staticmethod
     def _upload_blocks(
@@ -159,13 +168,15 @@ class TftpUploader:
             tftp_socket.sendto(packet, transfer_address)
             try:
                 while True:
-                    response = tftp_socket.recv(TFTP_MAX_PACKET_SIZE)
+                    response, sender_address = tftp_socket.recvfrom(TFTP_MAX_PACKET_SIZE)
+                    if sender_address != transfer_address:
+                        continue
                     TftpUploader._raise_if_tftp_error(response)
                     acknowledged_block = TftpUploader._get_acknowledged_block(response)
                     if acknowledged_block == block_number:
                         return
-                    if acknowledged_block != previous_block:
-                        continue
+                    if acknowledged_block == previous_block:
+                        break
             except socket.timeout:
                 logger.warning(f"Timeout waiting for TFTP ACK {block_number}; retrying data block.")
         raise ILFirmwareLoadError(f"No TFTP ACK received for block {block_number}.")

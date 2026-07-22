@@ -58,9 +58,10 @@ def test_upload_ipv6_firmware_uses_scoped_address_and_uploads_file(mocker, tftp_
     socket_factory = mocker.patch(
         "ingenialink.utils.ipv6_tftp.socket.socket", return_value=tftp_socket
     )
-    tftp_socket.recv.side_effect = [
-        struct.pack("!HH", TFTP_ACK, 0),
-        struct.pack("!HH", TFTP_ACK, 1),
+    transfer_address = ("fe80::1", 20_069, 0, 7)
+    tftp_socket.recvfrom.side_effect = [
+        (struct.pack("!HH", TFTP_ACK, 0), transfer_address),
+        (struct.pack("!HH", TFTP_ACK, 1), transfer_address),
     ]
 
     TftpUploader("fe80::1", r"\Device\NPF_{GUID}").upload_file(firmware_file)
@@ -72,12 +73,12 @@ def test_upload_ipv6_firmware_uses_scoped_address_and_uploads_file(mocker, tftp_
     assert destination == ("fe80::1", 69, 0, 7)
     assert struct.unpack("!H", write_request[:2])[0] == TFTP_WRQ
     tftp_socket.connect.assert_not_called()
-    data_packet, transfer_address = tftp_socket.sendto.call_args_list[1].args
-    assert transfer_address == ("fe80::1", 20_069, 0, 7)
+    data_packet, data_transfer_address = tftp_socket.sendto.call_args_list[1].args
+    assert data_transfer_address == transfer_address
     assert struct.unpack("!HH", data_packet[:4]) == (TFTP_DATA, 1)
     assert data_packet[4:] == b"firmware"
     assert tftp_socket.sendto.call_count == 2
-    tftp_socket.recvfrom.assert_not_called()
+    assert tftp_socket.recvfrom.call_count == 2
 
 
 def test_upload_ipv6_firmware_rejects_non_lfu_file(tmp_path):
@@ -98,10 +99,11 @@ def test_upload_ipv6_firmware_retries_data_without_repeating_write_request(
     firmware_file.write_bytes(b"firmware")
     mocker.patch("ingenialink.utils.ipv6_tftp._get_interface_index", return_value=4)
     mocker.patch("ingenialink.utils.ipv6_tftp.socket.socket", return_value=tftp_socket)
-    tftp_socket.recv.side_effect = [
-        struct.pack("!HH", TFTP_ACK, 0),
+    transfer_address = ("fe80::1", 20_069, 0, 4)
+    tftp_socket.recvfrom.side_effect = [
+        (struct.pack("!HH", TFTP_ACK, 0), transfer_address),
         socket.timeout(),
-        struct.pack("!HH", TFTP_ACK, 1),
+        (struct.pack("!HH", TFTP_ACK, 1), transfer_address),
     ]
 
     TftpUploader("fe80::1", "eth0").upload_file(firmware_file)
@@ -112,6 +114,46 @@ def test_upload_ipv6_firmware_retries_data_without_repeating_write_request(
     assert tftp_socket.sendto.call_args_list[2].args[1] == ("fe80::1", 20_069, 0, 4)
 
 
+def test_upload_ipv6_firmware_ignores_responses_from_another_endpoint(
+    mocker, tftp_socket, tmp_path
+):
+    """Only accept TFTP responses from the drive transfer endpoint."""
+    mocker.patch("ingenialink.utils.ipv6_tftp.sys.platform", "linux")
+    firmware_file = tmp_path / "firmware.lfu"
+    firmware_file.write_bytes(b"firmware")
+    mocker.patch("ingenialink.utils.ipv6_tftp._get_interface_index", return_value=4)
+    mocker.patch("ingenialink.utils.ipv6_tftp.socket.socket", return_value=tftp_socket)
+    transfer_address = ("fe80::1", 20_069, 0, 4)
+    tftp_socket.recvfrom.side_effect = [
+        (struct.pack("!HH", TFTP_ACK, 0), transfer_address),
+        (struct.pack("!HH", TFTP_ACK, 1), ("fe80::2", 20_069, 0, 4)),
+        (struct.pack("!HH", TFTP_ACK, 1), transfer_address),
+    ]
+
+    TftpUploader("fe80::1", "eth0").upload_file(firmware_file)
+
+    assert tftp_socket.sendto.call_count == 2
+    assert tftp_socket.recvfrom.call_count == 3
+
+
+def test_send_data_block_resends_immediately_after_duplicate_ack(tftp_socket):
+    """Retransmit the current data block when the previous ACK is repeated."""
+    transfer_address = ("fe80::1", 20_069, 0, 4)
+    packet = struct.pack("!HH", TFTP_DATA, 2) + b"firmware"
+    tftp_socket.recvfrom.side_effect = [
+        (struct.pack("!HH", TFTP_ACK, 1), transfer_address),
+        (struct.pack("!HH", TFTP_ACK, 2), transfer_address),
+    ]
+
+    TftpUploader._send_data_block(tftp_socket, transfer_address, packet, 2)
+
+    assert tftp_socket.sendto.call_count == 2
+    assert [call.args for call in tftp_socket.sendto.call_args_list] == [
+        (packet, transfer_address),
+        (packet, transfer_address),
+    ]
+
+
 def test_upload_ipv6_firmware_waits_for_captured_write_request_ack(mocker, tftp_socket, tmp_path):
     """Use the Windows pcap ACK 0 to begin the data transfer."""
     firmware_file = tmp_path / "firmware.lfu"
@@ -120,7 +162,10 @@ def test_upload_ipv6_firmware_waits_for_captured_write_request_ack(mocker, tftp_
     capture.__enter__.return_value = capture
     capture.read_packet.return_value = _tftp_acknowledgement_frame("fe80::1", 53_000)
     tftp_socket.getsockname.return_value = ("fe80::2", 53_000, 0, 7)
-    tftp_socket.recv.return_value = struct.pack("!HH", TFTP_ACK, 1)
+    tftp_socket.recvfrom.return_value = (
+        struct.pack("!HH", TFTP_ACK, 1),
+        ("fe80::1", 20_069, 0, 7),
+    )
     mocker.patch("ingenialink.utils.ipv6_tftp.sys.platform", "win32")
     mocker.patch("ingenialink.utils.ipv6_tftp._get_interface_index", return_value=7)
     mocker.patch("ingenialink.utils.ipv6_tftp.socket.socket", return_value=tftp_socket)
@@ -141,7 +186,10 @@ def test_upload_ipv6_firmware_raises_on_tftp_error(mocker, tftp_socket, tmp_path
     firmware_file.touch()
     mocker.patch("ingenialink.utils.ipv6_tftp._get_interface_index", return_value=4)
     mocker.patch("ingenialink.utils.ipv6_tftp.socket.socket", return_value=tftp_socket)
-    tftp_socket.recv.return_value = b"\0\x05\0\x01access denied\0"
+    tftp_socket.recvfrom.return_value = (
+        b"\0\x05\0\x01access denied\0",
+        ("fe80::1", 20_069, 0, 4),
+    )
 
     with pytest.raises(ILFirmwareLoadError, match="TFTP error 1: access denied"):
         TftpUploader("fe80::1", "eth0").upload_file(firmware_file)
