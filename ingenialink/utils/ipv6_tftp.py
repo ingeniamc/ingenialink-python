@@ -13,6 +13,7 @@ from ingenialink.utils.ipv6_discovery import _get_interface_index
 logger = ingenialogger.get_logger(__name__)
 
 TFTP_PORT = 69
+TFTP_TRANSFER_PORT = 20_069
 TFTP_BLOCK_SIZE = 512
 TFTP_MAX_PACKET_SIZE = 65_535
 TFTP_WRQ = 2
@@ -64,10 +65,9 @@ class TftpUploader:
             with socket.socket(
                 socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP
             ) as tftp_socket:
-                tftp_socket.settimeout(TFTP_TIMEOUT_S)
                 transfer_address = self._send_write_request(tftp_socket, server_address, path.name)
-                tftp_socket.connect(transfer_address)
-                self._upload_blocks(tftp_socket, path)
+                tftp_socket.settimeout(TFTP_TIMEOUT_S)
+                self._upload_blocks(tftp_socket, transfer_address, path)
         except OSError as exc:
             raise ILFirmwareLoadError("Unable to upload firmware through IPv6 TFTP.") from exc
 
@@ -79,42 +79,41 @@ class TftpUploader:
         server_address: IPv6SocketAddress,
         filename: str,
     ) -> IPv6SocketAddress:
-        """Send a WRQ and return the server transfer address after ACK 0.
+        """Send a WRQ and return the fixed server transfer address.
 
         Returns:
             IPv6 address of the server transfer endpoint.
 
-        Raises:
-            ILFirmwareLoadError: If the server rejects or does not acknowledge the request.
         """
         write_request = TftpUploader._create_write_request(filename)
-        for _ in range(TFTP_RETRIES + 1):
-            tftp_socket.sendto(write_request, server_address)
-            try:
-                while True:
-                    response, source_address = tftp_socket.recvfrom(TFTP_MAX_PACKET_SIZE)
-                    TftpUploader._raise_if_tftp_error(response)
-                    if TftpUploader._get_acknowledged_block(response) == 0:
-                        return TftpUploader._parse_ipv6_socket_address(source_address)
-            except socket.timeout:
-                logger.warning("Timeout waiting for TFTP ACK 0; retrying write request.")
-        raise ILFirmwareLoadError("No TFTP ACK received for block 0.")
+        tftp_socket.sendto(write_request, server_address)
+        host, _, flowinfo, scopeid = server_address
+        return (host, TFTP_TRANSFER_PORT, flowinfo, scopeid)
 
     @staticmethod
-    def _upload_blocks(tftp_socket: socket.socket, firmware_file: Path) -> None:
+    def _upload_blocks(
+        tftp_socket: socket.socket,
+        transfer_address: IPv6SocketAddress,
+        firmware_file: Path,
+    ) -> None:
         """Send sequential TFTP data blocks until the final block is acknowledged."""
         block_number = 1
         with firmware_file.open("rb") as file:
             while True:
                 data = file.read(TFTP_BLOCK_SIZE)
                 packet = struct.pack("!HH", TFTP_DATA, block_number) + data
-                TftpUploader._send_data_block(tftp_socket, packet, block_number)
+                TftpUploader._send_data_block(tftp_socket, transfer_address, packet, block_number)
                 if len(data) < TFTP_BLOCK_SIZE:
                     return
                 block_number = (block_number + 1) & 0xFFFF
 
     @staticmethod
-    def _send_data_block(tftp_socket: socket.socket, packet: bytes, block_number: int) -> None:
+    def _send_data_block(
+        tftp_socket: socket.socket,
+        transfer_address: IPv6SocketAddress,
+        packet: bytes,
+        block_number: int,
+    ) -> None:
         """Send one DATA packet and wait for its matching ACK.
 
         Raises:
@@ -122,7 +121,7 @@ class TftpUploader:
         """
         previous_block = (block_number - 1) & 0xFFFF
         for _ in range(TFTP_RETRIES + 1):
-            tftp_socket.send(packet)
+            tftp_socket.sendto(packet, transfer_address)
             try:
                 while True:
                     response = tftp_socket.recv(TFTP_MAX_PACKET_SIZE)
@@ -175,24 +174,3 @@ class TftpUploader:
         error_code = int.from_bytes(packet[2:4], "big")
         error_message = packet[4:].rstrip(b"\0").decode(errors="replace")
         raise ILFirmwareLoadError(f"TFTP error {error_code}: {error_message}")
-
-    @staticmethod
-    def _parse_ipv6_socket_address(address: object) -> IPv6SocketAddress:
-        """Validate and return an IPv6 socket address received from the server.
-
-        Returns:
-            Validated IPv6 socket address.
-
-        Raises:
-            ILFirmwareLoadError: If the address is not a valid IPv6 socket address.
-        """
-        if (
-            not isinstance(address, tuple)
-            or len(address) != 4
-            or not isinstance(address[0], str)
-            or not isinstance(address[1], int)
-            or not isinstance(address[2], int)
-            or not isinstance(address[3], int)
-        ):
-            raise ILFirmwareLoadError("The TFTP server returned an invalid transfer address.")
-        return address
