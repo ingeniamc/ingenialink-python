@@ -268,6 +268,19 @@ pipeline {
                                         }
                                     }
                                 }
+                                stage('Publish Novanta PyPi') {
+                                    steps {
+                                        publishNovantaPyPi('dist/*')
+                                    }
+                                }
+                                stage('Publish PyPi') {
+                                    when {
+                                        branch 'master'
+                                    }
+                                    steps {
+                                        publishPyPi('dist/*')
+                                    }
+                                }                                
                                 stage('Archive artifacts') {
                                     steps {
                                         archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
