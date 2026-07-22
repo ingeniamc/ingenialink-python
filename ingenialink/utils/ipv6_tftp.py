@@ -2,13 +2,23 @@
 
 import socket
 import struct
+import sys
+import time
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import ingenialogger
 
 from ingenialink.exceptions import ILFirmwareLoadError
-from ingenialink.utils.ipv6_discovery import _get_interface_index
+from ingenialink.utils.ipv6_discovery import (
+    IPV6_HEADER_SIZE,
+    IPV6_NEXT_HEADER_OFFSET,
+    IPV6_SOURCE_ADDRESS_OFFSET,
+    _get_interface_index,
+    _get_ipv6_extension_header,
+    _get_ipv6_offset,
+)
+from ingenialink.utils.ipv6_pcap_capture import PcapCapture
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -23,6 +33,8 @@ TFTP_ERROR = 5
 TFTP_MODE = b"octet"
 TFTP_TIMEOUT_S = 5.0
 TFTP_RETRIES = 3
+IPV6_NEXT_HEADER_UDP = 17
+UDP_HEADER_SIZE = 8
 
 IPv6SocketAddress = tuple[str, int, int, int]
 
@@ -65,7 +77,15 @@ class TftpUploader:
             with socket.socket(
                 socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP
             ) as tftp_socket:
-                transfer_address = self._send_write_request(tftp_socket, server_address, path.name)
+                if sys.platform == "win32":
+                    with PcapCapture(self._interface) as capture:
+                        transfer_address = self._send_write_request(
+                            tftp_socket, server_address, path.name, capture
+                        )
+                else:
+                    transfer_address = self._send_write_request(
+                        tftp_socket, server_address, path.name
+                    )
                 tftp_socket.settimeout(TFTP_TIMEOUT_S)
                 self._upload_blocks(tftp_socket, transfer_address, path)
         except OSError as exc:
@@ -78,17 +98,32 @@ class TftpUploader:
         tftp_socket: socket.socket,
         server_address: IPv6SocketAddress,
         filename: str,
+        capture: Optional[PcapCapture] = None,
     ) -> IPv6SocketAddress:
         """Send a WRQ and return the fixed server transfer address.
 
         Returns:
             IPv6 address of the server transfer endpoint.
 
+        Raises:
+            ILFirmwareLoadError: If the captured TFTP ACK 0 is not received.
         """
         write_request = TftpUploader._create_write_request(filename)
         tftp_socket.sendto(write_request, server_address)
         host, _, flowinfo, scopeid = server_address
-        return (host, TFTP_TRANSFER_PORT, flowinfo, scopeid)
+        transfer_address = (host, TFTP_TRANSFER_PORT, flowinfo, scopeid)
+        if capture is None:
+            return transfer_address
+
+        local_port = tftp_socket.getsockname()[1]
+        deadline = time.monotonic() + TFTP_TIMEOUT_S
+        while time.monotonic() < deadline:
+            packet = capture.read_packet()
+            if packet is not None and TftpUploader._is_tftp_acknowledgement(
+                packet, host, local_port
+            ):
+                return transfer_address
+        raise ILFirmwareLoadError("No TFTP ACK received for block 0.")
 
     @staticmethod
     def _upload_blocks(
@@ -159,6 +194,35 @@ class TftpUploader:
         if len(packet) < 4 or int.from_bytes(packet[:2], "big") != TFTP_ACK:
             return None
         return int.from_bytes(packet[2:4], "big")
+
+    @staticmethod
+    def _is_tftp_acknowledgement(packet: bytes, drive_address: str, local_port: int) -> bool:
+        """Return whether an Ethernet frame contains ACK 0 from the TFTP transfer port."""
+        ipv6_offset = _get_ipv6_offset(packet)
+        if ipv6_offset is None or len(packet) < ipv6_offset + IPV6_HEADER_SIZE:
+            return False
+        if packet[ipv6_offset] >> 4 != 6:
+            return False
+        next_header = packet[ipv6_offset + IPV6_NEXT_HEADER_OFFSET]
+        udp_offset = ipv6_offset + IPV6_HEADER_SIZE
+        while next_header != IPV6_NEXT_HEADER_UDP:
+            extension_header = _get_ipv6_extension_header(packet, udp_offset, next_header)
+            if extension_header is None:
+                return False
+            next_header, udp_offset = extension_header
+        if len(packet) < udp_offset + UDP_HEADER_SIZE:
+            return False
+        source_address = packet[
+            ipv6_offset + IPV6_SOURCE_ADDRESS_OFFSET : ipv6_offset + IPV6_SOURCE_ADDRESS_OFFSET + 16
+        ]
+        source_port = int.from_bytes(packet[udp_offset : udp_offset + 2], "big")
+        destination_port = int.from_bytes(packet[udp_offset + 2 : udp_offset + 4], "big")
+        return (
+            source_address == socket.inet_pton(socket.AF_INET6, drive_address)
+            and source_port == TFTP_TRANSFER_PORT
+            and destination_port == local_port
+            and TftpUploader._get_acknowledged_block(packet[udp_offset + UDP_HEADER_SIZE :]) == 0
+        )
 
     @staticmethod
     def _raise_if_tftp_error(packet: bytes) -> None:
