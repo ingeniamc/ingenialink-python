@@ -79,11 +79,13 @@ class TftpUploader:
             ) as tftp_socket:
                 tftp_socket.settimeout(TFTP_TIMEOUT_S)
                 if sys.platform == "win32":
+                    # Windows receives the WRQ acknowledgement through packet capture.
                     with PcapCapture(self._interface) as capture:
                         transfer_address = self._send_write_request(
                             tftp_socket, server_address, path.name, capture
                         )
                 else:
+                    # Other platforms receive the WRQ acknowledgement from the UDP socket.
                     transfer_address = self._send_write_request(
                         tftp_socket, server_address, path.name
                     )
@@ -100,13 +102,23 @@ class TftpUploader:
         filename: str,
         capture: Optional[PcapCapture] = None,
     ) -> IPv6SocketAddress:
-        """Send a WRQ and return the fixed server transfer address.
+        """Send a WRQ and wait for ACK 0 before returning the transfer address.
+
+        On Windows, ``capture`` is provided and is used to receive ACK 0. On
+        other platforms, ACK 0 is received directly from ``tftp_socket``.
+
+        Args:
+            tftp_socket: UDP socket used to send the WRQ and, outside Windows,
+                receive ACK 0.
+            server_address: IPv6 address of the server's TFTP endpoint.
+            filename: Name of the firmware file to upload.
+            capture: Windows packet capture used to receive ACK 0.
 
         Returns:
             IPv6 address of the server transfer endpoint.
 
         Raises:
-            ILFirmwareLoadError: If the captured TFTP ACK 0 is not received.
+            ILFirmwareLoadError: If TFTP ACK 0 is not received.
         """
         write_request = TftpUploader._create_write_request(filename)
         tftp_socket.sendto(write_request, server_address)
@@ -208,7 +220,11 @@ class TftpUploader:
 
     @staticmethod
     def _is_tftp_acknowledgement(packet: bytes, drive_address: str, local_port: int) -> bool:
-        """Return whether an Ethernet frame contains ACK 0 from the TFTP transfer port."""
+        """Return whether a Windows-captured Ethernet frame contains TFTP ACK 0.
+
+        The packet-capture path uses this helper to validate an IPv6 UDP frame
+        from the drive's TFTP transfer port to the local UDP socket.
+        """
         ipv6_offset = _get_ipv6_offset(packet)
         if ipv6_offset is None or len(packet) < ipv6_offset + IPV6_HEADER_SIZE:
             return False
