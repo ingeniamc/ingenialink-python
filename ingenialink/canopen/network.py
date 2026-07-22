@@ -9,7 +9,7 @@ from collections import OrderedDict
 from enum import Enum
 from threading import Thread
 from time import sleep
-from typing import Any, Callable, Optional, Union
+from typing import Callable, Generic, Optional, Union
 
 import can
 import canopen
@@ -17,13 +17,20 @@ import ingenialogger
 from can import CanError
 from can.interfaces.kvaser.canlib import __get_canlib_function as get_canlib_function
 from can.interfaces.pcan.pcan import PcanCanOperationError
-from typing_extensions import override
+from typing_extensions import Any, TypeVar, override
 
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.canopen.servo import CanopenServo
+from ingenialink.canopen.servo import CanopenServo, CanopenServoBase
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.network import NetDevEvt, NetProt, NetState, Network, ServoTarget, SlaveInfo
+from ingenialink.network import (
+    NetDevEvt,
+    NetProt,
+    NetState,
+    Network,
+    ServoTarget,
+    SlaveInfo,
+)
 from ingenialink.servo import Servo
 from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
@@ -172,6 +179,9 @@ class CustomListener(can.Listener):
         logger.error(f"An exception occurred with the IXXAT or KVASER connection. Exception: {exc}")
 
 
+CanopenServoT = TypeVar("CanopenServoT", bound=CanopenServoBase, default=CanopenServoBase)
+
+
 class NetStatusListener(Thread):
     """Network status listener thread to check if the drive is alive.
 
@@ -180,7 +190,7 @@ class NetStatusListener(Thread):
 
     """
 
-    def __init__(self, network: "CanopenNetwork"):
+    def __init__(self, network: "CanopenNetwork") -> None:
         super().__init__()
         self.__network = network
         self.__stop = False
@@ -233,7 +243,7 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-class CanopenNetworkBase(Network):
+class CanopenNetworkBase(Generic[CanopenServoT], Network[CanopenServoT]):
     """Base class for CANopen network communications."""
 
     def get_servo_state(self, servo_id: ServoTarget) -> NetState:
@@ -255,7 +265,7 @@ class CanopenNetworkBase(Network):
         return super().get_servo_state(servo_id)
 
 
-class CanopenNetwork(CanopenNetworkBase):
+class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
     """Network of the CANopen communication.
 
     Args:

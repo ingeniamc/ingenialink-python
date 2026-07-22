@@ -61,7 +61,7 @@ class VirtualNetStatusListener(Thread):
         self.__stop = True
 
 
-class VirtualEthercatNetwork(EthercatNetworkBase):
+class VirtualEthercatNetwork(EthercatNetworkBase[VirtualEthercatServo]):
     """Network for all virtual EtherCAT drive communications."""
 
     def __init__(self) -> None:
