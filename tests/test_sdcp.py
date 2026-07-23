@@ -5,21 +5,24 @@ from __future__ import annotations
 import pytest
 
 from ingenialink.utils.sdcp import (
-    SDCPErrorResponse,
     SDCPEventSubscriptionRequest,
     SDCPIdentificationRequest,
     SDCPIdentificationResponse,
-    SDCPOpcode,
+    SDCPIdentificationResponseError,
     SDCPPeriodicSubscriptionRequest,
     SDCPReadRequest,
     SDCPReadResponse,
+    SDCPReadResponseError,
     SDCPSerializer,
     SDCPSubscribeResponse,
+    SDCPSubscribeResponseError,
     SDCPUnknownFrame,
     SDCPUnsubscribeRequest,
     SDCPUnsubscribeResponse,
+    SDCPUnsubscribeResponseError,
     SDCPWriteRequest,
     SDCPWriteResponse,
+    SDCPWriteResponseError,
 )
 
 
@@ -94,7 +97,7 @@ def test_serialize_responses() -> None:
         ("03011234", SDCPWriteResponse(0x1234)),
         ("040112345678", SDCPSubscribeResponse(0x1234, 0x5678)),
         ("05011234", SDCPUnsubscribeResponse(0x1234)),
-        ("02031234FFFF0001", SDCPErrorResponse(SDCPOpcode.READ, 0x1234, 0xFFFF0001)),
+        ("02031234FFFF0001", SDCPReadResponseError(0x1234, 0xFFFF0001)),
     ],
 )
 def test_deserialize_frame_matches_expected_message(frame: str, expected_message: object) -> None:
@@ -116,20 +119,35 @@ def test_deserialize_unknown_frame(frame: str, expected_message: SDCPUnknownFram
     assert decoded_message == expected_message
 
 
+@pytest.mark.parametrize(
+    "frame, expected_message",
+    [
+        ("01031234FFFF0001", SDCPIdentificationResponseError(0x1234, 0xFFFF0001)),
+        ("02031234FFFF0001", SDCPReadResponseError(0x1234, 0xFFFF0001)),
+        ("03031234FFFF0001", SDCPWriteResponseError(0x1234, 0xFFFF0001)),
+        ("04031234FFFF0001", SDCPSubscribeResponseError(0x1234, 0xFFFF0001)),
+        ("05031234FFFF0001", SDCPUnsubscribeResponseError(0x1234, 0xFFFF0001)),
+    ],
+)
+def test_deserialize_specialized_error_responses(frame: str, expected_message: object) -> None:
+    """Decode each known operation's error response into its specific type."""
+    assert SDCPSerializer.deserialize(bytes.fromhex(frame)) == expected_message
+
+
 def test_message_representation_uses_protocol_field_formats() -> None:
     """Display all fields in hexadecimal except timing and message counts."""
     write_request = SDCPWriteRequest(0x1234, 0x2821, 0x00, bytes.fromhex("42C80000"))
     periodic_subscription = SDCPPeriodicSubscriptionRequest(0x1234, 0x2031, 0x00, 100, 2000)
     identification_response = SDCPIdentificationResponse(0x1234, 0, 0x12345678, 0x90ABCDEF, 0)
     unsubscribe_request = SDCPUnsubscribeRequest(0x1234, 0x5678)
-    error_response = SDCPErrorResponse(SDCPOpcode.READ, 0x1234, 0xFFFF0001)
+    error_response = SDCPReadResponseError(0x1234, 0xFFFF0001)
 
     assert repr(write_request) == (
         "SDCPWriteRequest(transaction_id=0x1234, index=0x2821, subindex=0x00, value=0x42C80000)"
     )
     assert repr(periodic_subscription) == (
         "SDCPPeriodicSubscriptionRequest(transaction_id=0x1234, index=0x2031, subindex=0x00, "
-        "cyclic_time_ms=100, message_count=2000)"
+        "cyclic_time_ms=0x0064, message_count=0x07D0)"
     )
     assert repr(identification_response) == (
         "SDCPIdentificationResponse(transaction_id=0x1234, protocol_version=0x00, "
@@ -138,8 +156,9 @@ def test_message_representation_uses_protocol_field_formats() -> None:
     assert repr(unsubscribe_request) == (
         "SDCPUnsubscribeRequest(transaction_id=0x1234, subscription_id=0x5678)"
     )
-    assert repr(error_response) == (
-        "SDCPErrorResponse(opcode=SDCPOpcode.READ, transaction_id=0x1234, error_code=0xFFFF0001)"
+    assert (
+        repr(error_response)
+        == "SDCPReadResponseError(transaction_id=0x1234, error_code=0xFFFF0001)"
     )
 
 

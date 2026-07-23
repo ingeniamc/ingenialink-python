@@ -54,11 +54,6 @@ class _SDCPField(Enum):
         """Return the fixed size of the protocol field in bytes."""
         return self.value[1]
 
-    @property
-    def display_as_hex(self) -> bool:
-        """Return whether the field should use hexadecimal representation."""
-        return self not in {_SDCPField.CYCLIC_TIME_MS, _SDCPField.MESSAGE_COUNT}
-
 
 @dataclass(frozen=True, repr=False)
 class _SDCPMessageRepresentation:
@@ -83,10 +78,8 @@ class _SDCPMessageRepresentation:
                     formatted_value = f"0x{value:02X}"
             elif isinstance(value, int):
                 protocol_field = _SDCPField.__members__.get(message_field.name.upper())
-                if protocol_field and protocol_field.display_as_hex:
-                    formatted_value = f"0x{value:0{protocol_field.size * 2}X}"
-                else:
-                    formatted_value = str(value)
+                width = protocol_field.size * 2 if protocol_field else 0
+                formatted_value = f"0x{value:0{width}X}" if width else f"0x{value:X}"
             else:
                 formatted_value = repr(value)
             formatted_fields.append(f"{message_field.name}={formatted_value}")
@@ -191,12 +184,36 @@ class SDCPUnsubscribeResponse(_SDCPMessageRepresentation):
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPErrorResponse(_SDCPMessageRepresentation):
-    """An SDCP error response."""
+class _SDCPErrorResponse(_SDCPMessageRepresentation):
+    """Base class for operation-specific SDCP error responses."""
 
-    opcode: SDCPOpcode
     transaction_id: int
     error_code: int
+
+
+@dataclass(frozen=True, repr=False)
+class SDCPIdentificationResponseError(_SDCPErrorResponse):
+    """An SDCP Identification error response."""
+
+
+@dataclass(frozen=True, repr=False)
+class SDCPReadResponseError(_SDCPErrorResponse):
+    """An SDCP Read error response."""
+
+
+@dataclass(frozen=True, repr=False)
+class SDCPWriteResponseError(_SDCPErrorResponse):
+    """An SDCP Write error response."""
+
+
+@dataclass(frozen=True, repr=False)
+class SDCPSubscribeResponseError(_SDCPErrorResponse):
+    """An SDCP Subscribe error response."""
+
+
+@dataclass(frozen=True, repr=False)
+class SDCPUnsubscribeResponseError(_SDCPErrorResponse):
+    """An SDCP Unsubscribe error response."""
 
 
 @dataclass(frozen=True, repr=False)
@@ -221,7 +238,11 @@ SDCPMessage = Union[
     SDCPWriteResponse,
     SDCPSubscribeResponse,
     SDCPUnsubscribeResponse,
-    SDCPErrorResponse,
+    SDCPIdentificationResponseError,
+    SDCPReadResponseError,
+    SDCPWriteResponseError,
+    SDCPSubscribeResponseError,
+    SDCPUnsubscribeResponseError,
     SDCPUnknownFrame,
 ]
 
@@ -569,6 +590,7 @@ class SDCPSerializer:
 
         Raises:
             ValueError: If the error payload is not a 32-bit error code.
+            AssertionError: If the opcode is not a defined SDCP operation.
 
         """
         try:
@@ -579,9 +601,18 @@ class SDCPSerializer:
             )
 
         cls._validate_payload_size(payload, _SDCPField.ERROR_CODE.size, "Error response")
-        return SDCPErrorResponse(
-            operation, transaction_id, cls._deserialize_uint(_SDCPField.ERROR_CODE, payload)
-        )
+        error_code = cls._deserialize_uint(_SDCPField.ERROR_CODE, payload)
+        if operation == SDCPOpcode.IDENTIFICATION:
+            return SDCPIdentificationResponseError(transaction_id, error_code)
+        if operation == SDCPOpcode.READ:
+            return SDCPReadResponseError(transaction_id, error_code)
+        if operation == SDCPOpcode.WRITE:
+            return SDCPWriteResponseError(transaction_id, error_code)
+        if operation == SDCPOpcode.SUBSCRIBE:
+            return SDCPSubscribeResponseError(transaction_id, error_code)
+        if operation == SDCPOpcode.UNSUBSCRIBE:
+            return SDCPUnsubscribeResponseError(transaction_id, error_code)
+        raise AssertionError(f"Unsupported SDCP opcode: {operation}")
 
     @classmethod
     def _deserialize_identification_response(
