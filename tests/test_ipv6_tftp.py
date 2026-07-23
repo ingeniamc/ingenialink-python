@@ -64,11 +64,13 @@ def test_upload_ipv6_firmware_uses_scoped_address_and_uploads_file(mocker, tftp_
         (struct.pack("!HH", TFTP_ACK, 1), transfer_address),
     ]
 
-    TftpUploader("fe80::1", r"\Device\NPF_{GUID}").upload_file(firmware_file)
+    with TftpUploader("fe80::1", r"\Device\NPF_{GUID}") as uploader:
+        uploader.upload_file(firmware_file)
 
     interface_index.assert_called_once_with(r"\Device\NPF_{GUID}")
     socket_factory.assert_called_once_with(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     tftp_socket.settimeout.assert_called_once_with(5.0)
+    tftp_socket.close.assert_called_once_with()
     write_request, destination = tftp_socket.sendto.call_args_list[0].args
     assert destination == ("fe80::1", 69, 0, 7)
     assert struct.unpack("!H", write_request[:2])[0] == TFTP_WRQ
@@ -81,13 +83,17 @@ def test_upload_ipv6_firmware_uses_scoped_address_and_uploads_file(mocker, tftp_
     assert tftp_socket.recvfrom.call_count == 2
 
 
-def test_upload_ipv6_firmware_rejects_non_lfu_file(tmp_path):
-    """Reject files the drive TFTP server cannot accept before using sockets."""
+def test_upload_ipv6_firmware_rejects_non_lfu_file(mocker, tftp_socket, tmp_path):
+    """Reject files the drive TFTP server cannot accept before network communication."""
     firmware_file = tmp_path / "firmware.bin"
     firmware_file.touch()
+    mocker.patch("ingenialink.utils.ipv6_tftp.socket.socket", return_value=tftp_socket)
 
-    with pytest.raises(ILFirmwareLoadError, match="only accepts .lfu"):
-        TftpUploader("fe80::1", "eth0").upload_file(firmware_file)
+    with (
+        pytest.raises(ILFirmwareLoadError, match="only accepts .lfu"),
+        TftpUploader("fe80::1", "eth0") as uploader,
+    ):
+        uploader.upload_file(firmware_file)
 
 
 def test_upload_ipv6_firmware_retries_data_without_repeating_write_request(
@@ -106,7 +112,8 @@ def test_upload_ipv6_firmware_retries_data_without_repeating_write_request(
         (struct.pack("!HH", TFTP_ACK, 1), transfer_address),
     ]
 
-    TftpUploader("fe80::1", "eth0").upload_file(firmware_file)
+    with TftpUploader("fe80::1", "eth0") as uploader:
+        uploader.upload_file(firmware_file)
 
     assert tftp_socket.sendto.call_count == 3
     assert tftp_socket.sendto.call_args_list[0].args[1] == ("fe80::1", 69, 0, 4)
@@ -130,13 +137,14 @@ def test_upload_ipv6_firmware_ignores_responses_from_another_endpoint(
         (struct.pack("!HH", TFTP_ACK, 1), transfer_address),
     ]
 
-    TftpUploader("fe80::1", "eth0").upload_file(firmware_file)
+    with TftpUploader("fe80::1", "eth0") as uploader:
+        uploader.upload_file(firmware_file)
 
     assert tftp_socket.sendto.call_count == 2
     assert tftp_socket.recvfrom.call_count == 3
 
 
-def test_send_data_block_resends_immediately_after_duplicate_ack(tftp_socket):
+def test_send_data_block_resends_immediately_after_duplicate_ack(mocker, tftp_socket):
     """Retransmit the current data block when the previous ACK is repeated."""
     transfer_address = ("fe80::1", 20_069, 0, 4)
     packet = struct.pack("!HH", TFTP_DATA, 2) + b"firmware"
@@ -144,8 +152,10 @@ def test_send_data_block_resends_immediately_after_duplicate_ack(tftp_socket):
         (struct.pack("!HH", TFTP_ACK, 1), transfer_address),
         (struct.pack("!HH", TFTP_ACK, 2), transfer_address),
     ]
+    mocker.patch("ingenialink.utils.ipv6_tftp.socket.socket", return_value=tftp_socket)
 
-    TftpUploader._send_data_block(tftp_socket, transfer_address, packet, 2)
+    with TftpUploader("fe80::1", "eth0") as uploader:
+        uploader._send_data_block(transfer_address, packet, 2)
 
     assert tftp_socket.sendto.call_count == 2
     assert [call.args for call in tftp_socket.sendto.call_args_list] == [
@@ -171,7 +181,8 @@ def test_upload_ipv6_firmware_waits_for_captured_write_request_ack(mocker, tftp_
     mocker.patch("ingenialink.utils.ipv6_tftp.socket.socket", return_value=tftp_socket)
     pcap_capture = mocker.patch("ingenialink.utils.ipv6_tftp.PcapCapture", return_value=capture)
 
-    TftpUploader("fe80::1", r"\Device\NPF_{GUID}").upload_file(firmware_file)
+    with TftpUploader("fe80::1", r"\Device\NPF_{GUID}") as uploader:
+        uploader.upload_file(firmware_file)
 
     pcap_capture.assert_called_once_with(r"\Device\NPF_{GUID}")
     capture.read_packet.assert_called_once_with()
@@ -191,5 +202,8 @@ def test_upload_ipv6_firmware_raises_on_tftp_error(mocker, tftp_socket, tmp_path
         ("fe80::1", 20_069, 0, 4),
     )
 
-    with pytest.raises(ILFirmwareLoadError, match="TFTP error 1: access denied"):
-        TftpUploader("fe80::1", "eth0").upload_file(firmware_file)
+    with (
+        pytest.raises(ILFirmwareLoadError, match="TFTP error 1: access denied"),
+        TftpUploader("fe80::1", "eth0") as uploader,
+    ):
+        uploader.upload_file(firmware_file)

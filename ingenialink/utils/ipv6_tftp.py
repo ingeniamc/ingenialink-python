@@ -5,6 +5,7 @@ import struct
 import sys
 import time
 from pathlib import Path
+from types import TracebackType
 from typing import Optional, Union
 
 import ingenialogger
@@ -52,6 +53,21 @@ class TftpUploader:
     def __init__(self, drive_address: str, interface: str) -> None:
         self._drive_address = drive_address
         self._interface = interface
+        self._tftp_socket = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        self._tftp_socket.settimeout(TFTP_TIMEOUT_S)
+
+    def __enter__(self) -> "TftpUploader":
+        """Return the uploader while keeping its socket open."""
+        return self
+
+    def __exit__(
+        self,
+        exc_type: Optional[type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
+        """Close the owned socket when leaving the context."""
+        self._tftp_socket.close()
 
     def upload_file(self, firmware_file: Union[str, Path]) -> None:
         """Upload an LFU firmware file through TFTP.
@@ -74,30 +90,21 @@ class TftpUploader:
         logger.info(f"Uploading firmware to [{self._drive_address}%{interface_index}]:{TFTP_PORT}.")
 
         try:
-            with socket.socket(
-                socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP
-            ) as tftp_socket:
-                tftp_socket.settimeout(TFTP_TIMEOUT_S)
-                if sys.platform == "win32":
-                    # Windows receives the WRQ acknowledgement through packet capture.
-                    with PcapCapture(self._interface) as capture:
-                        transfer_address = self._send_write_request(
-                            tftp_socket, server_address, path.name, capture
-                        )
-                else:
-                    # Other platforms receive the WRQ acknowledgement from the UDP socket.
-                    transfer_address = self._send_write_request(
-                        tftp_socket, server_address, path.name
-                    )
-                self._upload_blocks(tftp_socket, transfer_address, path)
+            if sys.platform == "win32":
+                # Windows receives the WRQ acknowledgement through packet capture.
+                with PcapCapture(self._interface) as capture:
+                    transfer_address = self._send_write_request(server_address, path.name, capture)
+            else:
+                # Other platforms receive the WRQ acknowledgement from the UDP socket.
+                transfer_address = self._send_write_request(server_address, path.name)
+            self._upload_blocks(transfer_address, path)
         except OSError as exc:
             raise ILFirmwareLoadError("Unable to upload firmware through IPv6 TFTP.") from exc
 
         logger.info("IPv6 TFTP firmware upload completed successfully.")
 
-    @staticmethod
     def _send_write_request(
-        tftp_socket: socket.socket,
+        self,
         server_address: IPv6SocketAddress,
         filename: str,
         capture: Optional[PcapCapture] = None,
@@ -105,11 +112,9 @@ class TftpUploader:
         """Send a WRQ and wait for ACK 0 before returning the transfer address.
 
         On Windows, ``capture`` is provided and is used to receive ACK 0. On
-        other platforms, ACK 0 is received directly from ``tftp_socket``.
+        other platforms, ACK 0 is received directly from the owned UDP socket.
 
         Args:
-            tftp_socket: UDP socket used to send the WRQ and, outside Windows,
-                receive ACK 0.
             server_address: IPv6 address of the server's TFTP endpoint.
             filename: Name of the firmware file to upload.
             capture: Windows packet capture used to receive ACK 0.
@@ -120,35 +125,32 @@ class TftpUploader:
         Raises:
             ILFirmwareLoadError: If TFTP ACK 0 is not received.
         """
-        write_request = TftpUploader._create_write_request(filename)
-        tftp_socket.sendto(write_request, server_address)
+        write_request = self._create_write_request(filename)
+        self._tftp_socket.sendto(write_request, server_address)
         host, _, flowinfo, scopeid = server_address
         transfer_address = (host, TFTP_TRANSFER_PORT, flowinfo, scopeid)
         if capture is not None:
-            local_port = tftp_socket.getsockname()[1]
+            local_port = self._tftp_socket.getsockname()[1]
             deadline = time.monotonic() + TFTP_TIMEOUT_S
             while time.monotonic() < deadline:
                 packet = capture.read_packet()
-                if packet is not None and TftpUploader._is_tftp_acknowledgement(
-                    packet, host, local_port
-                ):
+                if packet is not None and self._is_tftp_acknowledgement(packet, host, local_port):
                     return transfer_address
             raise ILFirmwareLoadError("No TFTP ACK received for block 0.")
 
         try:
             while True:
-                response, sender_address = tftp_socket.recvfrom(TFTP_MAX_PACKET_SIZE)
+                response, sender_address = self._tftp_socket.recvfrom(TFTP_MAX_PACKET_SIZE)
                 if sender_address != transfer_address:
                     continue
-                TftpUploader._raise_if_tftp_error(response)
-                if TftpUploader._get_acknowledged_block(response) == 0:
+                self._raise_if_tftp_error(response)
+                if self._get_acknowledged_block(response) == 0:
                     return transfer_address
         except socket.timeout as exc:
             raise ILFirmwareLoadError("No TFTP ACK received for block 0.") from exc
 
-    @staticmethod
     def _upload_blocks(
-        tftp_socket: socket.socket,
+        self,
         transfer_address: IPv6SocketAddress,
         firmware_file: Path,
     ) -> None:
@@ -158,14 +160,13 @@ class TftpUploader:
             while True:
                 data = file.read(TFTP_BLOCK_SIZE)
                 packet = struct.pack("!HH", TFTP_DATA, block_number) + data
-                TftpUploader._send_data_block(tftp_socket, transfer_address, packet, block_number)
+                self._send_data_block(transfer_address, packet, block_number)
                 if len(data) < TFTP_BLOCK_SIZE:
                     return
                 block_number = (block_number + 1) & 0xFFFF
 
-    @staticmethod
     def _send_data_block(
-        tftp_socket: socket.socket,
+        self,
         transfer_address: IPv6SocketAddress,
         packet: bytes,
         block_number: int,
@@ -177,14 +178,14 @@ class TftpUploader:
         """
         previous_block = (block_number - 1) & 0xFFFF
         for _ in range(TFTP_RETRIES + 1):
-            tftp_socket.sendto(packet, transfer_address)
+            self._tftp_socket.sendto(packet, transfer_address)
             try:
                 while True:
-                    response, sender_address = tftp_socket.recvfrom(TFTP_MAX_PACKET_SIZE)
+                    response, sender_address = self._tftp_socket.recvfrom(TFTP_MAX_PACKET_SIZE)
                     if sender_address != transfer_address:
                         continue
-                    TftpUploader._raise_if_tftp_error(response)
-                    acknowledged_block = TftpUploader._get_acknowledged_block(response)
+                    self._raise_if_tftp_error(response)
+                    acknowledged_block = self._get_acknowledged_block(response)
                     if acknowledged_block == block_number:
                         return
                     if acknowledged_block == previous_block:
@@ -193,8 +194,7 @@ class TftpUploader:
                 logger.warning(f"Timeout waiting for TFTP ACK {block_number}; retrying data block.")
         raise ILFirmwareLoadError(f"No TFTP ACK received for block {block_number}.")
 
-    @staticmethod
-    def _create_write_request(filename: str) -> bytes:
+    def _create_write_request(self, filename: str) -> bytes:
         """Create an octet-mode TFTP WRQ packet.
 
         Returns:
@@ -211,15 +211,13 @@ class TftpUploader:
             ) from exc
         return struct.pack("!H", TFTP_WRQ) + encoded_filename + b"\0" + TFTP_MODE + b"\0"
 
-    @staticmethod
-    def _get_acknowledged_block(packet: bytes) -> Union[int, None]:
+    def _get_acknowledged_block(self, packet: bytes) -> Union[int, None]:
         """Return the acknowledged block when a packet is a valid ACK."""
         if len(packet) < 4 or int.from_bytes(packet[:2], "big") != TFTP_ACK:
             return None
         return int.from_bytes(packet[2:4], "big")
 
-    @staticmethod
-    def _is_tftp_acknowledgement(packet: bytes, drive_address: str, local_port: int) -> bool:
+    def _is_tftp_acknowledgement(self, packet: bytes, drive_address: str, local_port: int) -> bool:
         """Return whether a Windows-captured Ethernet frame contains TFTP ACK 0.
 
         The packet-capture path uses this helper to validate an IPv6 UDP frame
@@ -248,11 +246,10 @@ class TftpUploader:
             source_address == socket.inet_pton(socket.AF_INET6, drive_address)
             and source_port == TFTP_TRANSFER_PORT
             and destination_port == local_port
-            and TftpUploader._get_acknowledged_block(packet[udp_offset + UDP_HEADER_SIZE :]) == 0
+            and self._get_acknowledged_block(packet[udp_offset + UDP_HEADER_SIZE :]) == 0
         )
 
-    @staticmethod
-    def _raise_if_tftp_error(packet: bytes) -> None:
+    def _raise_if_tftp_error(self, packet: bytes) -> None:
         """Raise an IngeniaLink error when the server returns TFTP ERROR.
 
         Raises:
