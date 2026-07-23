@@ -86,6 +86,10 @@ def test_serialize_responses() -> None:
         ("040012342E4D000207D0", SDCPEventSubscriptionRequest(0x1234, 0x2E4D, 0x00, 2000)),
         ("050012345678", SDCPUnsubscribeRequest(0x1234, 0x5678)),
         (
+            "01011234001234567890ABCDEF",
+            SDCPIdentifyResponse(0x1234, bytes.fromhex("001234567890ABCDEF")),
+        ),
+        (
             "01011234001234567890ABCDEF00000000",
             SDCPIdentifyResponse(0x1234, bytes.fromhex("001234567890ABCDEF00000000")),
         ),
@@ -93,7 +97,7 @@ def test_serialize_responses() -> None:
         ("03011234", SDCPWriteResponse(0x1234)),
         ("040112345678", SDCPSubscribeResponse(0x1234, 0x5678)),
         ("05011234", SDCPUnsubscribeResponse(0x1234)),
-        ("02031236FFFF0001", SDCPErrorResponse(0x02, 0x1236, 0xFFFF0001)),
+        ("02031234FFFF0001", SDCPErrorResponse(0x02, 0x1234, 0xFFFF0001)),
     ],
 )
 def test_deserialize_frame_matches_expected_message(frame: str, expected_message: object) -> None:
@@ -101,11 +105,18 @@ def test_deserialize_frame_matches_expected_message(frame: str, expected_message
     assert SDCPSerializer.deserialize(bytes.fromhex(frame)) == expected_message
 
 
-def test_deserialize_unknown_frame() -> None:
-    """Preserve unrecognized opcode and flag combinations without guessing their layout."""
-    decoded_message = SDCPSerializer.deserialize(bytes.fromhex("FF801234ABCD"))
+@pytest.mark.parametrize(
+    "frame, expected_message",
+    [
+        ("FF001234ABCD", SDCPUnknownFrame(0xFF, 0x00, 0x1234, bytes.fromhex("ABCD"))),
+        ("02801234ABCD", SDCPUnknownFrame(0x02, 0x80, 0x1234, bytes.fromhex("ABCD"))),
+    ],
+)
+def test_deserialize_unknown_frame(frame: str, expected_message: SDCPUnknownFrame) -> None:
+    """Preserve unsupported opcodes and flags without guessing their layout."""
+    decoded_message = SDCPSerializer.deserialize(bytes.fromhex(frame))
 
-    assert decoded_message == SDCPUnknownFrame(0xFF, 0x80, 0x1234, bytes.fromhex("ABCD"))
+    assert decoded_message == expected_message
 
 
 def test_message_representation_uses_hexadecimal_values() -> None:
@@ -129,6 +140,7 @@ def test_message_representation_uses_hexadecimal_values() -> None:
         "01",
         "010012",
         "02001234",  # Read request is missing its dictionary address.
+        "0200123426E60000",  # Read request cannot contain trailing payload bytes.
         "0301123400",  # Write success responses cannot contain payload bytes.
         "02031234FFFF",  # Error responses require a 32-bit error code.
         "04001234203100010064",  # Periodic subscription is missing its message count.
@@ -147,6 +159,8 @@ def test_deserialize_rejects_malformed_known_frames(frame: str) -> None:
         (SDCPSerializer.serialize_read_request, (0x1234, 0x1_0000, 0x00)),
         (SDCPSerializer.serialize_read_request, (0x1234, 0x100B, 0x100)),
         (SDCPSerializer.serialize_unsubscribe_request, (0x1234, 0x1_0000)),
+        (SDCPSerializer.serialize_error_response, (0x02, 0x1234, 0x1_0000_0000)),
+        (SDCPSerializer.serialize_periodic_subscription_request, (-1, 0x2031, 0x00, 100, 2000)),
     ],
 )
 def test_serialize_rejects_out_of_range_fields(
@@ -155,6 +169,38 @@ def test_serialize_rejects_out_of_range_fields(
     """Reject public-builder fields that cannot fit their protocol positions."""
     with pytest.raises(ValueError):
         serializer(*arguments)  # type: ignore[operator]
+
+
+@pytest.mark.parametrize(
+    "serializer, arguments",
+    [
+        (SDCPSerializer.serialize_identify_request, (True,)),
+        (SDCPSerializer.serialize_read_request, (0x1234, "0x100B", 0x00)),
+        (SDCPSerializer.serialize_unsubscribe_request, (0x1234, False)),
+        (SDCPSerializer.serialize_error_response, (0x02, 0x1234, 1.0)),
+    ],
+)
+def test_serialize_rejects_invalid_uint_types(
+    serializer: object, arguments: tuple[object, ...]
+) -> None:
+    """Reject non-integer and boolean values for unsigned protocol fields."""
+    with pytest.raises(TypeError):
+        serializer(*arguments)  # type: ignore[operator]
+
+
+@pytest.mark.parametrize("value", [b"", "value", bytearray(b"value")])
+def test_serialize_rejects_invalid_write_values(value: object) -> None:
+    """Require a non-empty bytes value payload for a Write request."""
+    expected_exception = ValueError if value == b"" else TypeError
+    with pytest.raises(expected_exception):
+        SDCPSerializer.serialize_write_request(0x1234, 0x2821, 0x00, value)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("payload", ["payload", bytearray(b"payload")])
+def test_serialize_rejects_invalid_response_payload_types(payload: object) -> None:
+    """Require raw response payloads to be immutable bytes."""
+    with pytest.raises(TypeError):
+        SDCPSerializer.serialize_success_response(0x02, 0x1234, payload)  # type: ignore[arg-type]
 
 
 def test_serialize_rejects_empty_write_value() -> None:

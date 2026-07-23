@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, fields
-from enum import IntEnum, IntFlag
-from typing import Union
+from enum import Enum, IntEnum, IntFlag
+from typing import Literal, Union
 
 
 class SDCPOpcode(IntEnum):
@@ -32,6 +32,25 @@ class SDCPSubscriptionMode(IntEnum):
     EVENT = 0x02
 
 
+class _SDCPField(Enum):
+    """Sizes in bytes of fixed-width SDCP fields."""
+
+    OPCODE = ("opcode", 1)
+    FLAGS = ("flags", 1)
+    TRANSACTION_ID = ("transaction_id", 2)
+    INDEX = ("index", 2)
+    SUBINDEX = ("subindex", 1)
+    SUBSCRIPTION_ID = ("subscription_id", 2)
+    CYCLIC_TIME_MS = ("cyclic_time_ms", 2)
+    MESSAGE_COUNT = ("message_count", 2)
+    ERROR_CODE = ("error_code", 4)
+
+    @property
+    def size(self) -> int:
+        """Return the fixed size of the protocol field in bytes."""
+        return self.value[1]
+
+
 @dataclass(frozen=True, repr=False)
 class _SDCPMessageRepresentation:
     """Base class for typed SDCP messages."""
@@ -43,24 +62,15 @@ class _SDCPMessageRepresentation:
             The message type and its fields formatted as protocol values.
 
         """
-        field_widths = {
-            "transaction_id": 4,
-            "index": 4,
-            "subindex": 2,
-            "subscription_id": 4,
-            "cyclic_time_ms": 4,
-            "message_count": 4,
-            "opcode": 2,
-            "flags": 2,
-            "error_code": 8,
-        }
         formatted_fields = []
         for message_field in fields(self):
             value = getattr(self, message_field.name)
             if isinstance(value, bytes):
                 formatted_value = f"0x{value.hex().upper()}"
             elif isinstance(value, int):
-                formatted_value = f"0x{value:0{field_widths[message_field.name]}X}"
+                protocol_field = _SDCPField.__members__.get(message_field.name.upper())
+                width = protocol_field.size * 2 if protocol_field else 0
+                formatted_value = f"0x{value:0{width}X}" if width else f"0x{value:X}"
             else:
                 formatted_value = repr(value)
             formatted_fields.append(f"{message_field.name}={formatted_value}")
@@ -205,10 +215,8 @@ class SDCPSerializer:
     preserved as raw bytes because its layout depends on the opcode.
     """
 
-    HEADER_SIZE = 4
-    OPCODE_SIZE = 1
-    FLAGS_SIZE = 1
-    TRANSACTION_ID_SIZE = 2
+    BYTE_ORDER: Literal["big"] = "big"
+    HEADER_SIZE = _SDCPField.OPCODE.size + _SDCPField.FLAGS.size + _SDCPField.TRANSACTION_ID.size
 
     @classmethod
     def serialize_identify_request(cls, transaction_id: int) -> bytes:
@@ -254,9 +262,11 @@ class SDCPSerializer:
             The big-endian SDCP frame ready to send as a UDP payload.
 
         Raises:
+            TypeError: If the value is not bytes.
             ValueError: If the value is empty.
 
         """
+        cls._validate_bytes("value", value)
         if not value:
             raise ValueError("Write requests require a value payload")
 
@@ -286,12 +296,12 @@ class SDCPSerializer:
             The big-endian SDCP frame ready to send as a UDP payload.
 
         """
-        cls._validate_uint("cyclic_time_ms", cyclic_time_ms, cls.TRANSACTION_ID_SIZE)
-        cls._validate_uint("message_count", message_count, cls.TRANSACTION_ID_SIZE)
+        cls._validate_uint(_SDCPField.CYCLIC_TIME_MS, cyclic_time_ms)
+        cls._validate_uint(_SDCPField.MESSAGE_COUNT, message_count)
         payload = b"".join((
-            SDCPSubscriptionMode.PERIODIC.to_bytes(cls.OPCODE_SIZE, "big"),
-            cyclic_time_ms.to_bytes(cls.TRANSACTION_ID_SIZE, "big"),
-            message_count.to_bytes(cls.TRANSACTION_ID_SIZE, "big"),
+            cls._serialize_uint(_SDCPField.OPCODE, SDCPSubscriptionMode.PERIODIC),
+            cls._serialize_uint(_SDCPField.CYCLIC_TIME_MS, cyclic_time_ms),
+            cls._serialize_uint(_SDCPField.MESSAGE_COUNT, message_count),
         ))
         return cls._serialize_dictionary_request(
             SDCPOpcode.SUBSCRIBE, transaction_id, index, subindex, payload
@@ -313,10 +323,9 @@ class SDCPSerializer:
             The big-endian SDCP frame ready to send as a UDP payload.
 
         """
-        cls._validate_uint("message_count", message_count, cls.TRANSACTION_ID_SIZE)
-        payload = SDCPSubscriptionMode.EVENT.to_bytes(
-            cls.OPCODE_SIZE, "big"
-        ) + message_count.to_bytes(cls.TRANSACTION_ID_SIZE, "big")
+        payload = cls._serialize_uint(
+            _SDCPField.OPCODE, SDCPSubscriptionMode.EVENT
+        ) + cls._serialize_uint(_SDCPField.MESSAGE_COUNT, message_count)
         return cls._serialize_dictionary_request(
             SDCPOpcode.SUBSCRIBE, transaction_id, index, subindex, payload
         )
@@ -333,12 +342,11 @@ class SDCPSerializer:
             The big-endian SDCP frame ready to send as a UDP payload.
 
         """
-        cls._validate_uint("subscription_id", subscription_id, cls.TRANSACTION_ID_SIZE)
         return cls._serialize_frame(
             SDCPOpcode.UNSUBSCRIBE,
             SDCPFlag.NONE,
             transaction_id,
-            subscription_id.to_bytes(cls.TRANSACTION_ID_SIZE, "big"),
+            cls._serialize_uint(_SDCPField.SUBSCRIPTION_ID, subscription_id),
         )
 
     @classmethod
@@ -371,13 +379,11 @@ class SDCPSerializer:
             The big-endian SDCP error response frame.
 
         """
-        error_code_size = 4
-        cls._validate_uint("error_code", error_code, error_code_size)
         return cls._serialize_frame(
             opcode,
             SDCPFlag.REPLY | SDCPFlag.ERROR,
             transaction_id,
-            error_code.to_bytes(error_code_size, "big"),
+            cls._serialize_uint(_SDCPField.ERROR_CODE, error_code),
         )
 
     @classmethod
@@ -395,10 +401,8 @@ class SDCPSerializer:
             The big-endian SDCP request frame.
 
         """
-        cls._validate_uint("index", index, cls.TRANSACTION_ID_SIZE)
-        cls._validate_uint("subindex", subindex, cls.OPCODE_SIZE)
-        address = index.to_bytes(cls.TRANSACTION_ID_SIZE, "big") + subindex.to_bytes(
-            cls.OPCODE_SIZE, "big"
+        address = cls._serialize_uint(_SDCPField.INDEX, index) + cls._serialize_uint(
+            _SDCPField.SUBINDEX, subindex
         )
         return cls._serialize_frame(opcode, SDCPFlag.NONE, transaction_id, address + payload)
 
@@ -412,18 +416,17 @@ class SDCPSerializer:
             The big-endian SDCP frame.
 
         Raises:
+            TypeError: If the payload is not bytes.
             ValueError: If a header field does not fit its protocol-defined size.
 
         """
-        cls._validate_uint("opcode", opcode, cls.OPCODE_SIZE)
-        cls._validate_uint("flags", flags, cls.FLAGS_SIZE)
-        cls._validate_uint("transaction_id", transaction_id, cls.TRANSACTION_ID_SIZE)
-        return b"".join((
-            opcode.to_bytes(cls.OPCODE_SIZE, "big"),
-            flags.to_bytes(cls.FLAGS_SIZE, "big"),
-            transaction_id.to_bytes(cls.TRANSACTION_ID_SIZE, "big"),
-            payload,
+        cls._validate_bytes("payload", payload)
+        header = b"".join((
+            cls._serialize_uint(_SDCPField.OPCODE, opcode),
+            cls._serialize_uint(_SDCPField.FLAGS, flags),
+            cls._serialize_uint(_SDCPField.TRANSACTION_ID, transaction_id),
         ))
+        return header + payload
 
     @classmethod
     def deserialize(cls, frame: bytes) -> SDCPMessage:
@@ -446,7 +449,10 @@ class SDCPSerializer:
         opcode = frame[0]
         flags = frame[1]
         payload = frame[cls.HEADER_SIZE :]
-        transaction_id = int.from_bytes(frame[2 : cls.HEADER_SIZE], "big")
+        transaction_id = cls._deserialize_uint(
+            _SDCPField.TRANSACTION_ID,
+            frame[_SDCPField.OPCODE.size + _SDCPField.FLAGS.size : cls.HEADER_SIZE],
+        )
         if flags == SDCPFlag.REPLY | SDCPFlag.ERROR:
             return cls._deserialize_error_response(opcode, transaction_id, payload)
         if flags == SDCPFlag.NONE:
@@ -476,6 +482,7 @@ class SDCPSerializer:
             cls._validate_payload_size(payload, 0, "Identify request")
             return SDCPIdentifyRequest(transaction_id)
         if operation == SDCPOpcode.READ:
+            cls._validate_payload_size(payload, 3, "Read request")
             index, subindex = cls._deserialize_dictionary_address(payload, "Read request", 0)
             return SDCPReadRequest(transaction_id, index, subindex)
         if operation == SDCPOpcode.WRITE:
@@ -484,8 +491,12 @@ class SDCPSerializer:
         if operation == SDCPOpcode.SUBSCRIBE:
             return cls._deserialize_subscription_request(transaction_id, payload)
         if operation == SDCPOpcode.UNSUBSCRIBE:
-            cls._validate_payload_size(payload, cls.TRANSACTION_ID_SIZE, "Unsubscribe request")
-            return SDCPUnsubscribeRequest(transaction_id, int.from_bytes(payload, "big"))
+            cls._validate_payload_size(
+                payload, _SDCPField.SUBSCRIPTION_ID.size, "Unsubscribe request"
+            )
+            return SDCPUnsubscribeRequest(
+                transaction_id, cls._deserialize_uint(_SDCPField.SUBSCRIPTION_ID, payload)
+            )
 
         return SDCPUnknownFrame(opcode, SDCPFlag.NONE, transaction_id, payload)
 
@@ -515,8 +526,13 @@ class SDCPSerializer:
             cls._validate_payload_size(payload, 0, "Write response")
             return SDCPWriteResponse(transaction_id)
         if operation == SDCPOpcode.SUBSCRIBE:
-            cls._validate_payload_size(payload, cls.TRANSACTION_ID_SIZE, "Subscribe response")
-            return SDCPSubscribeResponse(transaction_id, int.from_bytes(payload, "big"))
+            # Notification payloads cannot yet be distinguished from subscription replies.
+            cls._validate_payload_size(
+                payload, _SDCPField.SUBSCRIPTION_ID.size, "Subscribe response"
+            )
+            return SDCPSubscribeResponse(
+                transaction_id, cls._deserialize_uint(_SDCPField.SUBSCRIPTION_ID, payload)
+            )
         if operation == SDCPOpcode.UNSUBSCRIBE:
             cls._validate_payload_size(payload, 0, "Unsubscribe response")
             return SDCPUnsubscribeResponse(transaction_id)
@@ -536,9 +552,10 @@ class SDCPSerializer:
             ValueError: If the error payload is not a 32-bit error code.
 
         """
-        error_code_size = 4
-        cls._validate_payload_size(payload, error_code_size, "Error response")
-        return SDCPErrorResponse(opcode, transaction_id, int.from_bytes(payload, "big"))
+        cls._validate_payload_size(payload, _SDCPField.ERROR_CODE.size, "Error response")
+        return SDCPErrorResponse(
+            opcode, transaction_id, cls._deserialize_uint(_SDCPField.ERROR_CODE, payload)
+        )
 
     @classmethod
     def _deserialize_subscription_request(cls, transaction_id: int, payload: bytes) -> SDCPMessage:
@@ -563,8 +580,8 @@ class SDCPSerializer:
                 transaction_id,
                 index,
                 subindex,
-                int.from_bytes(payload[4:6], "big"),
-                int.from_bytes(payload[6:8], "big"),
+                cls._deserialize_uint(_SDCPField.CYCLIC_TIME_MS, payload[4:6]),
+                cls._deserialize_uint(_SDCPField.MESSAGE_COUNT, payload[6:8]),
             )
 
         cls._validate_payload_size(payload, 6, "Event Subscribe request")
@@ -572,7 +589,7 @@ class SDCPSerializer:
             transaction_id,
             index,
             subindex,
-            int.from_bytes(payload[4:6], "big"),
+            cls._deserialize_uint(_SDCPField.MESSAGE_COUNT, payload[4:6]),
         )
 
     @classmethod
@@ -588,10 +605,10 @@ class SDCPSerializer:
             ValueError: If the payload cannot contain the address and trailing fields.
 
         """
-        minimum_size = cls.TRANSACTION_ID_SIZE + cls.OPCODE_SIZE + trailing_payload_size
+        minimum_size = _SDCPField.INDEX.size + _SDCPField.SUBINDEX.size + trailing_payload_size
         if len(payload) < minimum_size:
             raise ValueError(f"{message_name} payload is incomplete")
-        return int.from_bytes(payload[:2], "big"), payload[2]
+        return cls._deserialize_uint(_SDCPField.INDEX, payload[:2]), payload[2]
 
     @staticmethod
     def _validate_payload_size(payload: bytes, expected_size: int, message_name: str) -> None:
@@ -605,13 +622,53 @@ class SDCPSerializer:
             raise ValueError(f"{message_name} payload must contain {expected_size} bytes")
 
     @staticmethod
-    def _validate_uint(field_name: str, value: int, size: int) -> None:
+    def _validate_uint(field: _SDCPField, value: int) -> None:
         """Validate that an integer fits in an unsigned protocol field.
 
         Raises:
+            TypeError: If the value is not an integer or is a boolean.
             ValueError: If the integer cannot fit in the field.
 
         """
-        maximum_value = (1 << (size * 8)) - 1
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise TypeError(f"{field.name.lower()} must be an integer")
+        maximum_value = (1 << (field.size * 8)) - 1
         if not 0 <= value <= maximum_value:
-            raise ValueError(f"{field_name} must be in the range 0 to {maximum_value}")
+            raise ValueError(f"{field.name.lower()} must be in the range 0 to {maximum_value}")
+
+    @classmethod
+    def _serialize_uint(cls, field: _SDCPField, value: int) -> bytes:
+        """Serialize an unsigned SDCP field using the protocol byte order.
+
+        Returns:
+            The fixed-width big-endian representation of the field.
+
+        """
+        cls._validate_uint(field, value)
+        return value.to_bytes(field.size, cls.BYTE_ORDER)
+
+    @classmethod
+    def _deserialize_uint(cls, field: _SDCPField, value: bytes) -> int:
+        """Deserialize an unsigned SDCP field using the protocol byte order.
+
+        Returns:
+            The decoded unsigned integer.
+
+        Raises:
+            ValueError: If the byte value is not the field's fixed width.
+
+        """
+        if len(value) != field.size:
+            raise ValueError(f"{field.name.lower()} must contain {field.size} bytes")
+        return int.from_bytes(value, cls.BYTE_ORDER)
+
+    @staticmethod
+    def _validate_bytes(field_name: str, value: bytes) -> None:
+        """Validate a raw protocol byte payload.
+
+        Raises:
+            TypeError: If the value is not bytes.
+
+        """
+        if not isinstance(value, bytes):
+            raise TypeError(f"{field_name} must be bytes")
