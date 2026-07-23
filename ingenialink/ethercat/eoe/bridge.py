@@ -120,9 +120,10 @@ class EoEUdpBridge:
         subnet.
 
         The EoE callback is installed and the mailbox drained before the IP
-        handshake: drives emit unsolicited EoE frames (e.g. IPv6 neighbor
-        discovery) as soon as the mailbox is up, and without the callback
-        SOEM misreads a queued data frame as the handshake response.
+        handshake: the drive may hold queued EoE frames (typically replies to
+        host-stack traffic bridged by a previous EoE session, or its own
+        link-up chatter), and without the callback SOEM misreads a queued
+        data frame as the handshake response.
 
         Raises:
             ILError: If the slave does not support EoE, or its IP can neither
@@ -185,11 +186,12 @@ class EoEUdpBridge:
     def _drain_mailbox(self) -> None:
         """Flush messages queued in the slave mailbox before the IP handshake.
 
-        Queued unsolicited EoE frames are handed to the EoE callback and
-        emergency messages are discarded, so the following request/response
-        exchanges read their own responses. A fixed number of reads is used
-        because a read that delivers a frame to the callback is
-        indistinguishable from an empty mailbox by working counter.
+        Queued EoE frames (left over from a previous EoE session or emitted
+        by the drive on its own) are handed to the EoE callback and emergency
+        messages are discarded, so the following request/response exchanges
+        read their own responses. A fixed number of reads is used because a
+        read that delivers a frame to the callback is indistinguishable from
+        an empty mailbox by working counter.
         """
         for _ in range(self.MAILBOX_DRAIN_READS):
             try:

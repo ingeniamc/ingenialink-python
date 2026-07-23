@@ -243,7 +243,11 @@ class FakeEoESlave:
         self._master.slaves.append(self)
 
     def queue_unsolicited_frame(self, frame: bytes) -> None:
-        """Queue an unsolicited EoE frame, as chatty drives do on link-up.
+        """Queue an EoE frame the host did not ask for.
+
+        Real drives hold such frames when a previous EoE session bridged
+        host-stack traffic to them (queued replies) or when their stack emits
+        link-up chatter.
 
         While unsolicited frames are pending, the IP handshake fails the way
         SOEM fails on a desynchronized mailbox: ``eoe_set_ip`` returns a
