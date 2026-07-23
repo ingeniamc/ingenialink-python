@@ -131,8 +131,10 @@ class _SDCPPayloadReader:
 
 
 @dataclass(frozen=True, repr=False)
-class _SDCPMessageRepresentation:
+class _SDCPMessage:
     """Base class for typed SDCP messages."""
+
+    transaction_id: int
 
     def __repr__(self) -> str:
         """Return a protocol-oriented representation.
@@ -146,11 +148,6 @@ class _SDCPMessageRepresentation:
             value = getattr(self, message_field.name)
             if isinstance(value, bytes):
                 formatted_value = f"0x{value.hex().upper()}"
-            elif message_field.name == "opcode":
-                try:
-                    formatted_value = f"SDCPOpcode.{SDCPOpcode(value).name}"
-                except ValueError:
-                    formatted_value = f"0x{value:02X}"
             elif isinstance(value, int):
                 protocol_field = getattr(_SDCPFields, message_field.name.upper(), None)
                 width = protocol_field.hex_width if protocol_field else 0
@@ -163,36 +160,31 @@ class _SDCPMessageRepresentation:
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPIdentificationRequest(_SDCPMessageRepresentation):
+class SDCPIdentificationRequest(_SDCPMessage):
     """An SDCP Identification request."""
-
-    transaction_id: int
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPReadRequest(_SDCPMessageRepresentation):
+class SDCPReadRequest(_SDCPMessage):
     """An SDCP Read request."""
 
-    transaction_id: int
     index: int
     subindex: int
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPWriteRequest(_SDCPMessageRepresentation):
+class SDCPWriteRequest(_SDCPMessage):
     """An SDCP Write request."""
 
-    transaction_id: int
     index: int
     subindex: int
     value: bytes
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPPeriodicSubscriptionRequest(_SDCPMessageRepresentation):
+class SDCPPeriodicSubscriptionRequest(_SDCPMessage):
     """An SDCP periodic Subscribe request."""
 
-    transaction_id: int
     index: int
     subindex: int
     cyclic_time_ms: int
@@ -200,28 +192,25 @@ class SDCPPeriodicSubscriptionRequest(_SDCPMessageRepresentation):
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPEventSubscriptionRequest(_SDCPMessageRepresentation):
+class SDCPEventSubscriptionRequest(_SDCPMessage):
     """An SDCP event-based Subscribe request."""
 
-    transaction_id: int
     index: int
     subindex: int
     message_count: int
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPUnsubscribeRequest(_SDCPMessageRepresentation):
+class SDCPUnsubscribeRequest(_SDCPMessage):
     """An SDCP Unsubscribe request."""
 
-    transaction_id: int
     subscription_id: int
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPIdentificationResponse(_SDCPMessageRepresentation):
+class SDCPIdentificationResponse(_SDCPMessage):
     """An SDCP Identification response."""
 
-    transaction_id: int
     protocol_version: int
     serial_number: int
     product_code: int
@@ -229,40 +218,33 @@ class SDCPIdentificationResponse(_SDCPMessageRepresentation):
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPReadResponse(_SDCPMessageRepresentation):
+class SDCPReadResponse(_SDCPMessage):
     """An SDCP Read response with raw register value bytes."""
 
-    transaction_id: int
     value: bytes
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPWriteResponse(_SDCPMessageRepresentation):
+class SDCPWriteResponse(_SDCPMessage):
     """An SDCP Write response."""
-
-    transaction_id: int
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPSubscribeResponse(_SDCPMessageRepresentation):
+class SDCPSubscribeResponse(_SDCPMessage):
     """An SDCP Subscribe response containing a subscription identifier."""
 
-    transaction_id: int
     subscription_id: int
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPUnsubscribeResponse(_SDCPMessageRepresentation):
+class SDCPUnsubscribeResponse(_SDCPMessage):
     """An SDCP Unsubscribe response."""
-
-    transaction_id: int
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPErrorResponse(_SDCPMessageRepresentation):
+class SDCPErrorResponse(_SDCPMessage):
     """Base class for operation-specific SDCP error responses."""
 
-    transaction_id: int
     error_code: int
 
 
@@ -292,12 +274,11 @@ class SDCPUnsubscribeResponseError(SDCPErrorResponse):
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPUnknownFrame(_SDCPMessageRepresentation):
+class SDCPUnknownFrame(_SDCPMessage):
     """An SDCP frame whose opcode or flags are not recognized."""
 
     opcode: int
     flags: int
-    transaction_id: int
     payload: bytes
 
 
@@ -580,7 +561,7 @@ class SDCPSerializer:
         if flags == SDCPFlag.REPLY:
             return cls._deserialize_success_response(opcode, transaction_id, payload)
 
-        return SDCPUnknownFrame(opcode, flags, transaction_id, payload)
+        return SDCPUnknownFrame(transaction_id, opcode, flags, payload)
 
     @classmethod
     def _deserialize_request(cls, opcode: int, transaction_id: int, payload: bytes) -> SDCPMessage:
@@ -596,7 +577,7 @@ class SDCPSerializer:
         try:
             operation = SDCPOpcode(opcode)
         except ValueError:
-            return SDCPUnknownFrame(opcode, SDCPFlag.NONE, transaction_id, payload)
+            return SDCPUnknownFrame(transaction_id, opcode, SDCPFlag.NONE, payload)
 
         reader = _SDCPPayloadReader(payload)
         if operation == SDCPOpcode.IDENTIFICATION:
@@ -622,7 +603,7 @@ class SDCPSerializer:
                 subscription_id,
             )
 
-        return SDCPUnknownFrame(opcode, SDCPFlag.NONE, transaction_id, payload)
+        return SDCPUnknownFrame(transaction_id, opcode, SDCPFlag.NONE, payload)
 
     @classmethod
     def _deserialize_success_response(
@@ -640,7 +621,7 @@ class SDCPSerializer:
         try:
             operation = SDCPOpcode(opcode)
         except ValueError:
-            return SDCPUnknownFrame(opcode, SDCPFlag.REPLY, transaction_id, payload)
+            return SDCPUnknownFrame(transaction_id, opcode, SDCPFlag.REPLY, payload)
 
         if operation == SDCPOpcode.IDENTIFICATION:
             return cls._deserialize_identification_response(transaction_id, payload)
@@ -654,7 +635,7 @@ class SDCPSerializer:
         if response_type is not None:
             return cls._deserialize_empty_response(transaction_id, payload, response_type)
 
-        return SDCPUnknownFrame(opcode, SDCPFlag.REPLY, transaction_id, payload)
+        return SDCPUnknownFrame(transaction_id, opcode, SDCPFlag.REPLY, payload)
 
     @classmethod
     def _deserialize_subscribe_response(
@@ -706,7 +687,7 @@ class SDCPSerializer:
             operation = SDCPOpcode(opcode)
         except ValueError:
             return SDCPUnknownFrame(
-                opcode, SDCPFlag.REPLY | SDCPFlag.ERROR, transaction_id, payload
+                transaction_id, opcode, SDCPFlag.REPLY | SDCPFlag.ERROR, payload
             )
 
         reader = _SDCPPayloadReader(payload)

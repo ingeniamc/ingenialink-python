@@ -176,8 +176,8 @@ def test_deserialize_frame_matches_expected_message(frame: str, expected_message
 @pytest.mark.parametrize(
     "frame, expected_message",
     [
-        ("FF001234ABCD", SDCPUnknownFrame(0xFF, 0x00, 0x1234, bytes.fromhex("ABCD"))),
-        ("02801234ABCD", SDCPUnknownFrame(0x02, 0x80, 0x1234, bytes.fromhex("ABCD"))),
+        ("FF001234ABCD", SDCPUnknownFrame(0x1234, 0xFF, 0x00, bytes.fromhex("ABCD"))),
+        ("02801234ABCD", SDCPUnknownFrame(0x1234, 0x02, 0x80, bytes.fromhex("ABCD"))),
     ],
 )
 def test_deserialize_unknown_frame(frame: str, expected_message: SDCPUnknownFrame) -> None:
