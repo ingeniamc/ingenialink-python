@@ -50,6 +50,10 @@ class IPv6SocketAddress(NamedTuple):
 class TftpUploader:
     """Upload firmware files to an IPv6 drive through TFTP.
 
+    The packet exchange follows `RFC 1350 - The TFTP Protocol (Revision 2)
+    <https://www.rfc-editor.org/rfc/rfc1350>`_. This implementation uses the
+    base WRQ, DATA, ACK, and ERROR messages without TFTP option extensions.
+
     Args:
         drive_address: IPv6 address of the drive. Link-local addresses are
             scoped with ``interface``.
