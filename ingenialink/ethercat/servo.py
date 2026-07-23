@@ -24,6 +24,8 @@ except ImportError as ex:
 if TYPE_CHECKING:
     from pysoem import CdefSlave
 
+    from ingenialink.ethercat.eoe import EoEUdpBridge
+
 from ingenialink.constants import (
     CAN_MAX_WRITE_SIZE,
     ECAT_STATE_CHANGE_TIMEOUT_US,
@@ -145,6 +147,36 @@ class EthercatServo(EthercatServoBase):
     def dictionary(self) -> EthercatDictionary:  # type: ignore[override]
         """Ethercat dictionary."""
         return self._dictionary  # type: ignore[return-value]
+
+    def bind_eoe(
+        self, host_ip: str = "192.168.100.1", drive_ip: str = "192.168.100.2"
+    ) -> "EoEUdpBridge":
+        """Spawn a userspace EoE interface for this slave.
+
+        The returned bridge assigns ``drive_ip`` to the slave over EoE and
+        relays UDP datagrams between a localhost socket and the EtherCAT
+        mailbox, so an ``EthernetNetwork`` can connect to the drive through
+        ``127.0.0.1:bridge.relay_port`` while this CoE connection remains in
+        use. The bridge shares this servo's SDO lock, keeping its mailbox
+        polling from interleaving with concurrent SDO transfers.
+
+        Requires the ``eoe_stack`` extension and a pysoem build with EoE
+        support.
+
+        Args:
+            host_ip: IP address of the host side of the EoE link.
+            drive_ip: IP address to assign to the drive over EoE.
+
+        Returns:
+            The opened EoE bridge. The caller is responsible for closing it.
+        """
+        # Imported here because the EoE bridge requires optional dependencies
+        # (the eoe_stack extension and a pysoem build with EoE support).
+        from ingenialink.ethercat.eoe import EoEUdpBridge  # noqa: PLC0415
+
+        bridge = EoEUdpBridge(self.slave, self._lock, host_ip=host_ip, drive_ip=drive_ip)
+        bridge.open()
+        return bridge
 
     def teardown(self) -> None:
         """Perform the necessary actions for teardown."""

@@ -1,0 +1,23 @@
+[package]
+name = "eoe-stack"
+version = "0.1.0"
+edition = "2021"
+description = "Userspace smoltcp UDP/IPv4 stack over EoE Ethernet frames"
+license = "MIT"
+
+[lib]
+name = "eoe_stack"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.24", features = ["extension-module", "abi3-py39", "generate-import-lib"] }
+smoltcp = "0.11"
+
+[lints.rust]
+missing_docs = "deny"
+
+[lints.clippy]
+doc_markdown = "warn"
+missing_docs_in_private_items = "deny"
+missing_errors_doc = "deny"
+missing_panics_doc = "deny"
