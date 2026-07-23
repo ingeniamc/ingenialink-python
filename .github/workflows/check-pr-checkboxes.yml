@@ -1,0 +1,96 @@
+name: Check pull request checkboxes
+
+# Keep this workflow independent of the pull request's code. It reads only
+# GitHub metadata, so it is safe to run for pull requests from forks.
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+  issue_comment:
+    types: [created, edited, deleted]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+  pull_request_review_comment:
+    types: [created, edited, deleted]
+
+permissions:
+  issues: read
+  pull-requests: read
+
+jobs:
+  check-checkboxes:
+    if: github.event_name != 'issue_comment' || github.event.issue.pull_request != null
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check pull request description and comments
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pullNumber = context.payload.pull_request?.number ?? context.issue.number;
+            const { owner, repo } = context.repo;
+
+            const pullRequest = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: pullNumber,
+            });
+
+            const sources = [
+              {
+                name: 'PR description',
+                body: pullRequest.data.body ?? '',
+                url: pullRequest.data.html_url,
+              },
+            ];
+
+            const issueComments = await github.paginate(
+              github.rest.issues.listComments,
+              { owner, repo, issue_number: pullNumber, per_page: 100 },
+            );
+            sources.push(...issueComments.map((comment) => ({
+              name: `Comment by ${comment.user?.login ?? 'unknown user'}`,
+              body: comment.body ?? '',
+              url: comment.html_url,
+            })));
+
+            const reviews = await github.paginate(
+              github.rest.pulls.listReviews,
+              { owner, repo, pull_number: pullNumber, per_page: 100 },
+            );
+            sources.push(...reviews.map((review) => ({
+              name: `Review by ${review.user?.login ?? 'unknown user'}`,
+              body: review.body ?? '',
+              url: review.html_url ?? pullRequest.data.html_url,
+            })));
+
+            const reviewComments = await github.paginate(
+              github.rest.pulls.listReviewComments,
+              { owner, repo, pull_number: pullNumber, per_page: 100 },
+            );
+            sources.push(...reviewComments.map((comment) => ({
+              name: `Review comment by ${comment.user?.login ?? 'unknown user'}`,
+              body: comment.body ?? '',
+              url: comment.html_url,
+            })));
+
+            // GitHub task-list items are normally written as `- [ ] task`.
+            // Match unordered and ordered lists, while ignoring checked items.
+            const uncheckedTask = /^\s*(?:[-*+]|\d+\.)\s+\[\s\].*$/gim;
+            const unchecked = [];
+
+            for (const source of sources) {
+              for (const match of source.body.matchAll(uncheckedTask)) {
+                const line = match[0].trim();
+                unchecked.push(`- ${source.name}: ${line} (${source.url})`);
+              }
+            }
+
+            if (unchecked.length > 0) {
+              core.setFailed([
+                `Found ${unchecked.length} unchecked task-list item${unchecked.length === 1 ? '' : 's'} in PR #${pullNumber}:`,
+                ...unchecked,
+                '',
+                'Check or remove each item before merging.',
+              ].join('\n'));
+            } else {
+              core.info(`All task-list items in PR #${pullNumber} are checked.`);
+            }
