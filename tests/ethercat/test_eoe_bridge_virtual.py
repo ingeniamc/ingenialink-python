@@ -127,6 +127,58 @@ class TestEoEUdpBridgeVirtual:
             bridge.close()
             drive.close()
 
+    def test_open_survives_unsolicited_frames_queued_in_mailbox(
+        self, virtual_drive_server: VirtualDrive
+    ) -> None:
+        """The bridge drains link-up chatter before the IP handshake.
+
+        Chatty drives queue unsolicited EoE frames (e.g. IPv6 neighbor
+        discovery) that desynchronize the SET/GET IP exchange unless they are
+        consumed first.
+        """
+        drive = FakeEoEDrive(DRIVE_MAC, DEFAULT_DRIVE_IP, virtual_drive_server.port)
+        slave = FakeEoESlave(drive)
+        chatter = b"\x33\x33\x00\x00\x00\x02" + b"\x00" * 60
+        for _ in range(3):
+            slave.queue_unsolicited_frame(chatter)
+        bridge = EoEUdpBridge(slave)
+        bridge.open()
+        try:
+            assert bridge.drive_ip == "192.168.100.2"
+            _read_product_code_through_relay(bridge, virtual_drive_server.dictionary_path)
+        finally:
+            bridge.close()
+            drive.close()
+
+    def test_unspecified_reported_ip_keeps_configured_ip(
+        self, virtual_drive_server: VirtualDrive
+    ) -> None:
+        """A 0.0.0.0 reported IP is not adopted when the assignment succeeded."""
+        drive = FakeEoEDrive(DRIVE_MAC, DEFAULT_DRIVE_IP, virtual_drive_server.port)
+        slave = FakeEoESlave(drive, report_unspecified_ip=True)
+        bridge = EoEUdpBridge(slave)
+        bridge.open()
+        try:
+            assert bridge.drive_ip == "192.168.100.2"
+            assert bridge.host_ip == "192.168.100.1"
+            _read_product_code_through_relay(bridge, virtual_drive_server.dictionary_path)
+        finally:
+            bridge.close()
+            drive.close()
+
+    def test_refused_assignment_with_unspecified_reported_ip_raises(
+        self, virtual_drive_server: VirtualDrive
+    ) -> None:
+        """The bridge raises instead of adopting 0.0.0.0 when the assignment fails."""
+        drive = FakeEoEDrive(DRIVE_MAC, DEFAULT_DRIVE_IP, virtual_drive_server.port)
+        slave = FakeEoESlave(drive, accept_set_ip=False, report_unspecified_ip=True)
+        bridge = EoEUdpBridge(slave)
+        try:
+            with pytest.raises(ILError, match="reports no usable IP"):
+                bridge.open()
+        finally:
+            drive.close()
+
     def test_missing_eoe_support_raises(self, virtual_drive_server: VirtualDrive) -> None:
         """Opening the bridge on a slave without EoE mailbox support raises."""
         drive = FakeEoEDrive(DRIVE_MAC, DEFAULT_DRIVE_IP, virtual_drive_server.port)

@@ -214,25 +214,47 @@ class FakeEoESlave:
             ``False`` it keeps ``drive.ip``, mimicking drives that refuse the
             SET_IP_PARAMETER request.
         supports_eoe: Whether the SII advertises EoE mailbox support.
+        report_unspecified_ip: When ``True``, ``eoe_get_ip`` always reports
+            0.0.0.0, mimicking drives whose EoE stack does not persist the
+            assigned IP in the reported settings.
     """
 
     COE_PROTOCOL_BIT = 0x04
     EOE_PROTOCOL_BIT = 0x02
+    # frameinfo2 of an EoE data fragment, as SOEM returns it when a queued
+    # data frame is misread as the SET_IP response
+    DESYNC_WKC = -0x1080
 
     def __init__(
         self,
         drive: FakeEoEDrive,
         accept_set_ip: bool = True,
         supports_eoe: bool = True,
+        report_unspecified_ip: bool = False,
     ) -> None:
         self._drive = drive
         self._accept_set_ip = accept_set_ip
         self._supports_eoe = supports_eoe
+        self._report_unspecified_ip = report_unspecified_ip
         self._netmask: Optional[str] = "255.255.255.0" if not accept_set_ip else None
         self._pending_frames: deque[bytes] = deque()
         self.sent_frames: list[bytes] = []
         self._master = FakeEoEMaster()
         self._master.slaves.append(self)
+
+    def queue_unsolicited_frame(self, frame: bytes) -> None:
+        """Queue an unsolicited EoE frame, as chatty drives do on link-up.
+
+        While unsolicited frames are pending, the IP handshake fails the way
+        SOEM fails on a desynchronized mailbox: ``eoe_set_ip`` returns a
+        negative working counter and ``eoe_get_ip`` returns garbage settings.
+        The bridge must drain the mailbox (with the EoE callback installed)
+        before the handshake to succeed.
+
+        Args:
+            frame: Raw Ethernet frame the drive pushes on its own.
+        """
+        self._pending_frames.append(frame)
 
     def eeprom_read(self, word_address: int, timeout_us: int) -> bytes:  # noqa: ARG002
         """Return the SII mailbox protocols word.
@@ -257,8 +279,12 @@ class FakeEoESlave:
             **settings: ``ip``, ``netmask``, ... as accepted by pysoem.
 
         Returns:
-            The mailbox working counter: 1 on success, 0 when refused.
+            The mailbox working counter: 1 on success, 0 when refused, or a
+            negative value when a pending unsolicited frame desynchronizes
+            the exchange.
         """
+        if self._pending_frames:
+            return self.DESYNC_WKC
         if not self._accept_set_ip:
             return 0
         ip = settings.get("ip")
@@ -272,8 +298,13 @@ class FakeEoESlave:
 
         Returns:
             A pysoem-style ``[mac, ip, netmask, gateway, dns_ip, dns_name]``
-            list.
+            list. Garbage settings while an unsolicited frame is pending,
+            mimicking SOEM parsing a data frame as the response.
         """
+        if self._pending_frames:
+            return ["00:00:00:00:00:00", "0.0.32.0", None, None, None, None]
+        if self._report_unspecified_ip:
+            return [self._drive.mac, "0.0.0.0", self._netmask, None, None, None]
         return [self._drive.mac, self._drive.ip, self._netmask, None, None, None]
 
     def eoe_send_data(self, data: bytes) -> int:

@@ -13,6 +13,7 @@ the drive as if it were a wired Ethernet drive::
     ingenialink UDP datagram <-> localhost relay <-> eoe_stack (ARP/IPv4/UDP) <-> EoE mailbox
 """
 
+import ipaddress
 import socket
 import threading
 import time
@@ -58,6 +59,8 @@ class EoEUdpBridge:
     LOOP_PERIOD_S = 0.001
     MAILBOX_ERROR_BACKOFF_S = 0.1
     MIN_FRAME_SIZE = 60
+    MAILBOX_DRAIN_READS = 16
+    SET_IP_ATTEMPTS = 3
     SII_MAILBOX_PROTOCOL_WORD_ADDRESS = 0x1C
     SII_EEPROM_TIMEOUT_US = 200_000
     EOE_PROTOCOL_BIT = 0x2
@@ -116,6 +119,11 @@ class EoEUdpBridge:
         (Summit drives ship with a default EoE IP) and moves the host to that
         subnet.
 
+        The EoE callback is installed and the mailbox drained before the IP
+        handshake: drives emit unsolicited EoE frames (e.g. IPv6 neighbor
+        discovery) as soon as the mailbox is up, and without the callback
+        SOEM misreads a queued data frame as the handshake response.
+
         Raises:
             ILError: If the slave does not support EoE, or its IP can neither
                 be set nor read back.
@@ -133,14 +141,26 @@ class EoEUdpBridge:
                     f"Slave {self._slave_num} does not advertise EoE mailbox support "
                     f"(SII mailbox protocols: {supported_protocols:#06x})"
                 )
-            set_wkc = self._slave.eoe_set_ip(ip=self._drive_ip, netmask=self.NETMASK)
+        self._master.set_eoe_callback(self._on_eoe_frame)
+        with self._mailbox_lock:
+            self._drain_mailbox()
+            set_wkc = 0
+            for attempt in range(1, self.SET_IP_ATTEMPTS + 1):
+                set_wkc = self._slave.eoe_set_ip(ip=self._drive_ip, netmask=self.NETMASK)
+                if set_wkc > 0:
+                    break
+                logger.debug(
+                    f"EoE IP assignment attempt {attempt}/{self.SET_IP_ATTEMPTS} "
+                    f"refused by slave {self._slave_num} (wkc={set_wkc})"
+                )
             self._drive_ip_settings = self._slave.eoe_get_ip()
-        reported_ip = self._drive_ip_settings[1] if len(self._drive_ip_settings) > 1 else None
+        reported_ip = self._reported_drive_ip()
         if set_wkc <= 0:
             if reported_ip is None:
+                self._master.set_eoe_callback(None)
                 raise ILError(
                     f"Failed to set EoE IP settings on slave {self._slave_num} "
-                    f"(wkc={set_wkc}) and the slave reports no current IP "
+                    f"(wkc={set_wkc}) and the slave reports no usable IP "
                     f"(settings: {self._drive_ip_settings})"
                 )
             logger.warning(
@@ -157,11 +177,39 @@ class EoEUdpBridge:
             f"EoE bridge open on slave {self._slave_num}: host {self._host_ip}, "
             f"drive {self._drive_ip}, reported settings {self._drive_ip_settings}"
         )
-        self._master.set_eoe_callback(self._on_eoe_frame)
         self._relay_sock.bind(("127.0.0.1", 0))
         self._relay_sock.setblocking(False)
         self._running = True
         self._bridge_thread.start()
+
+    def _drain_mailbox(self) -> None:
+        """Flush messages queued in the slave mailbox before the IP handshake.
+
+        Queued unsolicited EoE frames are handed to the EoE callback and
+        emergency messages are discarded, so the following request/response
+        exchanges read their own responses. A fixed number of reads is used
+        because a read that delivers a frame to the callback is
+        indistinguishable from an empty mailbox by working counter.
+        """
+        for _ in range(self.MAILBOX_DRAIN_READS):
+            try:
+                self._slave.mbx_receive()
+            except Exception as exc:  # noqa: PERF203 must survive queued emergencies
+                logger.debug(f"Drained mailbox message raised: {exc}")
+
+    def _reported_drive_ip(self) -> Optional[str]:
+        """Extract a usable drive IP from the reported EoE settings.
+
+        Returns:
+            The reported IP address, or ``None`` if the slave reports no IP
+            or the unspecified address (0.0.0.0).
+        """
+        if len(self._drive_ip_settings) < 2:
+            return None
+        reported = self._drive_ip_settings[1]
+        if reported is None or ipaddress.ip_address(reported).is_unspecified:
+            return None
+        return reported
 
     @staticmethod
     def _derive_host_ip(drive_ip: str) -> str:
