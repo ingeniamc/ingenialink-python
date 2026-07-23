@@ -57,6 +57,9 @@ class EoEUdpBridge:
     PREFIX_LEN = 24
     LOOP_PERIOD_S = 0.001
     MAILBOX_ERROR_BACKOFF_S = 0.1
+    SII_MAILBOX_PROTOCOL_WORD_ADDRESS = 0x1C
+    SII_EEPROM_TIMEOUT_US = 200_000
+    EOE_PROTOCOL_BIT = 0x2
 
     def __init__(
         self,
@@ -88,30 +91,87 @@ class EoEUdpBridge:
         return self._drive_ip_settings
 
     @property
+    def drive_ip(self) -> str:
+        """Effective IP address of the drive on the EoE link."""
+        return self._drive_ip
+
+    @property
+    def host_ip(self) -> str:
+        """Effective IP address of the host side of the EoE link."""
+        return self._host_ip
+
+    @property
     def relay_port(self) -> int:
         """UDP port on localhost where the relay socket is listening."""
         port: int = self._relay_sock.getsockname()[1]
         return port
 
     def open(self) -> None:
-        """Assign the drive its EoE IP settings and start bridging.
+        """Configure the EoE link addresses and start bridging.
+
+        First tries to assign ``drive_ip`` to the slave over EoE (without
+        forcing a MAC address, which some EoE stacks reject). If the slave
+        refuses, it falls back to the IP settings the slave already reports
+        (Summit drives ship with a default EoE IP) and moves the host to that
+        subnet.
 
         Raises:
-            ILError: If the EoE IP settings cannot be written.
+            ILError: If the slave does not support EoE, or its IP can neither
+                be set nor read back.
         """
         self._slave_num = self._master.slaves.index(self._slave) + 1
         with self._mailbox_lock:
-            wkc = self._slave.eoe_set_ip(
-                ip=self._drive_ip, netmask=self.NETMASK, mac=self.DRIVE_MAC
+            supported_protocols = int.from_bytes(
+                self._slave.eeprom_read(
+                    self.SII_MAILBOX_PROTOCOL_WORD_ADDRESS, self.SII_EEPROM_TIMEOUT_US
+                )[:2],
+                "little",
             )
-            if wkc <= 0:
-                raise ILError(f"Failed to set EoE IP settings on slave {self._slave_num}")
+            if not supported_protocols & self.EOE_PROTOCOL_BIT:
+                raise ILError(
+                    f"Slave {self._slave_num} does not advertise EoE mailbox support "
+                    f"(SII mailbox protocols: {supported_protocols:#06x})"
+                )
+            set_wkc = self._slave.eoe_set_ip(ip=self._drive_ip, netmask=self.NETMASK)
             self._drive_ip_settings = self._slave.eoe_get_ip()
+        reported_ip = self._drive_ip_settings[1] if len(self._drive_ip_settings) > 1 else None
+        if set_wkc <= 0:
+            if reported_ip is None:
+                raise ILError(
+                    f"Failed to set EoE IP settings on slave {self._slave_num} "
+                    f"(wkc={set_wkc}) and the slave reports no current IP "
+                    f"(settings: {self._drive_ip_settings})"
+                )
+            logger.warning(
+                f"Slave {self._slave_num} refused the EoE IP assignment (wkc={set_wkc}), "
+                f"falling back to its reported settings: {self._drive_ip_settings}"
+            )
+            self._drive_ip = reported_ip
+            self._host_ip = self._derive_host_ip(reported_ip)
+        elif reported_ip is not None:
+            self._drive_ip = reported_ip
+        # Rebuild the stack in case the host address moved to the drive's subnet
+        self._stack = UdpStack(self.HOST_MAC, self._host_ip, self.PREFIX_LEN)
         self._master.set_eoe_callback(self._on_eoe_frame)
         self._relay_sock.bind(("127.0.0.1", 0))
         self._relay_sock.setblocking(False)
         self._running = True
         self._bridge_thread.start()
+
+    @staticmethod
+    def _derive_host_ip(drive_ip: str) -> str:
+        """Pick a host IP on the same /24 subnet as the drive.
+
+        Args:
+            drive_ip: IP address reported by the drive.
+
+        Returns:
+            An IP address with the same first three octets and a different
+            last octet.
+        """
+        octets = drive_ip.split(".")
+        last_octet = "250" if octets[3] != "250" else "251"
+        return ".".join([*octets[:3], last_octet])
 
     def close(self) -> None:
         """Stop bridging and detach from the slave. The CoE connection is unaffected."""

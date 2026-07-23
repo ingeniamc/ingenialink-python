@@ -47,12 +47,12 @@ def eoe_bridge(servo: "EthercatServo") -> Generator[EoEUdpBridge, None, None]:
 class TestEoEUdpBridge:
     """Userspace EoE bridge against a real drive, alongside the CoE connection."""
 
-    def test_drive_reports_assigned_ip(self, eoe_bridge: EoEUdpBridge) -> None:
-        """The drive reports back the MAC and IP assigned over EoE."""
-        mac, ip, netmask, _, _, _ = eoe_bridge.drive_ip_settings
-        assert mac == EoEUdpBridge.DRIVE_MAC
-        assert ip == "192.168.100.2"
-        assert netmask == EoEUdpBridge.NETMASK
+    def test_drive_reports_ip_settings(self, eoe_bridge: EoEUdpBridge) -> None:
+        """The drive reports EoE IP settings and the bridge adopts a matching subnet."""
+        _, ip, _, _, _, _ = eoe_bridge.drive_ip_settings
+        assert ip == eoe_bridge.drive_ip
+        host_subnet = eoe_bridge.host_ip.rsplit(".", 1)[0]
+        assert eoe_bridge.drive_ip.rsplit(".", 1)[0] == host_subnet
 
     def test_register_read_through_localhost_relay(
         self, eoe_bridge: EoEUdpBridge, setup_descriptor: "DriveEcatSetup"
