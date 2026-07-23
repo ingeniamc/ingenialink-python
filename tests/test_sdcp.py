@@ -119,24 +119,6 @@ def test_deserialize_requires_bytes() -> None:
         SDCPSerializer.deserialize("01001234")  # type: ignore[arg-type]
 
 
-@pytest.mark.parametrize(
-    "frame, message",
-    [
-        ("040012345678", "requested 1 bytes.*only 0 remain"),
-        ("04001234203100", "requested 1 bytes.*only 0 remain"),
-        ("0400123420310001006407D000", "1 unexpected trailing bytes"),
-        ("04001234203100010064", "requested 2 bytes.*only 0 remain"),
-        ("0400123420310003006407D0", "unknown subscription mode: 0x03"),
-    ],
-)
-def test_deserialize_subscription_requests_reject_invalid_payloads(
-    frame: str, message: str
-) -> None:
-    """Reject trailing, truncated, and unknown-mode Subscribe payloads."""
-    with pytest.raises(ValueError, match=message):
-        SDCPSerializer.deserialize(bytes.fromhex(frame))
-
-
 def test_identification_response_requires_revision_number() -> None:
     """Keep Identification responses strict at the documented 13-byte layout."""
     with pytest.raises(ValueError, match="requested 4 bytes.*only 0 remain"):
@@ -248,29 +230,83 @@ def test_message_representation_uses_protocol_field_formats() -> None:
 
 
 @pytest.mark.parametrize(
-    "frame",
+    "frame, message",
     [
-        "",
-        "01",
-        "010012",
-        "0100123400",  # Identification requests cannot contain trailing bytes.
-        "02001234",  # Read request is missing its dictionary address.
-        "0200123426E60000",  # Read request cannot contain trailing payload bytes.
-        "03001234282100",  # Write requests require a non-empty value.
-        "05001234",  # Unsubscribe requests require a subscription identifier.
-        "0301123400",  # Write success responses cannot contain payload bytes.
-        "04011234",  # Subscribe responses require a subscription identifier.
-        "04011234567800",  # Subscribe responses cannot contain trailing payload bytes.
-        "0501123400",  # Unsubscribe responses cannot contain payload bytes.
-        # Identification responses cannot contain trailing bytes.
-        "01011234001234567890ABCDEF0000000000",
-        "02031234FFFF",  # Error responses require a 32-bit error code.
-        "02031234FFFF0001FF",  # Error responses cannot contain trailing bytes.
+        pytest.param("", "four-byte header", id="truncated-header"),
+        pytest.param("01", "four-byte header", id="truncated-header-opcode"),
+        pytest.param("010012", "four-byte header", id="truncated-header-transaction-id"),
+        pytest.param(
+            "0100123400", "1 unexpected trailing bytes", id="identification-request-trailing"
+        ),
+        pytest.param(
+            "01011234001234567890ABCDEF0000000000",
+            "1 unexpected trailing bytes",
+            id="identification-response-trailing",
+        ),
+        pytest.param(
+            "02001234", "requested 2 bytes.*only 0 remain", id="read-request-truncated-address"
+        ),
+        pytest.param("0200123426E60000", "1 unexpected trailing bytes", id="read-request-trailing"),
+        pytest.param(
+            "03001234282100", "Write requests require a value payload", id="write-request-empty"
+        ),
+        pytest.param(
+            "040012345678",
+            "requested 1 bytes.*only 0 remain",
+            id="subscribe-request-truncated-address",
+        ),
+        pytest.param(
+            "04001234203100",
+            "requested 1 bytes.*only 0 remain",
+            id="subscribe-request-truncated-mode",
+        ),
+        pytest.param(
+            "0400123420310001006407D000",
+            "1 unexpected trailing bytes",
+            id="subscribe-request-trailing",
+        ),
+        pytest.param(
+            "04001234203100010064",
+            "requested 2 bytes.*only 0 remain",
+            id="subscribe-request-truncated-message-count",
+        ),
+        pytest.param(
+            "0400123420310003006407D0",
+            "unknown subscription mode: 0x03",
+            id="subscribe-request-unknown-mode",
+        ),
+        pytest.param(
+            "05001234",
+            "requested 2 bytes.*only 0 remain",
+            id="unsubscribe-request-truncated-id",
+        ),
+        pytest.param("0301123400", "1 unexpected trailing bytes", id="write-response-trailing"),
+        pytest.param(
+            "04011234",
+            "requested 2 bytes.*only 0 remain",
+            id="subscribe-response-truncated-id",
+        ),
+        pytest.param(
+            "04011234567800", "1 unexpected trailing bytes", id="subscribe-response-trailing"
+        ),
+        pytest.param(
+            "0501123400", "1 unexpected trailing bytes", id="unsubscribe-response-trailing"
+        ),
+        pytest.param(
+            "02031234FFFF",
+            "requested 4 bytes.*only 2 remain",
+            id="error-response-truncated-code",
+        ),
+        pytest.param(
+            "02031234FFFF0001FF",
+            "1 unexpected trailing bytes",
+            id="error-response-trailing",
+        ),
     ],
 )
-def test_deserialize_rejects_malformed_known_frames(frame: str) -> None:
-    """Reject known message types whose payload does not match the protocol layout."""
-    with pytest.raises(ValueError):
+def test_deserialize_rejects_malformed_frames(frame: str, message: str) -> None:
+    """Reject malformed SDCP headers and message payloads for their expected reasons."""
+    with pytest.raises(ValueError, match=message):
         SDCPSerializer.deserialize(bytes.fromhex(frame))
 
 
