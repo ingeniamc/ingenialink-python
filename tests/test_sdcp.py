@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 from ingenialink.utils.sdcp import (
+    SDCPErrorResponse,
     SDCPEventSubscriptionRequest,
     SDCPIdentificationRequest,
     SDCPIdentificationResponse,
@@ -23,6 +29,8 @@ from ingenialink.utils.sdcp import (
     SDCPWriteRequest,
     SDCPWriteResponse,
     SDCPWriteResponseError,
+    _SDCPFields,
+    _SDCPPayloadReader,
 )
 
 
@@ -74,6 +82,67 @@ def test_serialize_responses() -> None:
     assert error_frame == bytes.fromhex("0203123406020000")
 
 
+def test_payload_reader_tracks_offset_and_remaining_bytes() -> None:
+    """Read fixed-width and raw payload values sequentially."""
+    reader = _SDCPPayloadReader(bytes.fromhex("123456ABCD"))
+
+    assert reader.read_uint(_SDCPFields.TRANSACTION_ID) == 0x1234
+    assert reader.read_bytes(1) == b"V"
+    assert reader.read_remaining() == bytes.fromhex("ABCD")
+    reader.ensure_end()
+
+
+def test_payload_reader_rejects_incomplete_fixed_width_values() -> None:
+    """Reject fixed-width reads when the payload is too short."""
+    with pytest.raises(ValueError):
+        _SDCPPayloadReader(b"\x12").read_uint(_SDCPFields.TRANSACTION_ID)
+
+
+def test_payload_reader_reports_trailing_byte_count() -> None:
+    """Report the number of unexpected trailing payload bytes."""
+    reader = _SDCPPayloadReader(b"\x12\x34")
+
+    with pytest.raises(ValueError, match="2 unexpected trailing bytes"):
+        reader.ensure_end()
+
+
+@pytest.mark.parametrize("payload", ["payload", bytearray(b"payload")])
+def test_payload_reader_requires_bytes(payload: object) -> None:
+    """Require the cursor reader input to be immutable bytes."""
+    with pytest.raises(TypeError, match="Payload must be bytes"):
+        _SDCPPayloadReader(payload)  # type: ignore[arg-type]
+
+
+def test_deserialize_requires_bytes() -> None:
+    """Require complete SDCP frames to be immutable bytes."""
+    with pytest.raises(TypeError, match="Payload must be bytes"):
+        SDCPSerializer.deserialize("01001234")  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "frame, message",
+    [
+        ("040012345678", "requested 1 bytes.*only 0 remain"),
+        ("04001234203100", "requested 1 bytes.*only 0 remain"),
+        ("0400123420310001006407D000", "1 unexpected trailing bytes"),
+        ("04001234203100010064", "requested 2 bytes.*only 0 remain"),
+        ("0400123420310003006407D0", "unknown subscription mode: 0x03"),
+    ],
+)
+def test_deserialize_subscription_requests_reject_invalid_payloads(
+    frame: str, message: str
+) -> None:
+    """Reject trailing, truncated, and unknown-mode Subscribe payloads."""
+    with pytest.raises(ValueError, match=message):
+        SDCPSerializer.deserialize(bytes.fromhex(frame))
+
+
+def test_identification_response_requires_revision_number() -> None:
+    """Keep Identification responses strict at the documented 13-byte layout."""
+    with pytest.raises(ValueError, match="requested 4 bytes.*only 0 remain"):
+        SDCPSerializer.deserialize(bytes.fromhex("01011234001234567890ABCDEF"))
+
+
 @pytest.mark.parametrize(
     "frame, expected_message",
     [
@@ -97,7 +166,6 @@ def test_serialize_responses() -> None:
         ("03011234", SDCPWriteResponse(0x1234)),
         ("040112345678", SDCPSubscribeResponse(0x1234, 0x5678)),
         ("05011234", SDCPUnsubscribeResponse(0x1234)),
-        ("02031234FFFF0001", SDCPReadResponseError(0x1234, 0xFFFF0001)),
     ],
 )
 def test_deserialize_frame_matches_expected_message(frame: str, expected_message: object) -> None:
@@ -122,20 +190,37 @@ def test_deserialize_unknown_frame(frame: str, expected_message: SDCPUnknownFram
 @pytest.mark.parametrize(
     "frame, expected_message",
     [
-        ("01031234FFFF0001", SDCPIdentificationResponseError(0x1234, 0xFFFF0001)),
+        (
+            "01031234FFFF0001",
+            SDCPIdentificationResponseError(0x1234, 0xFFFF0001),
+        ),
         ("02031234FFFF0001", SDCPReadResponseError(0x1234, 0xFFFF0001)),
-        ("03031234FFFF0001", SDCPWriteResponseError(0x1234, 0xFFFF0001)),
-        ("04031234FFFF0001", SDCPSubscribeResponseError(0x1234, 0xFFFF0001)),
-        ("05031234FFFF0001", SDCPUnsubscribeResponseError(0x1234, 0xFFFF0001)),
+        (
+            "03031234FFFF0001",
+            SDCPWriteResponseError(0x1234, 0xFFFF0001),
+        ),
+        (
+            "04031234FFFF0001",
+            SDCPSubscribeResponseError(0x1234, 0xFFFF0001),
+        ),
+        (
+            "05031234FFFF0001",
+            SDCPUnsubscribeResponseError(0x1234, 0xFFFF0001),
+        ),
     ],
 )
-def test_deserialize_specialized_error_responses(frame: str, expected_message: object) -> None:
+def test_deserialize_specialized_error_responses(
+    frame: str, expected_message: SDCPErrorResponse
+) -> None:
     """Decode each known operation's error response into its specific type."""
-    assert SDCPSerializer.deserialize(bytes.fromhex(frame)) == expected_message
+    decoded_message = SDCPSerializer.deserialize(bytes.fromhex(frame))
+
+    assert decoded_message == expected_message
+    assert isinstance(decoded_message, SDCPErrorResponse)
 
 
 def test_message_representation_uses_protocol_field_formats() -> None:
-    """Display all fields in hexadecimal except timing and message counts."""
+    """Fixed-width protocol fields use hexadecimal formatting."""
     write_request = SDCPWriteRequest(0x1234, 0x2821, 0x00, bytes.fromhex("42C80000"))
     periodic_subscription = SDCPPeriodicSubscriptionRequest(0x1234, 0x2031, 0x00, 100, 2000)
     identification_response = SDCPIdentificationResponse(0x1234, 0, 0x12345678, 0x90ABCDEF, 0)
@@ -168,13 +253,19 @@ def test_message_representation_uses_protocol_field_formats() -> None:
         "",
         "01",
         "010012",
+        "0100123400",  # Identification requests cannot contain trailing bytes.
         "02001234",  # Read request is missing its dictionary address.
         "0200123426E60000",  # Read request cannot contain trailing payload bytes.
-        "040012345678",  # Subscribe requests require an address, mode, and message count.
+        "03001234282100",  # Write requests require a non-empty value.
+        "05001234",  # Unsubscribe requests require a subscription identifier.
         "0301123400",  # Write success responses cannot contain payload bytes.
-        "01011234001234567890ABCDEF",  # Identification responses require 13 payload bytes.
+        "04011234",  # Subscribe responses require a subscription identifier.
+        "04011234567800",  # Subscribe responses cannot contain trailing payload bytes.
+        "0501123400",  # Unsubscribe responses cannot contain payload bytes.
+        # Identification responses cannot contain trailing bytes.
+        "01011234001234567890ABCDEF0000000000",
         "02031234FFFF",  # Error responses require a 32-bit error code.
-        "04001234203100010064",  # Periodic subscription is missing its message count.
+        "02031234FFFF0001FF",  # Error responses cannot contain trailing bytes.
     ],
 )
 def test_deserialize_rejects_malformed_known_frames(frame: str) -> None:
@@ -195,11 +286,11 @@ def test_deserialize_rejects_malformed_known_frames(frame: str) -> None:
     ],
 )
 def test_serialize_rejects_out_of_range_fields(
-    serializer: object, arguments: tuple[int, ...]
+    serializer: Callable[..., bytes], arguments: tuple[int, ...]
 ) -> None:
     """Reject public-builder fields that cannot fit their protocol positions."""
     with pytest.raises(ValueError):
-        serializer(*arguments)  # type: ignore[operator]
+        serializer(*arguments)
 
 
 @pytest.mark.parametrize(
@@ -212,17 +303,21 @@ def test_serialize_rejects_out_of_range_fields(
     ],
 )
 def test_serialize_rejects_invalid_uint_types(
-    serializer: object, arguments: tuple[object, ...]
+    serializer: Callable[..., bytes], arguments: tuple[object, ...]
 ) -> None:
     """Reject non-integer and boolean values for unsigned protocol fields."""
     with pytest.raises(TypeError):
-        serializer(*arguments)  # type: ignore[operator]
+        serializer(*arguments)
 
 
-@pytest.mark.parametrize("value", [b"", "value", bytearray(b"value")])
-def test_serialize_rejects_invalid_write_values(value: object) -> None:
+@pytest.mark.parametrize(
+    "value, expected_exception",
+    [(b"", ValueError), ("value", TypeError), (bytearray(b"value"), TypeError)],
+)
+def test_serialize_rejects_invalid_write_values(
+    value: object, expected_exception: type[BaseException]
+) -> None:
     """Require a non-empty bytes value payload for a Write request."""
-    expected_exception = ValueError if value == b"" else TypeError
     with pytest.raises(expected_exception):
         SDCPSerializer.serialize_write_request(0x1234, 0x2821, 0x00, value)  # type: ignore[arg-type]
 
@@ -232,9 +327,3 @@ def test_serialize_rejects_invalid_response_payload_types(payload: object) -> No
     """Require raw response payloads to be immutable bytes."""
     with pytest.raises(TypeError):
         SDCPSerializer.serialize_success_response(0x02, 0x1234, payload)  # type: ignore[arg-type]
-
-
-def test_serialize_rejects_empty_write_value() -> None:
-    """Require a value payload for a Write request."""
-    with pytest.raises(ValueError, match="require a value payload"):
-        SDCPSerializer.serialize_write_request(0x1234, 0x2821, 0x00, b"")
