@@ -43,6 +43,21 @@ Source = "https://github.com/ingeniamc/ingenialink-python"
 [tool.poetry]
 version = "7.6.1"  # base version
 
+# Temporary EoE experiment: install pysoem from the prebuilt wheels of the EoE
+# fork (https://github.com/polfeliu/pysoem/tree/eoe-1.1.13) vendored in
+# eoe_wheels/. The wheels are version 1.1.13, satisfying the project constraint.
+[tool.poetry.dependencies]
+pysoem = [
+    { path = "eoe_wheels/pysoem-1.1.13-cp39-cp39-win_amd64.whl", markers = "sys_platform == 'win32' and python_version == '3.9'" },
+    { path = "eoe_wheels/pysoem-1.1.13-cp310-cp310-win_amd64.whl", markers = "sys_platform == 'win32' and python_version == '3.10'" },
+    { path = "eoe_wheels/pysoem-1.1.13-cp311-cp311-win_amd64.whl", markers = "sys_platform == 'win32' and python_version == '3.11'" },
+    { path = "eoe_wheels/pysoem-1.1.13-cp312-cp312-win_amd64.whl", markers = "sys_platform == 'win32' and python_version == '3.12'" },
+    { path = "eoe_wheels/pysoem-1.1.13-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", markers = "sys_platform == 'linux' and python_version == '3.9'" },
+    { path = "eoe_wheels/pysoem-1.1.13-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", markers = "sys_platform == 'linux' and python_version == '3.10'" },
+    { path = "eoe_wheels/pysoem-1.1.13-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", markers = "sys_platform == 'linux' and python_version == '3.11'" },
+    { path = "eoe_wheels/pysoem-1.1.13-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", markers = "sys_platform == 'linux' and python_version == '3.12'" },
+]
+
 [[tool.poetry.source]]
 name = "PyPI"
 priority = "primary"
@@ -125,6 +140,12 @@ pytest-repeat = "==0.9.4"
 pytest-console-scripts = "==1.4.1"
 twisted = "==25.5.0"
 summit-testing-framework = {version = "0.3.0.post444+develop.0ce4642"}
+# Temporary EoE experiment: smoltcp userspace stack for the EoE bridge (abi3
+# wheels vendored in eoe_wheels/, one per platform for all Python >= 3.9).
+eoe-stack = [
+    { path = "eoe_wheels/eoe_stack-0.1.0-cp39-abi3-win_amd64.whl", markers = "sys_platform == 'win32'" },
+    { path = "eoe_wheels/eoe_stack-0.1.0-cp39-abi3-manylinux_2_34_x86_64.whl", markers = "sys_platform == 'linux'" },
+]
 virtual_drive = {version = "0.1.1.post124+mot3.5494.cogging.compensation.6c8d9cd"}
 xmlschema = ">=3.0.0"
 
