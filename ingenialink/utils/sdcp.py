@@ -10,7 +10,7 @@ from typing import Literal, Union
 class SDCPOpcode(IntEnum):
     """Opcodes defined by the SDCP acyclic communication protocol."""
 
-    IDENTIFY = 0x01
+    IDENTIFICATION = 0x01
     READ = 0x02
     WRITE = 0x03
     SUBSCRIBE = 0x04
@@ -44,11 +44,20 @@ class _SDCPField(Enum):
     CYCLIC_TIME_MS = ("cyclic_time_ms", 2)
     MESSAGE_COUNT = ("message_count", 2)
     ERROR_CODE = ("error_code", 4)
+    PROTOCOL_VERSION = ("protocol_version", 1)
+    SERIAL_NUMBER = ("serial_number", 4)
+    PRODUCT_CODE = ("product_code", 4)
+    REVISION_NUMBER = ("revision_number", 4)
 
     @property
     def size(self) -> int:
         """Return the fixed size of the protocol field in bytes."""
         return self.value[1]
+
+    @property
+    def display_as_hex(self) -> bool:
+        """Return whether the field should use hexadecimal representation."""
+        return self not in {_SDCPField.CYCLIC_TIME_MS, _SDCPField.MESSAGE_COUNT}
 
 
 @dataclass(frozen=True, repr=False)
@@ -56,10 +65,10 @@ class _SDCPMessageRepresentation:
     """Base class for typed SDCP messages."""
 
     def __repr__(self) -> str:
-        """Return a protocol-oriented representation using hexadecimal values.
+        """Return a protocol-oriented representation.
 
         Returns:
-            The message type and its fields formatted as protocol values.
+            The message type and its fields formatted for debugging.
 
         """
         formatted_fields = []
@@ -67,10 +76,17 @@ class _SDCPMessageRepresentation:
             value = getattr(self, message_field.name)
             if isinstance(value, bytes):
                 formatted_value = f"0x{value.hex().upper()}"
+            elif message_field.name == "opcode":
+                try:
+                    formatted_value = f"SDCPOpcode.{SDCPOpcode(value).name}"
+                except ValueError:
+                    formatted_value = f"0x{value:02X}"
             elif isinstance(value, int):
                 protocol_field = _SDCPField.__members__.get(message_field.name.upper())
-                width = protocol_field.size * 2 if protocol_field else 0
-                formatted_value = f"0x{value:0{width}X}" if width else f"0x{value:X}"
+                if protocol_field and protocol_field.display_as_hex:
+                    formatted_value = f"0x{value:0{protocol_field.size * 2}X}"
+                else:
+                    formatted_value = str(value)
             else:
                 formatted_value = repr(value)
             formatted_fields.append(f"{message_field.name}={formatted_value}")
@@ -79,8 +95,8 @@ class _SDCPMessageRepresentation:
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPIdentifyRequest(_SDCPMessageRepresentation):
-    """An SDCP Identify request."""
+class SDCPIdentificationRequest(_SDCPMessageRepresentation):
+    """An SDCP Identification request."""
 
     transaction_id: int
 
@@ -134,11 +150,14 @@ class SDCPUnsubscribeRequest(_SDCPMessageRepresentation):
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPIdentifyResponse(_SDCPMessageRepresentation):
-    """An SDCP Identify response with raw identification data."""
+class SDCPIdentificationResponse(_SDCPMessageRepresentation):
+    """An SDCP Identification response."""
 
     transaction_id: int
-    identification: bytes
+    protocol_version: int
+    serial_number: int
+    product_code: int
+    revision_number: int
 
 
 @dataclass(frozen=True, repr=False)
@@ -175,7 +194,7 @@ class SDCPUnsubscribeResponse(_SDCPMessageRepresentation):
 class SDCPErrorResponse(_SDCPMessageRepresentation):
     """An SDCP error response."""
 
-    opcode: int
+    opcode: SDCPOpcode
     transaction_id: int
     error_code: int
 
@@ -191,13 +210,13 @@ class SDCPUnknownFrame(_SDCPMessageRepresentation):
 
 
 SDCPMessage = Union[
-    SDCPIdentifyRequest,
+    SDCPIdentificationRequest,
     SDCPReadRequest,
     SDCPWriteRequest,
     SDCPPeriodicSubscriptionRequest,
     SDCPEventSubscriptionRequest,
     SDCPUnsubscribeRequest,
-    SDCPIdentifyResponse,
+    SDCPIdentificationResponse,
     SDCPReadResponse,
     SDCPWriteResponse,
     SDCPSubscribeResponse,
@@ -219,8 +238,8 @@ class SDCPSerializer:
     HEADER_SIZE = _SDCPField.OPCODE.size + _SDCPField.FLAGS.size + _SDCPField.TRANSACTION_ID.size
 
     @classmethod
-    def serialize_identify_request(cls, transaction_id: int) -> bytes:
-        """Serialize an Identify request.
+    def serialize_identification_request(cls, transaction_id: int) -> bytes:
+        """Serialize an Identification request.
 
         Args:
             transaction_id: Request identifier in the range 0 to 65535.
@@ -229,7 +248,7 @@ class SDCPSerializer:
             The big-endian SDCP frame ready to send as a UDP payload.
 
         """
-        return cls._serialize_frame(SDCPOpcode.IDENTIFY, SDCPFlag.NONE, transaction_id)
+        return cls._serialize_frame(SDCPOpcode.IDENTIFICATION, SDCPFlag.NONE, transaction_id)
 
     @classmethod
     def serialize_read_request(cls, transaction_id: int, index: int, subindex: int) -> bytes:
@@ -478,9 +497,9 @@ class SDCPSerializer:
         except ValueError:
             return SDCPUnknownFrame(opcode, SDCPFlag.NONE, transaction_id, payload)
 
-        if operation == SDCPOpcode.IDENTIFY:
-            cls._validate_payload_size(payload, 0, "Identify request")
-            return SDCPIdentifyRequest(transaction_id)
+        if operation == SDCPOpcode.IDENTIFICATION:
+            cls._validate_payload_size(payload, 0, "Identification request")
+            return SDCPIdentificationRequest(transaction_id)
         if operation == SDCPOpcode.READ:
             cls._validate_payload_size(payload, 3, "Read request")
             index, subindex = cls._deserialize_dictionary_address(payload, "Read request", 0)
@@ -518,8 +537,8 @@ class SDCPSerializer:
         except ValueError:
             return SDCPUnknownFrame(opcode, SDCPFlag.REPLY, transaction_id, payload)
 
-        if operation == SDCPOpcode.IDENTIFY:
-            return SDCPIdentifyResponse(transaction_id, payload)
+        if operation == SDCPOpcode.IDENTIFICATION:
+            return cls._deserialize_identification_response(transaction_id, payload)
         if operation == SDCPOpcode.READ:
             return SDCPReadResponse(transaction_id, payload)
         if operation == SDCPOpcode.WRITE:
@@ -542,7 +561,7 @@ class SDCPSerializer:
     @classmethod
     def _deserialize_error_response(
         cls, opcode: int, transaction_id: int, payload: bytes
-    ) -> SDCPErrorResponse:
+    ) -> SDCPMessage:
         """Deserialize an SDCP error response.
 
         Returns:
@@ -552,9 +571,53 @@ class SDCPSerializer:
             ValueError: If the error payload is not a 32-bit error code.
 
         """
+        try:
+            operation = SDCPOpcode(opcode)
+        except ValueError:
+            return SDCPUnknownFrame(
+                opcode, SDCPFlag.REPLY | SDCPFlag.ERROR, transaction_id, payload
+            )
+
         cls._validate_payload_size(payload, _SDCPField.ERROR_CODE.size, "Error response")
         return SDCPErrorResponse(
-            opcode, transaction_id, cls._deserialize_uint(_SDCPField.ERROR_CODE, payload)
+            operation, transaction_id, cls._deserialize_uint(_SDCPField.ERROR_CODE, payload)
+        )
+
+    @classmethod
+    def _deserialize_identification_response(
+        cls, transaction_id: int, payload: bytes
+    ) -> SDCPIdentificationResponse:
+        """Deserialize the fixed-width Identification response payload.
+
+        Returns:
+            The parsed Identification response.
+
+        Raises:
+            ValueError: If the payload is not the fixed 13-byte layout.
+
+        """
+        fields = (
+            _SDCPField.PROTOCOL_VERSION,
+            _SDCPField.SERIAL_NUMBER,
+            _SDCPField.PRODUCT_CODE,
+            _SDCPField.REVISION_NUMBER,
+        )
+        cls._validate_payload_size(
+            payload, sum(field.size for field in fields), "Identification response"
+        )
+        protocol_version_end = _SDCPField.PROTOCOL_VERSION.size
+        serial_number_end = protocol_version_end + _SDCPField.SERIAL_NUMBER.size
+        product_code_end = serial_number_end + _SDCPField.PRODUCT_CODE.size
+        return SDCPIdentificationResponse(
+            transaction_id,
+            cls._deserialize_uint(_SDCPField.PROTOCOL_VERSION, payload[:protocol_version_end]),
+            cls._deserialize_uint(
+                _SDCPField.SERIAL_NUMBER, payload[protocol_version_end:serial_number_end]
+            ),
+            cls._deserialize_uint(
+                _SDCPField.PRODUCT_CODE, payload[serial_number_end:product_code_end]
+            ),
+            cls._deserialize_uint(_SDCPField.REVISION_NUMBER, payload[product_code_end:]),
         )
 
     @classmethod
