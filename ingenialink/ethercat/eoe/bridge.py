@@ -170,8 +170,10 @@ class EoEUdpBridge:
             )
             self._drive_ip = reported_ip
             self._host_ip = self._derive_host_ip(reported_ip)
-        elif reported_ip is not None:
-            self._drive_ip = reported_ip
+        # When the assignment is accepted, the assigned IP is authoritative.
+        # The reported settings are informational only: some firmwares return
+        # garbage from GET_IP_PARAMETER (zero MAC, junk IP) even though the
+        # assignment worked.
         # Rebuild the stack in case the host address moved to the drive's subnet
         self._stack = UdpStack(self.HOST_MAC, self._host_ip, self.PREFIX_LEN)
         logger.info(
@@ -263,7 +265,7 @@ class EoEUdpBridge:
             slave_num: 1-based position of the slave that sent the frame.
         """
         if slave_num == self._slave_num:
-            logger.debug(f"EoE rx: {self._describe_frame(frame)}")
+            logger.info(f"EoE rx: {self._describe_frame(frame)}")
             self._stack.push_frame(frame)
         else:
             logger.debug(
@@ -298,7 +300,7 @@ class EoEUdpBridge:
             if wkc <= 0:
                 logger.warning(f"EoE tx failed (wkc={wkc}): {self._describe_frame(frame)}")
             else:
-                logger.debug(f"EoE tx: {self._describe_frame(frame)}")
+                logger.info(f"EoE tx: {self._describe_frame(frame)}")
             frame = self._stack.pop_frame()
 
     def _deliver_stack_to_localhost(self) -> None:
