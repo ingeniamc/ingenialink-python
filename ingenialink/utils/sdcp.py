@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, fields
-from enum import Enum, IntEnum, IntFlag
+from dataclasses import dataclass, field, fields
+from enum import IntEnum, IntFlag
 from typing import Literal, Union
 
 
@@ -32,27 +32,36 @@ class SDCPSubscriptionMode(IntEnum):
     EVENT = 0x02
 
 
-class _SDCPField(Enum):
-    """Sizes in bytes of fixed-width SDCP fields."""
+@dataclass(frozen=True)
+class _SDCPField:
+    """Metadata for a fixed-width SDCP field."""
 
-    OPCODE = ("opcode", 1)
-    FLAGS = ("flags", 1)
-    TRANSACTION_ID = ("transaction_id", 2)
-    INDEX = ("index", 2)
-    SUBINDEX = ("subindex", 1)
-    SUBSCRIPTION_ID = ("subscription_id", 2)
-    CYCLIC_TIME_MS = ("cyclic_time_ms", 2)
-    MESSAGE_COUNT = ("message_count", 2)
-    ERROR_CODE = ("error_code", 4)
-    PROTOCOL_VERSION = ("protocol_version", 1)
-    SERIAL_NUMBER = ("serial_number", 4)
-    PRODUCT_CODE = ("product_code", 4)
-    REVISION_NUMBER = ("revision_number", 4)
+    size: int
+    hex_width: int = field(init=False)
+    maximum_value: int = field(init=False)
 
-    @property
-    def size(self) -> int:
-        """Return the fixed size of the protocol field in bytes."""
-        return self.value[1]
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "hex_width", self.size * 2)
+        object.__setattr__(self, "maximum_value", (1 << (self.size * 8)) - 1)
+
+
+class _SDCPFields:
+    """Fixed-width SDCP field definitions."""
+
+    OPCODE = _SDCPField(1)
+    FLAGS = _SDCPField(1)
+    TRANSACTION_ID = _SDCPField(2)
+    INDEX = _SDCPField(2)
+    SUBINDEX = _SDCPField(1)
+    SUBSCRIPTION_ID = _SDCPField(2)
+    CYCLIC_TIME_MS = _SDCPField(2)
+    MESSAGE_COUNT = _SDCPField(2)
+    ERROR_CODE = _SDCPField(4)
+    PROTOCOL_VERSION = _SDCPField(1)
+    SERIAL_NUMBER = _SDCPField(4)
+    PRODUCT_CODE = _SDCPField(4)
+    REVISION_NUMBER = _SDCPField(4)
+    SUBSCRIPTION_MODE = _SDCPField(1)
 
 
 @dataclass(frozen=True, repr=False)
@@ -77,8 +86,8 @@ class _SDCPMessageRepresentation:
                 except ValueError:
                     formatted_value = f"0x{value:02X}"
             elif isinstance(value, int):
-                protocol_field = _SDCPField.__members__.get(message_field.name.upper())
-                width = protocol_field.size * 2 if protocol_field else 0
+                protocol_field = getattr(_SDCPFields, message_field.name.upper(), None)
+                width = protocol_field.hex_width if protocol_field else 0
                 formatted_value = f"0x{value:0{width}X}" if width else f"0x{value:X}"
             else:
                 formatted_value = repr(value)
@@ -256,7 +265,7 @@ class SDCPSerializer:
     """
 
     BYTE_ORDER: Literal["big"] = "big"
-    HEADER_SIZE = _SDCPField.OPCODE.size + _SDCPField.FLAGS.size + _SDCPField.TRANSACTION_ID.size
+    HEADER_SIZE = _SDCPFields.OPCODE.size + _SDCPFields.FLAGS.size + _SDCPFields.TRANSACTION_ID.size
 
     @classmethod
     def serialize_identification_request(cls, transaction_id: int) -> bytes:
@@ -336,12 +345,10 @@ class SDCPSerializer:
             The big-endian SDCP frame ready to send as a UDP payload.
 
         """
-        cls._validate_uint(_SDCPField.CYCLIC_TIME_MS, cyclic_time_ms)
-        cls._validate_uint(_SDCPField.MESSAGE_COUNT, message_count)
         payload = b"".join((
-            cls._serialize_uint(_SDCPField.OPCODE, SDCPSubscriptionMode.PERIODIC),
-            cls._serialize_uint(_SDCPField.CYCLIC_TIME_MS, cyclic_time_ms),
-            cls._serialize_uint(_SDCPField.MESSAGE_COUNT, message_count),
+            cls._serialize_uint(_SDCPFields.SUBSCRIPTION_MODE, SDCPSubscriptionMode.PERIODIC),
+            cls._serialize_uint(_SDCPFields.CYCLIC_TIME_MS, cyclic_time_ms),
+            cls._serialize_uint(_SDCPFields.MESSAGE_COUNT, message_count),
         ))
         return cls._serialize_dictionary_request(
             SDCPOpcode.SUBSCRIBE, transaction_id, index, subindex, payload
@@ -364,8 +371,8 @@ class SDCPSerializer:
 
         """
         payload = cls._serialize_uint(
-            _SDCPField.OPCODE, SDCPSubscriptionMode.EVENT
-        ) + cls._serialize_uint(_SDCPField.MESSAGE_COUNT, message_count)
+            _SDCPFields.SUBSCRIPTION_MODE, SDCPSubscriptionMode.EVENT
+        ) + cls._serialize_uint(_SDCPFields.MESSAGE_COUNT, message_count)
         return cls._serialize_dictionary_request(
             SDCPOpcode.SUBSCRIBE, transaction_id, index, subindex, payload
         )
@@ -386,7 +393,7 @@ class SDCPSerializer:
             SDCPOpcode.UNSUBSCRIBE,
             SDCPFlag.NONE,
             transaction_id,
-            cls._serialize_uint(_SDCPField.SUBSCRIPTION_ID, subscription_id),
+            cls._serialize_uint(_SDCPFields.SUBSCRIPTION_ID, subscription_id),
         )
 
     @classmethod
@@ -423,7 +430,7 @@ class SDCPSerializer:
             opcode,
             SDCPFlag.REPLY | SDCPFlag.ERROR,
             transaction_id,
-            cls._serialize_uint(_SDCPField.ERROR_CODE, error_code),
+            cls._serialize_uint(_SDCPFields.ERROR_CODE, error_code),
         )
 
     @classmethod
@@ -441,8 +448,8 @@ class SDCPSerializer:
             The big-endian SDCP request frame.
 
         """
-        address = cls._serialize_uint(_SDCPField.INDEX, index) + cls._serialize_uint(
-            _SDCPField.SUBINDEX, subindex
+        address = cls._serialize_uint(_SDCPFields.INDEX, index) + cls._serialize_uint(
+            _SDCPFields.SUBINDEX, subindex
         )
         return cls._serialize_frame(opcode, SDCPFlag.NONE, transaction_id, address + payload)
 
@@ -462,9 +469,9 @@ class SDCPSerializer:
         """
         cls._validate_bytes("payload", payload)
         header = b"".join((
-            cls._serialize_uint(_SDCPField.OPCODE, opcode),
-            cls._serialize_uint(_SDCPField.FLAGS, flags),
-            cls._serialize_uint(_SDCPField.TRANSACTION_ID, transaction_id),
+            cls._serialize_uint(_SDCPFields.OPCODE, opcode),
+            cls._serialize_uint(_SDCPFields.FLAGS, flags),
+            cls._serialize_uint(_SDCPFields.TRANSACTION_ID, transaction_id),
         ))
         return header + payload
 
@@ -490,8 +497,8 @@ class SDCPSerializer:
         flags = frame[1]
         payload = frame[cls.HEADER_SIZE :]
         transaction_id = cls._deserialize_uint(
-            _SDCPField.TRANSACTION_ID,
-            frame[_SDCPField.OPCODE.size + _SDCPField.FLAGS.size : cls.HEADER_SIZE],
+            _SDCPFields.TRANSACTION_ID,
+            frame[_SDCPFields.OPCODE.size + _SDCPFields.FLAGS.size : cls.HEADER_SIZE],
         )
         if flags == SDCPFlag.REPLY | SDCPFlag.ERROR:
             return cls._deserialize_error_response(opcode, transaction_id, payload)
@@ -532,10 +539,11 @@ class SDCPSerializer:
             return cls._deserialize_subscription_request(transaction_id, payload)
         if operation == SDCPOpcode.UNSUBSCRIBE:
             cls._validate_payload_size(
-                payload, _SDCPField.SUBSCRIPTION_ID.size, "Unsubscribe request"
+                payload, _SDCPFields.SUBSCRIPTION_ID.size, "Unsubscribe request"
             )
             return SDCPUnsubscribeRequest(
-                transaction_id, cls._deserialize_uint(_SDCPField.SUBSCRIPTION_ID, payload)
+                transaction_id,
+                cls._deserialize_uint(_SDCPFields.SUBSCRIPTION_ID, payload),
             )
 
         return SDCPUnknownFrame(opcode, SDCPFlag.NONE, transaction_id, payload)
@@ -568,10 +576,11 @@ class SDCPSerializer:
         if operation == SDCPOpcode.SUBSCRIBE:
             # Notification payloads cannot yet be distinguished from subscription replies.
             cls._validate_payload_size(
-                payload, _SDCPField.SUBSCRIPTION_ID.size, "Subscribe response"
+                payload, _SDCPFields.SUBSCRIPTION_ID.size, "Subscribe response"
             )
             return SDCPSubscribeResponse(
-                transaction_id, cls._deserialize_uint(_SDCPField.SUBSCRIPTION_ID, payload)
+                transaction_id,
+                cls._deserialize_uint(_SDCPFields.SUBSCRIPTION_ID, payload),
             )
         if operation == SDCPOpcode.UNSUBSCRIBE:
             cls._validate_payload_size(payload, 0, "Unsubscribe response")
@@ -600,8 +609,8 @@ class SDCPSerializer:
                 opcode, SDCPFlag.REPLY | SDCPFlag.ERROR, transaction_id, payload
             )
 
-        cls._validate_payload_size(payload, _SDCPField.ERROR_CODE.size, "Error response")
-        error_code = cls._deserialize_uint(_SDCPField.ERROR_CODE, payload)
+        cls._validate_payload_size(payload, _SDCPFields.ERROR_CODE.size, "Error response")
+        error_code = cls._deserialize_uint(_SDCPFields.ERROR_CODE, payload)
         if operation == SDCPOpcode.IDENTIFICATION:
             return SDCPIdentificationResponseError(transaction_id, error_code)
         if operation == SDCPOpcode.READ:
@@ -628,27 +637,29 @@ class SDCPSerializer:
 
         """
         fields = (
-            _SDCPField.PROTOCOL_VERSION,
-            _SDCPField.SERIAL_NUMBER,
-            _SDCPField.PRODUCT_CODE,
-            _SDCPField.REVISION_NUMBER,
+            _SDCPFields.PROTOCOL_VERSION,
+            _SDCPFields.SERIAL_NUMBER,
+            _SDCPFields.PRODUCT_CODE,
+            _SDCPFields.REVISION_NUMBER,
         )
         cls._validate_payload_size(
             payload, sum(field.size for field in fields), "Identification response"
         )
-        protocol_version_end = _SDCPField.PROTOCOL_VERSION.size
-        serial_number_end = protocol_version_end + _SDCPField.SERIAL_NUMBER.size
-        product_code_end = serial_number_end + _SDCPField.PRODUCT_CODE.size
+        protocol_version_end = _SDCPFields.PROTOCOL_VERSION.size
+        serial_number_end = protocol_version_end + _SDCPFields.SERIAL_NUMBER.size
+        product_code_end = serial_number_end + _SDCPFields.PRODUCT_CODE.size
         return SDCPIdentificationResponse(
             transaction_id,
-            cls._deserialize_uint(_SDCPField.PROTOCOL_VERSION, payload[:protocol_version_end]),
+            cls._deserialize_uint(_SDCPFields.PROTOCOL_VERSION, payload[:protocol_version_end]),
             cls._deserialize_uint(
-                _SDCPField.SERIAL_NUMBER, payload[protocol_version_end:serial_number_end]
+                _SDCPFields.SERIAL_NUMBER,
+                payload[protocol_version_end:serial_number_end],
             ),
             cls._deserialize_uint(
-                _SDCPField.PRODUCT_CODE, payload[serial_number_end:product_code_end]
+                _SDCPFields.PRODUCT_CODE,
+                payload[serial_number_end:product_code_end],
             ),
-            cls._deserialize_uint(_SDCPField.REVISION_NUMBER, payload[product_code_end:]),
+            cls._deserialize_uint(_SDCPFields.REVISION_NUMBER, payload[product_code_end:]),
         )
 
     @classmethod
@@ -674,8 +685,8 @@ class SDCPSerializer:
                 transaction_id,
                 index,
                 subindex,
-                cls._deserialize_uint(_SDCPField.CYCLIC_TIME_MS, payload[4:6]),
-                cls._deserialize_uint(_SDCPField.MESSAGE_COUNT, payload[6:8]),
+                cls._deserialize_uint(_SDCPFields.CYCLIC_TIME_MS, payload[4:6]),
+                cls._deserialize_uint(_SDCPFields.MESSAGE_COUNT, payload[6:8]),
             )
 
         cls._validate_payload_size(payload, 6, "Event Subscribe request")
@@ -683,7 +694,7 @@ class SDCPSerializer:
             transaction_id,
             index,
             subindex,
-            cls._deserialize_uint(_SDCPField.MESSAGE_COUNT, payload[4:6]),
+            cls._deserialize_uint(_SDCPFields.MESSAGE_COUNT, payload[4:6]),
         )
 
     @classmethod
@@ -699,10 +710,10 @@ class SDCPSerializer:
             ValueError: If the payload cannot contain the address and trailing fields.
 
         """
-        minimum_size = _SDCPField.INDEX.size + _SDCPField.SUBINDEX.size + trailing_payload_size
+        minimum_size = _SDCPFields.INDEX.size + _SDCPFields.SUBINDEX.size + trailing_payload_size
         if len(payload) < minimum_size:
             raise ValueError(f"{message_name} payload is incomplete")
-        return cls._deserialize_uint(_SDCPField.INDEX, payload[:2]), payload[2]
+        return cls._deserialize_uint(_SDCPFields.INDEX, payload[:2]), payload[2]
 
     @staticmethod
     def _validate_payload_size(payload: bytes, expected_size: int, message_name: str) -> None:
@@ -725,10 +736,9 @@ class SDCPSerializer:
 
         """
         if isinstance(value, bool) or not isinstance(value, int):
-            raise TypeError(f"{field.name.lower()} must be an integer")
-        maximum_value = (1 << (field.size * 8)) - 1
-        if not 0 <= value <= maximum_value:
-            raise ValueError(f"{field.name.lower()} must be in the range 0 to {maximum_value}")
+            raise TypeError(f"Value must be an integer for a {field.size}-byte field")
+        if not 0 <= value <= field.maximum_value:
+            raise ValueError(f"Value must be in the range 0 to {field.maximum_value}")
 
     @classmethod
     def _serialize_uint(cls, field: _SDCPField, value: int) -> bytes:
@@ -753,7 +763,7 @@ class SDCPSerializer:
 
         """
         if len(value) != field.size:
-            raise ValueError(f"{field.name.lower()} must contain {field.size} bytes")
+            raise ValueError(f"Value must contain {field.size} bytes")
         return int.from_bytes(value, cls.BYTE_ORDER)
 
     @staticmethod
