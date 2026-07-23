@@ -5,11 +5,11 @@ import platform
 import re
 import tempfile
 import warnings
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from enum import Enum
 from threading import Thread
 from time import sleep
-from typing import Any, Callable, Optional, Union
+from typing import Callable, Generic, Optional, Union
 
 import can
 import canopen
@@ -17,13 +17,20 @@ import ingenialogger
 from can import CanError
 from can.interfaces.kvaser.canlib import __get_canlib_function as get_canlib_function
 from can.interfaces.pcan.pcan import PcanCanOperationError
-from typing_extensions import override
+from typing_extensions import Any, TypeVar, override
 
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.canopen.servo import CanopenServo
+from ingenialink.canopen.servo import CanopenServo, CanopenServoBase
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
+from ingenialink.network import (
+    NetDevEvt,
+    NetProt,
+    NetState,
+    Network,
+    ServoTarget,
+    SlaveInfo,
+)
 from ingenialink.servo import Servo
 from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
 from ingenialink.utils.mcb import MCB
@@ -172,6 +179,9 @@ class CustomListener(can.Listener):
         logger.error(f"An exception occurred with the IXXAT or KVASER connection. Exception: {exc}")
 
 
+CanopenServoT = TypeVar("CanopenServoT", bound=CanopenServoBase, default=CanopenServoBase)
+
+
 class NetStatusListener(Thread):
     """Network status listener thread to check if the drive is alive.
 
@@ -180,7 +190,7 @@ class NetStatusListener(Thread):
 
     """
 
-    def __init__(self, network: "CanopenNetwork"):
+    def __init__(self, network: "CanopenNetwork") -> None:
         super().__init__()
         self.__network = network
         self.__stop = False
@@ -209,14 +219,12 @@ class NetStatusListener(Thread):
             servo_state = self.__network.get_servo_state(node_id)
             if is_alive:
                 if servo_state != NetState.CONNECTED:
-                    self.__network._notify_status(node_id, NetDevEvt.ADDED)
-                    self.__network._set_servo_state(node_id, NetState.CONNECTED)
+                    self.__network._transition_servo_state(node_id, NetDevEvt.ADDED)
                 timestamps[node_id] = node.nmt.timestamp
             elif servo_state == NetState.DISCONNECTED:
                 self.__network.recover_from_disconnection()
             else:
-                self.__network._notify_status(node_id, NetDevEvt.REMOVED)
-                self.__network._set_servo_state(node_id, NetState.DISCONNECTED)
+                self.__network._transition_servo_state(node_id, NetDevEvt.REMOVED)
         return timestamps
 
     def run(self) -> None:
@@ -235,11 +243,29 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-class CanopenNetworkBase(Network):
+class CanopenNetworkBase(Generic[CanopenServoT], Network[CanopenServoT]):
     """Base class for CANopen network communications."""
 
+    def get_servo_state(self, servo_id: ServoTarget) -> NetState:
+        """Get the state of a servo that's a part of network.
 
-class CanopenNetwork(CanopenNetworkBase):
+        The state indicates if the servo is connected or disconnected.
+
+        Args:
+            servo_id: The servo's node ID, or the servo instance itself.
+
+        Raises:
+            ValueError: if the servo id is not an integer or a servo instance.
+
+        Returns:
+            The servo's state.
+        """
+        if not isinstance(servo_id, (int, Servo)):
+            raise ValueError("The servo ID must be an int or an instance of Servo.")
+        return super().get_servo_state(servo_id)
+
+
+class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
     """Network of the CANopen communication.
 
     Args:
@@ -268,7 +294,6 @@ class CanopenNetwork(CanopenNetworkBase):
         self.__baudrate = baudrate.value
         self._connection: Optional[NetworkLib] = None
         self.__listener_net_status: Optional[NetStatusListener] = None
-        self.__observers_net_state: dict[int, list[Callable[[NetDevEvt], Any]]] = defaultdict(list)
 
         self.__connection_args = {
             "interface": self.__device,
@@ -1050,37 +1075,6 @@ class CanopenNetwork(CanopenNetworkBase):
 
         self._connection.nodes[target_node].nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
 
-    def subscribe_to_status(self, node_id: int, callback: Callable[[NetDevEvt], Any]) -> None:  # type: ignore [override]
-        """Subscribe to network state changes.
-
-        Args:
-            node_id: Drive's node ID.
-            callback: Callback function.
-
-        """
-        if callback in self.__observers_net_state[node_id]:
-            logger.info("Callback already subscribed.")
-            return
-        self.__observers_net_state[node_id].append(callback)
-
-    def unsubscribe_from_status(self, node_id: int, callback: Callable[[NetDevEvt], Any]) -> None:  # type: ignore [override]
-        """Unsubscribe from network state changes.
-
-        Args:
-            node_id: Drive's node ID.
-            callback: Callback function.
-
-        """
-        if callback not in self.__observers_net_state[node_id]:
-            logger.info("Callback not subscribed.")
-            return
-        self.__observers_net_state[node_id].remove(callback)
-
-    def _notify_status(self, node_id: int, status: NetDevEvt) -> None:
-        """Notify subscribers of a network state change."""
-        for callback in self.__observers_net_state[node_id]:
-            callback(status)
-
     def is_listener_started(self) -> bool:
         """Check if the listener has been started.
 
@@ -1165,34 +1159,6 @@ class CanopenNetwork(CanopenNetworkBase):
         except Exception as e:
             logger.warning(f"Failed to recover CANopen communication: {e}")
             return False
-
-    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
-        """Get the state of a servo that's a part of network.
-
-        The state indicates if the servo is connected or disconnected.
-
-        Args:
-            servo_id: The servo's node ID.
-
-        Raises:
-            ValueError: it the servo id is not an integer.
-
-        Returns:
-            The servo's state.
-        """
-        if not isinstance(servo_id, int):
-            raise ValueError("The servo ID must be an int.")
-        return self._servos_state[servo_id]
-
-    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
-        """Set the state of a servo that's a part of network.
-
-        Args:
-            servo_id: The servo's node ID.
-            state: The servo's state.
-
-        """
-        self._servos_state[servo_id] = state
 
     def get_available_devices(self) -> list[tuple[str, Union[str, int]]]:
         """Get the available CAN devices and their channels.

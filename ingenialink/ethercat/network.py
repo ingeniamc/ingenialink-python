@@ -3,15 +3,15 @@ import os
 import re
 import threading
 import time
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from collections.abc import Generator
 from contextlib import contextmanager
 from functools import lru_cache
 from threading import Thread
-from typing import TYPE_CHECKING, Callable, Optional, Union, cast
+from typing import TYPE_CHECKING, Callable, Generic, Optional, Union, cast
 
 import ingenialogger
-from typing_extensions import override
+from typing_extensions import TypeVar, override
 
 from ingenialink.pdo_network_manager import PDONetworkManager
 from ingenialink.servo import Servo
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 from dataclasses import dataclass, field
 
 from ingenialink.constants import ECAT_STATE_CHANGE_TIMEOUT_US
-from ingenialink.ethercat.servo import EthercatServo
+from ingenialink.ethercat.servo import EthercatServo, EthercatServoBase
 from ingenialink.ethercat.state import SlaveState
 from ingenialink.exceptions import (
     ILError,
@@ -37,7 +37,7 @@ from ingenialink.exceptions import (
     ILStateError,
     ILWrongWorkingCountError,
 )
-from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
+from ingenialink.network import NetDevEvt, NetProt, NetState, Network, ServoTarget, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -108,6 +108,9 @@ class GilReleaseConfig:
         return instance
 
 
+EthercatServoT = TypeVar("EthercatServoT", bound=EthercatServoBase, default=EthercatServoBase)
+
+
 class NetStatusListener(Thread):
     """Network status listener thread to check if the drive is alive.
 
@@ -121,7 +124,7 @@ class NetStatusListener(Thread):
 
     """
 
-    def __init__(self, network: "EthercatNetwork", refresh_time: float = 0.25):
+    def __init__(self, network: "EthercatNetwork", refresh_time: float = 0.25) -> None:
         super().__init__()
         self.__network = network
         self.__refresh_time = refresh_time
@@ -150,16 +153,20 @@ class NetStatusListener(Thread):
 
         # Phase 1: per-slave disconnection detection
         for servo in self.__network.servos:
+            if not isinstance(servo, EthercatServo):
+                # Virtual servos do not have slave id
+                # https://novantamotion.atlassian.net/browse/INGK-1286
+                continue
             slave_id = servo.slave_id
             servo_state = self.__network.get_servo_state(slave_id)
             is_servo_alive = servo.slave_exists and (servo.slave.state != pysoem.NONE_STATE)
             if not is_servo_alive and servo_state == NetState.CONNECTED:
-                self.__network._notify_status(slave_id, NetDevEvt.REMOVED)
-                self.__network._set_servo_state(slave_id, NetState.DISCONNECTED)
+                self.__network._transition_servo_state(slave_id, NetDevEvt.REMOVED)
 
         # Phase 2: skip recovery if every slave is already connected
         if not any(
-            self.__network.get_servo_state(servo.slave_id) == NetState.DISCONNECTED
+            isinstance(servo, EthercatServo)  # INGK-1286
+            and self.__network.get_servo_state(servo.slave_id) == NetState.DISCONNECTED
             for servo in self.__network.servos
         ):
             return
@@ -170,12 +177,14 @@ class NetStatusListener(Thread):
 
         # Phase 4: emit ADDED only for slaves that are actually alive after recovery
         for servo in self.__network.servos:
+            if not isinstance(servo, EthercatServo):
+                # INGK-1286
+                continue
             slave_id = servo.slave_id
             servo_state = self.__network.get_servo_state(slave_id)
             is_servo_alive = servo.slave_exists and (servo.slave.state != pysoem.NONE_STATE)
             if is_servo_alive and servo_state == NetState.DISCONNECTED:
-                self.__network._notify_status(slave_id, NetDevEvt.ADDED)
-                self.__network._set_servo_state(slave_id, NetState.CONNECTED)
+                self.__network._transition_servo_state(slave_id, NetDevEvt.ADDED)
 
     def run(self) -> None:
         """Check the network status continuously.
@@ -196,71 +205,20 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-class EthercatNetworkBase(Network):
+class EthercatNetworkBase(Generic[EthercatServoT], Network[EthercatServoT]):
     """Base class for EtherCAT network communications."""
 
-    def __init__(self) -> None:
-        super().__init__()
-        self._observers_net_state: dict[Union[int, str], list[Callable[[NetDevEvt], None]]] = (
-            defaultdict(list)
-        )
-
-    def subscribe_to_status(
-        self, target: Union[int, str], callback: Callable[[NetDevEvt], None]
-    ) -> None:
-        """Subscribe to network state changes.
-
-        Args:
-            target: Target slave ID.
-            callback: Callback function to execute on state changes.
-
-        """
-        if callback in self._observers_net_state[target]:
-            logger.info("Callback already subscribed.")
-            return
-        self._observers_net_state[target].append(callback)
-
-    def unsubscribe_from_status(
-        self, target: Union[int, str], callback: Callable[[NetDevEvt], None]
-    ) -> None:
-        """Unsubscribe from network state changes.
-
-        Args:
-            target: Target slave ID.
-            callback: Callback function previously subscribed.
-
-        """
-        if callback not in self._observers_net_state[target]:
-            logger.info("Callback not subscribed.")
-            return
-        self._observers_net_state[target].remove(callback)
-
-    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
+    def get_servo_state(self, servo_id: ServoTarget) -> NetState:
         """Get the state of a servo in the network.
 
         Args:
-            servo_id: Servo ID.
+            servo_id: Servo ID, or the servo instance itself.
 
         Returns:
             Current state of the servo.
 
         """
-        return self._servos_state[servo_id]
-
-    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
-        """Set the state of a servo in the network.
-
-        Args:
-            servo_id: Servo ID.
-            state: New servo state.
-
-        """
-        self._servos_state[servo_id] = state
-
-    def _notify_status(self, target: Union[int, str], status: NetDevEvt) -> None:
-        """Notify subscribers of a network state change."""
-        for callback in self._observers_net_state[target]:
-            callback(status)
+        return super().get_servo_state(servo_id)
 
     @property
     def protocol(self) -> NetProt:
@@ -268,7 +226,7 @@ class EthercatNetworkBase(Network):
         return NetProt.ECAT
 
 
-class EthercatNetwork(EthercatNetworkBase):
+class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
     """Network for all EtherCAT communications.
 
     Args:

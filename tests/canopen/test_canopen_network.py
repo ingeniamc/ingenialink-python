@@ -12,9 +12,12 @@ from summit_testing_framework.setups import (
 
 from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
 from ingenialink.exceptions import ILError
+from ingenialink.network import NetState
+from tests.net_status_helpers import NetStatusRecorder
 
 if TYPE_CHECKING:
     from pytest import FixtureRequest
+    from summit_testing_framework.environment import Environment
     from summit_testing_framework.setup_fixtures import ConnectionWrapper
     from summit_testing_framework.setups.descriptors import DriveCanOpenSetup
 
@@ -274,3 +277,29 @@ def test_teardown_connection_handles_pcan_bus_off(virtual_network) -> None:
 
     # Assert: teardown remains safe and always clears the connection object.
     assert net._connection is None
+
+
+@pytest.mark.canopen
+@pytest.mark.skip("INGK-1285 PCAN controller gets stuck in bus-off state on power cycle")
+def test_net_status_listener_detects_power_cycle(
+    net: "CanopenNetwork", servo: "CanopenServo", environment: "Environment"
+) -> None:
+    """Test that NetStatusListener detects disconnection and reconnection on a real power cycle.
+
+    Detection is heartbeat-based (NMT timestamp, see the CANopen ``NetStatusListener``), which
+    polls each node with a 1.5 s cadence, so expect longer latencies than EtherCAT/Ethernet.
+    The detection latencies are logged at INFO to profile the library's real reconnection timing.
+    """
+    node_id = servo.target
+    with NetStatusRecorder(net, servo, "canopen") as recorder:
+        environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
+
+        assert recorder.wait_removed(timeout=30.0), (
+            "NetStatusListener did not detect the drive disconnection within 30 s"
+        )
+        assert net.get_servo_state(node_id) == NetState.DISCONNECTED
+
+        assert recorder.wait_added(timeout=60.0), (
+            "NetStatusListener did not detect the drive reconnection within 60 s"
+        )
+        assert net.get_servo_state(node_id) == NetState.CONNECTED

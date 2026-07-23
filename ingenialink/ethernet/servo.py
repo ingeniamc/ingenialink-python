@@ -32,26 +32,6 @@ logger = ingenialogger.get_logger(__name__)
 class EthernetServoBase(Servo, ABC):
     """Declaration of the base Ethernet servo behavior."""
 
-
-class EthernetServo(EthernetServoBase):
-    """Servo object for all the Ethernet slave functionalities.
-
-    Args:
-        socket: Socket.
-        dictionary_path: Path to the dictionary.
-        servo_status_listener: Toggle the listener of the servo for
-            its status, errors, faults, etc.
-        is_eoe: True if communication is EoE. ``False`` by default.
-
-    """
-
-    MAX_WRITE_SIZE = ETH_MAX_WRITE_SIZE
-
-    COMMS_ETH_IP = "COMMS_ETH_IP"
-    COMMS_ETH_NET_MASK = "COMMS_ETH_NET_MASK"
-    COMMS_ETH_NET_GATEWAY = "COMMS_ETH_GW"
-    COMMS_ETH_MAC = "COMMS_ETH_MAC"
-
     interface = Interface.ETH
 
     def __init__(
@@ -77,6 +57,26 @@ class EthernetServo(EthernetServoBase):
             servo_status_listener,
             disconnect_callback=disconnect_callback,
         )
+
+
+class EthernetServo(EthernetServoBase):
+    """Servo object for all the Ethernet slave functionalities.
+
+    Args:
+        socket: Socket.
+        dictionary_path: Path to the dictionary.
+        servo_status_listener: Toggle the listener of the servo for
+            its status, errors, faults, etc.
+        is_eoe: True if communication is EoE. ``False`` by default.
+
+    """
+
+    MAX_WRITE_SIZE = ETH_MAX_WRITE_SIZE
+
+    COMMS_ETH_IP = "COMMS_ETH_IP"
+    COMMS_ETH_NET_MASK = "COMMS_ETH_NET_MASK"
+    COMMS_ETH_NET_GATEWAY = "COMMS_ETH_GW"
+    COMMS_ETH_MAC = "COMMS_ETH_MAC"
 
     def store_tcp_ip_parameters(self) -> None:
         """Stores the TCP/IP values.

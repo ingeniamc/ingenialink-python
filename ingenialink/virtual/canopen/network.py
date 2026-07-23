@@ -1,8 +1,8 @@
 import socket
 import time
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from threading import Thread
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional
 
 import ingenialogger
 from typing_extensions import override
@@ -45,15 +45,13 @@ class VirtualCanopenNetStatusListener(Thread):
                     servo_state = self.__network.get_servo_state(target)
                     is_servo_alive = servo.is_alive()
                     if servo_state == NetState.CONNECTED and not is_servo_alive:
-                        self.__network._notify_status(target, NetDevEvt.REMOVED)
-                        self.__network._set_servo_state(target, NetState.DISCONNECTED)
+                        self.__network._transition_servo_state(target, NetDevEvt.REMOVED)
                     if (
                         servo_state == NetState.DISCONNECTED
                         and is_servo_alive
                         and self.__network.recover_from_disconnection(servo)
                     ):
-                        self.__network._notify_status(target, NetDevEvt.ADDED)
-                        self.__network._set_servo_state(target, NetState.CONNECTED)
+                        self.__network._transition_servo_state(target, NetDevEvt.ADDED)
             except Exception as e:
                 logger.exception(f"Exception during virtual CANopen status check: {e}")
             time.sleep(self.__refresh_time)
@@ -63,73 +61,13 @@ class VirtualCanopenNetStatusListener(Thread):
         self.__stop = True
 
 
-class VirtualCanopenNetwork(CanopenNetworkBase):
+class VirtualCanopenNetwork(CanopenNetworkBase[VirtualCanopenServo]):
     """Network for all virtual CANopen drive communications."""
 
     def __init__(self) -> None:
         super().__init__()
         self._virtual_base = VirtualNetworkBase()
         self.__listener_net_status: Optional[VirtualCanopenNetStatusListener] = None
-        self._observers_net_state: dict[Union[int, str], list[Callable[[NetDevEvt], None]]] = (
-            defaultdict(list)
-        )
-
-    def subscribe_to_status(
-        self, target: Union[int, str], callback: Callable[[NetDevEvt], None]
-    ) -> None:
-        """Subscribe to network state changes.
-
-        Args:
-            target: Target node ID.
-            callback: Callback function to execute on state changes.
-
-        """
-        if callback in self._observers_net_state[target]:
-            logger.info("Callback already subscribed.")
-            return
-        self._observers_net_state[target].append(callback)
-
-    def unsubscribe_from_status(
-        self, target: Union[int, str], callback: Callable[[NetDevEvt], None]
-    ) -> None:
-        """Unsubscribe from network state changes.
-
-        Args:
-            target: Target node ID.
-            callback: Callback function previously subscribed.
-
-        """
-        if callback not in self._observers_net_state[target]:
-            logger.info("Callback not subscribed.")
-            return
-        self._observers_net_state[target].remove(callback)
-
-    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
-        """Get the state of a servo in the network.
-
-        Args:
-            servo_id: Servo ID.
-
-        Returns:
-            Current state of the servo.
-
-        """
-        return self._servos_state[servo_id]
-
-    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
-        """Set the state of a servo in the network.
-
-        Args:
-            servo_id: Servo ID.
-            state: New servo state.
-
-        """
-        self._servos_state[servo_id] = state
-
-    def _notify_status(self, target: Union[int, str], status: NetDevEvt) -> None:
-        """Notify subscribers of a network state change."""
-        for callback in self._observers_net_state[target]:
-            callback(status)
 
     @property
     def protocol(self) -> NetProt:
@@ -143,9 +81,7 @@ class VirtualCanopenNetwork(CanopenNetworkBase):
             List of discovered target node IDs.
 
         """
-        if self.servos:
-            return [servo.target for servo in self.servos]
-        return []
+        return [servo.target for servo in self.servos if isinstance(servo.target, int)]
 
     def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
         """Scan for virtual CANopen drives and retrieve basic info.
@@ -223,11 +159,11 @@ class VirtualCanopenNetwork(CanopenNetworkBase):
         """
         if not isinstance(servo, VirtualCanopenServo):
             raise ValueError("Virtual CANopen Servo instance must be provided.")
-        self.servos.remove(servo)
         servo.stop_status_listener()
         servo.socket.shutdown(socket.SHUT_RDWR)
         servo.socket.close()
         self._set_servo_state(servo.target, NetState.DISCONNECTED)
+        self.servos.remove(servo)
         if len(self.servos) == 0:
             self.stop_status_listener()
         servo._disconnect_event_publisher.notify(servo)

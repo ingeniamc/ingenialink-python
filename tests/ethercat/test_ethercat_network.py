@@ -32,6 +32,7 @@ from ingenialink.network import NetDevEvt, NetState
 from ingenialink.pdo import PDOMap, RPDOMap, TPDOMap
 from tests.conftest import refresh_registers_for_test_rollback
 from tests.ethercat.mock import MockSoemSlave, pysoem_mock_network
+from tests.net_status_helpers import NetStatusRecorder
 
 if TYPE_CHECKING:
     from pytest import FixtureRequest
@@ -1225,36 +1226,21 @@ def test_net_status_listener_detects_power_cycle(
     resumes calling process() and completes the same detect-and-recover cycle, leaving PDOs
     stopped after reconnection.
     """
-    removed_event = threading.Event()
-    added_event = threading.Event()
-
-    def status_callback(evt: NetDevEvt) -> None:
-        if evt == NetDevEvt.REMOVED:
-            removed_event.set()
-        elif evt == NetDevEvt.ADDED:
-            added_event.set()
-
-    net.subscribe_to_status(servo.slave_id, status_callback)
-    net.start_status_listener()
-
-    try:
+    with NetStatusRecorder(net, servo, "ethercat") as recorder:
         # --- Scenario 1: power cycle without PDOs active ---
         environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
 
-        assert removed_event.wait(timeout=30.0), (
+        assert recorder.wait_removed(timeout=30.0), (
             "NetStatusListener did not detect the drive disconnection within 30 s"
         )
         assert net.get_servo_state(servo.slave_id) == NetState.DISCONNECTED
 
-        assert added_event.wait(timeout=60.0), (
+        assert recorder.wait_added(timeout=60.0), (
             "NetStatusListener did not detect the drive reconnection within 60 s"
         )
         assert net.get_servo_state(servo.slave_id) == NetState.CONNECTED
 
         # --- Scenario 2: power cycle with PDOs active ---
-        removed_event.clear()
-        added_event.clear()
-
         rpdo_map = RPDOMap()
         tpdo_map = TPDOMap()
         initial_operation_mode = cast("int", servo.read("DRV_OP_CMD"))
@@ -1278,24 +1264,21 @@ def test_net_status_listener_detects_power_cycle(
 
         # Power cycle while PDOs are running. The PDO thread detects the WKC error and stops
         # PDOs via the exception handler, after which the listener resumes calling process().
+        recorder.rearm()
         environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
 
-        assert removed_event.wait(timeout=30.0), (
+        assert recorder.wait_removed(timeout=30.0, note="PDO"), (
             "NetStatusListener did not detect the drive disconnection within 30 s (PDO scenario)"
         )
         assert net.get_servo_state(servo.slave_id) == NetState.DISCONNECTED
 
-        assert added_event.wait(timeout=60.0), (
+        assert recorder.wait_added(timeout=60.0, note="PDO"), (
             "NetStatusListener did not detect the drive reconnection within 60 s (PDO scenario)"
         )
         assert net.get_servo_state(servo.slave_id) == NetState.CONNECTED
         assert net.pdo_manager.is_active is False, (
             "PDOs should have been stopped by the exception handler during power cycle"
         )
-    finally:
-        # servo/net status listeners are not reset
-        # https://novantamotion.atlassian.net/browse/CIT-627
-        net.stop_status_listener()
 
 
 @pytest.mark.pcap

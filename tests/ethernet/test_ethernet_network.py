@@ -26,8 +26,11 @@ from ingenialink.ethernet.network import (
     NetState,
 )
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
+from tests.net_status_helpers import NetStatusRecorder
 
 if TYPE_CHECKING:
+    from summit_testing_framework.environment import Environment
+
     from ingenialink.ethernet.servo import EthernetServo
 
 
@@ -418,3 +421,26 @@ def test_recover_from_disconnection(net: "EthernetNetwork", servo: "EthernetServ
     # Simulate servo reconnection by mocking is_alive to return True again
     mocker.patch.object(servo, "is_alive", return_value=True)
     assert net.recover_from_disconnection(servo) is True
+
+
+@pytest.mark.ethernet
+def test_net_status_listener_detects_power_cycle(
+    net: "EthernetNetwork", servo: "EthernetServo", environment: "Environment"
+) -> None:
+    """Test that NetStatusListener detects disconnection and reconnection on a real power cycle.
+
+    The detection latencies are logged at INFO to profile the library's real reconnection
+    timing (ping-based ``is_alive`` detection, see ``EthernetNetwork.NetStatusListener``).
+    """
+    with NetStatusRecorder(net, servo, "ethernet") as recorder:
+        environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
+
+        assert recorder.wait_removed(timeout=30.0), (
+            "NetStatusListener did not detect the drive disconnection within 30 s"
+        )
+        assert net.get_servo_state(servo.ip_address) == NetState.DISCONNECTED
+
+        assert recorder.wait_added(timeout=60.0), (
+            "NetStatusListener did not detect the drive reconnection within 60 s"
+        )
+        assert net.get_servo_state(servo.ip_address) == NetState.CONNECTED
