@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, fields
 from enum import IntEnum, IntFlag
-from typing import Literal, Union
+from typing import ClassVar, Literal, Union
 
 
 class SDCPOpcode(IntEnum):
@@ -32,17 +32,24 @@ class SDCPSubscriptionMode(IntEnum):
     EVENT = 0x02
 
 
+_SDCP_BYTE_ORDER: Literal["big"] = "big"
+
+
 @dataclass(frozen=True)
 class _SDCPField:
     """Metadata for a fixed-width SDCP field."""
 
     size: int
-    hex_width: int = field(init=False)
-    maximum_value: int = field(init=False)
 
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "hex_width", self.size * 2)
-        object.__setattr__(self, "maximum_value", (1 << (self.size * 8)) - 1)
+    @property
+    def hex_width(self) -> int:
+        """Return the field's hexadecimal display width."""
+        return self.size * 2
+
+    @property
+    def maximum_value(self) -> int:
+        """Return the largest unsigned value that fits in the field."""
+        return (1 << (self.size * 8)) - 1
 
 
 class _SDCPFields:
@@ -62,6 +69,65 @@ class _SDCPFields:
     PRODUCT_CODE = _SDCPField(4)
     REVISION_NUMBER = _SDCPField(4)
     SUBSCRIPTION_MODE = _SDCPField(1)
+
+
+class _SDCPPayloadReader:
+    """Read sequential values from an SDCP payload."""
+
+    def __init__(self, payload: bytes) -> None:
+        if not isinstance(payload, bytes):
+            raise TypeError("Payload must be bytes")
+        self._payload = payload
+        self._offset = 0
+
+    def read_uint(self, field: _SDCPField) -> int:
+        """Read a fixed-width unsigned integer.
+
+        Returns:
+            The decoded big-endian unsigned integer.
+
+        """
+        return int.from_bytes(self.read_bytes(field.size), _SDCP_BYTE_ORDER)
+
+    def read_bytes(self, size: int) -> bytes:
+        """Read a fixed number of bytes from the current offset.
+
+        Returns:
+            The requested payload bytes.
+
+        Raises:
+            ValueError: If the payload does not contain enough bytes.
+
+        """
+        if size < 0:
+            raise ValueError("Payload read size cannot be negative")
+        end = self._offset + size
+        if end > len(self._payload):
+            remaining = len(self._payload) - self._offset
+            raise ValueError(f"Payload read requested {size} bytes, but only {remaining} remain")
+        value = self._payload[self._offset : end]
+        self._offset = end
+        return value
+
+    def read_remaining(self) -> bytes:
+        """Read all bytes remaining in the payload.
+
+        Returns:
+            The unread payload bytes.
+
+        """
+        return self.read_bytes(len(self._payload) - self._offset)
+
+    def ensure_end(self) -> None:
+        """Ensure that the payload has been consumed completely.
+
+        Raises:
+            ValueError: If the payload contains unread bytes.
+
+        """
+        if self._offset != len(self._payload):
+            trailing_bytes = len(self._payload) - self._offset
+            raise ValueError(f"Payload contains {trailing_bytes} unexpected trailing bytes")
 
 
 @dataclass(frozen=True, repr=False)
@@ -193,7 +259,7 @@ class SDCPUnsubscribeResponse(_SDCPMessageRepresentation):
 
 
 @dataclass(frozen=True, repr=False)
-class _SDCPErrorResponse(_SDCPMessageRepresentation):
+class SDCPErrorResponse(_SDCPMessageRepresentation):
     """Base class for operation-specific SDCP error responses."""
 
     transaction_id: int
@@ -201,27 +267,27 @@ class _SDCPErrorResponse(_SDCPMessageRepresentation):
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPIdentificationResponseError(_SDCPErrorResponse):
+class SDCPIdentificationResponseError(SDCPErrorResponse):
     """An SDCP Identification error response."""
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPReadResponseError(_SDCPErrorResponse):
+class SDCPReadResponseError(SDCPErrorResponse):
     """An SDCP Read error response."""
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPWriteResponseError(_SDCPErrorResponse):
+class SDCPWriteResponseError(SDCPErrorResponse):
     """An SDCP Write error response."""
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPSubscribeResponseError(_SDCPErrorResponse):
+class SDCPSubscribeResponseError(SDCPErrorResponse):
     """An SDCP Subscribe error response."""
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPUnsubscribeResponseError(_SDCPErrorResponse):
+class SDCPUnsubscribeResponseError(SDCPErrorResponse):
     """An SDCP Unsubscribe error response."""
 
 
@@ -247,11 +313,7 @@ SDCPMessage = Union[
     SDCPWriteResponse,
     SDCPSubscribeResponse,
     SDCPUnsubscribeResponse,
-    SDCPIdentificationResponseError,
-    SDCPReadResponseError,
-    SDCPWriteResponseError,
-    SDCPSubscribeResponseError,
-    SDCPUnsubscribeResponseError,
+    SDCPErrorResponse,
     SDCPUnknownFrame,
 ]
 
@@ -264,8 +326,20 @@ class SDCPSerializer:
     preserved as raw bytes because its layout depends on the opcode.
     """
 
-    BYTE_ORDER: Literal["big"] = "big"
     HEADER_SIZE = _SDCPFields.OPCODE.size + _SDCPFields.FLAGS.size + _SDCPFields.TRANSACTION_ID.size
+    _EMPTY_RESPONSE_TYPES: ClassVar[
+        dict[SDCPOpcode, type[SDCPWriteResponse] | type[SDCPUnsubscribeResponse]]
+    ] = {
+        SDCPOpcode.WRITE: SDCPWriteResponse,
+        SDCPOpcode.UNSUBSCRIBE: SDCPUnsubscribeResponse,
+    }
+    _ERROR_RESPONSE_TYPES: ClassVar[dict[SDCPOpcode, type[SDCPErrorResponse]]] = {
+        SDCPOpcode.IDENTIFICATION: SDCPIdentificationResponseError,
+        SDCPOpcode.READ: SDCPReadResponseError,
+        SDCPOpcode.WRITE: SDCPWriteResponseError,
+        SDCPOpcode.SUBSCRIBE: SDCPSubscribeResponseError,
+        SDCPOpcode.UNSUBSCRIBE: SDCPUnsubscribeResponseError,
+    }
 
     @classmethod
     def serialize_identification_request(cls, transaction_id: int) -> bytes:
@@ -486,20 +560,19 @@ class SDCPSerializer:
             The decoded SDCP frame.
 
         Raises:
+            TypeError: If the frame is not bytes.
             ValueError: If the frame is shorter than the four-byte SDCP header
                 or a recognized frame has an invalid payload layout.
 
         """
+        reader = _SDCPPayloadReader(frame)
         if len(frame) < cls.HEADER_SIZE:
             raise ValueError("SDCP frame must include a four-byte header")
 
-        opcode = frame[0]
-        flags = frame[1]
-        payload = frame[cls.HEADER_SIZE :]
-        transaction_id = cls._deserialize_uint(
-            _SDCPFields.TRANSACTION_ID,
-            frame[_SDCPFields.OPCODE.size + _SDCPFields.FLAGS.size : cls.HEADER_SIZE],
-        )
+        opcode = reader.read_uint(_SDCPFields.OPCODE)
+        flags = reader.read_uint(_SDCPFields.FLAGS)
+        transaction_id = reader.read_uint(_SDCPFields.TRANSACTION_ID)
+        payload = reader.read_remaining()
         if flags == SDCPFlag.REPLY | SDCPFlag.ERROR:
             return cls._deserialize_error_response(opcode, transaction_id, payload)
         if flags == SDCPFlag.NONE:
@@ -525,25 +598,28 @@ class SDCPSerializer:
         except ValueError:
             return SDCPUnknownFrame(opcode, SDCPFlag.NONE, transaction_id, payload)
 
+        reader = _SDCPPayloadReader(payload)
         if operation == SDCPOpcode.IDENTIFICATION:
-            cls._validate_payload_size(payload, 0, "Identification request")
+            reader.ensure_end()
             return SDCPIdentificationRequest(transaction_id)
         if operation == SDCPOpcode.READ:
-            cls._validate_payload_size(payload, 3, "Read request")
-            index, subindex = cls._deserialize_dictionary_address(payload, "Read request", 0)
+            index, subindex = cls._deserialize_dictionary_address(reader)
+            reader.ensure_end()
             return SDCPReadRequest(transaction_id, index, subindex)
         if operation == SDCPOpcode.WRITE:
-            index, subindex = cls._deserialize_dictionary_address(payload, "Write request", 1)
-            return SDCPWriteRequest(transaction_id, index, subindex, payload[3:])
+            index, subindex = cls._deserialize_dictionary_address(reader)
+            value = reader.read_remaining()
+            if not value:
+                raise ValueError("Write requests require a value payload")
+            return SDCPWriteRequest(transaction_id, index, subindex, value)
         if operation == SDCPOpcode.SUBSCRIBE:
-            return cls._deserialize_subscription_request(transaction_id, payload)
+            return cls._deserialize_subscription_request(transaction_id, reader)
         if operation == SDCPOpcode.UNSUBSCRIBE:
-            cls._validate_payload_size(
-                payload, _SDCPFields.SUBSCRIPTION_ID.size, "Unsubscribe request"
-            )
+            subscription_id = reader.read_uint(_SDCPFields.SUBSCRIPTION_ID)
+            reader.ensure_end()
             return SDCPUnsubscribeRequest(
                 transaction_id,
-                cls._deserialize_uint(_SDCPFields.SUBSCRIPTION_ID, payload),
+                subscription_id,
             )
 
         return SDCPUnknownFrame(opcode, SDCPFlag.NONE, transaction_id, payload)
@@ -570,23 +646,48 @@ class SDCPSerializer:
             return cls._deserialize_identification_response(transaction_id, payload)
         if operation == SDCPOpcode.READ:
             return SDCPReadResponse(transaction_id, payload)
-        if operation == SDCPOpcode.WRITE:
-            cls._validate_payload_size(payload, 0, "Write response")
-            return SDCPWriteResponse(transaction_id)
         if operation == SDCPOpcode.SUBSCRIBE:
-            # Notification payloads cannot yet be distinguished from subscription replies.
-            cls._validate_payload_size(
-                payload, _SDCPFields.SUBSCRIPTION_ID.size, "Subscribe response"
-            )
-            return SDCPSubscribeResponse(
-                transaction_id,
-                cls._deserialize_uint(_SDCPFields.SUBSCRIPTION_ID, payload),
-            )
-        if operation == SDCPOpcode.UNSUBSCRIBE:
-            cls._validate_payload_size(payload, 0, "Unsubscribe response")
-            return SDCPUnsubscribeResponse(transaction_id)
+            # Subscribe notifications cannot yet be distinguished from initial Subscribe replies.
+            return cls._deserialize_subscribe_response(transaction_id, payload)
+
+        response_type = cls._EMPTY_RESPONSE_TYPES.get(operation)
+        if response_type is not None:
+            return cls._deserialize_empty_response(transaction_id, payload, response_type)
 
         return SDCPUnknownFrame(opcode, SDCPFlag.REPLY, transaction_id, payload)
+
+    @classmethod
+    def _deserialize_subscribe_response(
+        cls, transaction_id: int, payload: bytes
+    ) -> SDCPSubscribeResponse:
+        """Deserialize a Subscribe response containing a subscription identifier.
+
+        Returns:
+            The parsed Subscribe response.
+
+        """
+        reader = _SDCPPayloadReader(payload)
+        subscription_id = reader.read_uint(_SDCPFields.SUBSCRIPTION_ID)
+        reader.ensure_end()
+        return SDCPSubscribeResponse(transaction_id, subscription_id)
+
+    @staticmethod
+    def _deserialize_empty_response(
+        transaction_id: int,
+        payload: bytes,
+        response_type: type[SDCPWriteResponse] | type[SDCPUnsubscribeResponse],
+    ) -> SDCPWriteResponse | SDCPUnsubscribeResponse:
+        """Deserialize a response whose payload must be empty.
+
+        Returns:
+            The parsed empty response.
+
+        Raises:
+            ValueError: If the response contains a payload.
+
+        """
+        _SDCPPayloadReader(payload).ensure_end()
+        return response_type(transaction_id)
 
     @classmethod
     def _deserialize_error_response(
@@ -599,7 +700,6 @@ class SDCPSerializer:
 
         Raises:
             ValueError: If the error payload is not a 32-bit error code.
-            AssertionError: If the opcode is not a defined SDCP operation.
 
         """
         try:
@@ -609,19 +709,11 @@ class SDCPSerializer:
                 opcode, SDCPFlag.REPLY | SDCPFlag.ERROR, transaction_id, payload
             )
 
-        cls._validate_payload_size(payload, _SDCPFields.ERROR_CODE.size, "Error response")
-        error_code = cls._deserialize_uint(_SDCPFields.ERROR_CODE, payload)
-        if operation == SDCPOpcode.IDENTIFICATION:
-            return SDCPIdentificationResponseError(transaction_id, error_code)
-        if operation == SDCPOpcode.READ:
-            return SDCPReadResponseError(transaction_id, error_code)
-        if operation == SDCPOpcode.WRITE:
-            return SDCPWriteResponseError(transaction_id, error_code)
-        if operation == SDCPOpcode.SUBSCRIBE:
-            return SDCPSubscribeResponseError(transaction_id, error_code)
-        if operation == SDCPOpcode.UNSUBSCRIBE:
-            return SDCPUnsubscribeResponseError(transaction_id, error_code)
-        raise AssertionError(f"Unsupported SDCP opcode: {operation}")
+        reader = _SDCPPayloadReader(payload)
+        error_code = reader.read_uint(_SDCPFields.ERROR_CODE)
+        reader.ensure_end()
+        response_type = cls._ERROR_RESPONSE_TYPES[operation]
+        return response_type(transaction_id, error_code)
 
     @classmethod
     def _deserialize_identification_response(
@@ -633,37 +725,26 @@ class SDCPSerializer:
             The parsed Identification response.
 
         Raises:
-            ValueError: If the payload is not the fixed 13-byte layout.
+            ValueError: If the payload is not the fixed 13-byte layout. SDCP
+                Identification responses with a 9-byte firmware layout are not
+                supported because the public message requires a revision number.
 
         """
-        fields = (
-            _SDCPFields.PROTOCOL_VERSION,
-            _SDCPFields.SERIAL_NUMBER,
-            _SDCPFields.PRODUCT_CODE,
-            _SDCPFields.REVISION_NUMBER,
-        )
-        cls._validate_payload_size(
-            payload, sum(field.size for field in fields), "Identification response"
-        )
-        protocol_version_end = _SDCPFields.PROTOCOL_VERSION.size
-        serial_number_end = protocol_version_end + _SDCPFields.SERIAL_NUMBER.size
-        product_code_end = serial_number_end + _SDCPFields.PRODUCT_CODE.size
-        return SDCPIdentificationResponse(
+        reader = _SDCPPayloadReader(payload)
+        response = SDCPIdentificationResponse(
             transaction_id,
-            cls._deserialize_uint(_SDCPFields.PROTOCOL_VERSION, payload[:protocol_version_end]),
-            cls._deserialize_uint(
-                _SDCPFields.SERIAL_NUMBER,
-                payload[protocol_version_end:serial_number_end],
-            ),
-            cls._deserialize_uint(
-                _SDCPFields.PRODUCT_CODE,
-                payload[serial_number_end:product_code_end],
-            ),
-            cls._deserialize_uint(_SDCPFields.REVISION_NUMBER, payload[product_code_end:]),
+            reader.read_uint(_SDCPFields.PROTOCOL_VERSION),
+            reader.read_uint(_SDCPFields.SERIAL_NUMBER),
+            reader.read_uint(_SDCPFields.PRODUCT_CODE),
+            reader.read_uint(_SDCPFields.REVISION_NUMBER),
         )
+        reader.ensure_end()
+        return response
 
     @classmethod
-    def _deserialize_subscription_request(cls, transaction_id: int, payload: bytes) -> SDCPMessage:
+    def _deserialize_subscription_request(
+        cls, transaction_id: int, reader: _SDCPPayloadReader
+    ) -> SDCPMessage:
         """Deserialize a Subscribe request into its mode-specific message type.
 
         Returns:
@@ -673,58 +754,47 @@ class SDCPSerializer:
             ValueError: If the subscription payload is malformed.
 
         """
-        index, subindex = cls._deserialize_dictionary_address(payload, "Subscribe request", 3)
+        index, subindex = cls._deserialize_dictionary_address(reader)
+        mode_value = reader.read_uint(_SDCPFields.SUBSCRIPTION_MODE)
         try:
-            mode = SDCPSubscriptionMode(payload[3])
+            mode = SDCPSubscriptionMode(mode_value)
         except ValueError as error:
-            raise ValueError("Subscribe request has an unknown subscription mode") from error
+            raise ValueError(
+                f"Subscribe request has an unknown subscription mode: 0x{mode_value:02X}"
+            ) from error
 
         if mode == SDCPSubscriptionMode.PERIODIC:
-            cls._validate_payload_size(payload, 8, "Periodic Subscribe request")
-            return SDCPPeriodicSubscriptionRequest(
+            request: SDCPPeriodicSubscriptionRequest | SDCPEventSubscriptionRequest = (
+                SDCPPeriodicSubscriptionRequest(
+                    transaction_id,
+                    index,
+                    subindex,
+                    reader.read_uint(_SDCPFields.CYCLIC_TIME_MS),
+                    reader.read_uint(_SDCPFields.MESSAGE_COUNT),
+                )
+            )
+        else:
+            request = SDCPEventSubscriptionRequest(
                 transaction_id,
                 index,
                 subindex,
-                cls._deserialize_uint(_SDCPFields.CYCLIC_TIME_MS, payload[4:6]),
-                cls._deserialize_uint(_SDCPFields.MESSAGE_COUNT, payload[6:8]),
+                reader.read_uint(_SDCPFields.MESSAGE_COUNT),
             )
+        reader.ensure_end()
+        return request
 
-        cls._validate_payload_size(payload, 6, "Event Subscribe request")
-        return SDCPEventSubscriptionRequest(
-            transaction_id,
-            index,
-            subindex,
-            cls._deserialize_uint(_SDCPFields.MESSAGE_COUNT, payload[4:6]),
-        )
-
-    @classmethod
-    def _deserialize_dictionary_address(
-        cls, payload: bytes, message_name: str, trailing_payload_size: int
-    ) -> tuple[int, int]:
-        """Deserialize an address prefix from a dictionary request payload.
+    @staticmethod
+    def _deserialize_dictionary_address(reader: _SDCPPayloadReader) -> tuple[int, int]:
+        """Deserialize a dictionary address from the current payload position.
 
         Returns:
             The dictionary index and subindex.
 
         Raises:
-            ValueError: If the payload cannot contain the address and trailing fields.
+            ValueError: If the payload cannot contain the address.
 
         """
-        minimum_size = _SDCPFields.INDEX.size + _SDCPFields.SUBINDEX.size + trailing_payload_size
-        if len(payload) < minimum_size:
-            raise ValueError(f"{message_name} payload is incomplete")
-        return cls._deserialize_uint(_SDCPFields.INDEX, payload[:2]), payload[2]
-
-    @staticmethod
-    def _validate_payload_size(payload: bytes, expected_size: int, message_name: str) -> None:
-        """Validate the exact payload size of a fixed-layout message.
-
-        Raises:
-            ValueError: If the payload size does not match the message layout.
-
-        """
-        if len(payload) != expected_size:
-            raise ValueError(f"{message_name} payload must contain {expected_size} bytes")
+        return reader.read_uint(_SDCPFields.INDEX), reader.read_uint(_SDCPFields.SUBINDEX)
 
     @staticmethod
     def _validate_uint(field: _SDCPField, value: int) -> None:
@@ -749,22 +819,7 @@ class SDCPSerializer:
 
         """
         cls._validate_uint(field, value)
-        return value.to_bytes(field.size, cls.BYTE_ORDER)
-
-    @classmethod
-    def _deserialize_uint(cls, field: _SDCPField, value: bytes) -> int:
-        """Deserialize an unsigned SDCP field using the protocol byte order.
-
-        Returns:
-            The decoded unsigned integer.
-
-        Raises:
-            ValueError: If the byte value is not the field's fixed width.
-
-        """
-        if len(value) != field.size:
-            raise ValueError(f"Value must contain {field.size} bytes")
-        return int.from_bytes(value, cls.BYTE_ORDER)
+        return value.to_bytes(field.size, _SDCP_BYTE_ORDER)
 
     @staticmethod
     def _validate_bytes(field_name: str, value: bytes) -> None:
