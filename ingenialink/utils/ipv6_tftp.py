@@ -6,7 +6,7 @@ import sys
 import time
 from pathlib import Path
 from types import TracebackType
-from typing import Optional, Union
+from typing import NamedTuple, Optional, Union
 
 import ingenialogger
 
@@ -37,7 +37,14 @@ TFTP_RETRIES = 3
 IPV6_NEXT_HEADER_UDP = 17
 UDP_HEADER_SIZE = 8
 
-IPv6SocketAddress = tuple[str, int, int, int]
+
+class IPv6SocketAddress(NamedTuple):
+    """IPv6 socket address matching Python's ``AF_INET6`` address tuple."""
+
+    address: str
+    port: int
+    flowinfo: int
+    scopeid: int
 
 
 class TftpUploader:
@@ -86,7 +93,7 @@ class TftpUploader:
             raise ILFirmwareLoadError("The TFTP server only accepts .lfu files.")
 
         interface_index = _get_interface_index(self._interface)
-        server_address = (self._drive_address, TFTP_PORT, 0, interface_index)
+        server_address = IPv6SocketAddress(self._drive_address, TFTP_PORT, 0, interface_index)
         logger.info(f"Uploading firmware to [{self._drive_address}%{interface_index}]:{TFTP_PORT}.")
 
         try:
@@ -127,14 +134,20 @@ class TftpUploader:
         """
         write_request = self._create_write_request(filename)
         self._tftp_socket.sendto(write_request, server_address)
-        host, _, flowinfo, scopeid = server_address
-        transfer_address = (host, TFTP_TRANSFER_PORT, flowinfo, scopeid)
+        transfer_address = IPv6SocketAddress(
+            server_address.address,
+            TFTP_TRANSFER_PORT,
+            server_address.flowinfo,
+            server_address.scopeid,
+        )
         if capture is not None:
             local_port = self._tftp_socket.getsockname()[1]
             deadline = time.monotonic() + TFTP_TIMEOUT_S
             while time.monotonic() < deadline:
                 packet = capture.read_packet()
-                if packet is not None and self._is_tftp_acknowledgement(packet, host, local_port):
+                if packet is not None and self._is_tftp_acknowledgement(
+                    packet, server_address.address, local_port
+                ):
                     return transfer_address
             raise ILFirmwareLoadError("No TFTP ACK received for block 0.")
 
