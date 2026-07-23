@@ -84,6 +84,7 @@ class EoEUdpBridge:
         self._relay_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._client_ports: set[int] = set()
         self._drive_ip_settings: list[Optional[str]] = []
+        self._open_rx_frames: list[bytes] = []
 
     @property
     def drive_ip_settings(self) -> list[Optional[str]]:
@@ -183,6 +184,12 @@ class EoEUdpBridge:
         self._relay_sock.bind(("127.0.0.1", 0))
         self._relay_sock.setblocking(False)
         self._running = True
+        # Replay frames the drive sent during the handshake into the final
+        # stack, so e.g. its ARP announcements populate the neighbor cache
+        # and its ARP requests get answered.
+        for frame in self._open_rx_frames:
+            self._stack.push_frame(frame)
+        self._open_rx_frames.clear()
         self._bridge_thread.start()
 
     def _drain_mailbox(self) -> None:
@@ -266,7 +273,14 @@ class EoEUdpBridge:
         """
         if slave_num == self._slave_num:
             logger.info(f"EoE rx: {self._describe_frame(frame)}")
-            self._stack.push_frame(frame)
+            if self._running:
+                self._stack.push_frame(frame)
+            else:
+                # Received while opening (mailbox drain / IP handshake): the
+                # stack is rebuilt at the end of open(), so buffer the frame
+                # and replay it afterwards. Losing it could discard the
+                # drive's ARP announcement or request.
+                self._open_rx_frames.append(frame)
         else:
             logger.debug(
                 f"EoE rx from unexpected slave {slave_num} "
@@ -319,17 +333,41 @@ class EoEUdpBridge:
     def _describe_frame(frame: bytes) -> str:
         """Summarize an Ethernet frame for logging.
 
+        ARP frames are decoded (operation, sender, target) and UDP frames show
+        their endpoints, so logs pinpoint who is asking or answering what.
+
         Args:
             frame: Raw Ethernet frame.
 
         Returns:
             A short human-readable description of the frame.
         """
-        min_header_length = 14
-        if len(frame) < min_header_length:
+        eth_header_length = 14
+        arp_length = 42
+        ipv4_header_end = 34
+        udp_header_end = 42
+        if len(frame) < eth_header_length:
             return f"runt frame ({len(frame)} bytes): {frame.hex()}"
         ethertype = int.from_bytes(frame[12:14], "big")
-        name = {0x0806: "ARP", 0x0800: "IPv4", 0x86DD: "IPv6"}.get(
-            ethertype, f"ethertype {ethertype:#06x}"
-        )
+        if ethertype == 0x0806 and len(frame) >= arp_length:
+            operation = int.from_bytes(frame[20:22], "big")
+            operation_name = {1: "request", 2: "reply"}.get(operation, f"op {operation}")
+            sender_mac = frame[22:28].hex(":")
+            sender_ip = ".".join(str(byte) for byte in frame[28:32])
+            target_ip = ".".join(str(byte) for byte in frame[38:42])
+            return (
+                f"ARP {operation_name} ({len(frame)} bytes): "
+                f"sender {sender_ip} [{sender_mac}], target {target_ip}"
+            )
+        if ethertype == 0x0800 and len(frame) >= ipv4_header_end:
+            protocol = frame[23]
+            src_ip = ".".join(str(byte) for byte in frame[26:30])
+            dst_ip = ".".join(str(byte) for byte in frame[30:34])
+            udp_offset = eth_header_length + (frame[14] & 0x0F) * 4
+            if protocol == 17 and len(frame) >= udp_header_end:
+                src_port = int.from_bytes(frame[udp_offset : udp_offset + 2], "big")
+                dst_port = int.from_bytes(frame[udp_offset + 2 : udp_offset + 4], "big")
+                return f"UDP frame ({len(frame)} bytes): {src_ip}:{src_port} -> {dst_ip}:{dst_port}"
+            return f"IPv4 proto {protocol} frame ({len(frame)} bytes): {src_ip} -> {dst_ip}"
+        name = {0x0806: "ARP", 0x86DD: "IPv6"}.get(ethertype, f"ethertype {ethertype:#06x}")
         return f"{name} frame ({len(frame)} bytes)"
