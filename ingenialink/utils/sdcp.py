@@ -102,25 +102,52 @@ class SDCPSerializer:
     TRANSACTION_ID_SIZE = 2
 
     @classmethod
-    def serialize(cls, opcode: int, flags: int, transaction_id: int, payload: bytes = b"") -> bytes:
+    def serialize(
+        cls,
+        opcode: int,
+        flags: int,
+        transaction_id: int,
+        index: int | None = None,
+        subindex: int | None = None,
+        payload: bytes = b"",
+    ) -> bytes:
         """Serialize an SDCP acyclic frame.
 
         Args:
             opcode: Operation identifier in the range 0 to 255.
             flags: Flag bitmask in the range 0 to 255.
             transaction_id: Request identifier in the range 0 to 65535.
-            payload: Raw operation-specific bytes to append after the header.
+            index: Dictionary index for Read, Write, and Subscribe requests.
+            subindex: Dictionary subindex for Read, Write, and Subscribe requests.
+            payload: Bytes following the dictionary address, such as a value to
+                write or subscription parameters.
 
         Returns:
             The big-endian SDCP frame ready to send as a UDP payload.
 
         Raises:
-            ValueError: If a header field does not fit its protocol-defined size.
+            ValueError: If a field does not fit its protocol-defined size or
+                a dictionary request does not include a complete address or a
+                Write request does not include a value payload.
 
         """
         cls._validate_uint("opcode", opcode, cls.OPCODE_SIZE)
         cls._validate_uint("flags", flags, cls.FLAGS_SIZE)
         cls._validate_uint("transaction_id", transaction_id, cls.TRANSACTION_ID_SIZE)
+        if (index is None) != (subindex is None):
+            raise ValueError("index and subindex must be provided together")
+        if cls._is_dictionary_request(opcode, flags) and index is None:
+            raise ValueError("dictionary requests require index and subindex")
+        if opcode == SDCPOpcode.WRITE and flags == SDCPFlag.NONE and not payload:
+            raise ValueError("Write requests require a value payload")
+        if index is not None and subindex is not None:
+            cls._validate_uint("index", index, cls.TRANSACTION_ID_SIZE)
+            cls._validate_uint("subindex", subindex, cls.OPCODE_SIZE)
+            payload = (
+                index.to_bytes(cls.TRANSACTION_ID_SIZE, "big")
+                + subindex.to_bytes(cls.OPCODE_SIZE, "big")
+                + payload
+            )
 
         return b"".join((
             opcode.to_bytes(cls.OPCODE_SIZE, "big"),
@@ -172,11 +199,21 @@ class SDCPSerializer:
             The parsed index and subindex, or ``None`` values when absent.
 
         """
-        dictionary_opcodes = (SDCPOpcode.READ, SDCPOpcode.WRITE, SDCPOpcode.SUBSCRIBE)
-        if opcode not in dictionary_opcodes or flags != SDCPFlag.NONE or len(payload) < 3:
+        if not SDCPSerializer._is_dictionary_request(opcode, flags) or len(payload) < 3:
             return None, None
 
         return int.from_bytes(payload[:2], "big"), payload[2]
+
+    @staticmethod
+    def _is_dictionary_request(opcode: int, flags: int) -> bool:
+        """Determine whether a frame requires a dictionary address.
+
+        Returns:
+            ``True`` for unflagged Read, Write, and Subscribe requests.
+
+        """
+        dictionary_opcodes = (SDCPOpcode.READ, SDCPOpcode.WRITE, SDCPOpcode.SUBSCRIBE)
+        return opcode in dictionary_opcodes and flags == SDCPFlag.NONE
 
     @staticmethod
     def _validate_uint(field_name: str, value: int, size: int) -> None:

@@ -1,5 +1,7 @@
 """Tests for SDCP acyclic frame serialization."""
 
+from __future__ import annotations
+
 import pytest
 
 from ingenialink.utils.sdcp import SDCPFlag, SDCPFrame, SDCPOpcode, SDCPSerializer
@@ -11,11 +13,27 @@ def test_serialize_read_request() -> None:
         SDCPOpcode.READ,
         SDCPFlag.NONE,
         0x1234,
-        bytes.fromhex("26E600"),
+        0x26E6,
+        0x00,
     )
 
     # The transaction ID is encoded as the big-endian bytes 12 34.
     assert frame == bytes.fromhex("0200123426E600")
+
+
+def test_serialize_write_request() -> None:
+    """Serialize the Write request from the SDCP protocol specification."""
+    frame = SDCPSerializer.serialize(
+        SDCPOpcode.WRITE,
+        SDCPFlag.NONE,
+        0x1234,
+        0x2821,
+        0x00,
+        bytes.fromhex("42C80000"),
+    )
+
+    # The value bytes follow the index and subindex fields.
+    assert frame == bytes.fromhex("0300123428210042C80000")
 
 
 def test_deserialize_read_response() -> None:
@@ -69,7 +87,7 @@ def test_round_trip_error_response() -> None:
         decoded_frame.opcode,
         decoded_frame.flags,
         decoded_frame.transaction_id,
-        decoded_frame.payload,
+        payload=decoded_frame.payload,
     )
 
     assert serialized_frame == received_frame
@@ -132,6 +150,37 @@ def test_serialize_rejects_oversized_header_fields(
     """Reject fields that cannot fit in their SDCP header positions."""
     with pytest.raises(ValueError):
         SDCPSerializer.serialize(opcode, flags, transaction_id)
+
+
+@pytest.mark.parametrize(
+    "index, subindex",
+    [
+        (0x100B, None),
+        (None, 0x00),
+        (0x1_0000, 0x00),
+        (0x100B, 0x100),
+    ],
+)
+def test_serialize_rejects_invalid_dictionary_address(
+    index: int | None, subindex: int | None
+) -> None:
+    """Require a complete dictionary address that fits the protocol fields."""
+    with pytest.raises(ValueError):
+        SDCPSerializer.serialize(
+            SDCPOpcode.READ, SDCPFlag.NONE, 0x1234, index=index, subindex=subindex
+        )
+
+
+def test_serialize_rejects_dictionary_request_without_address() -> None:
+    """Require an index and subindex for a dictionary request."""
+    with pytest.raises(ValueError, match="require index and subindex"):
+        SDCPSerializer.serialize(SDCPOpcode.READ, SDCPFlag.NONE, 0x1234)
+
+
+def test_serialize_rejects_write_request_without_value() -> None:
+    """Require a value payload for a Write request after its dictionary address."""
+    with pytest.raises(ValueError, match="require a value payload"):
+        SDCPSerializer.serialize(SDCPOpcode.WRITE, SDCPFlag.NONE, 0x1234, 0x2821, 0x00)
 
 
 @pytest.mark.parametrize("frame", [b"", b"\x01", b"\x01\x00\x12"])
