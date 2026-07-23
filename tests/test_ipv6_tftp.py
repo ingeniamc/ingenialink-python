@@ -83,6 +83,32 @@ def test_upload_ipv6_firmware_uses_scoped_address_and_uploads_file(mocker, tftp_
     assert tftp_socket.recvfrom.call_count == 2
 
 
+def test_upload_ipv6_firmware_reports_acknowledged_progress(mocker, tftp_socket, tmp_path):
+    """Report progress after each acknowledged data block."""
+    mocker.patch("ingenialink.utils.ipv6_tftp.sys.platform", "linux")
+    firmware_file = tmp_path / "firmware.lfu"
+    firmware_file.write_bytes(b"firmware" * 128 + b"x")
+    mocker.patch("ingenialink.utils.ipv6_tftp._get_interface_index", return_value=4)
+    mocker.patch("ingenialink.utils.ipv6_tftp.socket.socket", return_value=tftp_socket)
+    transfer_address = ("fe80::1", 20_069, 0, 4)
+    tftp_socket.recvfrom.side_effect = [
+        (struct.pack("!HH", TFTP_ACK, 0), transfer_address),
+        (struct.pack("!HH", TFTP_ACK, 1), transfer_address),
+        (struct.pack("!HH", TFTP_ACK, 2), transfer_address),
+        (struct.pack("!HH", TFTP_ACK, 3), transfer_address),
+    ]
+    callback_progress = mocker.Mock()
+
+    with TftpUploader("fe80::1", "eth0") as uploader:
+        uploader.upload_file(firmware_file, callback_progress)
+
+    assert [call.args for call in callback_progress.call_args_list] == [
+        (49,),
+        (99,),
+        (100,),
+    ]
+
+
 def test_upload_ipv6_firmware_rejects_non_lfu_file(mocker, tftp_socket, tmp_path):
     """Reject files the drive TFTP server cannot accept before network communication."""
     firmware_file = tmp_path / "firmware.bin"

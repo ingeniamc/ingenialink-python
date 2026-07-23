@@ -6,7 +6,7 @@ import sys
 import time
 from pathlib import Path
 from types import TracebackType
-from typing import NamedTuple, Optional, Union
+from typing import Callable, NamedTuple, Optional, Union
 
 import ingenialogger
 
@@ -80,11 +80,17 @@ class TftpUploader:
         """Close the owned socket when leaving the context."""
         self._tftp_socket.close()
 
-    def upload_file(self, firmware_file: Union[str, Path]) -> None:
+    def upload_file(
+        self,
+        firmware_file: Union[str, Path],
+        callback_progress: Optional[Callable[[int], None]] = None,
+    ) -> None:
         """Upload an LFU firmware file through TFTP.
 
         Args:
             firmware_file: Path to the LFU firmware file.
+            callback_progress: Optional callback receiving the acknowledged upload progress
+                as a percentage.
 
         Raises:
             FileNotFoundError: If the firmware file does not exist.
@@ -108,7 +114,7 @@ class TftpUploader:
             else:
                 # Other platforms receive the WRQ acknowledgement from the UDP socket.
                 transfer_address = self._send_write_request(server_address, path.name)
-            self._upload_blocks(transfer_address, path)
+            self._upload_blocks(transfer_address, path, callback_progress)
         except OSError as exc:
             raise ILFirmwareLoadError("Unable to upload firmware through IPv6 TFTP.") from exc
 
@@ -170,15 +176,30 @@ class TftpUploader:
         self,
         transfer_address: IPv6SocketAddress,
         firmware_file: Path,
+        callback_progress: Optional[Callable[[int], None]],
     ) -> None:
-        """Send sequential TFTP data blocks until the final block is acknowledged."""
+        """Send sequential TFTP data blocks until the final block is acknowledged.
+
+        Progress is reported only after a DATA block has been acknowledged.
+        """
         block_number = 1
+        transferred_bytes = 0
+        reported_progress = 0
+        total_bytes = firmware_file.stat().st_size
         with firmware_file.open("rb") as file:
             while True:
                 data = file.read(TFTP_BLOCK_SIZE)
                 packet = struct.pack("!HH", TFTP_DATA, block_number) + data
                 self._send_data_block(transfer_address, packet, block_number)
-                if len(data) < TFTP_BLOCK_SIZE:
+                transferred_bytes += len(data)
+                final_block = len(data) < TFTP_BLOCK_SIZE
+                progress = (
+                    100 if final_block else min(99, int(transferred_bytes * 100 / total_bytes))
+                )
+                if callback_progress is not None and progress != reported_progress:
+                    callback_progress(progress)
+                    reported_progress = progress
+                if final_block:
                     return
                 block_number = (block_number + 1) & 0xFFFF
 
