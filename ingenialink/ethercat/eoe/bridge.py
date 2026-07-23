@@ -57,6 +57,7 @@ class EoEUdpBridge:
     PREFIX_LEN = 24
     LOOP_PERIOD_S = 0.001
     MAILBOX_ERROR_BACKOFF_S = 0.1
+    MIN_FRAME_SIZE = 60
     SII_MAILBOX_PROTOCOL_WORD_ADDRESS = 0x1C
     SII_EEPROM_TIMEOUT_US = 200_000
     EOE_PROTOCOL_BIT = 0x2
@@ -152,6 +153,10 @@ class EoEUdpBridge:
             self._drive_ip = reported_ip
         # Rebuild the stack in case the host address moved to the drive's subnet
         self._stack = UdpStack(self.HOST_MAC, self._host_ip, self.PREFIX_LEN)
+        logger.info(
+            f"EoE bridge open on slave {self._slave_num}: host {self._host_ip}, "
+            f"drive {self._drive_ip}, reported settings {self._drive_ip_settings}"
+        )
         self._master.set_eoe_callback(self._on_eoe_frame)
         self._relay_sock.bind(("127.0.0.1", 0))
         self._relay_sock.setblocking(False)
@@ -208,7 +213,13 @@ class EoEUdpBridge:
             slave_num: 1-based position of the slave that sent the frame.
         """
         if slave_num == self._slave_num:
+            logger.debug(f"EoE rx: {self._describe_frame(frame)}")
             self._stack.push_frame(frame)
+        else:
+            logger.debug(
+                f"EoE rx from unexpected slave {slave_num} "
+                f"(bridged slave is {self._slave_num}): {self._describe_frame(frame)}"
+            )
 
     def _forward_localhost_to_stack(self) -> None:
         """Feed datagrams received on the localhost socket into the stack."""
@@ -218,14 +229,26 @@ class EoEUdpBridge:
             except (BlockingIOError, OSError):
                 return
             self._client_ports.add(client_port)
+            logger.debug(
+                f"Relay rx from client port {client_port}: {len(payload)} bytes "
+                f"-> {self._drive_ip}:{MCB_UDP_PORT}"
+            )
             self._stack.send(client_port, self._drive_ip, MCB_UDP_PORT, payload)
 
     def _flush_stack_to_drive(self) -> None:
         """Send all Ethernet frames produced by the stack to the slave over EoE."""
         frame = self._stack.pop_frame()
         while frame is not None:
+            if len(frame) < self.MIN_FRAME_SIZE:
+                # Pad to the Ethernet minimum: some drive EoE stacks drop runt
+                # frames (e.g. 42-byte ARP requests) that a real PHY would pad.
+                frame = frame.ljust(self.MIN_FRAME_SIZE, b"\x00")
             with self._mailbox_lock:
-                self._slave.eoe_send_data(frame)
+                wkc = self._slave.eoe_send_data(frame)
+            if wkc <= 0:
+                logger.warning(f"EoE tx failed (wkc={wkc}): {self._describe_frame(frame)}")
+            else:
+                logger.debug(f"EoE tx: {self._describe_frame(frame)}")
             frame = self._stack.pop_frame()
 
     def _deliver_stack_to_localhost(self) -> None:
@@ -233,6 +256,28 @@ class EoEUdpBridge:
         for port in self._client_ports:
             datagram = self._stack.recv(port)
             while datagram is not None:
-                payload, _, _ = datagram
+                payload, src_ip, src_port = datagram
+                logger.debug(
+                    f"Relay tx to client port {port}: {len(payload)} bytes from {src_ip}:{src_port}"
+                )
                 self._relay_sock.sendto(payload, ("127.0.0.1", port))
                 datagram = self._stack.recv(port)
+
+    @staticmethod
+    def _describe_frame(frame: bytes) -> str:
+        """Summarize an Ethernet frame for logging.
+
+        Args:
+            frame: Raw Ethernet frame.
+
+        Returns:
+            A short human-readable description of the frame.
+        """
+        min_header_length = 14
+        if len(frame) < min_header_length:
+            return f"runt frame ({len(frame)} bytes): {frame.hex()}"
+        ethertype = int.from_bytes(frame[12:14], "big")
+        name = {0x0806: "ARP", 0x0800: "IPv4", 0x86DD: "IPv6"}.get(
+            ethertype, f"ethertype {ethertype:#06x}"
+        )
+        return f"{name} frame ({len(frame)} bytes)"
