@@ -108,6 +108,32 @@ from ingenialink.utils.sdcp import (
 def test_serialize_message_objects(message: _SDCPMessage, expected_frame: bytes) -> None:
     """Serialize every supported typed message into its specification frame."""
     assert bytes(message) == expected_frame
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        SDCPIdentificationRequest(0x1234),
+        SDCPReadRequest(0x1234, 0x26E6, 0x00),
+        SDCPWriteRequest(0x1234, 0x2821, 0x00, bytes.fromhex("42C80000")),
+        SDCPPeriodicSubscriptionRequest(0x1234, 0x2031, 0x00, 100, 2000),
+        SDCPEventSubscriptionRequest(0x1234, 0x2E4D, 0x00, 2000),
+        SDCPUnsubscribeRequest(0x1234, 0x5678),
+        SDCPIdentificationResponse(0x1234, 0, 0x12345678, 0x90ABCDEF, 0),
+        SDCPReadResponse(0x1234, bytes.fromhex("12345678")),
+        SDCPWriteResponse(0x1234),
+        SDCPSubscribeResponse(0x1234, 0x5678),
+        SDCPUnsubscribeResponse(0x1234),
+        SDCPIdentificationResponseError(0x1234, 0xFFFF0001),
+        SDCPReadResponseError(0x1234, 0xFFFF0001),
+        SDCPWriteResponseError(0x1234, 0xFFFF0001),
+        SDCPSubscribeResponseError(0x1234, 0xFFFF0001),
+        SDCPUnsubscribeResponseError(0x1234, 0xFFFF0001),
+        SDCPUnknownFrame(0x1234, 0xFF, 0x80, bytes.fromhex("ABCD")),
+    ],
+)
+def test_deserialize_serialized_message(message: _SDCPMessage) -> None:
+    """Round-trip every concrete message through SDCP frame deserialization."""
     assert SDCPDeserializer.deserialize(bytes(message)) == message
 
 

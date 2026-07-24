@@ -1,4 +1,4 @@
-"""Serialization utilities for Servo Drives Control Protocol frames."""
+"""SDCP message encoding and frame deserialization utilities."""
 
 from __future__ import annotations
 
@@ -158,8 +158,6 @@ class _SDCPCodec:
         flags: int,
         transaction_id: int,
         payload: bytes = b"",
-        *,
-        payload_name: str = "payload",
     ) -> bytes:
         """Serialize the common SDCP header and raw operation payload.
 
@@ -172,7 +170,7 @@ class _SDCPCodec:
 
         """
         if not isinstance(payload, bytes):
-            raise TypeError(f"{payload_name} must be bytes")
+            raise TypeError("payload must be bytes")
         header = b"".join((
             _SDCPCodec.serialize_uint(_SDCPFields.OPCODE, opcode),
             _SDCPCodec.serialize_uint(_SDCPFields.FLAGS, flags),
@@ -292,7 +290,6 @@ class SDCPWriteRequest(_SDCPMessage):
             SDCPFlag.NONE,
             self.transaction_id,
             payload,
-            payload_name="value",
         )
 
 
@@ -404,13 +401,17 @@ class SDCPReadResponse(_SDCPMessage):
         Returns:
             The binary SDCP frame.
 
+        Raises:
+            TypeError: If the value payload is not bytes.
+
         """
+        if not isinstance(self.value, bytes):
+            raise TypeError("value must be bytes")
         return _SDCPCodec.serialize_frame(
             SDCPOpcode.READ,
             SDCPFlag.REPLY,
             self.transaction_id,
             self.value,
-            payload_name="value",
         )
 
 
@@ -465,7 +466,7 @@ class SDCPUnsubscribeResponse(_SDCPMessage):
 
 @dataclass(frozen=True, repr=False)
 class SDCPErrorResponse(_SDCPMessage):
-    """Base class for operation-specific SDCP error responses."""
+    """Abstract base class for operation-specific SDCP error responses."""
 
     error_code: int
 
