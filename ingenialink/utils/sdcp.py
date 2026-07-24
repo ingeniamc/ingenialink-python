@@ -598,7 +598,7 @@ SDCPMessage = Union[
 ]
 
 
-class SDCPSerializer:
+class SDCPDeserializer:
     """Deserialize SDCP acyclic frames.
 
     SDCP uses a four-byte header with one-byte opcode and flags fields followed

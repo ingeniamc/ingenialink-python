@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from ingenialink.utils.sdcp import (
+    SDCPDeserializer,
     SDCPErrorResponse,
     SDCPEventSubscriptionRequest,
     SDCPFlag,
@@ -16,7 +17,6 @@ from ingenialink.utils.sdcp import (
     SDCPReadRequest,
     SDCPReadResponse,
     SDCPReadResponseError,
-    SDCPSerializer,
     SDCPSubscribeResponse,
     SDCPSubscribeResponseError,
     SDCPUnknownFrame,
@@ -108,7 +108,7 @@ from ingenialink.utils.sdcp import (
 def test_serialize_message_objects(message: _SDCPMessage, expected_frame: bytes) -> None:
     """Serialize every supported typed message into its specification frame."""
     assert bytes(message) == expected_frame
-    assert SDCPSerializer.deserialize(bytes(message)) == message
+    assert SDCPDeserializer.deserialize(bytes(message)) == message
 
 
 @pytest.mark.parametrize(
@@ -128,7 +128,7 @@ def test_serialize_error_response_uses_opcode_and_error_flags(
     frame = bytes(message)
 
     assert frame[:2] == bytes((expected_opcode, SDCPFlag.REPLY | SDCPFlag.ERROR))
-    assert SDCPSerializer.deserialize(frame) == message
+    assert SDCPDeserializer.deserialize(frame) == message
 
 
 def test_serialize_rejects_base_error_response() -> None:
@@ -192,13 +192,13 @@ def test_payload_reader_requires_bytes(payload: object) -> None:
 def test_deserialize_requires_bytes() -> None:
     """Require complete SDCP frames to be immutable bytes."""
     with pytest.raises(TypeError, match="Payload must be bytes"):
-        SDCPSerializer.deserialize("01001234")  # type: ignore[arg-type]
+        SDCPDeserializer.deserialize("01001234")  # type: ignore[arg-type]
 
 
 def test_identification_response_requires_revision_number() -> None:
     """Keep Identification responses strict at the documented 13-byte layout."""
     with pytest.raises(ValueError, match="requested 4 bytes.*only 0 remain"):
-        SDCPSerializer.deserialize(bytes.fromhex("01011234001234567890ABCDEF"))
+        SDCPDeserializer.deserialize(bytes.fromhex("01011234001234567890ABCDEF"))
 
 
 @pytest.mark.parametrize(
@@ -228,7 +228,7 @@ def test_identification_response_requires_revision_number() -> None:
 )
 def test_deserialize_frame_matches_expected_message(frame: str, expected_message: object) -> None:
     """Deserialize every documented frame layout into its specialized message."""
-    assert SDCPSerializer.deserialize(bytes.fromhex(frame)) == expected_message
+    assert SDCPDeserializer.deserialize(bytes.fromhex(frame)) == expected_message
 
 
 @pytest.mark.parametrize(
@@ -240,7 +240,7 @@ def test_deserialize_frame_matches_expected_message(frame: str, expected_message
 )
 def test_deserialize_unknown_frame(frame: str, expected_message: SDCPUnknownFrame) -> None:
     """Preserve unsupported opcodes and flags without guessing their layout."""
-    decoded_message = SDCPSerializer.deserialize(bytes.fromhex(frame))
+    decoded_message = SDCPDeserializer.deserialize(bytes.fromhex(frame))
 
     assert decoded_message == expected_message
 
@@ -271,7 +271,7 @@ def test_deserialize_specialized_error_responses(
     frame: str, expected_message: SDCPErrorResponse
 ) -> None:
     """Decode each known operation's error response into its specific type."""
-    decoded_message = SDCPSerializer.deserialize(bytes.fromhex(frame))
+    decoded_message = SDCPDeserializer.deserialize(bytes.fromhex(frame))
 
     assert decoded_message == expected_message
     assert isinstance(decoded_message, SDCPErrorResponse)
@@ -383,7 +383,7 @@ def test_message_representation_uses_protocol_field_formats() -> None:
 def test_deserialize_rejects_malformed_frames(frame: str, message: str) -> None:
     """Reject malformed SDCP headers and message payloads for their expected reasons."""
     with pytest.raises(ValueError, match=message):
-        SDCPSerializer.deserialize(bytes.fromhex(frame))
+        SDCPDeserializer.deserialize(bytes.fromhex(frame))
 
 
 @pytest.mark.parametrize(
