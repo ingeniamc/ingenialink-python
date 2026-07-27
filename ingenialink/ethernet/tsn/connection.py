@@ -29,13 +29,12 @@ class SDCPConnection:
     _MAX_RESPONSE_SIZE = 65_535
     _INITIAL_TRANSACTION_ID = 0x0
     _ACYCLIC_PORT = 22_334
-    _CONNECTION_TIMEOUT_S = 2.0
 
     def __init__(
         self,
         address: str,
         interface: str,
-        timeout: float = _CONNECTION_TIMEOUT_S,
+        timeout: float,
     ) -> None:
         interface_index = get_interface_index(interface)
 
