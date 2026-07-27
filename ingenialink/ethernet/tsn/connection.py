@@ -12,7 +12,19 @@ from .types import IPv6SocketAddress
 
 
 class SDCPConnection:
-    """Execute SDCP transactions over UDP/IPv6."""
+    """Execute SDCP transactions over UDP/IPv6.
+
+    Args:
+        address: IPv6 address of the SDCP device.
+        interface: Network interface in the same format as
+            :func:`ingenialink.ethernet.tsn.ipv6_discovery.discover_ipv6_devices`.
+        timeout: Timeout in seconds for SDCP requests and responses.
+
+    Raises:
+        OSError: If the interface cannot be resolved.
+
+
+    """
 
     _MAX_RESPONSE_SIZE = 65_535
     _INITIAL_TRANSACTION_ID = 0x0
@@ -25,7 +37,6 @@ class SDCPConnection:
         interface: str,
         timeout: float = _CONNECTION_TIMEOUT_S,
     ) -> None:
-        address = address.split("%", maxsplit=1)[0]
         interface_index = get_interface_index(interface)
 
         self._destination = IPv6SocketAddress(
