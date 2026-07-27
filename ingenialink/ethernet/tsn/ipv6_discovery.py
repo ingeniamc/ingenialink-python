@@ -68,7 +68,7 @@ def discover_ipv6_devices(
         OSError: If the network interface or socket cannot be configured.
     """
     _validate_timeout(timeout_s)
-    interface_index = interfaces._get_interface_index(interface)
+    interface_index = interfaces.get_interface_index(interface)
     echo_identifier = secrets.randbelow(0xFFFF) + 1
     echo_request = struct.pack(
         ICMPV6_HEADER_FORMAT,

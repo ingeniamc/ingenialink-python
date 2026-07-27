@@ -3,7 +3,7 @@ import struct
 
 import pytest
 
-from ingenialink.ethernet.tsn.interfaces import _get_interface_index
+from ingenialink.ethernet.tsn.interfaces import get_interface_index
 from ingenialink.ethernet.tsn.ipv6_discovery import (
     ALL_NODES_IPV6_ADDRESS,
     ICMPV6_ECHO_REPLY,
@@ -103,7 +103,7 @@ def test_get_interface_index_uses_pcap_guid_on_windows(mocker):
         create=True,
     )
 
-    interface_index = _get_interface_index(r"\Device\NPF_{DEADC0FF-EEEE-4444-8888-2BF6900CBFA0}")
+    interface_index = get_interface_index(r"\Device\NPF_{DEADC0FF-EEEE-4444-8888-2BF6900CBFA0}")
 
     assert interface_index == 7
     get_windows_ipv6_adapters.assert_called_once_with()
@@ -117,7 +117,7 @@ def test_get_interface_index_uses_native_interface_name_outside_windows(mocker):
         return_value=4,
     )
 
-    assert _get_interface_index("eth0") == 4
+    assert get_interface_index("eth0") == 4
     if_nametoindex.assert_called_once_with("eth0")
 
 

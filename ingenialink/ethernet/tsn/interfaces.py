@@ -16,7 +16,7 @@ class _WindowsIpv6Adapter:
 PCAP_INTERFACE_GUID_PATTERN = re.compile(r"^\\Device\\NPF_(\{[^}]+\})$", re.IGNORECASE)
 
 
-def _get_interface_index(interface: str) -> int:
+def get_interface_index(interface: str) -> int:
     """Return the IPv6 index for a system interface or Pcap device path.
 
     Raises:

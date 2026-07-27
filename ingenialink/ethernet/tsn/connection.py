@@ -3,6 +3,7 @@ from threading import Lock
 from types import TracebackType
 from typing import Union
 
+from .interfaces import get_interface_index
 from .sdcp import (
     SDCPDeserializer,
     SDCPMessage,
@@ -14,19 +15,21 @@ class SDCPConnection:
 
     _MAX_RESPONSE_SIZE = 65_535
     _INITIAL_TRANSACTION_ID = 0x0
+    _ACYCLIC_PORT = 22_334
+    _CONNECTION_TIMEOUT_S = 2.0
 
     def __init__(
         self,
         address: str,
-        port: int,
-        interface_index: int,
-        timeout: float = 2.0,
+        interface: str,
+        timeout: float = _CONNECTION_TIMEOUT_S,
     ) -> None:
         address = address.split("%", maxsplit=1)[0]
+        interface_index = get_interface_index(interface)
 
         self._destination = (
             address,
-            port,
+            self._ACYCLIC_PORT,
             0,
             interface_index,
         )
