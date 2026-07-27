@@ -149,7 +149,7 @@ def test_dictionary_parses_register_units_to_none(
     dictionaries = [
         (
             "DEN-NET-E",
-            DictionaryVersion("2.8.0", DictionaryType.XDF_V3),
+            DictionaryVersion("2.9.1", DictionaryType.XDF_V3),
             "DRV_AXIS_NUMBER",
             DictionaryV3,
         ),

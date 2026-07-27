@@ -14,5 +14,5 @@ def den_net_e_2_8_0_xdf_v3(
 ) -> Path:
     return product_dictionary(
         "DEN-NET-E",
-        DictionaryVersion("2.8.0", DictionaryType.XDF_V3),
+        DictionaryVersion("2.9.1", DictionaryType.XDF_V3),
     )
