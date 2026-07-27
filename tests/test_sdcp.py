@@ -26,6 +26,7 @@ from ingenialink.utils.sdcp import (
     SDCPWriteRequest,
     SDCPWriteResponse,
     SDCPWriteResponseError,
+    _SDCPField,
     _SDCPFields,
     _SDCPMessage,
     _SDCPPayloadReader,
@@ -167,6 +168,31 @@ def test_message_base_is_abstract() -> None:
     """Require concrete message types to implement the byte interface."""
     with pytest.raises(TypeError, match="abstract method"):
         _SDCPMessage(0x1234)
+
+
+def test_sdcp_field_serializes_fixed_width_big_endian_values() -> None:
+    """Serialize unsigned values using the field width and protocol byte order."""
+    field = _SDCPField(2)
+
+    assert field.size == 2
+    assert field.hex_width == 4
+    assert field.maximum_value == 0xFFFF
+    assert field.serialize(0x1234) == bytes.fromhex("1234")
+    assert field.serialize(field.maximum_value) == bytes.fromhex("FFFF")
+
+
+@pytest.mark.parametrize("value", [True, False, "0x1234", 1.0])
+def test_sdcp_field_rejects_non_integer_values(value: object) -> None:
+    """Reject booleans and other non-integer values before encoding."""
+    with pytest.raises(TypeError, match="Value must be an integer for a 2-byte field"):
+        _SDCPField(2).serialize(value)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("value", [-1, 0x1_0000])
+def test_sdcp_field_rejects_values_outside_unsigned_range(value: int) -> None:
+    """Reject values outside the field's unsigned range."""
+    with pytest.raises(ValueError, match="Value must be in the range 0 to 65535"):
+        _SDCPField(2).serialize(value)
 
 
 @pytest.mark.parametrize(

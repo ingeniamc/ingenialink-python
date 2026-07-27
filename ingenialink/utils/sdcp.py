@@ -38,9 +38,26 @@ _SDCP_BYTE_ORDER: Literal["big"] = "big"
 
 @dataclass(frozen=True)
 class _SDCPField:
-    """Metadata for a fixed-width SDCP field."""
+    """Define and serialize a fixed-width SDCP field."""
 
     size: int
+
+    def serialize(self, value: int) -> bytes:
+        """Serialize an unsigned value using the protocol byte order.
+
+        Returns:
+            The fixed-width big-endian representation of the field.
+
+        Raises:
+            TypeError: If the value is not an integer or is a boolean.
+            ValueError: If the value cannot fit in the field.
+
+        """
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise TypeError(f"Value must be an integer for a {self.size}-byte field")
+        if not 0 <= value <= self.maximum_value:
+            raise ValueError(f"Value must be in the range 0 to {self.maximum_value}")
+        return value.to_bytes(self.size, _SDCP_BYTE_ORDER)
 
     @property
     def hex_width(self) -> int:
@@ -135,24 +152,6 @@ class _SDCPCodec:
     """Private SDCP encoding operations shared by message objects."""
 
     @staticmethod
-    def serialize_uint(field: _SDCPField, value: int) -> bytes:
-        """Serialize an unsigned SDCP field using the protocol byte order.
-
-        Returns:
-            The fixed-width big-endian representation of the field.
-
-        Raises:
-            TypeError: If the value is not an integer or is a boolean.
-            ValueError: If the value cannot fit in the field.
-
-        """
-        if isinstance(value, bool) or not isinstance(value, int):
-            raise TypeError(f"Value must be an integer for a {field.size}-byte field")
-        if not 0 <= value <= field.maximum_value:
-            raise ValueError(f"Value must be in the range 0 to {field.maximum_value}")
-        return value.to_bytes(field.size, _SDCP_BYTE_ORDER)
-
-    @staticmethod
     def serialize_frame(
         opcode: int,
         flags: int,
@@ -171,24 +170,12 @@ class _SDCPCodec:
         """
         if not isinstance(payload, bytes):
             raise TypeError("payload must be bytes")
-        header = b"".join((
-            _SDCPCodec.serialize_uint(_SDCPFields.OPCODE, opcode),
-            _SDCPCodec.serialize_uint(_SDCPFields.FLAGS, flags),
-            _SDCPCodec.serialize_uint(_SDCPFields.TRANSACTION_ID, transaction_id),
-        ))
-        return header + payload
-
-    @staticmethod
-    def serialize_dictionary_address(index: int, subindex: int) -> bytes:
-        """Serialize a dictionary index and subindex.
-
-        Returns:
-            The fixed-width dictionary address bytes.
-
-        """
-        return _SDCPCodec.serialize_uint(_SDCPFields.INDEX, index) + _SDCPCodec.serialize_uint(
-            _SDCPFields.SUBINDEX, subindex
+        header = (
+            _SDCPFields.OPCODE.serialize(opcode)
+            + _SDCPFields.FLAGS.serialize(flags)
+            + _SDCPFields.TRANSACTION_ID.serialize(transaction_id)
         )
+        return header + payload
 
 
 @dataclass(frozen=True, repr=False)
@@ -255,7 +242,9 @@ class SDCPReadRequest(_SDCPMessage):
             The binary SDCP frame.
 
         """
-        payload = _SDCPCodec.serialize_dictionary_address(self.index, self.subindex)
+        payload = _SDCPFields.INDEX.serialize(self.index) + _SDCPFields.SUBINDEX.serialize(
+            self.subindex
+        )
         return _SDCPCodec.serialize_frame(
             SDCPOpcode.READ, SDCPFlag.NONE, self.transaction_id, payload
         )
@@ -284,7 +273,11 @@ class SDCPWriteRequest(_SDCPMessage):
             raise TypeError("value must be bytes")
         if not self.value:
             raise ValueError("Write requests require a value payload")
-        payload = _SDCPCodec.serialize_dictionary_address(self.index, self.subindex) + self.value
+        payload = (
+            _SDCPFields.INDEX.serialize(self.index)
+            + _SDCPFields.SUBINDEX.serialize(self.subindex)
+            + self.value
+        )
         return _SDCPCodec.serialize_frame(
             SDCPOpcode.WRITE,
             SDCPFlag.NONE,
@@ -309,11 +302,13 @@ class SDCPPeriodicSubscriptionRequest(_SDCPMessage):
             The binary SDCP frame.
 
         """
-        payload = _SDCPCodec.serialize_dictionary_address(self.index, self.subindex) + b"".join((
-            _SDCPCodec.serialize_uint(_SDCPFields.SUBSCRIPTION_MODE, SDCPSubscriptionMode.PERIODIC),
-            _SDCPCodec.serialize_uint(_SDCPFields.CYCLIC_TIME_MS, self.cyclic_time_ms),
-            _SDCPCodec.serialize_uint(_SDCPFields.MESSAGE_COUNT, self.message_count),
-        ))
+        payload = (
+            _SDCPFields.INDEX.serialize(self.index)
+            + _SDCPFields.SUBINDEX.serialize(self.subindex)
+            + _SDCPFields.SUBSCRIPTION_MODE.serialize(SDCPSubscriptionMode.PERIODIC)
+            + _SDCPFields.CYCLIC_TIME_MS.serialize(self.cyclic_time_ms)
+            + _SDCPFields.MESSAGE_COUNT.serialize(self.message_count)
+        )
         return _SDCPCodec.serialize_frame(
             SDCPOpcode.SUBSCRIBE, SDCPFlag.NONE, self.transaction_id, payload
         )
@@ -334,10 +329,12 @@ class SDCPEventSubscriptionRequest(_SDCPMessage):
             The binary SDCP frame.
 
         """
-        payload = _SDCPCodec.serialize_dictionary_address(self.index, self.subindex) + b"".join((
-            _SDCPCodec.serialize_uint(_SDCPFields.SUBSCRIPTION_MODE, SDCPSubscriptionMode.EVENT),
-            _SDCPCodec.serialize_uint(_SDCPFields.MESSAGE_COUNT, self.message_count),
-        ))
+        payload = (
+            _SDCPFields.INDEX.serialize(self.index)
+            + _SDCPFields.SUBINDEX.serialize(self.subindex)
+            + _SDCPFields.SUBSCRIPTION_MODE.serialize(SDCPSubscriptionMode.EVENT)
+            + _SDCPFields.MESSAGE_COUNT.serialize(self.message_count)
+        )
         return _SDCPCodec.serialize_frame(
             SDCPOpcode.SUBSCRIBE, SDCPFlag.NONE, self.transaction_id, payload
         )
@@ -356,7 +353,7 @@ class SDCPUnsubscribeRequest(_SDCPMessage):
             The binary SDCP frame.
 
         """
-        payload = _SDCPCodec.serialize_uint(_SDCPFields.SUBSCRIPTION_ID, self.subscription_id)
+        payload = _SDCPFields.SUBSCRIPTION_ID.serialize(self.subscription_id)
         return _SDCPCodec.serialize_frame(
             SDCPOpcode.UNSUBSCRIBE, SDCPFlag.NONE, self.transaction_id, payload
         )
@@ -378,12 +375,12 @@ class SDCPIdentificationResponse(_SDCPMessage):
             The binary SDCP frame.
 
         """
-        payload = b"".join((
-            _SDCPCodec.serialize_uint(_SDCPFields.PROTOCOL_VERSION, self.protocol_version),
-            _SDCPCodec.serialize_uint(_SDCPFields.SERIAL_NUMBER, self.serial_number),
-            _SDCPCodec.serialize_uint(_SDCPFields.PRODUCT_CODE, self.product_code),
-            _SDCPCodec.serialize_uint(_SDCPFields.REVISION_NUMBER, self.revision_number),
-        ))
+        payload = (
+            _SDCPFields.PROTOCOL_VERSION.serialize(self.protocol_version)
+            + _SDCPFields.SERIAL_NUMBER.serialize(self.serial_number)
+            + _SDCPFields.PRODUCT_CODE.serialize(self.product_code)
+            + _SDCPFields.REVISION_NUMBER.serialize(self.revision_number)
+        )
         return _SDCPCodec.serialize_frame(
             SDCPOpcode.IDENTIFICATION, SDCPFlag.REPLY, self.transaction_id, payload
         )
@@ -442,7 +439,7 @@ class SDCPSubscribeResponse(_SDCPMessage):
             The binary SDCP frame.
 
         """
-        payload = _SDCPCodec.serialize_uint(_SDCPFields.SUBSCRIPTION_ID, self.subscription_id)
+        payload = _SDCPFields.SUBSCRIPTION_ID.serialize(self.subscription_id)
         return _SDCPCodec.serialize_frame(
             SDCPOpcode.SUBSCRIBE, SDCPFlag.REPLY, self.transaction_id, payload
         )
@@ -482,7 +479,7 @@ class SDCPIdentificationResponseError(SDCPErrorResponse):
             The binary SDCP frame.
 
         """
-        payload = _SDCPCodec.serialize_uint(_SDCPFields.ERROR_CODE, self.error_code)
+        payload = _SDCPFields.ERROR_CODE.serialize(self.error_code)
         return _SDCPCodec.serialize_frame(
             SDCPOpcode.IDENTIFICATION,
             SDCPFlag.REPLY | SDCPFlag.ERROR,
@@ -502,7 +499,7 @@ class SDCPReadResponseError(SDCPErrorResponse):
             The binary SDCP frame.
 
         """
-        payload = _SDCPCodec.serialize_uint(_SDCPFields.ERROR_CODE, self.error_code)
+        payload = _SDCPFields.ERROR_CODE.serialize(self.error_code)
         return _SDCPCodec.serialize_frame(
             SDCPOpcode.READ, SDCPFlag.REPLY | SDCPFlag.ERROR, self.transaction_id, payload
         )
@@ -519,7 +516,7 @@ class SDCPWriteResponseError(SDCPErrorResponse):
             The binary SDCP frame.
 
         """
-        payload = _SDCPCodec.serialize_uint(_SDCPFields.ERROR_CODE, self.error_code)
+        payload = _SDCPFields.ERROR_CODE.serialize(self.error_code)
         return _SDCPCodec.serialize_frame(
             SDCPOpcode.WRITE, SDCPFlag.REPLY | SDCPFlag.ERROR, self.transaction_id, payload
         )
@@ -536,7 +533,7 @@ class SDCPSubscribeResponseError(SDCPErrorResponse):
             The binary SDCP frame.
 
         """
-        payload = _SDCPCodec.serialize_uint(_SDCPFields.ERROR_CODE, self.error_code)
+        payload = _SDCPFields.ERROR_CODE.serialize(self.error_code)
         return _SDCPCodec.serialize_frame(
             SDCPOpcode.SUBSCRIBE, SDCPFlag.REPLY | SDCPFlag.ERROR, self.transaction_id, payload
         )
@@ -553,7 +550,7 @@ class SDCPUnsubscribeResponseError(SDCPErrorResponse):
             The binary SDCP frame.
 
         """
-        payload = _SDCPCodec.serialize_uint(_SDCPFields.ERROR_CODE, self.error_code)
+        payload = _SDCPFields.ERROR_CODE.serialize(self.error_code)
         return _SDCPCodec.serialize_frame(
             SDCPOpcode.UNSUBSCRIBE,
             SDCPFlag.REPLY | SDCPFlag.ERROR,
@@ -663,11 +660,13 @@ class SDCPDeserializer:
             reader.ensure_end()
             return SDCPIdentificationRequest(transaction_id)
         if operation == SDCPOpcode.READ:
-            index, subindex = cls._deserialize_dictionary_address(reader)
+            index = reader.read_uint(_SDCPFields.INDEX)
+            subindex = reader.read_uint(_SDCPFields.SUBINDEX)
             reader.ensure_end()
             return SDCPReadRequest(transaction_id, index, subindex)
         if operation == SDCPOpcode.WRITE:
-            index, subindex = cls._deserialize_dictionary_address(reader)
+            index = reader.read_uint(_SDCPFields.INDEX)
+            subindex = reader.read_uint(_SDCPFields.SUBINDEX)
             value = reader.read_remaining()
             if not value:
                 raise ValueError("Write requests require a value payload")
@@ -681,8 +680,6 @@ class SDCPDeserializer:
                 transaction_id,
                 subscription_id,
             )
-
-        return SDCPUnknownFrame(transaction_id, opcode, SDCPFlag.NONE, payload)
 
     @classmethod
     def _deserialize_success_response(
@@ -716,8 +713,6 @@ class SDCPDeserializer:
         if operation == SDCPOpcode.UNSUBSCRIBE:
             _SDCPPayloadReader(payload).ensure_end()
             return SDCPUnsubscribeResponse(transaction_id)
-
-        return SDCPUnknownFrame(transaction_id, opcode, SDCPFlag.REPLY, payload)
 
     @classmethod
     def _deserialize_subscribe_response(
@@ -768,8 +763,6 @@ class SDCPDeserializer:
         if operation == SDCPOpcode.UNSUBSCRIBE:
             return SDCPUnsubscribeResponseError(transaction_id, error_code)
 
-        return SDCPUnknownFrame(transaction_id, opcode, SDCPFlag.REPLY | SDCPFlag.ERROR, payload)
-
     @classmethod
     def _deserialize_identification_response(
         cls, transaction_id: int, payload: bytes
@@ -809,7 +802,8 @@ class SDCPDeserializer:
             ValueError: If the subscription payload is malformed.
 
         """
-        index, subindex = cls._deserialize_dictionary_address(reader)
+        index = reader.read_uint(_SDCPFields.INDEX)
+        subindex = reader.read_uint(_SDCPFields.SUBINDEX)
         mode_value = reader.read_uint(_SDCPFields.SUBSCRIPTION_MODE)
         try:
             mode = SDCPSubscriptionMode(mode_value)
@@ -837,16 +831,3 @@ class SDCPDeserializer:
             )
         reader.ensure_end()
         return request
-
-    @staticmethod
-    def _deserialize_dictionary_address(reader: _SDCPPayloadReader) -> tuple[int, int]:
-        """Deserialize a dictionary address from the current payload position.
-
-        Returns:
-            The dictionary index and subindex.
-
-        Raises:
-            ValueError: If the payload cannot contain the address.
-
-        """
-        return reader.read_uint(_SDCPFields.INDEX), reader.read_uint(_SDCPFields.SUBINDEX)
