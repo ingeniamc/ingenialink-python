@@ -3,7 +3,7 @@ from threading import Lock
 from types import TracebackType
 from typing import Union
 
-from ingenialink.utils.sdcp import (
+from .sdcp import (
     SDCPDeserializer,
     SDCPMessage,
 )

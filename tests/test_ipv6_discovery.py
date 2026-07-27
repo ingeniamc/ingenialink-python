@@ -3,13 +3,13 @@ import struct
 
 import pytest
 
-from ingenialink.utils.ipv6_discovery import (
+from ingenialink.ethernet.tsn.interfaces import _get_interface_index
+from ingenialink.ethernet.tsn.ipv6_discovery import (
     ALL_NODES_IPV6_ADDRESS,
     ICMPV6_ECHO_REPLY,
     ICMPV6_ECHO_REQUEST,
     ICMPV6_HEADER_FORMAT,
     _get_echo_reply_source_address,
-    _get_interface_index,
     discover_ipv6_devices,
 )
 
@@ -43,8 +43,8 @@ def discovery_socket(mocker):
 
 def test_discover_ipv6_devices_collects_unique_responses(mocker, discovery_socket):
     """Collect matching Linux responses once and preserve their response order."""
-    mocker.patch("ingenialink.utils.ipv6_discovery.secrets.randbelow", return_value=122)
-    mocker.patch("ingenialink.utils.ipv6_discovery.sys.platform", "linux")
+    mocker.patch("ingenialink.ethernet.tsn.ipv6_discovery.secrets.randbelow", return_value=122)
+    mocker.patch("ingenialink.ethernet.tsn.ipv6_discovery.sys.platform", "linux")
     discovery_socket.recvfrom.side_effect = [
         (
             _echo_reply_packet(123),
@@ -61,9 +61,9 @@ def test_discover_ipv6_devices_collects_unique_responses(mocker, discovery_socke
         ),
         socket.timeout,
     ]
-    mocker.patch("ingenialink.utils.ipv6_discovery.socket.if_nametoindex", return_value=4)
+    mocker.patch("ingenialink.ethernet.tsn.interfaces.socket.if_nametoindex", return_value=4)
     socket_factory = mocker.patch(
-        "ingenialink.utils.ipv6_discovery.socket.socket", return_value=discovery_socket
+        "ingenialink.ethernet.tsn.ipv6_discovery.socket.socket", return_value=discovery_socket
     )
 
     devices = discover_ipv6_devices("Ethernet", timeout_s=1.0)
@@ -96,9 +96,9 @@ def test_discover_ipv6_devices_rejects_invalid_timeout(timeout_s):
 def test_get_interface_index_uses_pcap_guid_on_windows(mocker):
     """Map a Pcap interface GUID to its Windows IPv6 interface index."""
     adapter = mocker.Mock(AdapterName="{DEADC0FF-EEEE-4444-8888-2BF6900CBFA0}", Ipv6IfIndex=7)
-    mocker.patch("ingenialink.utils.ipv6_discovery.sys.platform", "win32")
+    mocker.patch("ingenialink.ethernet.tsn.interfaces.sys.platform", "win32")
     get_windows_ipv6_adapters = mocker.patch(
-        "ingenialink.utils.ipv6_discovery._get_windows_ipv6_adapters",
+        "ingenialink.ethernet.tsn.interfaces._get_windows_ipv6_adapters",
         return_value=[adapter],
         create=True,
     )
@@ -111,9 +111,9 @@ def test_get_interface_index_uses_pcap_guid_on_windows(mocker):
 
 def test_get_interface_index_uses_native_interface_name_outside_windows(mocker):
     """Use the native socket interface lookup outside Windows."""
-    mocker.patch("ingenialink.utils.ipv6_discovery.sys.platform", "linux")
+    mocker.patch("ingenialink.ethernet.tsn.interfaces.sys.platform", "linux")
     if_nametoindex = mocker.patch(
-        "ingenialink.utils.ipv6_discovery.socket.if_nametoindex",
+        "ingenialink.ethernet.tsn.interfaces.socket.if_nametoindex",
         return_value=4,
     )
 
@@ -127,21 +127,22 @@ def test_discover_ipv6_devices_uses_pcap_on_windows(mocker, discovery_socket):
     capture = mocker.MagicMock()
     capture.__enter__.return_value = capture
     capture.read_packet.side_effect = [None, None]
-    mocker.patch("ingenialink.utils.ipv6_discovery.secrets.randbelow", return_value=122)
-    mocker.patch("ingenialink.utils.ipv6_discovery.sys.platform", "win32")
-    mocker.patch("ingenialink.utils.ipv6_discovery._get_interface_index", return_value=4)
+    mocker.patch("ingenialink.ethernet.tsn.ipv6_discovery.secrets.randbelow", return_value=122)
+    mocker.patch("ingenialink.ethernet.tsn.ipv6_discovery.sys.platform", "win32")
+    mocker.patch("ingenialink.ethernet.tsn.interfaces.sys.platform", "win32")
+    mocker.patch("ingenialink.ethernet.tsn.interfaces._get_interface_index", return_value=4)
     pcap_capture = mocker.patch(
-        "ingenialink.utils.ipv6_discovery.PcapCapture",
+        "ingenialink.ethernet.tsn.ipv6_discovery.PcapCapture",
         side_effect=lambda _: events.append("capture_started") or capture,
         create=True,
     )
     discovery_socket.sendto.side_effect = lambda *_: events.append("request_sent")
     mocker.patch(
-        "ingenialink.utils.ipv6_discovery.socket.socket",
+        "ingenialink.ethernet.tsn.ipv6_discovery.socket.socket",
         return_value=discovery_socket,
     )
     mocker.patch(
-        "ingenialink.utils.ipv6_discovery.time.monotonic",
+        "ingenialink.ethernet.tsn.ipv6_discovery.time.monotonic",
         side_effect=[0.0, 0.5, 1.0],
     )
 

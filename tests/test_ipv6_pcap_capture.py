@@ -1,6 +1,6 @@
 import pytest
 
-from ingenialink.utils.ipv6_pcap_capture import PcapCapture
+from ingenialink.ethernet.tsn.ipv6_pcap_capture import PcapCapture
 
 
 @pytest.mark.pcap
@@ -11,7 +11,7 @@ def test_pcap_capture_applies_ipv6_filter(mocker):
     cypcap = mocker.MagicMock()
     cypcap.create.return_value = capture
     cypcap.DatalinkType.EN10MB = 1
-    mocker.patch("ingenialink.utils.ipv6_pcap_capture.cypcap", cypcap)
+    mocker.patch("ingenialink.ethernet.tsn.ipv6_pcap_capture.cypcap", cypcap)
 
     pcap_capture = PcapCapture(r"\Device\NPF_{DEADC0FF-EEEE-4444-8888-2BF6900CBFA0}")
 
@@ -30,7 +30,7 @@ def test_pcap_capture_converts_library_errors(mocker):
     cypcap = mocker.MagicMock()
     cypcap.Error = RuntimeError
     cypcap.create.side_effect = RuntimeError("unable to open capture")
-    mocker.patch("ingenialink.utils.ipv6_pcap_capture.cypcap", cypcap)
+    mocker.patch("ingenialink.ethernet.tsn.ipv6_pcap_capture.cypcap", cypcap)
 
     with pytest.raises(OSError, match="unable to open capture"):
         PcapCapture("Ethernet")
@@ -40,9 +40,9 @@ def test_pcap_capture_converts_library_errors(mocker):
 def test_pcap_capture_defers_missing_npcap_error(mocker):
     """Raise the stored import error only when pcap capture is used."""
     import_error = ImportError("Failed to load Npcap")
-    mocker.patch("ingenialink.utils.ipv6_pcap_capture.cypcap", None)
+    mocker.patch("ingenialink.ethernet.tsn.ipv6_pcap_capture.cypcap", None)
     mocker.patch(
-        "ingenialink.utils.ipv6_pcap_capture.cypcap_import_error",
+        "ingenialink.ethernet.tsn.ipv6_pcap_capture.cypcap_import_error",
         import_error,
         create=True,
     )
@@ -59,7 +59,7 @@ def test_pcap_capture_reports_unexpected_termination(mocker):
     capture._capture.__next__.side_effect = StopIteration
     cypcap = mocker.MagicMock()
     cypcap.Error = RuntimeError
-    mocker.patch("ingenialink.utils.ipv6_pcap_capture.cypcap", cypcap)
+    mocker.patch("ingenialink.ethernet.tsn.ipv6_pcap_capture.cypcap", cypcap)
 
     with pytest.raises(OSError, match="terminated unexpectedly"):
         capture.read_packet()
@@ -73,7 +73,7 @@ def test_pcap_capture_reports_read_errors(mocker):
     capture._capture.__next__.side_effect = RuntimeError("read failure")
     cypcap = mocker.MagicMock()
     cypcap.Error = RuntimeError
-    mocker.patch("ingenialink.utils.ipv6_pcap_capture.cypcap", cypcap)
+    mocker.patch("ingenialink.ethernet.tsn.ipv6_pcap_capture.cypcap", cypcap)
 
     with pytest.raises(OSError, match="read failure"):
         capture.read_packet()
@@ -87,7 +87,7 @@ def test_pcap_capture_close_is_idempotent(mocker):
     capture._capture = pcap
     cypcap = mocker.MagicMock()
     cypcap.Error = RuntimeError
-    mocker.patch("ingenialink.utils.ipv6_pcap_capture.cypcap", cypcap)
+    mocker.patch("ingenialink.ethernet.tsn.ipv6_pcap_capture.cypcap", cypcap)
 
     capture.close()
     capture.close()
