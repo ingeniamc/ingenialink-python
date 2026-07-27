@@ -1,12 +1,15 @@
 import socket
-from threading import Lock
+from contextlib import suppress
 from types import TracebackType
-from typing import Union
+from typing import Optional, Union
+
+from ingenialink.exceptions import ILIOError, ILTimeoutError
 
 from .interfaces import get_interface_index
 from .sdcp import (
     SDCPDeserializer,
     SDCPMessage,
+    SDCPUnknownFrame,
 )
 from .types import IPv6SocketAddress
 
@@ -27,7 +30,6 @@ class SDCPConnection:
     """
 
     _MAX_RESPONSE_SIZE = 65_535
-    _INITIAL_TRANSACTION_ID = 0x0
     _ACYCLIC_PORT = 22_334
 
     def __init__(
@@ -45,22 +47,29 @@ class SDCPConnection:
             interface_index,
         )
         self._timeout = timeout
-        self._transaction_id = self._INITIAL_TRANSACTION_ID
-        self._lock = Lock()
         self._closed = False
 
-        self._socket = socket.socket(
-            socket.AF_INET6,
-            socket.SOCK_DGRAM,
-        )
-        self._socket.settimeout(timeout)
+        socket_instance: Optional[socket.socket] = None
+        try:
+            socket_instance = socket.socket(
+                socket.AF_INET6,
+                socket.SOCK_DGRAM,
+            )
+            socket_instance.settimeout(timeout)
+        except OSError as error:
+            if socket_instance is not None:
+                with suppress(OSError):
+                    socket_instance.close()
+            raise ILIOError("Could not create the SDCP socket") from error
+        self._socket = socket_instance
 
         try:
             self._socket.connect(self._destination)
-        except OSError:
-            self._socket.close()
+        except OSError as error:
+            with suppress(OSError):
+                self._socket.close()
             self._closed = True
-            raise
+            raise ILIOError(f"Could not connect to SDCP device {self._destination}") from error
 
     def request(self, request: SDCPMessage) -> SDCPMessage:
         """Send an SDCP request and return its validated response.
@@ -69,40 +78,65 @@ class SDCPConnection:
             Deserialized SDCP response.
 
         Raises:
-            RuntimeError: If the connection is closed, communication fails,
-                the request times out, or the response is invalid.
+            ILIOError: If socket communication fails, the connection is closed,
+                or the response is invalid.
+            ILTimeoutError: If the request times out.
+
+        The caller must serialize this method with any other operation on this
+        connection.
         """
-        with self._lock:
-            self._ensure_open()
+        self._ensure_open()
 
-            try:
-                self._socket.send(bytes(request))
-                payload = self._socket.recv(self._MAX_RESPONSE_SIZE)
-            except socket.timeout as error:
-                raise RuntimeError(
-                    "Timed out waiting for an SDCP response from "
-                    f"{self._destination} after "
-                    f"{self._timeout} seconds"
-                ) from error
-            except OSError as error:
-                raise RuntimeError(
-                    f"SDCP communication with {self._destination} failed: {error}"
-                ) from error
+        try:
+            self._socket.send(bytes(request))
+            payload = self._socket.recv(self._MAX_RESPONSE_SIZE)
+        except socket.timeout as error:
+            raise ILTimeoutError(
+                "Timed out waiting for an SDCP response from "
+                f"{self._destination} after "
+                f"{self._timeout} seconds"
+            ) from error
+        except OSError as error:
+            raise ILIOError(
+                f"SDCP communication with {self._destination} failed: {error}"
+            ) from error
 
-            try:
-                response = SDCPDeserializer.deserialize(payload)
-            except (TypeError, ValueError) as error:
-                raise RuntimeError(f"Invalid SDCP response: {error}") from error
+        try:
+            response = SDCPDeserializer.deserialize(payload)
+        except (TypeError, ValueError) as error:
+            raise ILIOError(f"Invalid SDCP response: {error}") from error
 
-            return response
+        if isinstance(response, SDCPUnknownFrame):
+            raise ILIOError(
+                "Unknown SDCP response frame: "
+                f"opcode=0x{response.opcode:02X}, flags=0x{response.flags:02X}"
+            )
+        if response.transaction_id != request.transaction_id:
+            raise ILIOError(
+                "SDCP transaction ID mismatch: "
+                f"expected 0x{request.transaction_id:04X}, "
+                f"received 0x{response.transaction_id:04X}"
+            )
+
+        return response
 
     def close(self) -> None:
-        """Close the UDP/IPv6 socket."""
-        with self._lock:
-            if self._closed:
-                return
+        """Close the UDP/IPv6 socket.
 
+        Raises:
+            ILIOError: If closing the socket fails.
+
+        The caller must serialize this method with :meth:`request`.
+        """
+        if self._closed:
+            return
+
+        try:
             self._socket.close()
+        except OSError as error:
+            self._closed = True
+            raise ILIOError("Could not close the SDCP socket") from error
+        else:
             self._closed = True
 
     def __enter__(self) -> "SDCPConnection":
@@ -112,7 +146,7 @@ class SDCPConnection:
             The open SDCP connection.
 
         Raises:
-            RuntimeError: If the connection is closed.
+            ILIOError: If the connection is closed.
         """
         self._ensure_open()
         return self
@@ -128,4 +162,4 @@ class SDCPConnection:
 
     def _ensure_open(self) -> None:
         if self._closed:
-            raise RuntimeError("The SDCP connection is closed")
+            raise ILIOError("The SDCP connection is closed")

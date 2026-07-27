@@ -1,6 +1,7 @@
 """Servo access over the SDCP protocol."""
 
 from abc import ABC
+from threading import Lock
 from typing import Any, Callable, Optional
 
 from ingenialink.canopen.register import CanopenRegister
@@ -56,15 +57,17 @@ class TSNServo(TSNServoBase):
         )
         self._connection = SDCPConnection(target, interface, connection_timeout)
         self._transaction_id = self._INITIAL_TRANSACTION_ID
+        self._request_lock = Lock()
 
     def _write_raw(self, reg: CanopenRegister, data: bytes, **_kwargs: Any) -> None:  # type: ignore [override]
         """Write raw register bytes through SDCP."""
-        request = SDCPWriteRequest(self._next_transaction_id(), reg.idx, reg.subidx, data)
-        response = self._connection.request(request)
-        if isinstance(response, SDCPErrorResponse):
-            raise self._sdcp_error("write", response)
-        if not isinstance(response, SDCPWriteResponse):
-            raise self._unexpected_response_error("write", response)
+        with self._request_lock:
+            request = SDCPWriteRequest(self._next_transaction_id(), reg.idx, reg.subidx, data)
+            response = self._connection.request(request)
+            if isinstance(response, SDCPErrorResponse):
+                raise self._sdcp_error("write", response)
+            if not isinstance(response, SDCPWriteResponse):
+                raise self._unexpected_response_error("write", response)
 
     def _read_raw(self, reg: CanopenRegister, **_kwargs: Any) -> bytes:  # type: ignore [override]
         """Read raw register bytes through SDCP.
@@ -72,13 +75,14 @@ class TSNServo(TSNServoBase):
         Returns:
             Raw register bytes.
         """
-        request = SDCPReadRequest(self._next_transaction_id(), reg.idx, reg.subidx)
-        response = self._connection.request(request)
-        if isinstance(response, SDCPErrorResponse):
-            raise self._sdcp_error("read", response)
-        if not isinstance(response, SDCPReadResponse):
-            raise self._unexpected_response_error("read", response)
-        return response.value
+        with self._request_lock:
+            request = SDCPReadRequest(self._next_transaction_id(), reg.idx, reg.subidx)
+            response = self._connection.request(request)
+            if isinstance(response, SDCPErrorResponse):
+                raise self._sdcp_error("read", response)
+            if not isinstance(response, SDCPReadResponse):
+                raise self._unexpected_response_error("read", response)
+            return response.value
 
     @staticmethod
     def _sdcp_error(operation: str, response: SDCPErrorResponse) -> ILIOError:
