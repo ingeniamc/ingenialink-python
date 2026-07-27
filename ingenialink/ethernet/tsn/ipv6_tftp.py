@@ -6,7 +6,7 @@ import sys
 import time
 from pathlib import Path
 from types import TracebackType
-from typing import Callable, NamedTuple, Optional, Union
+from typing import Callable, Optional, Union
 
 import ingenialogger
 
@@ -21,6 +21,7 @@ from .ipv6_discovery import (
     _get_ipv6_offset,
 )
 from .ipv6_pcap_capture import PcapCapture
+from .types import IPv6SocketAddress
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -37,15 +38,6 @@ TFTP_TIMEOUT_S = 5.0
 TFTP_RETRIES = 3
 IPV6_NEXT_HEADER_UDP = 17
 UDP_HEADER_SIZE = 8
-
-
-class IPv6SocketAddress(NamedTuple):
-    """IPv6 socket address matching Python's ``AF_INET6`` address tuple."""
-
-    address: str
-    port: int
-    flowinfo: int
-    scopeid: int
 
 
 class TftpUploader:

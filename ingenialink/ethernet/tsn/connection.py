@@ -8,6 +8,7 @@ from .sdcp import (
     SDCPDeserializer,
     SDCPMessage,
 )
+from .types import IPv6SocketAddress
 
 
 class SDCPConnection:
@@ -27,7 +28,7 @@ class SDCPConnection:
         address = address.split("%", maxsplit=1)[0]
         interface_index = get_interface_index(interface)
 
-        self._destination = (
+        self._destination = IPv6SocketAddress(
             address,
             self._ACYCLIC_PORT,
             0,

@@ -130,7 +130,7 @@ def test_discover_ipv6_devices_uses_pcap_on_windows(mocker, discovery_socket):
     mocker.patch("ingenialink.ethernet.tsn.ipv6_discovery.secrets.randbelow", return_value=122)
     mocker.patch("ingenialink.ethernet.tsn.ipv6_discovery.sys.platform", "win32")
     mocker.patch("ingenialink.ethernet.tsn.interfaces.sys.platform", "win32")
-    mocker.patch("ingenialink.ethernet.tsn.interfaces._get_interface_index", return_value=4)
+    mocker.patch("ingenialink.ethernet.tsn.interfaces.get_interface_index", return_value=4)
     pcap_capture = mocker.patch(
         "ingenialink.ethernet.tsn.ipv6_discovery.PcapCapture",
         side_effect=lambda _: events.append("capture_started") or capture,
