@@ -65,9 +65,9 @@ class TSNServo(TSNServoBase):
             request = SDCPWriteRequest(self._next_transaction_id(), reg.idx, reg.subidx, data)
             response = self._connection.request(request)
             if isinstance(response, SDCPErrorResponse):
-                raise self._sdcp_error("write", response)
+                raise ILIOError(f"SDCP write failed with error code 0x{response.error_code:08X}")
             if not isinstance(response, SDCPWriteResponse):
-                raise self._unexpected_response_error("write", response)
+                raise ILIOError(f"Unexpected SDCP write response: {response}")
 
     def _read_raw(self, reg: CanopenRegister, **_kwargs: Any) -> bytes:  # type: ignore [override]
         """Read raw register bytes through SDCP.
@@ -79,18 +79,10 @@ class TSNServo(TSNServoBase):
             request = SDCPReadRequest(self._next_transaction_id(), reg.idx, reg.subidx)
             response = self._connection.request(request)
             if isinstance(response, SDCPErrorResponse):
-                raise self._sdcp_error("read", response)
+                raise ILIOError(f"SDCP read failed with error code 0x{response.error_code:08X}")
             if not isinstance(response, SDCPReadResponse):
-                raise self._unexpected_response_error("read", response)
+                raise ILIOError(f"Unexpected SDCP read response: {response}")
             return response.value
-
-    @staticmethod
-    def _sdcp_error(operation: str, response: SDCPErrorResponse) -> ILIOError:
-        return ILIOError(f"SDCP {operation} failed with error code 0x{response.error_code:08X}")
-
-    @staticmethod
-    def _unexpected_response_error(operation: str, response: object) -> ILIOError:
-        return ILIOError(f"Unexpected SDCP {operation} response: {type(response).__name__}")
 
     def _next_transaction_id(self) -> int:
         """Return the next transaction ID for SDCP requests."""
