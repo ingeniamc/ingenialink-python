@@ -1,9 +1,11 @@
 """Representation of a TSN node."""
 
 from dataclasses import dataclass
-from typing import Callable, Optional
+from pathlib import Path
+from typing import Callable, Optional, Union
 
 from ingenialink.enums.node import NodeMode
+from ingenialink.ethernet.tsn.ipv6_tftp import TftpUploader
 from ingenialink.ethernet.tsn.servo import TSNServo
 from ingenialink.exceptions import ILStateError
 from ingenialink.servo import Servo
@@ -83,6 +85,11 @@ class TSNNode:
         """Return the associated application servo, if connected."""
         return self._servo
 
+    @property
+    def is_connected(self) -> bool:
+        """Return whether an application servo is associated with the node."""
+        return self._servo is not None
+
     def update(self, discovery: TSNNodeDiscovery) -> None:
         """Update the node with the latest discovery information.
 
@@ -105,7 +112,7 @@ class TSNNode:
         ):
             raise ValueError("Cannot update a TSN node with a different drive identity")
 
-        if self._servo is not None and (
+        if self.is_connected and (
             discovery.target != self.target
             or discovery.interface != self.interface
             or discovery.mode != self.mode
@@ -133,15 +140,16 @@ class TSNNode:
                 disconnected.
 
         Returns:
-            The created TSN servo.
+            The connected TSN servo.
 
         Raises:
-            ILStateError: If the node is not in application mode or already has an associated servo.
+            ILStateError: If the node is not in application mode or is already
+                connected.
         """
         if self.mode != NodeMode.APPLICATION:
             raise ILStateError(f"Cannot connect to a TSN node in {self.mode.name.lower()} mode")
 
-        if self._servo is not None:
+        if self.is_connected:
             raise ILStateError("The TSN node is already connected")
 
         self._servo = TSNServo(
@@ -160,3 +168,36 @@ class TSNNode:
             return
         self._servo.disconnect()
         self._servo = None
+
+    def load_firmware(
+        self,
+        firmware_file: Union[str, Path],
+        callback_progress: Optional[Callable[[int], None]] = None,
+    ) -> None:
+        """Load firmware into the node through TFTP over IPv6.
+
+        Args:
+            firmware_file: Path to the LFU firmware file.
+            callback_progress: Optional callback receiving the acknowledged
+                upload progress as a percentage.
+
+        Raises:
+            ILStateError: If the node is connected or is not in bootloader
+                mode.
+            FileNotFoundError: If the firmware file does not exist.
+            ILFirmwareLoadError: If the firmware file is invalid or the TFTP
+                transfer fails.
+        """
+        if self.is_connected:
+            raise ILStateError("Cannot load firmware while the TSN node is connected")
+
+        if self.mode != NodeMode.BOOTLOADER:
+            raise ILStateError(
+                f"Cannot load firmware to a TSN node in {self.mode.name.lower()} mode"
+            )
+
+        with TftpUploader(self.target, self.interface) as uploader:
+            uploader.upload_file(
+                firmware_file,
+                callback_progress=callback_progress,
+            )
