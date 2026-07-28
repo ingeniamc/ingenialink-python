@@ -146,7 +146,7 @@ class TSNNode:
                 connected.
         """
         if self.mode != NodeMode.APPLICATION:
-            raise ILStateError(f"Cannot connect to a TSN node in {self.mode.name.lower()} mode")
+            raise ILStateError("Cannot connect to a TSN node in bootloader mode")
 
         if self.is_connected:
             raise ILStateError("The TSN node is already connected")
@@ -191,9 +191,7 @@ class TSNNode:
             raise ILStateError("Cannot load firmware while the TSN node is connected")
 
         if self.mode != NodeMode.BOOTLOADER:
-            raise ILStateError(
-                f"Cannot load firmware to a TSN node in {self.mode.name.lower()} mode"
-            )
+            raise ILStateError("Cannot load firmware to a TSN node in application mode")
 
         with TftpUploader(self.target, self.interface) as uploader:
             uploader.upload_file(
