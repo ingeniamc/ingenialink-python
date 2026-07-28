@@ -530,6 +530,7 @@ def test_disconnect_from_slave_with_non_existent_slave(
 
 
 @pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
 def test_stop_pdos_skips_disconnected_slaves(mocker, den_net_e_2_8_0_xdf_v3: str):
     """Test that stop_pdos() skips slaves in NONE_STATE and does not call __init_nodes().
 
@@ -923,6 +924,7 @@ def test_net_status_listener_handles_none_slave_reference(mocker, den_net_e_2_8_
 
 
 @pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
 def test_net_status_listener_detects_slave_removal(
     den_net_e_2_8_0_xdf_v3: str,
 ):
