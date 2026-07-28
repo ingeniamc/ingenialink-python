@@ -65,7 +65,7 @@ class TSNServo(TSNServoBase):
         self._transaction_id = self._INITIAL_TRANSACTION_ID
         self._request_lock = Lock()
 
-    def _write_raw(self, reg: CanopenRegister, data: bytes, **_kwargs: Any) -> None:  # type: ignore [override]
+    def _write_raw(self, reg: CanopenRegister, data: bytes, **_kwargs: Any) -> None:  # type: ignore[override]
         """Write raw register bytes through SDCP.
 
         Args:
@@ -84,7 +84,7 @@ class TSNServo(TSNServoBase):
             if not isinstance(response, SDCPWriteResponse):
                 raise ILIOError(f"Unexpected SDCP write response: {response}")
 
-    def _read_raw(self, reg: CanopenRegister, **_kwargs: Any) -> bytes:  # type: ignore [override]
+    def _read_raw(self, reg: CanopenRegister, **_kwargs: Any) -> bytes:  # type: ignore[override]
         """Read raw register bytes through SDCP.
 
         Args:

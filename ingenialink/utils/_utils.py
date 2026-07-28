@@ -245,7 +245,10 @@ def convert_bytes_to_dtype(
         data = data[:bytes_length]
 
     if dtype == RegDtype.FLOAT:
-        [value] = struct.unpack("f", data)
+        [value] = struct.unpack(
+            f"{_struct_byte_order(byte_order)}f",
+            data,
+        )
         if not isinstance(value, float):
             raise ILValueError(f"Data could not be converted to float. Obtained: {value}")
     elif dtype == RegDtype.STR:
@@ -295,7 +298,10 @@ def convert_dtype_to_bytes(
     if dtype == RegDtype.FLOAT:
         if not isinstance(data, (float, int)):
             raise ValueError(f"Expected data of type float, but got {type(data)}")
-        return struct.pack("f", float(data))
+        return struct.pack(
+            f"{_struct_byte_order(byte_order)}f",
+            float(data),
+        )
     if dtype == RegDtype.STR:
         if not isinstance(data, str):
             raise ValueError(f"Expected data of type string, but  got {type(data)}")
@@ -305,3 +311,23 @@ def convert_dtype_to_bytes(
     bytes_length, signed = dtype_value[dtype]
     data_bytes = data.to_bytes(bytes_length, byteorder=byte_order.value, signed=signed)
     return data_bytes
+
+
+def _struct_byte_order(byte_order: ByteOrder) -> str:
+    """Return the struct format prefix for a byte order.
+
+    Args:
+        byte_order: Byte order to convert.
+
+    Returns:
+        Struct format prefix for the given byte order.
+
+    Raises:
+        ValueError: If the byte order is unsupported.
+
+    """
+    if byte_order == ByteOrder.LITTLE:
+        return "<"
+    if byte_order == ByteOrder.BIG:
+        return ">"
+    raise ValueError(f"Unsupported byte order: {byte_order}")
