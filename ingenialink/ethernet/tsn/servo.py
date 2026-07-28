@@ -12,11 +12,12 @@ from ingenialink.servo import Servo
 
 from .connection import SDCPConnection
 from .sdcp import (
-    SDCPErrorResponse,
     SDCPReadRequest,
     SDCPReadResponse,
+    SDCPReadResponseError,
     SDCPWriteRequest,
     SDCPWriteResponse,
+    SDCPWriteResponseError,
 )
 
 
@@ -78,7 +79,7 @@ class TSNServo(TSNServoBase):
         with self._request_lock:
             request = SDCPWriteRequest(self._next_transaction_id(), reg.idx, reg.subidx, data)
             response = self._connection.request(request)
-            if isinstance(response, SDCPErrorResponse):
+            if isinstance(response, SDCPWriteResponseError):
                 raise ILIOError(f"SDCP write failed with error code 0x{response.error_code:08X}")
             if not isinstance(response, SDCPWriteResponse):
                 raise ILIOError(f"Unexpected SDCP write response: {response}")
@@ -99,7 +100,7 @@ class TSNServo(TSNServoBase):
         with self._request_lock:
             request = SDCPReadRequest(self._next_transaction_id(), reg.idx, reg.subidx)
             response = self._connection.request(request)
-            if isinstance(response, SDCPErrorResponse):
+            if isinstance(response, SDCPReadResponseError):
                 raise ILIOError(f"SDCP read failed with error code 0x{response.error_code:08X}")
             if not isinstance(response, SDCPReadResponse):
                 raise ILIOError(f"Unexpected SDCP read response: {response}")

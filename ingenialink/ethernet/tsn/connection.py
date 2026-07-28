@@ -8,8 +8,14 @@ from ingenialink.exceptions import ILIOError, ILTimeoutError
 from .interfaces import get_interface_index
 from .sdcp import (
     SDCPDeserializer,
-    SDCPMessage,
-    SDCPUnknownFrame,
+    SDCPErrorResponse,
+    SDCPIdentificationResponse,
+    SDCPReadResponse,
+    SDCPRequest,
+    SDCPResponse,
+    SDCPSubscribeResponse,
+    SDCPUnsubscribeResponse,
+    SDCPWriteResponse,
 )
 from .types import IPv6SocketAddress
 
@@ -71,15 +77,18 @@ class SDCPConnection:
             self._closed = True
             raise ILIOError(f"Could not connect to SDCP device {self._destination}") from error
 
-    def request(self, request: SDCPMessage) -> SDCPMessage:
+    def request(self, request: SDCPRequest) -> SDCPResponse:
         """Send an SDCP request and return its validated response.
 
+        Args:
+            request: SDCP request to send.
+
         Returns:
-            Deserialized SDCP response.
+            The deserialized SDCP response.
 
         Raises:
-            ILIOError: If socket communication fails, the connection is closed,
-                or the response is invalid.
+            ILIOError: If communication fails, the connection is closed,
+                or the received frame is not a valid response.
             ILTimeoutError: If the request times out.
 
         The caller must serialize this method with any other operation on this
@@ -106,11 +115,19 @@ class SDCPConnection:
         except (TypeError, ValueError) as error:
             raise ILIOError(f"Invalid SDCP response: {error}") from error
 
-        if isinstance(response, SDCPUnknownFrame):
-            raise ILIOError(
-                "Unknown SDCP response frame: "
-                f"opcode=0x{response.opcode:02X}, flags=0x{response.flags:02X}"
-            )
+        if not isinstance(
+            response,
+            (
+                SDCPIdentificationResponse,
+                SDCPReadResponse,
+                SDCPWriteResponse,
+                SDCPSubscribeResponse,
+                SDCPUnsubscribeResponse,
+                SDCPErrorResponse,
+            ),
+        ):
+            raise ILIOError(f"Unexpected SDCP frame received as response: {response}")
+
         if response.transaction_id != request.transaction_id:
             raise ILIOError(
                 "SDCP transaction ID mismatch: "

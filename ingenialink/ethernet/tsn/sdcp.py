@@ -579,19 +579,27 @@ class SDCPUnknownFrame(_SDCPMessage):
         )
 
 
-SDCPMessage = Union[
+SDCPRequest = Union[
     SDCPIdentificationRequest,
     SDCPReadRequest,
     SDCPWriteRequest,
     SDCPPeriodicSubscriptionRequest,
     SDCPEventSubscriptionRequest,
     SDCPUnsubscribeRequest,
+]
+
+SDCPResponse = Union[
     SDCPIdentificationResponse,
     SDCPReadResponse,
     SDCPWriteResponse,
     SDCPSubscribeResponse,
     SDCPUnsubscribeResponse,
     SDCPErrorResponse,
+]
+
+SDCPMessage = Union[
+    SDCPRequest,
+    SDCPResponse,
     SDCPUnknownFrame,
 ]
 
