@@ -6,6 +6,7 @@ from typing import Any, Callable, Optional
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.dictionary import Interface
+from ingenialink.enums.register import ByteOrder
 from ingenialink.exceptions import ILIOError
 from ingenialink.servo import Servo
 
@@ -21,6 +22,8 @@ from .sdcp import (
 
 class TSNServoBase(Servo, ABC):
     """Declaration of the base TSN servo behavior."""
+
+    _REGISTER_BYTE_ORDER: ByteOrder = ByteOrder.BIG
 
 
 class TSNServo(TSNServoBase):
@@ -38,8 +41,10 @@ class TSNServo(TSNServoBase):
 
     """
 
-    _CONNECTION_TIMEOUT_S = 1.0
+    # Temporary use of the CAN interface until TSN dictionary support is available (INGK-1279).
     interface = Interface.CAN
+
+    _CONNECTION_TIMEOUT_S = 1.0
     _INITIAL_TRANSACTION_ID = 0x0000
     _MAX_TRANSACTION_ID = 0xFFFF
 
@@ -60,7 +65,16 @@ class TSNServo(TSNServoBase):
         self._request_lock = Lock()
 
     def _write_raw(self, reg: CanopenRegister, data: bytes, **_kwargs: Any) -> None:  # type: ignore [override]
-        """Write raw register bytes through SDCP."""
+        """Write raw register bytes through SDCP.
+
+        Args:
+            reg: Register to write.
+            data: Raw register bytes to write.
+
+        Raises:
+            ILIOError: If the SDCP write fails or the response is unexpected.
+
+        """
         with self._request_lock:
             request = SDCPWriteRequest(self._next_transaction_id(), reg.idx, reg.subidx, data)
             response = self._connection.request(request)
@@ -72,8 +86,15 @@ class TSNServo(TSNServoBase):
     def _read_raw(self, reg: CanopenRegister, **_kwargs: Any) -> bytes:  # type: ignore [override]
         """Read raw register bytes through SDCP.
 
+        Args:
+            reg: Register to read.
+
         Returns:
             Raw register bytes.
+
+        Raises:
+            ILIOError: If the SDCP read fails or the response is unexpected.
+
         """
         with self._request_lock:
             request = SDCPReadRequest(self._next_transaction_id(), reg.idx, reg.subidx)

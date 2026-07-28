@@ -8,7 +8,7 @@ from xml.etree import ElementTree
 
 import ingenialogger
 
-from ingenialink.enums.register import RegDtype
+from ingenialink.enums.register import ByteOrder, RegDtype
 from ingenialink.exceptions import ILValueError
 
 logger = ingenialogger.get_logger(__name__)
@@ -221,7 +221,9 @@ def convert_int_to_ip(int_ip: int) -> str:
 REG_VALUE = Union[float, int, str, bytes]
 
 
-def convert_bytes_to_dtype(data: bytes, dtype: RegDtype) -> REG_VALUE:
+def convert_bytes_to_dtype(
+    data: bytes, dtype: RegDtype, byte_order: ByteOrder = ByteOrder.LITTLE
+) -> REG_VALUE:
     """Convert data in bytes to corresponding dtype.
 
     Bytes have to be ordered in LSB.
@@ -229,6 +231,7 @@ def convert_bytes_to_dtype(data: bytes, dtype: RegDtype) -> REG_VALUE:
     Args:
         data: data to convert
         dtype: output dtype
+        byte_order: byte order of the data
 
     Returns:
         Value formatted in data type
@@ -253,7 +256,7 @@ def convert_bytes_to_dtype(data: bytes, dtype: RegDtype) -> REG_VALUE:
     elif dtype == RegDtype.BYTE_ARRAY_512:
         return data
     else:
-        value = int.from_bytes(data, "little", signed=signed)
+        value = int.from_bytes(data, byte_order.value, signed=signed)
     if dtype == RegDtype.BOOL:
         value = bool(value)
     if not isinstance(value, (int, float, str)):
@@ -261,7 +264,9 @@ def convert_bytes_to_dtype(data: bytes, dtype: RegDtype) -> REG_VALUE:
     return value
 
 
-def convert_dtype_to_bytes(data: REG_VALUE, dtype: RegDtype) -> bytes:
+def convert_dtype_to_bytes(
+    data: REG_VALUE, dtype: RegDtype, byte_order: ByteOrder = ByteOrder.LITTLE
+) -> bytes:
     """Convert data in dtype to bytes.
 
     Bytes will be ordered in LSB.
@@ -269,6 +274,7 @@ def convert_dtype_to_bytes(data: REG_VALUE, dtype: RegDtype) -> bytes:
     Args:
         data: Data to convert.
         dtype: Data type.
+        byte_order: byte order of the data
 
     Raises:
         ValueError: if the data has an invalid value.
@@ -297,5 +303,5 @@ def convert_dtype_to_bytes(data: REG_VALUE, dtype: RegDtype) -> bytes:
     if not isinstance(data, int):
         raise ValueError(f"Expected data of type int, but {type(data)}")
     bytes_length, signed = dtype_value[dtype]
-    data_bytes = data.to_bytes(bytes_length, byteorder="little", signed=signed)
+    data_bytes = data.to_bytes(bytes_length, byteorder=byte_order.value, signed=signed)
     return data_bytes
