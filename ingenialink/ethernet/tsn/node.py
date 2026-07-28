@@ -96,12 +96,23 @@ class TSNNode:
         Raises:
             ValueError: If the discovery information belongs to a different
                 physical drive.
+            ILStateError: If the discovery information belongs to a different
+                target, interface, or operating mode while the node is connected.
         """
         if (discovery.product_code, discovery.serial_number) != (
             self.product_code,
             self.serial_number,
         ):
             raise ValueError("Cannot update a TSN node with a different drive identity")
+
+        if self._servo is not None and (
+            discovery.target != self.target
+            or discovery.interface != self.interface
+            or discovery.mode != self.mode
+        ):
+            raise ILStateError(
+                "Cannot update the target, interface, or mode of a connected TSN node"
+            )
 
         self._discovery = discovery
 
@@ -128,12 +139,10 @@ class TSNNode:
             ILStateError: If the node is not in application mode or already has an associated servo.
         """
         if self.mode != NodeMode.APPLICATION:
-            raise ILStateError(
-                f"Cannot create a servo for a TSN node in {self.mode.name.lower()} mode"
-            )
+            raise ILStateError(f"Cannot connect to a TSN node in {self.mode.name.lower()} mode")
 
         if self._servo is not None:
-            raise ILStateError("The TSN node already has an associated servo")
+            raise ILStateError("The TSN node is already connected")
 
         self._servo = TSNServo(
             target=self.target,
@@ -146,5 +155,8 @@ class TSNNode:
         return self._servo
 
     def disconnect(self) -> None:
-        """Remove the active servo association."""
+        """Disconnect the associated application servo."""
+        if self._servo is None:
+            return
+        self._servo.disconnect()
         self._servo = None

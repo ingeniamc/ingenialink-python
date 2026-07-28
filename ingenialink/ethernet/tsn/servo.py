@@ -111,3 +111,8 @@ class TSNServo(TSNServoBase):
         transaction_id = self._transaction_id
         self._transaction_id = (transaction_id + 1) & self._MAX_TRANSACTION_ID
         return transaction_id
+
+    def disconnect(self) -> None:
+        """Close the SDCP connection."""
+        with self._request_lock:
+            self._connection.close()
