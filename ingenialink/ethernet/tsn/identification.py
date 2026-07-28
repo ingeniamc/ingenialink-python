@@ -2,7 +2,7 @@
 
 from ingenialink.enums.node import NodeMode
 from ingenialink.enums.register import ByteOrder
-from ingenialink.ethernet.tsn.connection import SDCPConnection
+from ingenialink.ethernet.tsn.connection import DEFAULT_SDCP_TIMEOUT_S, SDCPConnection
 from ingenialink.ethernet.tsn.node import TSNNodeDiscovery
 from ingenialink.ethernet.tsn.sdcp import (
     SDCPIdentificationRequest,
@@ -28,7 +28,7 @@ _COMMUNICATION_STATUS_BOOTLOADER_MASK = 1 << 1
 def identify_tsn_node(
     target: str,
     interface: str,
-    timeout: float,
+    timeout: float = DEFAULT_SDCP_TIMEOUT_S,
 ) -> TSNNodeDiscovery:
     """Identify an SDCP-compatible device and read its operating mode.
 

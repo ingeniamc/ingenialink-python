@@ -11,17 +11,16 @@ from typing import Callable, Optional, Union
 import ingenialogger
 
 from ingenialink.ethernet.tsn import interfaces
-from ingenialink.exceptions import ILFirmwareLoadError
-
-from .ipv6_discovery import (
+from ingenialink.ethernet.tsn.ipv6_discovery import (
     IPV6_HEADER_SIZE,
     IPV6_NEXT_HEADER_OFFSET,
     IPV6_SOURCE_ADDRESS_OFFSET,
     _get_ipv6_extension_header,
     _get_ipv6_offset,
 )
-from .ipv6_pcap_capture import PcapCapture
-from .types import IPv6SocketAddress
+from ingenialink.ethernet.tsn.ipv6_pcap_capture import PcapCapture
+from ingenialink.ethernet.tsn.types import IPv6SocketAddress
+from ingenialink.exceptions import ILFirmwareLoadError
 
 logger = ingenialogger.get_logger(__name__)
 

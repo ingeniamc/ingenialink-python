@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Callable, Optional, Union
 
 from ingenialink.enums.node import NodeMode
+from ingenialink.ethernet.tsn.connection import DEFAULT_SDCP_TIMEOUT_S
 from ingenialink.ethernet.tsn.ipv6_tftp import TftpUploader
 from ingenialink.ethernet.tsn.servo import TSNServo
 from ingenialink.exceptions import ILStateError
@@ -38,8 +39,6 @@ class TSNNode:
     Args:
         discovery: Information obtained from the latest successful discovery.
     """
-
-    _DEFAULT_CONNECTION_TIMEOUT_S = 1.0
 
     def __init__(self, discovery: TSNNodeDiscovery) -> None:
         self._discovery = discovery
@@ -126,7 +125,7 @@ class TSNNode:
     def connect(
         self,
         dictionary_path: str,
-        connection_timeout: float = _DEFAULT_CONNECTION_TIMEOUT_S,
+        connection_timeout: float = DEFAULT_SDCP_TIMEOUT_S,
         servo_status_listener: bool = False,
         disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ) -> TSNServo:

@@ -7,11 +7,8 @@ from typing import Any, Callable, Optional
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.dictionary import Interface
 from ingenialink.enums.register import ByteOrder
-from ingenialink.exceptions import ILIOError
-from ingenialink.servo import Servo
-
-from .connection import SDCPConnection
-from .sdcp import (
+from ingenialink.ethernet.tsn.connection import DEFAULT_SDCP_TIMEOUT_S, SDCPConnection
+from ingenialink.ethernet.tsn.sdcp import (
     SDCPReadRequest,
     SDCPReadResponse,
     SDCPReadResponseError,
@@ -19,6 +16,8 @@ from .sdcp import (
     SDCPWriteResponse,
     SDCPWriteResponseError,
 )
+from ingenialink.exceptions import ILIOError
+from ingenialink.servo import Servo
 
 
 class TSNServoBase(Servo, ABC):
@@ -45,7 +44,6 @@ class TSNServo(TSNServoBase):
     # Temporary use of the CAN interface until TSN dictionary support is available (INGK-1279).
     interface = Interface.CAN
 
-    _CONNECTION_TIMEOUT_S = 1.0
     _INITIAL_TRANSACTION_ID = 0x0000
     _MAX_TRANSACTION_ID = 0xFFFF
 
@@ -54,7 +52,7 @@ class TSNServo(TSNServoBase):
         target: str,
         interface: str,
         dictionary_path: str,
-        connection_timeout: float = _CONNECTION_TIMEOUT_S,
+        connection_timeout: float = DEFAULT_SDCP_TIMEOUT_S,
         servo_status_listener: bool = False,
         disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ) -> None:
