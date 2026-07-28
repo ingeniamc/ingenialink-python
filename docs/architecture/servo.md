@@ -18,6 +18,9 @@ classDiagram
   class CanopenServoBase {
     <<abstract>>
   }
+  class TSNServoBase {
+    <<abstract>>
+  }
 
   class EthernetServo
   class VirtualEthernetServo
@@ -28,9 +31,12 @@ classDiagram
   class CanopenServo
   class VirtualCanopenServo
 
+  class TSNServo
+
   Servo <|-- EthernetServoBase
   Servo <|-- EthercatServoBase
   Servo <|-- CanopenServoBase
+  Servo <|-- TSNServoBase
 
   EthernetServoBase <|-- EthernetServo
   EthernetServoBase <|-- VirtualEthernetServo
@@ -43,6 +49,9 @@ classDiagram
   CanopenServoBase <|-- CanopenServo
   CanopenServoBase <|-- VirtualCanopenServo
   VirtualCanopenServo *-- VirtualServoBase
+  
+  TSNServoBase <|-- TSNServo
+
 ```
 - **`Servo` (base)**: Common API for reading/writing registers and device state.
 - **`*ServoBase` (protocol base)**: Shared protocol rules for register access.
