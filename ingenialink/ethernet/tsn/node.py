@@ -9,6 +9,7 @@ from ingenialink.ethernet.tsn.connection import DEFAULT_SDCP_TIMEOUT_S
 from ingenialink.ethernet.tsn.ipv6_tftp import TftpUploader
 from ingenialink.ethernet.tsn.servo import TSNServo
 from ingenialink.exceptions import ILStateError
+from ingenialink.node import Node
 from ingenialink.servo import Servo
 
 
@@ -25,7 +26,7 @@ class TSNNodeDiscovery:
     mode: NodeMode
 
 
-class TSNNode:
+class TSNNode(Node[TSNNodeDiscovery, TSNServo]):
     """Representation of a physical TSN drive.
 
     A node preserves the identity and latest discovery information of a
@@ -84,11 +85,6 @@ class TSNNode:
         """Return the associated application servo, if connected."""
         return self._servo
 
-    @property
-    def is_connected(self) -> bool:
-        """Return whether an application servo is associated with the node."""
-        return self._servo is not None
-
     def update(self, discovery: TSNNodeDiscovery) -> None:
         """Update the node with the latest discovery information.
 
@@ -102,13 +98,11 @@ class TSNNode:
         Raises:
             ValueError: If the discovery information belongs to a different
                 physical drive.
-            ILStateError: If the discovery information belongs to a different
-                target, interface, or operating mode while the node is connected.
+            ILStateError: If the target, interface, or operating mode changes
+                while the node is connected.
         """
-        if (discovery.product_code, discovery.serial_number) != (
-            self.product_code,
-            self.serial_number,
-        ):
+        discovery_identity = discovery.product_code, discovery.serial_number
+        if discovery_identity != self.identity:
             raise ValueError("Cannot update a TSN node with a different drive identity")
 
         if self.is_connected and (
