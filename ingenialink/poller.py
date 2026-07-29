@@ -120,13 +120,12 @@ class Poller(Thread):
         Args:
             channel: Channel to be disabled.
 
-        Raises:
-            ILStateError: The poller is already running.
-            ILValueError: Channel out of range.
-
         Returns:
             Status code.
 
+        Raises:
+            ILStateError: The poller is already running.
+            ILValueError: Channel out of range.
         """
         if self.__running:
             raise ILStateError("Poller is running")

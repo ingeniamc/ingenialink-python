@@ -126,7 +126,7 @@ class CanOpenObject:
 
     @property
     def bit_length(self) -> int:
-        """Get the bit length of the object.
+        """The bit length of the object.
 
         Returns:
             int: bit length of the object.
@@ -139,7 +139,7 @@ class CanOpenObject:
 
     @property
     def byte_length(self) -> int:
-        """Get the byte length of the object.
+        """The byte length of the object.
 
         Returns:
             int: byte length of the object.
@@ -432,11 +432,11 @@ class Dictionary(XMLBase, ABC):
         Args:
             address_type: address type.
 
-        Raises:
-            ILDictionaryParseError: if the provided address type does not exist.
-
         Returns:
             Address type.
+
+        Raises:
+            ILDictionaryParseError: if the provided address type does not exist.
         """
         if address_type == "NVM":
             return RegAddressType.NVM
@@ -459,11 +459,11 @@ class Dictionary(XMLBase, ABC):
         Args:
             subnode: subnode.
 
-        Raises:
-            ILDictionaryParseError: if the provided subnode has no `SubnodeType` associated with.
-
         Returns:
             subnode type.
+
+        Raises:
+            ILDictionaryParseError: if the provided subnode has no `SubnodeType` associated with.
         """
         if subnode == "Communication":
             return SubnodeType.COMMUNICATION
@@ -489,13 +489,13 @@ class Dictionary(XMLBase, ABC):
 
         It can only be used for merging COM-KIT and CORE dictionaries.
 
+        Returns:
+            A new dictionary instance with the attributes merged.
+
         Raises:
             TypeError: If dictionaries cannot be merged because of the type.
             ValueError: If the dictionaries cannot be merged because none of them
                 is a COM-KIT dictionary.
-
-        Returns:
-            A new dictionary instance with the attributes merged.
         """
         if not isinstance(other_dict, type(self)):
             raise TypeError(
@@ -591,14 +591,14 @@ class Dictionary(XMLBase, ABC):
             uid: register uid.
             axis: axis. Should be specified if multiaxis, None otherwise.
 
+        Returns:
+            register.
+
         Raises:
             KeyError: if the specified axis does not exist.
             KeyError: if the register is not present in the specified axis.
             ValueError: if the register is not found in any axis, if axis is not provided.
             ValueError: if the register is found in multiple axis, if axis is provided.
-
-        Returns:
-            register.
         """
         if axis is not None:
             if axis not in self._registers:
@@ -625,14 +625,14 @@ class Dictionary(XMLBase, ABC):
             uid: table uid.
             axis: axis. Should be specified if multiaxis, None otherwise.
 
+        Returns:
+            table.
+
         Raises:
             KeyError: if the specified axis does not exist.
             KeyError: if the table is not present in the specified axis.
             ValueError: if the table is not found in any axis, if axis is not provided.
             ValueError: if the table is found in multiple axis, if axis is provided.
-
-        Returns:
-            table.
         """
         if axis is not None:
             if axis not in self._tables:
@@ -985,11 +985,11 @@ class DictionaryV3(Dictionary):
         Args:
             interface: interface.
 
-        Raises:
-            ILDictionaryParseError: if the interface doesn't have any device element associated.
-
         Returns:
             Device element.
+
+        Raises:
+            ILDictionaryParseError: if the interface doesn't have any device element associated.
         """
         if interface is Interface.CAN:
             return "CANDevice"
@@ -1008,11 +1008,11 @@ class DictionaryV3(Dictionary):
         Args:
             interface: Interface element.
 
-        Raises:
-            ILDictionaryParseError: if the interface element doesn't have any interface associated.
-
         Returns:
             Interface element.
+
+        Raises:
+            ILDictionaryParseError: if the interface element doesn't have any interface associated.
         """
         if interface == "CANDevice":
             return Interface.CAN
@@ -1031,11 +1031,11 @@ class DictionaryV3(Dictionary):
         Args:
             data_type: data type.
 
-        Raises:
-            ILDictionaryParseError: if the provided data type has no `CanOpenObjectType` associated.
-
         Returns:
             subnode type.
+
+        Raises:
+            ILDictionaryParseError: if the provided data type has no `CanOpenObjectType` associated.
         """
         if data_type == "VAR":
             return CanOpenObjectType.VAR
@@ -1076,13 +1076,13 @@ class DictionaryV3(Dictionary):
         Args:
             dictionary_path: Path to the dictionary file.
 
+        Returns:
+            Descriptor of all interfaces in the dictionary.
+
         Raises:
             FileNotFoundError: If the dictionary file does not exist.
             ILDictionaryParseError: Raised if the dictionary does not contain the searched
                 interface.
-
-        Returns:
-            Descriptor of all interfaces in the dictionary.
         """
         try:
             with open(dictionary_path, encoding="utf-8") as xdf_file:
@@ -1129,12 +1129,11 @@ class DictionaryV3(Dictionary):
         Args:
             dictionary_path: Path to the dictionary file.
 
-        Raises:
-            FileNotFoundError: If the dictionary file does not exist.
-
         Returns:
             List of interfaces in the dictionary.
 
+        Raises:
+            FileNotFoundError: If the dictionary file does not exist.
         """
         try:
             with open(dictionary_path, encoding="utf-8") as xdf_file:
@@ -1822,11 +1821,11 @@ class DictionaryV2(Dictionary):
         Args:
             interface: interface.
 
-        Raises:
-            ILDictionaryParseError: if the interface doesn't have any string associated.
-
         Returns:
             Interface string.
+
+        Raises:
+            ILDictionaryParseError: if the interface doesn't have any string associated.
         """
         if interface is Interface.CAN:
             return "CAN"
@@ -1841,11 +1840,11 @@ class DictionaryV2(Dictionary):
         Args:
             interface: Interface name.
 
-        Raises:
-            ILDictionaryParseError: if the interface element doesn't have any interface associated.
-
         Returns:
             Interface element.
+
+        Raises:
+            ILDictionaryParseError: if the interface element doesn't have any interface associated.
         """
         if interface == "CAN":
             return Interface.CAN
@@ -1989,12 +1988,12 @@ class DictionaryV2(Dictionary):
         Args:
             dictionary_path: Path to the dictionary file.
 
+        Returns:
+            Descriptor of all interfaces in the dictionary.
+
         Raises:
             FileNotFoundError: If the dictionary file does not exist.
             ILDictionaryParseError: Raised if the dictionary is missing information.
-
-        Returns:
-            Descriptor of all interfaces in the dictionary.
         """
         try:
             with open(dictionary_path, encoding="utf-8") as xdf_file:

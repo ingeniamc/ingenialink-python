@@ -88,7 +88,7 @@ class GilReleaseConfig:
 
     @property
     def always_release(self) -> bool:
-        """Returns True if the GIL should be released for all functions, False otherwise."""
+        """True if the GIL should be released for all functions, False otherwise."""
         return self._always_release
 
     @classmethod
@@ -331,7 +331,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
 
     @property
     def pdo_manager(self) -> PDONetworkManager:
-        """Returns the PDO manager."""
+        """The PDO manager."""
         return self._pdo_manager
 
     def subscribe_to_pdo_thread_status(self, callback: Callable[[bool], None]) -> None:
@@ -560,13 +560,13 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             disconnect_callback: Callback function to be called when the servo is disconnected.
                 If not specified, no callback will be called.
 
+        Returns:
+            ethercat servo.
+
         Raises:
             ValueError: If the slave ID is not valid.
             ILError: If no slaves are found.
             ILStateError: If slave can not reach PreOp state
-
-        Returns:
-            ethercat servo.
         """
         if not isinstance(slave_id, int) or slave_id < 0:
             raise ValueError("Invalid slave ID value")

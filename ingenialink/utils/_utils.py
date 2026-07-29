@@ -270,11 +270,11 @@ def convert_dtype_to_bytes(data: REG_VALUE, dtype: RegDtype) -> bytes:
         data: Data to convert.
         dtype: Data type.
 
-    Raises:
-        ValueError: if the data has an invalid value.
-
     Returns:
         Value formatted to bytes
+
+    Raises:
+        ValueError: if the data has an invalid value.
     """
     if (
         dtype == RegDtype.BOOL

@@ -116,11 +116,11 @@ class VirtualCanopenNetwork(CanopenNetworkBase[VirtualCanopenServo]):
             disconnect_callback: Callback function to be called when the servo is disconnected.
                 If not specified, no callback will be called.
 
-        Raises:
-            ILError: If the drive is not reachable through the configured connection.
-
         Returns:
             VirtualCanopenServo: Instance of the servo connected.
+
+        Raises:
+            ILError: If the drive is not reachable through the configured connection.
         """
         sock = self._virtual_base.create_connection(connection_timeout, port)
         servo = VirtualCanopenServo(

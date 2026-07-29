@@ -145,11 +145,11 @@ class EthernetServo(EthernetServoBase):
     def get_mac_address(self) -> int:
         """Get the MAC address of the servo.
 
-        Raises:
-            ValueError: if there is an error retrieving the MAC address.
-
         Returns:
             The servo's MAC address.
+
+        Raises:
+            ValueError: if there is an error retrieving the MAC address.
         """
         mac_address = self.read(self.COMMS_ETH_MAC, subnode=0)
         if not isinstance(mac_address, int):
@@ -200,11 +200,11 @@ class EthernetServo(EthernetServoBase):
             subnode: Target axis of the drive.
             data: Data to be written to the register.
 
-        Raises:
-            ILIOError: If there is an error sending the data.
-
         Returns:
             The response frame.
+
+        Raises:
+            ILIOError: If there is an error sending the data.
         """
         frame = MCB.build_mcb_frame(cmd, subnode, reg, data)
         self._lock.acquire()
