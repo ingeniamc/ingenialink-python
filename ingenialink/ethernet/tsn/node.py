@@ -5,9 +5,9 @@ from pathlib import Path
 from typing import Callable, Optional, Union
 
 from ingenialink.enums.node import NodeMode
-from ingenialink.ethernet.tsn.connection import DEFAULT_SDCP_TIMEOUT_S
 from ingenialink.ethernet.tsn.ipv6_tftp import TftpUploader
-from ingenialink.ethernet.tsn.servo import TSNServo
+from ingenialink.ethernet.tsn.sdcp.connection import DEFAULT_SDCP_TIMEOUT_S
+from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
 from ingenialink.exceptions import ILStateError
 from ingenialink.node import Node
 from ingenialink.servo import Servo
@@ -26,7 +26,7 @@ class TSNNodeDiscovery:
     mode: NodeMode
 
 
-class TSNNode(Node[TSNNodeDiscovery, TSNServo]):
+class TSNNode(Node[TSNNodeDiscovery, SDCPServo]):
     """Representation of a physical TSN drive.
 
     A node preserves the identity and latest discovery information of a
@@ -43,7 +43,7 @@ class TSNNode(Node[TSNNodeDiscovery, TSNServo]):
 
     def __init__(self, discovery: TSNNodeDiscovery) -> None:
         self._discovery = discovery
-        self._servo: Optional[TSNServo] = None
+        self._servo: Optional[SDCPServo] = None
 
     @property
     def target(self) -> str:
@@ -81,7 +81,7 @@ class TSNNode(Node[TSNNodeDiscovery, TSNServo]):
         return self._discovery.mode
 
     @property
-    def servo(self) -> Optional[TSNServo]:
+    def servo(self) -> Optional[SDCPServo]:
         """Return the associated application servo, if connected."""
         return self._servo
 
@@ -122,7 +122,7 @@ class TSNNode(Node[TSNNodeDiscovery, TSNServo]):
         servo_status_listener: bool = False,
         disconnect_callback: Optional[Callable[[Servo], None]] = None,
         connection_timeout: float = DEFAULT_SDCP_TIMEOUT_S,
-    ) -> TSNServo:
+    ) -> SDCPServo:
         """Connect to the application servo.
 
         Args:
@@ -145,7 +145,7 @@ class TSNNode(Node[TSNNodeDiscovery, TSNServo]):
         if self.is_connected:
             raise ILStateError("The TSN node is already connected")
 
-        self._servo = TSNServo(
+        self._servo = SDCPServo(
             target=self.target,
             interface=self.interface,
             dictionary_path=dictionary_path,

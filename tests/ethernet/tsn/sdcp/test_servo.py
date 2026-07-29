@@ -1,4 +1,4 @@
-"""Tests for TSN servo register access over SDCP."""
+"""Tests for SDCP servo register access over UDP/IPv6."""
 
 from unittest.mock import MagicMock, patch
 
@@ -6,7 +6,7 @@ import pytest
 
 from ingenialink import RegAccess, RegDtype
 from ingenialink.canopen.register import CanopenRegister
-from ingenialink.ethernet.tsn.sdcp import (
+from ingenialink.ethernet.tsn.sdcp.messages import (
     SDCPReadRequest,
     SDCPReadResponse,
     SDCPReadResponseError,
@@ -14,7 +14,8 @@ from ingenialink.ethernet.tsn.sdcp import (
     SDCPWriteResponse,
     SDCPWriteResponseError,
 )
-from ingenialink.ethernet.tsn.servo import TSNServo
+from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
+from ingenialink.ethernet.tsn.servo import TSNServoBase
 from ingenialink.exceptions import ILIOError
 
 TARGET = "fe80::1"
@@ -29,23 +30,23 @@ def connection_mock() -> MagicMock:
 
 
 @pytest.fixture
-def servo(connection_mock: MagicMock) -> TSNServo:
-    """Create a TSN servo without loading a dictionary or opening a socket.
+def servo(connection_mock: MagicMock) -> SDCPServo:
+    """Create an SDCP servo without loading a dictionary or opening a socket.
 
     Returns:
-        TSN servo with a mocked SDCP connection.
+        SDCP servo with a mocked SDCP connection.
     """
     with (
         patch(
-            "ingenialink.ethernet.tsn.servo.Servo.__init__",
+            "ingenialink.ethernet.tsn.sdcp.servo.Servo.__init__",
             return_value=None,
         ),
         patch(
-            "ingenialink.ethernet.tsn.servo.SDCPConnection",
+            "ingenialink.ethernet.tsn.sdcp.servo.SDCPConnection",
             return_value=connection_mock,
         ),
     ):
-        return TSNServo(
+        return SDCPServo(
             target=TARGET,
             interface=INTERFACE,
             dictionary_path=DICTIONARY_PATH,
@@ -65,7 +66,7 @@ def register() -> CanopenRegister:
 
 
 def test_read_decodes_big_endian_value(
-    servo: TSNServo,
+    servo: SDCPServo,
     register: CanopenRegister,
     connection_mock: MagicMock,
 ) -> None:
@@ -92,8 +93,13 @@ def test_read_decodes_big_endian_value(
     notify_mock.assert_called_once_with(register, 0x1234)
 
 
+def test_sdcp_servo_uses_tsn_base_class() -> None:
+    """Use the shared TSN servo base for SDCP register access."""
+    assert issubclass(SDCPServo, TSNServoBase)
+
+
 def test_write_encodes_big_endian_value(
-    servo: TSNServo,
+    servo: SDCPServo,
     register: CanopenRegister,
     connection_mock: MagicMock,
 ) -> None:
@@ -120,7 +126,7 @@ def test_write_encodes_big_endian_value(
 
 
 def test_write_preserves_explicit_bytes(
-    servo: TSNServo,
+    servo: SDCPServo,
     register: CanopenRegister,
     connection_mock: MagicMock,
 ) -> None:
@@ -148,7 +154,7 @@ def test_write_preserves_explicit_bytes(
 
 
 def test_read_error_response_raises_il_io_error(
-    servo: TSNServo,
+    servo: SDCPServo,
     register: CanopenRegister,
     connection_mock: MagicMock,
 ) -> None:
@@ -166,7 +172,7 @@ def test_read_error_response_raises_il_io_error(
 
 
 def test_write_error_response_raises_il_io_error(
-    servo: TSNServo,
+    servo: SDCPServo,
     register: CanopenRegister,
     connection_mock: MagicMock,
 ) -> None:
@@ -184,7 +190,7 @@ def test_write_error_response_raises_il_io_error(
 
 
 def test_read_rejects_unexpected_response_type(
-    servo: TSNServo,
+    servo: SDCPServo,
     register: CanopenRegister,
     connection_mock: MagicMock,
 ) -> None:
@@ -201,7 +207,7 @@ def test_read_rejects_unexpected_response_type(
 
 
 def test_write_rejects_unexpected_response_type(
-    servo: TSNServo,
+    servo: SDCPServo,
     register: CanopenRegister,
     connection_mock: MagicMock,
 ) -> None:
@@ -218,14 +224,14 @@ def test_write_rejects_unexpected_response_type(
         servo._write_raw(register, b"\x12\x34")
 
 
-def test_transaction_id_increments(servo: TSNServo) -> None:
+def test_transaction_id_increments(servo: SDCPServo) -> None:
     """Allocate transaction IDs sequentially from zero."""
     assert servo._next_transaction_id() == 0x0000
     assert servo._next_transaction_id() == 0x0001
     assert servo._next_transaction_id() == 0x0002
 
 
-def test_transaction_id_wraps(servo: TSNServo) -> None:
+def test_transaction_id_wraps(servo: SDCPServo) -> None:
     """Wrap transaction IDs after the maximum 16-bit value."""
     servo._transaction_id = servo._MAX_TRANSACTION_ID
 

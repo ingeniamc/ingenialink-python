@@ -7,7 +7,7 @@ import pytest
 
 from ingenialink.enums.node import NodeMode
 from ingenialink.ethernet.tsn.node import TSNNode, TSNNodeDiscovery
-from ingenialink.ethernet.tsn.servo import TSNServo
+from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
 from ingenialink.exceptions import ILIOError, ILStateError
 
 TARGET = "fe80::1"
@@ -65,10 +65,10 @@ def connected_node(
     application_node: TSNNode,
 ) -> tuple[TSNNode, MagicMock]:
     """Return an application-mode node with an associated mocked servo."""
-    servo_mock = MagicMock(spec=TSNServo)
+    servo_mock = MagicMock(spec=SDCPServo)
 
     with patch(
-        "ingenialink.ethernet.tsn.node.TSNServo",
+        "ingenialink.ethernet.tsn.node.SDCPServo",
         return_value=servo_mock,
     ):
         application_node.connect(DICTIONARY_PATH)
@@ -214,11 +214,11 @@ def test_connect_creates_and_associates_tsn_servo(
     application_node: TSNNode,
 ) -> None:
     """Create a TSN servo using the node endpoint and connection options."""
-    servo_mock = MagicMock(spec=TSNServo)
+    servo_mock = MagicMock(spec=SDCPServo)
     disconnect_callback = MagicMock()
 
     with patch(
-        "ingenialink.ethernet.tsn.node.TSNServo",
+        "ingenialink.ethernet.tsn.node.SDCPServo",
         return_value=servo_mock,
     ) as servo_class_mock:
         servo = application_node.connect(

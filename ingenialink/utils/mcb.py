@@ -137,13 +137,13 @@ class MCB:
             read.
             frame: MCB frame.
 
+        Returns:
+            Data contained in frame.
+
         Raises:
             ILNACKError: If the received command is a NACK.
             ILWrongRegisterError: If the received address does not match
             the expected address.
-
-        Returns:
-            data contained in frame.
         """
         recv_add, _, cmd, data = cls.read_mcb_frame(frame)
 

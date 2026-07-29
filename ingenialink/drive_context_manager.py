@@ -179,7 +179,7 @@ class RestoreResult:
 
     @property
     def all_succeeded(self) -> bool:
-        """Return ``True`` if no registers failed to restore."""
+        """``True`` if no registers failed to restore."""
         return len(self.failed) == 0
 
     def summary(self) -> str:

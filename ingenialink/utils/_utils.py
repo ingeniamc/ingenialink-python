@@ -279,11 +279,11 @@ def convert_dtype_to_bytes(
         dtype: Data type.
         byte_order: byte order of the data
 
-    Raises:
-        ValueError: if the data has an invalid value.
-
     Returns:
         Value formatted to bytes
+
+    Raises:
+        ValueError: if the data has an invalid value.
     """
     if (
         dtype == RegDtype.BOOL

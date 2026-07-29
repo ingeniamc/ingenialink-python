@@ -4,7 +4,10 @@ from types import TracebackType
 from typing import Optional, Union
 
 from ingenialink.ethernet.tsn.interfaces import get_interface_index
-from ingenialink.ethernet.tsn.sdcp import (
+from ingenialink.ethernet.tsn.types import IPv6SocketAddress
+from ingenialink.exceptions import ILIOError, ILTimeoutError
+
+from .messages import (
     SDCPDeserializer,
     SDCPErrorResponse,
     SDCPIdentificationResponse,
@@ -15,8 +18,6 @@ from ingenialink.ethernet.tsn.sdcp import (
     SDCPUnsubscribeResponse,
     SDCPWriteResponse,
 )
-from ingenialink.ethernet.tsn.types import IPv6SocketAddress
-from ingenialink.exceptions import ILIOError, ILTimeoutError
 
 DEFAULT_SDCP_TIMEOUT_S = 1.0
 

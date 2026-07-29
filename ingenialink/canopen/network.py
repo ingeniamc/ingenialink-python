@@ -254,11 +254,11 @@ class CanopenNetworkBase(Generic[CanopenServoT], Network[CanopenServoT]):
         Args:
             servo_id: The servo's node ID, or the servo instance itself.
 
-        Raises:
-            ValueError: if the servo id is not an integer or a servo instance.
-
         Returns:
             The servo's state.
+
+        Raises:
+            ValueError: if the servo id is not an integer or a servo instance.
         """
         if not isinstance(servo_id, (int, Servo)):
             raise ValueError("The servo ID must be an int or an instance of Servo.")
@@ -306,12 +306,11 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
     def scan_slaves(self) -> list[int]:
         """Scans for nodes in the network.
 
-        Raises:
-            ILError: if the transceiver is not detected.
-
         Returns:
             Containing all the detected node IDs.
 
+        Raises:
+            ILError: if the transceiver is not detected.
         """
         if (self.__device, self.__channel) not in self.get_available_devices():
             raise ILError(
@@ -432,15 +431,14 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
             disconnect_callback: Callback function to be called when the servo is disconnected.
                 If not specified, no callback will be called.
 
+        Returns:
+            canopen servo.
+
         Raises:
             ILError: if there aren't nodes in the network.
             ILError: if the connection is not established.
             ILError: if the connection fails.
             ILError: if the node id is not found in the network.
-
-        Returns:
-            canopen servo.
-
         """
         nodes = self.scan_slaves()
         if len(nodes) < 1:
@@ -765,11 +763,11 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
             register: Register to be read.
             expected_value: Expected value for the given register.
 
-        Raises:
-            ValueError: if there is an error reading the register.
-
         Returns:
             True if values is reached, else False
+
+        Raises:
+            ValueError: if there is an error reading the register.
         """
         logger.debug(f"Waiting for register {register.identifier} to return <{expected_value}>")
         num_tries = 0
@@ -1121,7 +1119,7 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
 
     @property
     def network(self) -> canopen.Network:
-        """Returns the instance of the CANopen Network."""
+        """The instance of the CANopen Network."""
         return self._connection
 
     @property

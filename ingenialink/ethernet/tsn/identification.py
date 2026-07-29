@@ -2,9 +2,9 @@
 
 from ingenialink.enums.node import NodeMode
 from ingenialink.enums.register import ByteOrder
-from ingenialink.ethernet.tsn.connection import DEFAULT_SDCP_TIMEOUT_S, SDCPConnection
 from ingenialink.ethernet.tsn.node import TSNNodeDiscovery
-from ingenialink.ethernet.tsn.sdcp import (
+from ingenialink.ethernet.tsn.sdcp.connection import DEFAULT_SDCP_TIMEOUT_S, SDCPConnection
+from ingenialink.ethernet.tsn.sdcp.messages import (
     SDCPIdentificationRequest,
     SDCPIdentificationResponse,
     SDCPIdentificationResponseError,
