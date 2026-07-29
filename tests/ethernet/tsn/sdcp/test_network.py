@@ -4,6 +4,7 @@ import pytest
 
 from ingenialink.enums.node import NodeMode
 from ingenialink.ethernet.network import EthernetNetwork
+from ingenialink.ethernet.tsn.sdcp import SDCPServo
 from ingenialink.ethernet.tsn.sdcp.node import SDCPNode, SDCPNodeDiscovery
 from ingenialink.exceptions import ILError
 
@@ -29,6 +30,28 @@ def discovery() -> SDCPNodeDiscovery:
         revision_number=REVISION_NUMBER,
         mode=NodeMode.APPLICATION,
     )
+
+
+@pytest.fixture
+def managed_node(
+    discovery: SDCPNodeDiscovery,
+    mocker,
+) -> tuple[EthernetNetwork, SDCPNode]:
+    """Return a network and an SDCP node managed by it."""
+    network = EthernetNetwork(interface=INTERFACE)
+
+    mocker.patch(
+        "ingenialink.ethernet.network.discover_ipv6_devices",
+        return_value=[TARGET],
+    )
+    mocker.patch(
+        "ingenialink.ethernet.network.identify_sdcp_node",
+        return_value=discovery,
+    )
+
+    node = network.scan_sdcp_nodes()[0]
+
+    return network, node
 
 
 def test_scan_sdcp_nodes_requires_interface() -> None:
@@ -136,3 +159,108 @@ def test_scan_sdcp_nodes_ignores_identification_errors(
     assert nodes[0].target == TARGET
     assert network.sdcp_nodes == nodes
     assert identify_mock.call_count == 2
+
+
+def test_connect_to_node_rejects_unmanaged_node(
+    discovery: SDCPNodeDiscovery,
+    mocker,
+) -> None:
+    """Reject an SDCP node that does not belong to the network."""
+    network = EthernetNetwork(interface=INTERFACE)
+    node = SDCPNode(discovery)
+
+    with pytest.raises(
+        ValueError,
+        match="The SDCP node is not managed by this network",
+    ):
+        network.connect_to_node(
+            node=node,
+            dictionary=mocker.sentinel.dictionary,
+        )
+
+
+def test_connect_to_node_connects_and_registers_servo(
+    managed_node: tuple[EthernetNetwork, SDCPNode],
+    mocker,
+) -> None:
+    """Connect through the node and register the returned servo."""
+    network, node = managed_node
+    servo_mock = mocker.MagicMock(spec=SDCPServo)
+    disconnect_callback = mocker.Mock()
+    dictionary = mocker.sentinel.dictionary
+
+    connect_mock = mocker.patch.object(
+        node,
+        "connect",
+        return_value=servo_mock,
+    )
+
+    servo = network.connect_to_node(
+        node=node,
+        dictionary=dictionary,
+        servo_status_listener=True,
+        disconnect_callback=disconnect_callback,
+        connection_timeout=TIMEOUT_S,
+    )
+
+    assert servo is servo_mock
+    assert network.servos == [servo_mock]
+
+    connect_mock.assert_called_once_with(
+        dictionary_path=dictionary,
+        servo_status_listener=True,
+        disconnect_callback=disconnect_callback,
+        connection_timeout=TIMEOUT_S,
+    )
+
+
+def test_disconnect_from_slave_disconnects_sdcp_node(
+    managed_node: tuple[EthernetNetwork, SDCPNode],
+    mocker,
+) -> None:
+    """Disconnect an SDCP servo through its associated node."""
+    network, node = managed_node
+    servo_mock = mocker.MagicMock(spec=SDCPServo)
+
+    mocker.patch(
+        "ingenialink.ethernet.tsn.sdcp.node.SDCPServo",
+        return_value=servo_mock,
+    )
+
+    servo = network.connect_to_node(
+        node=node,
+        dictionary=mocker.sentinel.dictionary,
+    )
+
+    network.disconnect_from_slave(servo)
+
+    servo_mock.stop_status_listener.assert_called_once_with()
+    servo_mock.disconnect.assert_called_once_with()
+    assert node.servo is None
+    assert network.servos == []
+
+
+def test_disconnect_from_slave_preserves_sdcp_associations_on_failure(
+    managed_node: tuple[EthernetNetwork, SDCPNode],
+    mocker,
+) -> None:
+    """Preserve the node and network associations if disconnection fails."""
+    network, node = managed_node
+    servo_mock = mocker.MagicMock(spec=SDCPServo)
+    servo_mock.disconnect.side_effect = ILError("Disconnection failed")
+
+    mocker.patch(
+        "ingenialink.ethernet.tsn.sdcp.node.SDCPServo",
+        return_value=servo_mock,
+    )
+
+    servo = network.connect_to_node(
+        node=node,
+        dictionary=mocker.sentinel.dictionary,
+    )
+
+    with pytest.raises(ILError, match="Disconnection failed"):
+        network.disconnect_from_slave(servo)
+
+    assert node.servo is servo
+    assert network.servos == [servo]

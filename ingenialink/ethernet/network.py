@@ -27,6 +27,7 @@ from ingenialink.ethernet.tsn.sdcp.identification import (
     identify_sdcp_node,
 )
 from ingenialink.ethernet.tsn.sdcp.node import SDCPNode
+from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import (
     NetDevEvt,
@@ -117,7 +118,7 @@ class NetStatusListener(Thread, Generic[EthernetServoT]):
         self.__stop = True
 
 
-class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
+class EthernetNetworkBase(Generic[EthernetServoT], Network[Servo]):
     """Network for all Ethernet communications.
 
     Args:
@@ -353,6 +354,41 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
 
         return list(discovered_nodes.values())
 
+    def connect_to_node(
+        self,
+        node: SDCPNode,
+        dictionary: str,
+        servo_status_listener: bool = False,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
+        connection_timeout: float = DEFAULT_SDCP_TIMEOUT_S,
+    ) -> SDCPServo:
+        """Connect to an SDCP node managed by the network.
+
+        Args:
+            node: SDCP node to connect to.
+            dictionary: Path to the target dictionary file.
+            servo_status_listener: Whether to start the servo status listener.
+            disconnect_callback: Callback invoked when the servo is disconnected.
+            connection_timeout: Timeout in seconds for SDCP transactions.
+
+        Returns:
+            Connected SDCP servo.
+
+        Raises:
+            ValueError: If the node is not managed by this network.
+        """
+        if self._sdcp_nodes.get(node.identity) is not node:
+            raise ValueError("The SDCP node is not managed by this network")
+
+        servo = node.connect(
+            dictionary_path=dictionary,
+            servo_status_listener=servo_status_listener,
+            disconnect_callback=disconnect_callback,
+            connection_timeout=connection_timeout,
+        )
+        self.servos.append(servo)
+        return servo
+
     def connect_to_slave(
         self,
         target: str,
@@ -408,24 +444,34 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
             self.stop_status_listener()
         return servo
 
-    def disconnect_from_slave(self, servo: EthernetServoT) -> None:  # type: ignore [override]
-        """Disconnects the slave from the network.
+    def disconnect_from_slave(self, servo: Servo) -> None:
+        """Disconnect a servo from the network.
 
         Args:
-            servo: Instance of the servo connected.
+            servo: Instance of the connected servo.
 
         Raises:
-            ValueError: If the provided servo is not an Ethernet servo.
-
+            ValueError: If the servo is not managed by the network or its type is
+                unsupported.
         """
+        if servo not in self.servos:
+            raise ValueError("The servo is not managed by this network")
+
         servo.stop_status_listener()
-        self.close_socket(servo.socket)
-        self._set_servo_state(servo, NetState.DISCONNECTED)
+
+        if isinstance(servo, SDCPServo):
+            node = self._get_sdcp_node_by_servo(servo)
+            node.disconnect()
+        elif isinstance(servo, EthernetServoBase):
+            self.close_socket(servo.socket)
+            self._set_servo_state(servo, NetState.DISCONNECTED)
+            servo._disconnect_event_publisher.notify(servo)
+        else:
+            raise ValueError("Unsupported servo type")
+
         self.servos.remove(servo)
         if len(self.servos) == 0:
             self.stop_status_listener()
-        # Notify that disconnect_from_slave has been called
-        servo._disconnect_event_publisher.notify(servo)
 
     @staticmethod
     def close_socket(sock: socket.socket) -> None:
@@ -524,6 +570,24 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
             raise TypeError(f"Expected revision number type to be int, got {type(revision_number)}")
         self.disconnect_from_slave(servo)
         return SlaveInfo(product_code, revision_number)
+
+    def _get_sdcp_node_by_servo(self, servo: SDCPServo) -> SDCPNode:
+        """Return the SDCP node associated with a servo.
+
+        Args:
+            servo: SDCP servo associated with the node.
+
+        Returns:
+            SDCP node associated with the servo.
+
+        Raises:
+            ValueError: If the servo is not associated with a managed node.
+        """
+        for node in self._sdcp_nodes.values():
+            if node.servo is servo:
+                return node
+
+        raise ValueError("The SDCP servo is not associated with a node managed by this network")
 
     @property
     def protocol(self) -> NetProt:
