@@ -1,4 +1,4 @@
-"""Representation of a TSN node."""
+"""Representation of an SDCP node."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -14,8 +14,8 @@ from ingenialink.servo import Servo
 
 
 @dataclass(frozen=True)
-class TSNNodeDiscovery:
-    """Information obtained while discovering a TSN node."""
+class SDCPNodeDiscovery:
+    """Information obtained while discovering an SDCP node."""
 
     target: str
     interface: str
@@ -26,8 +26,8 @@ class TSNNodeDiscovery:
     mode: NodeMode
 
 
-class TSNNode(Node[TSNNodeDiscovery, SDCPServo]):
-    """Representation of a physical TSN drive.
+class SDCPNode(Node[SDCPNodeDiscovery, SDCPServo]):
+    """Representation of a physical SDCP drive.
 
     A node preserves the identity and latest discovery information of a
     physical drive independently of its current operating mode or application
@@ -41,7 +41,7 @@ class TSNNode(Node[TSNNodeDiscovery, SDCPServo]):
         discovery: Information obtained from the latest successful discovery.
     """
 
-    def __init__(self, discovery: TSNNodeDiscovery) -> None:
+    def __init__(self, discovery: SDCPNodeDiscovery) -> None:
         self._discovery = discovery
         self._servo: Optional[SDCPServo] = None
 
@@ -85,7 +85,7 @@ class TSNNode(Node[TSNNodeDiscovery, SDCPServo]):
         """Return the associated application servo, if connected."""
         return self._servo
 
-    def update(self, discovery: TSNNodeDiscovery) -> None:
+    def update(self, discovery: SDCPNodeDiscovery) -> None:
         """Update the node with the latest discovery information.
 
         The product code and serial number cannot change because they identify
@@ -103,7 +103,7 @@ class TSNNode(Node[TSNNodeDiscovery, SDCPServo]):
         """
         discovery_identity = discovery.product_code, discovery.serial_number
         if discovery_identity != self.identity:
-            raise ValueError("Cannot update a TSN node with a different drive identity")
+            raise ValueError("Cannot update an SDCP node with a different drive identity")
 
         if self.is_connected and (
             discovery.target != self.target
@@ -111,7 +111,7 @@ class TSNNode(Node[TSNNodeDiscovery, SDCPServo]):
             or discovery.mode != self.mode
         ):
             raise ILStateError(
-                "Cannot update the target, interface, or mode of a connected TSN node"
+                "Cannot update the target, interface, or mode of a connected SDCP node"
             )
 
         self._discovery = discovery
@@ -133,17 +133,17 @@ class TSNNode(Node[TSNNodeDiscovery, SDCPServo]):
                 disconnected.
 
         Returns:
-            The connected TSN servo.
+            The connected SDCP servo.
 
         Raises:
             ILStateError: If the node is not in application mode or is already
                 connected.
         """
         if self.mode != NodeMode.APPLICATION:
-            raise ILStateError("Cannot connect to a TSN node in bootloader mode")
+            raise ILStateError("Cannot connect to an SDCP node in bootloader mode")
 
         if self.is_connected:
-            raise ILStateError("The TSN node is already connected")
+            raise ILStateError("The SDCP node is already connected")
 
         self._servo = SDCPServo(
             target=self.target,
@@ -182,10 +182,10 @@ class TSNNode(Node[TSNNodeDiscovery, SDCPServo]):
                 transfer fails.
         """
         if self.is_connected:
-            raise ILStateError("Cannot load firmware while the TSN node is connected")
+            raise ILStateError("Cannot load firmware while the SDCP node is connected")
 
         if self.mode != NodeMode.BOOTLOADER:
-            raise ILStateError("Cannot load firmware to a TSN node in application mode")
+            raise ILStateError("Cannot load firmware to an SDCP node in application mode")
 
         with TftpUploader(self.target, self.interface) as uploader:
             uploader.upload_file(

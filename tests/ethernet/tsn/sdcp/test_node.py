@@ -1,4 +1,4 @@
-"""Tests for the TSN node lifecycle."""
+"""Tests for the SDCP node lifecycle."""
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from ingenialink.enums.node import NodeMode
-from ingenialink.ethernet.tsn.node import TSNNode, TSNNodeDiscovery
+from ingenialink.ethernet.tsn.sdcp.node import SDCPNode, SDCPNodeDiscovery
 from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
 from ingenialink.exceptions import ILIOError, ILStateError
 
@@ -21,9 +21,9 @@ REVISION_NUMBER = 0x00010002
 
 
 @pytest.fixture
-def application_discovery() -> TSNNodeDiscovery:
+def application_discovery() -> SDCPNodeDiscovery:
     """Return discovery information for an application-mode node."""
-    return TSNNodeDiscovery(
+    return SDCPNodeDiscovery(
         target=TARGET,
         interface=INTERFACE,
         protocol_version=PROTOCOL_VERSION,
@@ -35,9 +35,9 @@ def application_discovery() -> TSNNodeDiscovery:
 
 
 @pytest.fixture
-def bootloader_discovery() -> TSNNodeDiscovery:
+def bootloader_discovery() -> SDCPNodeDiscovery:
     """Return discovery information for a bootloader-mode node."""
-    return TSNNodeDiscovery(
+    return SDCPNodeDiscovery(
         target=TARGET,
         interface=INTERFACE,
         protocol_version=PROTOCOL_VERSION,
@@ -49,26 +49,26 @@ def bootloader_discovery() -> TSNNodeDiscovery:
 
 
 @pytest.fixture
-def application_node(application_discovery: TSNNodeDiscovery) -> TSNNode:
-    """Return an application-mode TSN node."""
-    return TSNNode(application_discovery)
+def application_node(application_discovery: SDCPNodeDiscovery) -> SDCPNode:
+    """Return an application-mode SDCP node."""
+    return SDCPNode(application_discovery)
 
 
 @pytest.fixture
-def bootloader_node(bootloader_discovery: TSNNodeDiscovery) -> TSNNode:
-    """Return a bootloader-mode TSN node."""
-    return TSNNode(bootloader_discovery)
+def bootloader_node(bootloader_discovery: SDCPNodeDiscovery) -> SDCPNode:
+    """Return a bootloader-mode SDCP node."""
+    return SDCPNode(bootloader_discovery)
 
 
 @pytest.fixture
 def connected_node(
-    application_node: TSNNode,
-) -> tuple[TSNNode, MagicMock]:
+    application_node: SDCPNode,
+) -> tuple[SDCPNode, MagicMock]:
     """Return an application-mode node with an associated mocked servo."""
     servo_mock = MagicMock(spec=SDCPServo)
 
     with patch(
-        "ingenialink.ethernet.tsn.node.SDCPServo",
+        "ingenialink.ethernet.tsn.sdcp.node.SDCPServo",
         return_value=servo_mock,
     ):
         application_node.connect(DICTIONARY_PATH)
@@ -76,7 +76,7 @@ def connected_node(
     return application_node, servo_mock
 
 
-def test_node_exposes_discovery_information(application_node: TSNNode) -> None:
+def test_node_exposes_discovery_information(application_node: SDCPNode) -> None:
     """Expose the information from the latest discovery."""
     assert application_node.target == TARGET
     assert application_node.interface == INTERFACE
@@ -90,10 +90,10 @@ def test_node_exposes_discovery_information(application_node: TSNNode) -> None:
 
 
 def test_update_replaces_mutable_discovery_information(
-    application_node: TSNNode,
+    application_node: SDCPNode,
 ) -> None:
     """Update mutable discovery information for the same physical drive."""
-    updated_discovery = TSNNodeDiscovery(
+    updated_discovery = SDCPNodeDiscovery(
         target="fe80::2",
         interface="updated-interface",
         protocol_version=PROTOCOL_VERSION + 1,
@@ -122,12 +122,12 @@ def test_update_replaces_mutable_discovery_information(
     ],
 )
 def test_update_rejects_different_drive_identity(
-    application_node: TSNNode,
+    application_node: SDCPNode,
     serial_number: int,
     product_code: int,
 ) -> None:
     """Reject discovery information belonging to another physical drive."""
-    discovery = TSNNodeDiscovery(
+    discovery = SDCPNodeDiscovery(
         target=TARGET,
         interface=INTERFACE,
         protocol_version=PROTOCOL_VERSION,
@@ -142,11 +142,11 @@ def test_update_rejects_different_drive_identity(
 
 
 def test_update_allows_firmware_information_change_while_connected(
-    connected_node: tuple[TSNNode, MagicMock],
+    connected_node: tuple[SDCPNode, MagicMock],
 ) -> None:
     """Allow protocol and revision updates that do not affect the connection."""
     node, servo_mock = connected_node
-    updated_discovery = TSNNodeDiscovery(
+    updated_discovery = SDCPNodeDiscovery(
         target=TARGET,
         interface=INTERFACE,
         protocol_version=PROTOCOL_VERSION + 1,
@@ -166,7 +166,7 @@ def test_update_allows_firmware_information_change_while_connected(
 @pytest.mark.parametrize(
     "updated_discovery",
     [
-        TSNNodeDiscovery(
+        SDCPNodeDiscovery(
             target="fe80::2",
             interface=INTERFACE,
             protocol_version=PROTOCOL_VERSION,
@@ -175,7 +175,7 @@ def test_update_allows_firmware_information_change_while_connected(
             revision_number=REVISION_NUMBER,
             mode=NodeMode.APPLICATION,
         ),
-        TSNNodeDiscovery(
+        SDCPNodeDiscovery(
             target=TARGET,
             interface="updated-interface",
             protocol_version=PROTOCOL_VERSION,
@@ -184,7 +184,7 @@ def test_update_allows_firmware_information_change_while_connected(
             revision_number=REVISION_NUMBER,
             mode=NodeMode.APPLICATION,
         ),
-        TSNNodeDiscovery(
+        SDCPNodeDiscovery(
             target=TARGET,
             interface=INTERFACE,
             protocol_version=PROTOCOL_VERSION,
@@ -197,8 +197,8 @@ def test_update_allows_firmware_information_change_while_connected(
     ids=["target", "interface", "mode"],
 )
 def test_update_rejects_connection_context_change_while_connected(
-    connected_node: tuple[TSNNode, MagicMock],
-    updated_discovery: TSNNodeDiscovery,
+    connected_node: tuple[SDCPNode, MagicMock],
+    updated_discovery: SDCPNodeDiscovery,
 ) -> None:
     """Reject endpoint or mode changes while a servo is associated."""
     node, _ = connected_node
@@ -210,15 +210,15 @@ def test_update_rejects_connection_context_change_while_connected(
         node.update(updated_discovery)
 
 
-def test_connect_creates_and_associates_tsn_servo(
-    application_node: TSNNode,
+def test_connect_creates_and_associates_sdcp_servo(
+    application_node: SDCPNode,
 ) -> None:
-    """Create a TSN servo using the node endpoint and connection options."""
+    """Create an SDCP servo using the node endpoint and connection options."""
     servo_mock = MagicMock(spec=SDCPServo)
     disconnect_callback = MagicMock()
 
     with patch(
-        "ingenialink.ethernet.tsn.node.SDCPServo",
+        "ingenialink.ethernet.tsn.sdcp.node.SDCPServo",
         return_value=servo_mock,
     ) as servo_class_mock:
         servo = application_node.connect(
@@ -241,30 +241,30 @@ def test_connect_creates_and_associates_tsn_servo(
     )
 
 
-def test_connect_rejects_bootloader_node(bootloader_node: TSNNode) -> None:
+def test_connect_rejects_bootloader_node(bootloader_node: SDCPNode) -> None:
     """Reject application connections while the node is in bootloader mode."""
     with pytest.raises(
         ILStateError,
-        match="Cannot connect to a TSN node in bootloader mode",
+        match="Cannot connect to an SDCP node in bootloader mode",
     ):
         bootloader_node.connect(DICTIONARY_PATH)
 
 
 def test_connect_rejects_already_connected_node(
-    connected_node: tuple[TSNNode, MagicMock],
+    connected_node: tuple[SDCPNode, MagicMock],
 ) -> None:
     """Reject creating a second servo association."""
     node, _ = connected_node
 
     with pytest.raises(
         ILStateError,
-        match="The TSN node is already connected",
+        match="The SDCP node is already connected",
     ):
         node.connect(DICTIONARY_PATH)
 
 
 def test_disconnect_closes_servo_and_clears_association(
-    connected_node: tuple[TSNNode, MagicMock],
+    connected_node: tuple[SDCPNode, MagicMock],
 ) -> None:
     """Disconnect the servo and remove its association from the node."""
     node, servo_mock = connected_node
@@ -277,7 +277,7 @@ def test_disconnect_closes_servo_and_clears_association(
 
 
 def test_disconnect_preserves_association_when_servo_disconnect_fails(
-    connected_node: tuple[TSNNode, MagicMock],
+    connected_node: tuple[SDCPNode, MagicMock],
 ) -> None:
     """Keep the association when the servo cannot be disconnected."""
     node, servo_mock = connected_node
@@ -290,7 +290,7 @@ def test_disconnect_preserves_association_when_servo_disconnect_fails(
     assert node.is_connected
 
 
-def test_load_firmware_uses_tftp_uploader(bootloader_node: TSNNode) -> None:
+def test_load_firmware_uses_tftp_uploader(bootloader_node: SDCPNode) -> None:
     """Upload firmware using the node IPv6 target and interface."""
     firmware_file = Path("firmware.lfu")
     callback_progress = MagicMock()
@@ -299,7 +299,7 @@ def test_load_firmware_uses_tftp_uploader(bootloader_node: TSNNode) -> None:
     uploader_context.__enter__.return_value = uploader_mock
 
     with patch(
-        "ingenialink.ethernet.tsn.node.TftpUploader",
+        "ingenialink.ethernet.tsn.sdcp.node.TftpUploader",
         return_value=uploader_context,
     ) as uploader_class_mock:
         bootloader_node.load_firmware(
@@ -316,24 +316,24 @@ def test_load_firmware_uses_tftp_uploader(bootloader_node: TSNNode) -> None:
 
 
 def test_load_firmware_rejects_application_node(
-    application_node: TSNNode,
+    application_node: SDCPNode,
 ) -> None:
     """Reject firmware loading while the node is in application mode."""
     with pytest.raises(
         ILStateError,
-        match="Cannot load firmware to a TSN node in application mode",
+        match="Cannot load firmware to an SDCP node in application mode",
     ):
         application_node.load_firmware("firmware.lfu")
 
 
 def test_load_firmware_rejects_connected_node(
-    connected_node: tuple[TSNNode, MagicMock],
+    connected_node: tuple[SDCPNode, MagicMock],
 ) -> None:
     """Reject firmware loading while a servo is associated."""
     node, _ = connected_node
 
     with pytest.raises(
         ILStateError,
-        match="Cannot load firmware while the TSN node is connected",
+        match="Cannot load firmware while the SDCP node is connected",
     ):
         node.load_firmware("firmware.lfu")

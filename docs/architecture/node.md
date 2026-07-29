@@ -5,9 +5,9 @@ classDiagram
     <<abstract>>
   }
 
-  class TSNNode
+  class SDCPNode
 
-  Node <|-- TSNNode
+  Node <|-- SDCPNode
 ```
 - **`Node` (base)**: Common API for representing a physical drive and managing its lifecycle.
-- **`TSNNode` (protocol node)**: TSN-specific implementation for discovery updates, servo connections, disconnections, and TFTP firmware loading.
+- **`SDCPNode` (protocol node)**: SDCP-specific implementation for discovery updates, servo connections, disconnections, and TFTP firmware loading.

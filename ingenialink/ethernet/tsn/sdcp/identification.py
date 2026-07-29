@@ -1,8 +1,7 @@
-"""TSN node identification utilities."""
+"""SDCP node identification utilities."""
 
 from ingenialink.enums.node import NodeMode
 from ingenialink.enums.register import ByteOrder
-from ingenialink.ethernet.tsn.node import TSNNodeDiscovery
 from ingenialink.ethernet.tsn.sdcp.connection import DEFAULT_SDCP_TIMEOUT_S, SDCPConnection
 from ingenialink.ethernet.tsn.sdcp.messages import (
     SDCPIdentificationRequest,
@@ -12,6 +11,7 @@ from ingenialink.ethernet.tsn.sdcp.messages import (
     SDCPReadResponse,
     SDCPReadResponseError,
 )
+from ingenialink.ethernet.tsn.sdcp.node import SDCPNodeDiscovery
 from ingenialink.exceptions import ILIOError
 
 _IDENTIFICATION_TRANSACTION_ID = 0x0000
@@ -29,7 +29,7 @@ def identify_tsn_node(
     target: str,
     interface: str,
     timeout: float = DEFAULT_SDCP_TIMEOUT_S,
-) -> TSNNodeDiscovery:
+) -> SDCPNodeDiscovery:
     """Identify an SDCP-compatible device and read its operating mode.
 
     Args:
@@ -38,7 +38,7 @@ def identify_tsn_node(
         timeout: Timeout in seconds for each SDCP transaction.
 
     Returns:
-        Discovery information obtained from the TSN node.
+        Discovery information obtained from the SDCP node.
 
     Raises:
         ILIOError: If identification or communication-status reading fails,
@@ -49,7 +49,7 @@ def identify_tsn_node(
         identification = _read_identification(connection)
         mode = _read_node_mode(connection)
 
-    return TSNNodeDiscovery(
+    return SDCPNodeDiscovery(
         target=target,
         interface=interface,
         protocol_version=identification.protocol_version,

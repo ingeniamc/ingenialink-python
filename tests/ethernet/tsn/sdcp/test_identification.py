@@ -1,15 +1,10 @@
-"""Tests for TSN node identification."""
+"""Tests for SDCP node identification."""
 
 from unittest.mock import MagicMock, call, patch
 
 import pytest
 
 from ingenialink.enums.node import NodeMode
-from ingenialink.ethernet.tsn.identification import (
-    _decode_node_mode,
-    identify_tsn_node,
-)
-from ingenialink.ethernet.tsn.node import TSNNodeDiscovery
 from ingenialink.ethernet.tsn.sdcp import (
     SDCPIdentificationRequest,
     SDCPIdentificationResponse,
@@ -19,6 +14,11 @@ from ingenialink.ethernet.tsn.sdcp import (
     SDCPReadResponseError,
     SDCPWriteResponse,
 )
+from ingenialink.ethernet.tsn.sdcp.identification import (
+    _decode_node_mode,
+    identify_tsn_node,
+)
+from ingenialink.ethernet.tsn.sdcp.node import SDCPNodeDiscovery
 from ingenialink.exceptions import ILIOError
 
 TARGET = "fe80::1"
@@ -69,7 +69,7 @@ def test_identify_tsn_node_returns_discovery_information(
     context = _connection_context(connection_mock)
 
     with patch(
-        "ingenialink.ethernet.tsn.identification.SDCPConnection",
+        "ingenialink.ethernet.tsn.sdcp.identification.SDCPConnection",
         return_value=context,
     ) as connection_class_mock:
         discovery = identify_tsn_node(
@@ -78,7 +78,7 @@ def test_identify_tsn_node_returns_discovery_information(
             timeout=TIMEOUT_S,
         )
 
-    assert discovery == TSNNodeDiscovery(
+    assert discovery == SDCPNodeDiscovery(
         target=TARGET,
         interface=INTERFACE,
         protocol_version=PROTOCOL_VERSION,
@@ -158,7 +158,7 @@ def test_identify_tsn_node_raises_identification_error(
 
     with (
         patch(
-            "ingenialink.ethernet.tsn.identification.SDCPConnection",
+            "ingenialink.ethernet.tsn.sdcp.identification.SDCPConnection",
             return_value=context,
         ),
         pytest.raises(
@@ -180,7 +180,7 @@ def test_identify_tsn_node_rejects_unexpected_identification_response(
 
     with (
         patch(
-            "ingenialink.ethernet.tsn.identification.SDCPConnection",
+            "ingenialink.ethernet.tsn.sdcp.identification.SDCPConnection",
             return_value=context,
         ),
         pytest.raises(
@@ -206,7 +206,7 @@ def test_identify_tsn_node_raises_status_read_error(
 
     with (
         patch(
-            "ingenialink.ethernet.tsn.identification.SDCPConnection",
+            "ingenialink.ethernet.tsn.sdcp.identification.SDCPConnection",
             return_value=context,
         ),
         pytest.raises(
@@ -229,7 +229,7 @@ def test_identify_tsn_node_rejects_unexpected_status_response(
 
     with (
         patch(
-            "ingenialink.ethernet.tsn.identification.SDCPConnection",
+            "ingenialink.ethernet.tsn.sdcp.identification.SDCPConnection",
             return_value=context,
         ),
         pytest.raises(
