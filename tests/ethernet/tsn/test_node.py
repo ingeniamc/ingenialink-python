@@ -60,6 +60,22 @@ def bootloader_node(bootloader_discovery: TSNNodeDiscovery) -> TSNNode:
     return TSNNode(bootloader_discovery)
 
 
+@pytest.fixture
+def connected_node(
+    application_node: TSNNode,
+) -> tuple[TSNNode, MagicMock]:
+    """Return an application-mode node with an associated mocked servo."""
+    servo_mock = MagicMock(spec=TSNServo)
+
+    with patch(
+        "ingenialink.ethernet.tsn.node.TSNServo",
+        return_value=servo_mock,
+    ):
+        application_node.connect(DICTIONARY_PATH)
+
+    return application_node, servo_mock
+
+
 def test_node_exposes_discovery_information(application_node: TSNNode) -> None:
     """Expose the information from the latest discovery."""
     assert application_node.target == TARGET
@@ -83,7 +99,7 @@ def test_update_replaces_mutable_discovery_information(
         protocol_version=PROTOCOL_VERSION + 1,
         serial_number=SERIAL_NUMBER,
         product_code=PRODUCT_CODE,
-        revision_number=REVISION_NUMBER + 1,
+        revision_number=0,
         mode=NodeMode.BOOTLOADER,
     )
 
@@ -94,7 +110,7 @@ def test_update_replaces_mutable_discovery_information(
     assert application_node.protocol_version == PROTOCOL_VERSION + 1
     assert application_node.serial_number == SERIAL_NUMBER
     assert application_node.product_code == PRODUCT_CODE
-    assert application_node.revision_number == REVISION_NUMBER + 1
+    assert application_node.revision_number == 0
     assert application_node.mode == NodeMode.BOOTLOADER
 
 
@@ -126,10 +142,10 @@ def test_update_rejects_different_drive_identity(
 
 
 def test_update_allows_firmware_information_change_while_connected(
-    application_node: TSNNode,
+    connected_node: tuple[TSNNode, MagicMock],
 ) -> None:
     """Allow protocol and revision updates that do not affect the connection."""
-    servo_mock = MagicMock(spec=TSNServo)
+    node, servo_mock = connected_node
     updated_discovery = TSNNodeDiscovery(
         target=TARGET,
         interface=INTERFACE,
@@ -140,17 +156,11 @@ def test_update_allows_firmware_information_change_while_connected(
         mode=NodeMode.APPLICATION,
     )
 
-    with patch(
-        "ingenialink.ethernet.tsn.node.TSNServo",
-        return_value=servo_mock,
-    ):
-        application_node.connect(DICTIONARY_PATH)
+    node.update(updated_discovery)
 
-    application_node.update(updated_discovery)
-
-    assert application_node.protocol_version == PROTOCOL_VERSION + 1
-    assert application_node.revision_number == REVISION_NUMBER + 1
-    assert application_node.servo is servo_mock
+    assert node.protocol_version == PROTOCOL_VERSION + 1
+    assert node.revision_number == REVISION_NUMBER + 1
+    assert node.servo is servo_mock
 
 
 @pytest.mark.parametrize(
@@ -187,23 +197,17 @@ def test_update_allows_firmware_information_change_while_connected(
     ids=["target", "interface", "mode"],
 )
 def test_update_rejects_connection_context_change_while_connected(
-    application_node: TSNNode,
+    connected_node: tuple[TSNNode, MagicMock],
     updated_discovery: TSNNodeDiscovery,
 ) -> None:
     """Reject endpoint or mode changes while a servo is associated."""
-    servo_mock = MagicMock(spec=TSNServo)
-
-    with patch(
-        "ingenialink.ethernet.tsn.node.TSNServo",
-        return_value=servo_mock,
-    ):
-        application_node.connect(DICTIONARY_PATH)
+    node, _ = connected_node
 
     with pytest.raises(
         ILStateError,
         match="Cannot update the target, interface, or mode",
     ):
-        application_node.update(updated_discovery)
+        node.update(updated_discovery)
 
 
 def test_connect_creates_and_associates_tsn_servo(
@@ -247,61 +251,43 @@ def test_connect_rejects_bootloader_node(bootloader_node: TSNNode) -> None:
 
 
 def test_connect_rejects_already_connected_node(
-    application_node: TSNNode,
+    connected_node: tuple[TSNNode, MagicMock],
 ) -> None:
     """Reject creating a second servo association."""
-    servo_mock = MagicMock(spec=TSNServo)
+    node, _ = connected_node
 
-    with patch(
-        "ingenialink.ethernet.tsn.node.TSNServo",
-        return_value=servo_mock,
+    with pytest.raises(
+        ILStateError,
+        match="The TSN node is already connected",
     ):
-        application_node.connect(DICTIONARY_PATH)
-
-        with pytest.raises(
-            ILStateError,
-            match="The TSN node is already connected",
-        ):
-            application_node.connect(DICTIONARY_PATH)
+        node.connect(DICTIONARY_PATH)
 
 
 def test_disconnect_closes_servo_and_clears_association(
-    application_node: TSNNode,
+    connected_node: tuple[TSNNode, MagicMock],
 ) -> None:
     """Disconnect the servo and remove its association from the node."""
-    servo_mock = MagicMock(spec=TSNServo)
+    node, servo_mock = connected_node
 
-    with patch(
-        "ingenialink.ethernet.tsn.node.TSNServo",
-        return_value=servo_mock,
-    ):
-        application_node.connect(DICTIONARY_PATH)
-
-    application_node.disconnect()
+    node.disconnect()
 
     servo_mock.disconnect.assert_called_once_with()
-    assert application_node.servo is None
-    assert not application_node.is_connected
+    assert node.servo is None
+    assert not node.is_connected
 
 
 def test_disconnect_preserves_association_when_servo_disconnect_fails(
-    application_node: TSNNode,
+    connected_node: tuple[TSNNode, MagicMock],
 ) -> None:
     """Keep the association when the servo cannot be disconnected."""
-    servo_mock = MagicMock(spec=TSNServo)
+    node, servo_mock = connected_node
     servo_mock.disconnect.side_effect = ILIOError("disconnect failed")
 
-    with patch(
-        "ingenialink.ethernet.tsn.node.TSNServo",
-        return_value=servo_mock,
-    ):
-        application_node.connect(DICTIONARY_PATH)
-
     with pytest.raises(ILIOError, match="disconnect failed"):
-        application_node.disconnect()
+        node.disconnect()
 
-    assert application_node.servo is servo_mock
-    assert application_node.is_connected
+    assert node.servo is servo_mock
+    assert node.is_connected
 
 
 def test_load_firmware_uses_tftp_uploader(bootloader_node: TSNNode) -> None:
@@ -341,19 +327,13 @@ def test_load_firmware_rejects_application_node(
 
 
 def test_load_firmware_rejects_connected_node(
-    application_node: TSNNode,
+    connected_node: tuple[TSNNode, MagicMock],
 ) -> None:
     """Reject firmware loading while a servo is associated."""
-    servo_mock = MagicMock(spec=TSNServo)
-
-    with patch(
-        "ingenialink.ethernet.tsn.node.TSNServo",
-        return_value=servo_mock,
-    ):
-        application_node.connect(DICTIONARY_PATH)
+    node, _ = connected_node
 
     with pytest.raises(
         ILStateError,
         match="Cannot load firmware while the TSN node is connected",
     ):
-        application_node.load_firmware("firmware.lfu")
+        node.load_firmware("firmware.lfu")
