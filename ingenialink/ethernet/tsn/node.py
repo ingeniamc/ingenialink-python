@@ -119,9 +119,9 @@ class TSNNode(Node[TSNNodeDiscovery, TSNServo]):
     def connect(
         self,
         dictionary_path: str,
-        connection_timeout: float = DEFAULT_SDCP_TIMEOUT_S,
         servo_status_listener: bool = False,
         disconnect_callback: Optional[Callable[[Servo], None]] = None,
+        connection_timeout: float = DEFAULT_SDCP_TIMEOUT_S,
     ) -> TSNServo:
         """Connect to the application servo.
 

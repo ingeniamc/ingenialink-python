@@ -68,7 +68,6 @@ class Node(ABC, Generic[DiscoveryT, ServoT]):
     def connect(
         self,
         dictionary_path: str,
-        connection_timeout: float,
         servo_status_listener: bool = False,
         disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ) -> ServoT:

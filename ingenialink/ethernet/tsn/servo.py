@@ -114,3 +114,4 @@ class TSNServo(TSNServoBase):
         """Close the SDCP connection."""
         with self._request_lock:
             self._connection.close()
+        self._disconnect_event_publisher.notify(self)
