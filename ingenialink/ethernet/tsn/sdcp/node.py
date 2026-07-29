@@ -47,42 +47,42 @@ class SDCPNode(Node[SDCPNodeDiscovery, SDCPServo]):
 
     @property
     def target(self) -> str:
-        """Return the current IPv6 address of the node."""
+        """Current IPv6 address of the node."""
         return self._discovery.target
 
     @property
     def interface(self) -> str:
-        """Return the network interface used to reach the node."""
+        """Network interface used to reach the node."""
         return self._discovery.interface
 
     @property
     def protocol_version(self) -> int:
-        """Return the currently reported SDCP protocol version."""
+        """Currently reported SDCP protocol version."""
         return self._discovery.protocol_version
 
     @property
     def serial_number(self) -> int:
-        """Return the serial number of the physical drive."""
+        """Serial number of the physical drive."""
         return self._discovery.serial_number
 
     @property
     def product_code(self) -> int:
-        """Return the product code of the physical drive."""
+        """Product code of the physical drive."""
         return self._discovery.product_code
 
     @property
     def revision_number(self) -> int:
-        """Return the currently reported firmware revision."""
+        """Currently reported firmware revision."""
         return self._discovery.revision_number
 
     @property
     def mode(self) -> NodeMode:
-        """Return the current operating mode of the node."""
+        """Current operating mode of the node."""
         return self._discovery.mode
 
     @property
     def servo(self) -> Optional[SDCPServo]:
-        """Return the associated application servo, if connected."""
+        """Associated application servo, if connected."""
         return self._servo
 
     def update(self, discovery: SDCPNodeDiscovery) -> None:

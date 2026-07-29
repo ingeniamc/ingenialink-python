@@ -22,42 +22,42 @@ class Node(ABC, Generic[DiscoveryT, ServoT]):
 
     @property
     def identity(self) -> NodeIdentity:
-        """Return the stable identity of the physical drive."""
+        """Stable identity of the physical drive."""
         return self.product_code, self.serial_number
 
     @property
     @abstractmethod
     def target(self) -> str:
-        """Return the current network address of the node."""
+        """Current network address of the node."""
 
     @property
     @abstractmethod
     def serial_number(self) -> int:
-        """Return the serial number of the physical drive."""
+        """Serial number of the physical drive."""
 
     @property
     @abstractmethod
     def product_code(self) -> int:
-        """Return the product code of the physical drive."""
+        """Product code of the physical drive."""
 
     @property
     @abstractmethod
     def revision_number(self) -> int:
-        """Return the currently reported firmware revision."""
+        """Currently reported firmware revision."""
 
     @property
     @abstractmethod
     def mode(self) -> NodeMode:
-        """Return the current operating mode of the node."""
+        """Current operating mode of the node."""
 
     @property
     @abstractmethod
     def servo(self) -> Optional[ServoT]:
-        """Return the associated application servo, if connected."""
+        """Associated application servo, if connected."""
 
     @property
     def is_connected(self) -> bool:
-        """Return whether an application servo is associated with the node."""
+        """Whether an application servo is associated with the node."""
         return self.servo is not None
 
     @abstractmethod
