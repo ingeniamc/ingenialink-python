@@ -7,6 +7,7 @@ import time
 from abc import abstractmethod
 from collections import OrderedDict
 from ftplib import FTP
+from pathlib import Path
 from threading import Thread
 from time import sleep
 from typing import TYPE_CHECKING, Callable, Generic, Optional, Union
@@ -252,6 +253,30 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[Servo]):
                 logger.error(e)
                 raise ILFirmwareLoadError("Error during bootloader process.")
 
+    def load_firmware_to_node(
+        self,
+        node: SDCPNode,
+        firmware_file: Union[str, Path],
+        callback_progress: Optional[Callable[[int], None]] = None,
+    ) -> None:
+        """Load firmware into an SDCP node managed by the network.
+
+        Args:
+            node: SDCP node in bootloader mode.
+            firmware_file: Path to the firmware file.
+            callback_progress: Optional callback receiving the upload progress.
+
+        Raises:
+            ValueError: If the node is not managed by this network.
+        """
+        if self._sdcp_nodes.get(node.identity) is not node:
+            raise ValueError("The SDCP node is not managed by this network")
+
+        node.load_firmware(
+            firmware_file,
+            callback_progress=callback_progress,
+        )
+
     def _scan_slaves(self) -> list[str]:
         """Ping all the network IPs.
 
@@ -457,21 +482,23 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[Servo]):
         if servo not in self.servos:
             raise ValueError("The servo is not managed by this network")
 
-        servo.stop_status_listener()
-
         if isinstance(servo, SDCPServo):
             node = self._get_sdcp_node_by_servo(servo)
+
+            servo.stop_status_listener()
             node.disconnect()
-        elif isinstance(servo, EthernetServoBase):
+            self._remove_servo(servo)
+            return
+
+        if isinstance(servo, EthernetServoBase):
+            servo.stop_status_listener()
             self.close_socket(servo.socket)
             self._set_servo_state(servo, NetState.DISCONNECTED)
+            self._remove_servo(servo)
             servo._disconnect_event_publisher.notify(servo)
-        else:
-            raise ValueError("Unsupported servo type")
+            return
 
-        self.servos.remove(servo)
-        if len(self.servos) == 0:
-            self.stop_status_listener()
+        raise ValueError("Unsupported servo type")
 
     @staticmethod
     def close_socket(sock: socket.socket) -> None:
@@ -588,6 +615,13 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[Servo]):
                 return node
 
         raise ValueError("The SDCP servo is not associated with a node managed by this network")
+
+    def _remove_servo(self, servo: Servo) -> None:
+        """Remove a disconnected servo from the network."""
+        self.servos.remove(servo)
+
+        if not self.servos:
+            self.stop_status_listener()
 
     @property
     def protocol(self) -> NetProt:

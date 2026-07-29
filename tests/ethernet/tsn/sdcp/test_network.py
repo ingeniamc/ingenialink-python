@@ -4,8 +4,8 @@ import pytest
 
 from ingenialink.enums.node import NodeMode
 from ingenialink.ethernet.network import EthernetNetwork
-from ingenialink.ethernet.tsn.sdcp import SDCPServo
 from ingenialink.ethernet.tsn.sdcp.node import SDCPNode, SDCPNodeDiscovery
+from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
 from ingenialink.exceptions import ILError
 
 TARGET = "fe80::1"
@@ -264,3 +264,47 @@ def test_disconnect_from_slave_preserves_sdcp_associations_on_failure(
 
     assert node.servo is servo
     assert network.servos == [servo]
+
+
+def test_load_firmware_to_node_rejects_unmanaged_node(
+    discovery: SDCPNodeDiscovery,
+    mocker,
+) -> None:
+    """Reject firmware loading through an unmanaged node."""
+    network = EthernetNetwork(interface=INTERFACE)
+    node = SDCPNode(discovery)
+
+    with pytest.raises(
+        ValueError,
+        match="The SDCP node is not managed by this network",
+    ):
+        network.load_firmware_to_node(
+            node=node,
+            firmware_file=mocker.sentinel.firmware_file,
+        )
+
+
+def test_load_firmware_to_node_delegates_to_node(
+    managed_node: tuple[EthernetNetwork, SDCPNode],
+    mocker,
+) -> None:
+    """Delegate firmware loading to the managed node."""
+    network, node = managed_node
+    firmware_file = mocker.sentinel.firmware_file
+    callback_progress = mocker.Mock()
+
+    load_firmware_mock = mocker.patch.object(
+        node,
+        "load_firmware",
+    )
+
+    network.load_firmware_to_node(
+        node=node,
+        firmware_file=firmware_file,
+        callback_progress=callback_progress,
+    )
+
+    load_firmware_mock.assert_called_once_with(
+        firmware_file,
+        callback_progress=callback_progress,
+    )
