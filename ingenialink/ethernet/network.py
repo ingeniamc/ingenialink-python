@@ -9,7 +9,7 @@ from collections import OrderedDict
 from ftplib import FTP
 from threading import Thread
 from time import sleep
-from typing import Callable, Generic, Optional, Union
+from typing import TYPE_CHECKING, Callable, Generic, Optional, Union
 
 import ingenialogger
 from multiping import multi_ping
@@ -17,6 +17,16 @@ from typing_extensions import TypeVar, override
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.ethernet.resources import BASIC_ETHERNET_V2_XDF
+from ingenialink.ethernet.tsn.ipv6_discovery import (
+    discover_ipv6_devices,
+)
+from ingenialink.ethernet.tsn.sdcp.connection import (
+    DEFAULT_SDCP_TIMEOUT_S,
+)
+from ingenialink.ethernet.tsn.sdcp.identification import (
+    identify_sdcp_node,
+)
+from ingenialink.ethernet.tsn.sdcp.node import SDCPNode
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import (
     NetDevEvt,
@@ -30,6 +40,9 @@ from ingenialink.servo import Servo
 from ingenialink.utils.udp import UDP
 
 from .servo import EthernetServo, EthernetServoBase
+
+if TYPE_CHECKING:
+    from ingenialink.node import NodeIdentity
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -109,17 +122,24 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
 
     Args:
         subnet: The subnet in CIDR notation.
+        interface: The network interface used for IPv6 communication.
 
     """
 
-    def __init__(self, subnet: Optional[str] = None) -> None:
+    def __init__(self, subnet: Optional[str] = None, interface: Optional[str] = None) -> None:
         super().__init__()
         self.__subnet: Optional[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]]
         if subnet is not None:
             self.__subnet = ipaddress.ip_network(subnet, strict=False)
         else:
             self.__subnet = None
+        self.__interface = interface
         self.__listener_net_status: Optional[NetStatusListener[EthernetServoT]] = None
+
+        self._sdcp_nodes: OrderedDict[
+            NodeIdentity,
+            SDCPNode,
+        ] = OrderedDict()
 
     @staticmethod
     def load_firmware(
@@ -283,6 +303,55 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
             with contextlib.suppress(ILError):
                 slave_info[slave_id] = self._get_servo_info_for_scan(slave_id)
         return slave_info
+
+    def scan_sdcp_nodes(
+        self,
+        timeout: float = DEFAULT_SDCP_TIMEOUT_S,
+    ) -> list[SDCPNode]:
+        """Discover SDCP-compatible nodes through IPv6.
+
+        IPv6 devices that do not respond to SDCP identification are ignored.
+        Previously known nodes are updated instead of replaced, preserving
+        their identity across endpoint, firmware, and mode changes.
+
+        Args:
+            timeout: Timeout in seconds for SDCP identification transactions.
+
+        Returns:
+            SDCP nodes identified during the current scan.
+
+        Raises:
+            ValueError: If no network interface was configured.
+        """
+        if self.__interface is None:
+            raise ValueError("A network interface is required to scan SDCP nodes")
+        discovered_nodes: OrderedDict[NodeIdentity, SDCPNode] = OrderedDict()
+        for target in discover_ipv6_devices(self.__interface):
+            try:
+                discovery = identify_sdcp_node(
+                    target=target,
+                    interface=self.__interface,
+                    timeout=timeout,
+                )
+            except ILError:
+                continue
+
+            identity: NodeIdentity = (
+                discovery.product_code,
+                discovery.serial_number,
+            )
+
+            node = self._sdcp_nodes.get(identity)
+
+            if node is None:
+                node = SDCPNode(discovery)
+                self._sdcp_nodes[identity] = node
+            else:
+                node.update(discovery)
+
+            discovered_nodes[identity] = node
+
+        return list(discovered_nodes.values())
 
     def connect_to_slave(
         self,
@@ -460,6 +529,20 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
     def protocol(self) -> NetProt:
         """Obtain network protocol."""
         return NetProt.ETH
+
+    @property
+    def sdcp_nodes(self) -> list[SDCPNode]:
+        """The list of SDCP nodes managed by the network.
+
+        Returns:
+            Copy of the list of SDCP nodes managed by the network.
+        """
+        return list(self._sdcp_nodes.values())
+
+    @property
+    def interface(self) -> Optional[str]:
+        """Interface used for IPv6 communication."""
+        return self.__interface
 
 
 class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
