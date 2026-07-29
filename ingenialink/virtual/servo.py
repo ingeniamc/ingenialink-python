@@ -43,13 +43,12 @@ class VirtualServoBase:
     def receive_frame(self) -> bytes:
         """Receive a raw frame from the virtual drive.
 
-        Raises:
-            ILTimeoutError: If the receive operation times out.
-            ILIOError: If there is an error receiving the data.
-
         Returns:
             The received frame bytes.
 
+        Raises:
+            ILTimeoutError: If the receive operation times out.
+            ILIOError: If there is an error receiving the data.
         """
         try:
             return self._socket.recv(VIRTUAL_DRIVE_RECV_BUFFER_SIZE)

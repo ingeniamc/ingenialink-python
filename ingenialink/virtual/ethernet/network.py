@@ -59,11 +59,11 @@ class VirtualEthernetNetwork(EthernetNetworkBase[VirtualEthernetServo]):
             disconnect_callback: Callback function to be called when the servo is disconnected.
                 If not specified, no callback will be called.
 
-        Raises:
-            ILError: if the drive is not found in IP.
-
         Returns:
             VirtualEthernetServo: Instance of the servo connected.
+
+        Raises:
+            ILError: if the drive is not found in IP.
         """
         servo = VirtualEthernetServo(
             self._virtual_base.virtual_drive_ip_address,

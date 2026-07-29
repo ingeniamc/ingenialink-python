@@ -57,11 +57,11 @@ class UDP:
     def check_ack(self) -> int:
         """Checks if the received message has a valid ACK.
 
-        Raises:
-            Exception: no ACK received.
-
         Returns:
             Command code of the message.
+
+        Raises:
+            Exception: If no ACK is received.
         """
         rcv = self.read()
         ret_cmd = self.unmsg(rcv)
@@ -81,11 +81,11 @@ class UDP:
         Args:
             in_frame: Input frame.
 
-        Raises:
-            ILUDPError: if CRC error.
-
         Returns:
             Command from the given message.
+
+        Raises:
+            ILUDPError: if CRC error.
         """
         header = in_frame[2:4]
         cmd = struct.unpack("<H", header)[0] >> 1
