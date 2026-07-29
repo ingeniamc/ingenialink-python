@@ -16,7 +16,7 @@ from ingenialink.ethernet.tsn.sdcp import (
 )
 from ingenialink.ethernet.tsn.sdcp.identification import (
     _decode_node_mode,
-    identify_tsn_node,
+    identify_sdcp_node,
 )
 from ingenialink.ethernet.tsn.sdcp.node import SDCPNodeDiscovery
 from ingenialink.exceptions import ILIOError
@@ -72,7 +72,7 @@ def test_identify_tsn_node_returns_discovery_information(
         "ingenialink.ethernet.tsn.sdcp.identification.SDCPConnection",
         return_value=context,
     ) as connection_class_mock:
-        discovery = identify_tsn_node(
+        discovery = identify_sdcp_node(
             target=TARGET,
             interface=INTERFACE,
             timeout=TIMEOUT_S,
@@ -166,7 +166,7 @@ def test_identify_tsn_node_raises_identification_error(
             match="SDCP identification failed with error code 0xFFFF0001",
         ),
     ):
-        identify_tsn_node(TARGET, INTERFACE)
+        identify_sdcp_node(TARGET, INTERFACE)
 
 
 def test_identify_tsn_node_rejects_unexpected_identification_response(
@@ -188,7 +188,7 @@ def test_identify_tsn_node_rejects_unexpected_identification_response(
             match="Unexpected SDCP identification response",
         ),
     ):
-        identify_tsn_node(TARGET, INTERFACE)
+        identify_sdcp_node(TARGET, INTERFACE)
 
 
 def test_identify_tsn_node_raises_status_read_error(
@@ -214,7 +214,7 @@ def test_identify_tsn_node_raises_status_read_error(
             match=("Could not read the Communication Status object with error code 0xFFFF0002"),
         ),
     ):
-        identify_tsn_node(TARGET, INTERFACE)
+        identify_sdcp_node(TARGET, INTERFACE)
 
 
 def test_identify_tsn_node_rejects_unexpected_status_response(
@@ -237,4 +237,4 @@ def test_identify_tsn_node_rejects_unexpected_status_response(
             match="Unexpected Communication Status response",
         ),
     ):
-        identify_tsn_node(TARGET, INTERFACE)
+        identify_sdcp_node(TARGET, INTERFACE)

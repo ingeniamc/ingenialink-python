@@ -1,7 +1,7 @@
 """SDCP register access over UDP/IPv6."""
 
 from ingenialink.ethernet.tsn.sdcp.connection import DEFAULT_SDCP_TIMEOUT_S, SDCPConnection
-from ingenialink.ethernet.tsn.sdcp.identification import identify_tsn_node
+from ingenialink.ethernet.tsn.sdcp.identification import identify_sdcp_node
 from ingenialink.ethernet.tsn.sdcp.messages import (
     SDCPDeserializer,
     SDCPErrorResponse,
@@ -62,6 +62,6 @@ __all__ = [
     "SDCPWriteResponse",
     "SDCPWriteResponseError",
     "SDCPOpcode",
-    "identify_tsn_node",
+    "identify_sdcp_node",
     "DEFAULT_SDCP_TIMEOUT_S",
 ]

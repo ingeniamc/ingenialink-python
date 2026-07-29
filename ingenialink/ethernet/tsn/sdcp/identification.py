@@ -25,7 +25,7 @@ _COMMUNICATION_STATUS_APPLICATION_MASK = 1 << 0
 _COMMUNICATION_STATUS_BOOTLOADER_MASK = 1 << 1
 
 
-def identify_tsn_node(
+def identify_sdcp_node(
     target: str,
     interface: str,
     timeout: float = DEFAULT_SDCP_TIMEOUT_S,
