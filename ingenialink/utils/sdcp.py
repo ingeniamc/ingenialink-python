@@ -61,12 +61,12 @@ class _SDCPField:
 
     @property
     def hex_width(self) -> int:
-        """Return the field's hexadecimal display width."""
+        """The field's hexadecimal display width."""
         return self.size * 2
 
     @property
     def maximum_value(self) -> int:
-        """Return the largest unsigned value that fits in the field."""
+        """The largest unsigned value that fits in the field."""
         return (1 << (self.size * 8)) - 1
 
 

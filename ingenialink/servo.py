@@ -1425,11 +1425,11 @@ class Servo:
             register_coco: COCO Register ID to be read.
             register_moco: MOCO Register ID to be read.
 
-        Raises:
-            ILError: if there is an error reading the register.
-
         Returns:
             Read value of the register.
+
+        Raises:
+            ILError: if there is an error reading the register.
         """
         try:
             return str(self.read(register_coco, subnode=0))
@@ -1652,12 +1652,12 @@ class Servo:
             subnode: Target subnode of the drive.
             buffer_size: Size of the buffer to read.
 
+        Returns:
+            Data read from the register.
+
         Raises:
             ValueError: if buffer size is not specified or cannot be detected for EthercatRegister.
             TypeError: if the register is not a CanopenRegister or EthercatRegister.
-
-        Returns:
-            Data read from the register.
         """
         if not isinstance(reg, CanOpenObject):
             _reg = self._get_reg(reg, subnode)
@@ -1697,14 +1697,14 @@ class Servo:
             bitfields: Optional bitfield specification.
                 If not it will be used from the register definition (if Any).
 
-        Raises:
-            ValueError: if the register does not have bitfields.
-            TypeError: if the register is not of integer type.
-
         Returns:
             Dictionary with values of the bitfields.
             Key is the name of the bitfield.
             Value is the value parsed.
+
+        Raises:
+            ValueError: if the register does not have bitfields.
+            TypeError: if the register is not of integer type.
         """
         _reg = self._get_reg(reg, subnode)
 
@@ -1904,12 +1904,12 @@ class Servo:
     def _monitoring_read_data(self) -> bytes:
         """Read monitoring data frame.
 
+        Returns:
+            The monitoring data read.
+
         Raises:
             NotImplementedError: If monitoring is not supported by the device.
             ValueError: if the data read is not of type bytes.
-
-        Returns:
-            monitoring data read.
         """
         if not self._is_monitoring_implemented():
             raise NotImplementedError("Monitoring is not supported by this device.")
@@ -1994,7 +1994,7 @@ class Servo:
 
     @property
     def dictionary(self) -> Dictionary:
-        """Returns dictionary object."""
+        """Dictionary object."""
         return self._dictionary
 
     @dictionary.setter
@@ -2093,28 +2093,18 @@ class Servo:
 
     @property
     def monitoring_number_mapped_registers(self) -> int:
-        """Get the number of mapped monitoring registers."""
+        """The number of mapped monitoring registers."""
         return int(self.read(self.MONITORING_NUMBER_MAPPED_REGISTERS, subnode=0))
 
     @property
     def monitoring_data_size(self) -> int:
-        """Obtain monitoring data size.
-
-        Returns:
-            Current monitoring data size in bytes.
-
-        """
+        """The monitoring data size in bytes."""
         number_of_samples = int(self.read("MON_CFG_WINDOW_SAMP", subnode=0))
         return self.monitoring_get_bytes_per_block() * number_of_samples
 
     @property
     def disturbance_data(self) -> bytes:
-        """Obtain disturbance data.
-
-        Returns:
-            Current disturbance data.
-
-        """
+        """The disturbance data."""
         return self.__disturbance_data
 
     @disturbance_data.setter
@@ -2129,15 +2119,10 @@ class Servo:
 
     @property
     def disturbance_data_size(self) -> int:
-        """Obtain disturbance data size.
-
-        Returns:
-            Current disturbance data size.
-
-        """
+        """The disturbance data size."""
         return len(self.__disturbance_data)
 
     @property
     def disturbance_number_mapped_registers(self) -> int:
-        """Get the number of mapped disturbance registers."""
+        """The number of mapped disturbance registers."""
         return int(self.read(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS, subnode=0))

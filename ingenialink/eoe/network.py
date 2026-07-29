@@ -105,11 +105,11 @@ class EoENetwork(EthernetNetwork):
             disconnect_callback: Callback function to be called when the servo is disconnected.
                 If not specified, no callback will be called.
 
-        Raises:
-            ValueError: ip_address must be a subnetwork of 192.168.3.0/24.
-
         Returns:
             EthernetServo: Instance of the servo connected.
+
+        Raises:
+            ValueError: ip_address must be a subnetwork of 192.168.3.0/24.
         """
         if ipaddress.ip_address(ip_address) not in self.ECAT_SERVICE_NETWORK:
             raise ValueError("ip_address must be a subnetwork of 192.168.3.0/24")
