@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ingenialink.ethernet.tsn.connection import SDCPConnection
-from ingenialink.ethernet.tsn.sdcp import (
+from ingenialink.ethernet.tsn.sdcp.connection import SDCPConnection
+from ingenialink.ethernet.tsn.sdcp.messages import (
     SDCPReadRequest,
     SDCPReadResponse,
     SDCPReadResponseError,
@@ -36,11 +36,11 @@ def connection(socket_mock: MagicMock) -> SDCPConnection:
     """
     with (
         patch(
-            "ingenialink.ethernet.tsn.connection.get_interface_index",
+            "ingenialink.ethernet.tsn.sdcp.connection.get_interface_index",
             return_value=INTERFACE_INDEX,
         ),
         patch(
-            "ingenialink.ethernet.tsn.connection.socket.socket",
+            "ingenialink.ethernet.tsn.sdcp.connection.socket.socket",
             return_value=socket_mock,
         ),
     ):
@@ -66,11 +66,11 @@ def test_init_converts_socket_creation_error() -> None:
     """Convert socket creation failures to ILIOError."""
     with (
         patch(
-            "ingenialink.ethernet.tsn.connection.get_interface_index",
+            "ingenialink.ethernet.tsn.sdcp.connection.get_interface_index",
             return_value=INTERFACE_INDEX,
         ),
         patch(
-            "ingenialink.ethernet.tsn.connection.socket.socket",
+            "ingenialink.ethernet.tsn.sdcp.connection.socket.socket",
             side_effect=OSError("creation failure"),
         ),
         pytest.raises(
@@ -93,11 +93,11 @@ def test_init_closes_socket_when_connection_fails(
 
     with (
         patch(
-            "ingenialink.ethernet.tsn.connection.get_interface_index",
+            "ingenialink.ethernet.tsn.sdcp.connection.get_interface_index",
             return_value=INTERFACE_INDEX,
         ),
         patch(
-            "ingenialink.ethernet.tsn.connection.socket.socket",
+            "ingenialink.ethernet.tsn.sdcp.connection.socket.socket",
             return_value=socket_mock,
         ),
         pytest.raises(

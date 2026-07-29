@@ -31,7 +31,7 @@ classDiagram
   class CanopenServo
   class VirtualCanopenServo
 
-  class TSNServo
+  class SDCPServo
 
   Servo <|-- EthernetServoBase
   Servo <|-- EthercatServoBase
@@ -50,7 +50,7 @@ classDiagram
   CanopenServoBase <|-- VirtualCanopenServo
   VirtualCanopenServo *-- VirtualServoBase
   
-  TSNServoBase <|-- TSNServo
+  TSNServoBase <|-- SDCPServo
 
 ```
 - **`Servo` (base)**: Common API for reading/writing registers and device state.

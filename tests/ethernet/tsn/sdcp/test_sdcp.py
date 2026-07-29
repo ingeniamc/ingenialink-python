@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from ingenialink.ethernet.tsn.sdcp import (
+from ingenialink.ethernet.tsn.sdcp.messages import (
     SDCPDeserializer,
     SDCPErrorResponse,
     SDCPEventSubscriptionRequest,
