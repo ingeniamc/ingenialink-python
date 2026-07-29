@@ -227,11 +227,11 @@ class CanopenServo(CanopenServoBase):
             config_register: Configuration file register instance.
             target_register: Target register instance.
 
-        Raises:
-            ValueError: If the value is not compatible with the register dtype.
-
         Returns:
             Adapted storage value as bytes.
+
+        Raises:
+            ValueError: If the value is not compatible with the register dtype.
         """
         data = super()._adapt_configuration_file_storage_value(
             configuration_file, config_register, target_register

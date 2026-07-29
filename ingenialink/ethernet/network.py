@@ -310,11 +310,11 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
             disconnect_callback: Callback function to be called when the servo is disconnected.
                 If not specified, no callback will be called.
 
-        Raises:
-            ILError: If the drive is not found.
-
         Returns:
             EthernetServo: Instance of the servo connected.
+
+        Raises:
+            ILError: If the drive is not found.
         """
         servo = self._create_servo(
             target=target,
@@ -389,11 +389,11 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
         Args:
             servo: The servo to recover communication with.
 
-        Raises:
-            ValueError: If the servo argument is None.
-
         Returns:
             True if communication with the servo is recovered, False otherwise.
+
+        Raises:
+            ValueError: If the servo argument is None.
         """
         if servo is None or not isinstance(servo, EthernetServo):
             raise ValueError("Ethernet Servo instance must be provided for recovery.")
@@ -413,11 +413,11 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
         Args:
             servo_id: The servo's IP address, or the servo instance itself.
 
-        Raises:
-            ValueError: if the servo ID is not a string or a servo instance.
-
         Returns:
             The servo's state.
+
+        Raises:
+            ValueError: if the servo ID is not a string or a servo instance.
         """
         if not isinstance(servo_id, (str, Servo)):
             raise ValueError("The servo ID must be a string or an instance of Servo.")
@@ -428,11 +428,11 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
 
         It's used for the scan_slaves_info method.
 
-        Raises:
-            TypeError: if the product code type is not an integer.
-
         Returns:
             product code and revision number.
+
+        Raises:
+            TypeError: if the product code type is not an integer.
         """
         servo = self.connect_to_slave(
             ip_address, BASIC_ETHERNET_V2_XDF, connection_timeout=SCAN_CONNECTION_TIMEOUT

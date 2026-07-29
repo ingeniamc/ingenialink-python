@@ -326,7 +326,7 @@ class Register(ABC):
 
     @property
     def bit_length(self) -> int:
-        """Get the bit length of the register.
+        """The bit length of the register.
 
         Returns:
             int: bit length of the register.

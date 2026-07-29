@@ -13,15 +13,15 @@ def monitoring_example(args: argparse.Namespace) -> list[NDArray[np.float64]]:
     Args:
         args: Parsed command-line arguments.
 
+    Returns:
+        Monitored data.
+
     Raises:
         TypeError: if register is not EthernetRegister.
         TypeError: if position_velocity_loop_rate is not numeric.
         TypeError: if monitor_status is not int.
         ValueError: if monitor_status indicates an error.
         TypeError: if monit_nmb_blocks is not numeric.
-
-    Returns:
-        Monitored data.
     """
     registers_key = [
         "DRV_PROT_TEMP_VALUE",
