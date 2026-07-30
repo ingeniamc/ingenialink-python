@@ -374,6 +374,7 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[Servo]):
         self.close_socket(servo.socket)
         self._set_servo_state(servo, NetState.DISCONNECTED)
         self._remove_servo(servo)
+        # Notify that disconnect_from_slave has been called
         servo._disconnect_event_publisher.notify(servo)
 
     @staticmethod
