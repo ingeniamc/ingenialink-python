@@ -89,7 +89,7 @@ setuptools = "==75.6.0"
 [tool.poetry.group.build]
 optional = true
 [tool.poetry.group.build.dependencies]
-twine = "==6.2.0"
+twine = "==7.0.0"
 
 # Dependencies for format task
 [tool.poetry.group.format]
