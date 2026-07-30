@@ -23,8 +23,10 @@ from tests.ethercat.mock import pysoem_mock_network  # noqa: F401
 pytest_plugins = [
     "summit_testing_framework.pytest_addoptions",
     "summit_testing_framework.setup_fixtures",
+    "tests.dictionaries.fixtures",
 ]
 logger = logging.getLogger(__name__)
+
 
 # Pytest runs with importlib import mode, which means that it will run the tests with the installed
 # version of the package. Therefore, modules that are not included in the package cannot be imported
