@@ -594,28 +594,26 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
 
         return servo
 
-    def disconnect_from_slave(self, servo: Servo) -> None:
-        """Disconnect a servo from the network.
+    def disconnect_from_node(self, node: SDCPNode) -> None:
+        """Disconnect from an SDCP node managed by the network.
 
         Args:
-            servo: Instance of the connected servo.
+            node: SDCP node to disconnect from.
 
         Raises:
-            ValueError: If the servo is not managed by the network or its type is
-                unsupported.
+            ValueError: If the node is not managed by the network or is not
+                connected through it.
         """
-        if isinstance(servo, SDCPServo):
-            if servo not in self.servos:
-                raise ValueError("The servo is not managed by this network")
+        self._validate_sdcp_node(node)
 
-            node = self._get_sdcp_node_by_servo(servo)
-            servo.stop_status_listener()
-            node.disconnect()
-            self._set_servo_state(servo, NetState.DISCONNECTED)
-            self._remove_servo(servo)
-            return
+        servo = node.servo
+        if servo is None or servo not in self.servos:
+            raise ValueError("The SDCP node is not connected through this network")
 
-        super().disconnect_from_slave(servo)
+        servo.stop_status_listener()
+        node.disconnect()
+        self._set_servo_state(servo, NetState.DISCONNECTED)
+        self._remove_servo(servo)
 
     def load_firmware_to_node(
         self,
@@ -712,24 +710,6 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
         """
         if self._sdcp_nodes.get(node.identity) is not node:
             raise ValueError("The SDCP node is not managed by this network")
-
-    def _get_sdcp_node_by_servo(self, servo: SDCPServo) -> SDCPNode:
-        """Return the SDCP node associated with a servo.
-
-        Args:
-            servo: SDCP servo associated with the node.
-
-        Returns:
-            SDCP node associated with the servo.
-
-        Raises:
-            ValueError: If the servo is not associated with a managed node.
-        """
-        for node in self._sdcp_nodes.values():
-            if node.servo is servo:
-                return node
-
-        raise ValueError("The SDCP servo is not associated with a node managed by this network")
 
     @property
     def sdcp_nodes(self) -> list[SDCPNode]:

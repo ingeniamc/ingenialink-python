@@ -229,12 +229,12 @@ def test_connect_to_node_connects_and_registers_servo(
     )
 
 
-def test_disconnect_from_slave_disconnects_sdcp_node(
+def test_disconnect_from_node_disconnects_and_unregisters_servo(
     managed_node: tuple[EthernetNetwork, SDCPNode],
     servo_mock,
     mocker,
 ) -> None:
-    """Disconnect an SDCP servo through its associated node."""
+    """Disconnect a managed SDCP node and unregister its servo."""
     network, node = managed_node
 
     mocker.patch(
@@ -249,7 +249,7 @@ def test_disconnect_from_slave_disconnects_sdcp_node(
 
     assert network.get_servo_state(servo) == NetState.CONNECTED
 
-    network.disconnect_from_slave(servo)
+    network.disconnect_from_node(node)
 
     servo_mock.stop_status_listener.assert_called_once_with()
     servo_mock.disconnect.assert_called_once_with()
@@ -258,12 +258,12 @@ def test_disconnect_from_slave_disconnects_sdcp_node(
     assert network.get_servo_state(servo) == NetState.DISCONNECTED
 
 
-def test_disconnect_from_slave_preserves_sdcp_associations_on_failure(
+def test_disconnect_from_node_preserves_associations_on_failure(
     managed_node: tuple[EthernetNetwork, SDCPNode],
     servo_mock,
     mocker,
 ) -> None:
-    """Preserve the node and network associations if disconnection fails."""
+    """Preserve node and network associations if disconnection fails."""
     network, node = managed_node
     servo_mock.disconnect.side_effect = ILError("Disconnection failed")
 
@@ -280,11 +280,39 @@ def test_disconnect_from_slave_preserves_sdcp_associations_on_failure(
     assert network.get_servo_state(servo) == NetState.CONNECTED
 
     with pytest.raises(ILError, match="Disconnection failed"):
-        network.disconnect_from_slave(servo)
+        network.disconnect_from_node(node)
 
+    servo_mock.stop_status_listener.assert_called_once_with()
     assert node.servo is servo
     assert network.servos == [servo]
     assert network.get_servo_state(servo) == NetState.CONNECTED
+
+
+def test_disconnect_from_node_rejects_unmanaged_node(
+    discovery: SDCPNodeDiscovery,
+) -> None:
+    """Reject disconnection of an unmanaged SDCP node."""
+    network = EthernetNetwork(interface=INTERFACE)
+    node = SDCPNode(discovery)
+
+    with pytest.raises(
+        ValueError,
+        match="The SDCP node is not managed by this network",
+    ):
+        network.disconnect_from_node(node)
+
+
+def test_disconnect_from_node_rejects_unconnected_node(
+    managed_node: tuple[EthernetNetwork, SDCPNode],
+) -> None:
+    """Reject disconnection of a managed node that is not connected."""
+    network, node = managed_node
+
+    with pytest.raises(
+        ValueError,
+        match="The SDCP node is not connected through this network",
+    ):
+        network.disconnect_from_node(node)
 
 
 def test_load_firmware_to_node_rejects_unmanaged_node(
