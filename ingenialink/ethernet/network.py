@@ -17,7 +17,9 @@ from multiping import multi_ping
 from typing_extensions import TypeVar, override
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
+from ingenialink.enums.node import NodeMode
 from ingenialink.ethernet.resources import BASIC_ETHERNET_V2_XDF
+from ingenialink.ethernet.servo import EthernetServo, EthernetServoBase
 from ingenialink.ethernet.tsn.ipv6_discovery import (
     discover_ipv6_devices,
 )
@@ -41,8 +43,6 @@ from ingenialink.network import (
 from ingenialink.servo import Servo
 from ingenialink.utils.udp import UDP
 
-from .servo import EthernetServo, EthernetServoBase
-
 if TYPE_CHECKING:
     from ingenialink.node import NodeIdentity
 
@@ -60,6 +60,9 @@ MAX_NUM_UNSUCCESSFUL_PINGS = 3
 
 MAX_NUMBER_OF_SCAN_TRIES = 2
 SCAN_CONNECTION_TIMEOUT = 0.5
+
+DEFAULT_FIRMWARE_RECOVERY_TIMEOUT_S = 30.0
+FIRMWARE_RECOVERY_POLL_INTERVAL_S = 1.0
 
 
 EthernetServoT = TypeVar("EthernetServoT", bound=EthernetServoBase, default=EthernetServoBase)
@@ -574,8 +577,7 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
         Raises:
             ValueError: If the node is not managed by this network.
         """
-        if self._sdcp_nodes.get(node.identity) is not node:
-            raise ValueError("The SDCP node is not managed by this network")
+        self._validate_sdcp_node(node)
 
         servo = node.connect(
             dictionary_path=dictionary,
@@ -619,24 +621,96 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
         node: SDCPNode,
         firmware_file: Union[str, Path],
         callback_progress: Optional[Callable[[int], None]] = None,
+        recovery_timeout: float = DEFAULT_FIRMWARE_RECOVERY_TIMEOUT_S,
+        recovery_poll_interval: float = FIRMWARE_RECOVERY_POLL_INTERVAL_S,
     ) -> None:
         """Load firmware into an SDCP node managed by the network.
+
+        The node performs the firmware transfer. The network then waits until
+        the same node is rediscovered and updates the existing node instance
+        with its latest discovery information.
 
         Args:
             node: SDCP node in bootloader mode.
             firmware_file: Path to the firmware file.
             callback_progress: Optional callback receiving the upload progress.
+            recovery_timeout: Timeout in seconds for the node to recover.
+            recovery_poll_interval: Poll interval in seconds for checking node recovery.
+
+        Raises:
+            ValueError: If the node is not managed by this network or the recovery
+                timeout or poll interval is not greater than zero.
+            ILFirmwareLoadError: If the node does not recover in application mode
+                within the timeout.
+        """
+        self._validate_sdcp_node(node)
+
+        if recovery_timeout <= 0:
+            raise ValueError("Recovery timeout must be greater than zero")
+        if recovery_poll_interval <= 0:
+            raise ValueError("Recovery poll interval must be greater than zero")
+
+        node.load_firmware(
+            firmware_file,
+            callback_progress=callback_progress,
+        )
+
+        self._wait_for_sdcp_node_recovery(
+            node,
+            timeout=recovery_timeout,
+            poll_interval=recovery_poll_interval,
+        )
+
+    def _wait_for_sdcp_node_recovery(
+        self,
+        node: SDCPNode,
+        timeout: float,
+        poll_interval: float,
+    ) -> None:
+        """Wait until an SDCP node recovers in application mode.
+
+        Rediscovery updates the existing node instance through
+        :meth:`scan_sdcp_nodes`, refreshing its mutable discovery information.
+
+        Args:
+            node: SDCP node expected to recover.
+            timeout: Maximum time to wait for recovery.
+            poll_interval: Delay between discovery attempts.
+
+        Raises:
+            ILFirmwareLoadError: If the node does not recover
+                in application mode within the timeout.
+        """
+        deadline = time.monotonic() + timeout
+
+        while True:
+            discovered_nodes = self.scan_sdcp_nodes()
+
+            if node in discovered_nodes and node.mode == NodeMode.APPLICATION:
+                logger.info(f"SDCP node {node.identity} recovered after loading firmware.")
+                return
+
+            remaining_time = deadline - time.monotonic()
+            if remaining_time <= 0:
+                break
+
+            time.sleep(min(poll_interval, remaining_time))
+
+        raise ILFirmwareLoadError(
+            f"SDCP node {node.identity} did not recover within {timeout} seconds."
+        )
+
+    def _validate_sdcp_node(self, node: SDCPNode) -> None:
+        """Validate that an SDCP node is managed by this network.
+
+        Args:
+            node: SDCP node to validate.
 
         Raises:
             ValueError: If the node is not managed by this network.
         """
         if self._sdcp_nodes.get(node.identity) is not node:
             raise ValueError("The SDCP node is not managed by this network")
-
-        node.load_firmware(
-            firmware_file,
-            callback_progress=callback_progress,
-        )
 
     def _get_sdcp_node_by_servo(self, servo: SDCPServo) -> SDCPNode:
         """Return the SDCP node associated with a servo.

@@ -1,17 +1,21 @@
 """Tests for SDCP node management in the Ethernet network."""
 
+import re
+
 import pytest
 
 from ingenialink.enums.node import NodeMode
 from ingenialink.ethernet.network import EthernetNetwork, NetStatusListener
 from ingenialink.ethernet.tsn.sdcp.node import SDCPNode, SDCPNodeDiscovery
 from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
-from ingenialink.exceptions import ILError
+from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import NetDevEvt, NetState
 
 TARGET = "fe80::1"
+UPDATED_TARGET = "fe80::2"
 INTERFACE = "test-interface"
 TIMEOUT_S = 2.0
+POLL_INTERVAL_S = 0.01
 
 PROTOCOL_VERSION = 1
 SERIAL_NUMBER = 0x12345678
@@ -125,7 +129,7 @@ def test_scan_sdcp_nodes_updates_existing_node(
     node = network.scan_sdcp_nodes()[0]
 
     identify_mock.return_value = SDCPNodeDiscovery(
-        target="fe80::2",
+        target=UPDATED_TARGET,
         interface=INTERFACE,
         protocol_version=PROTOCOL_VERSION + 1,
         serial_number=SERIAL_NUMBER,
@@ -139,7 +143,7 @@ def test_scan_sdcp_nodes_updates_existing_node(
     assert nodes == [node]
     assert network.sdcp_nodes == [node]
     assert nodes[0] is node
-    assert node.target == "fe80::2"
+    assert node.target == UPDATED_TARGET
     assert node.protocol_version == PROTOCOL_VERSION + 1
     assert node.revision_number == REVISION_NUMBER + 1
 
@@ -160,7 +164,7 @@ def test_scan_sdcp_nodes_ignores_identification_errors(
     )
     mocker.patch(
         "ingenialink.ethernet.network.discover_ipv6_devices",
-        return_value=["fe80::2", TARGET],
+        return_value=[UPDATED_TARGET, TARGET],
     )
 
     nodes = network.scan_sdcp_nodes(timeout=TIMEOUT_S)
@@ -301,30 +305,113 @@ def test_load_firmware_to_node_rejects_unmanaged_node(
         )
 
 
-def test_load_firmware_to_node_delegates_to_node(
+def test_load_firmware_to_node_waits_for_application_mode_and_updates_node(
     managed_node: tuple[EthernetNetwork, SDCPNode],
     mocker,
 ) -> None:
-    """Delegate firmware loading to the managed node."""
+    """Wait for application mode and update the node after loading firmware."""
     network, node = managed_node
     firmware_file = mocker.sentinel.firmware_file
     callback_progress = mocker.Mock()
 
-    load_firmware_mock = mocker.patch.object(
-        node,
-        "load_firmware",
+    bootloader_discovery = SDCPNodeDiscovery(
+        target=TARGET,
+        interface=INTERFACE,
+        protocol_version=PROTOCOL_VERSION,
+        serial_number=SERIAL_NUMBER,
+        product_code=PRODUCT_CODE,
+        revision_number=REVISION_NUMBER,
+        mode=NodeMode.BOOTLOADER,
     )
+    application_discovery = SDCPNodeDiscovery(
+        target=UPDATED_TARGET,
+        interface=INTERFACE,
+        protocol_version=PROTOCOL_VERSION + 1,
+        serial_number=SERIAL_NUMBER,
+        product_code=PRODUCT_CODE,
+        revision_number=REVISION_NUMBER + 1,
+        mode=NodeMode.APPLICATION,
+    )
+    node.update(bootloader_discovery)
+
+    load_firmware_mock = mocker.patch.object(node, "load_firmware")
+    identify_mock = mocker.patch(
+        "ingenialink.ethernet.network.identify_sdcp_node",
+        side_effect=[bootloader_discovery, application_discovery],
+    )
+    sleep_mock = mocker.patch("ingenialink.ethernet.network.time.sleep")
 
     network.load_firmware_to_node(
         node=node,
         firmware_file=firmware_file,
         callback_progress=callback_progress,
+        recovery_timeout=TIMEOUT_S,
+        recovery_poll_interval=POLL_INTERVAL_S,
     )
 
     load_firmware_mock.assert_called_once_with(
         firmware_file,
         callback_progress=callback_progress,
     )
+    assert identify_mock.call_count == 2
+    sleep_mock.assert_called_once_with(POLL_INTERVAL_S)
+
+    assert network.sdcp_nodes == [node]
+    assert network.sdcp_nodes[0] is node
+    assert node.target == UPDATED_TARGET
+    assert node.protocol_version == PROTOCOL_VERSION + 1
+    assert node.revision_number == REVISION_NUMBER + 1
+    assert node.mode == NodeMode.APPLICATION
+
+
+def test_load_firmware_to_node_raises_if_node_does_not_recover(
+    managed_node: tuple[EthernetNetwork, SDCPNode],
+    mocker,
+) -> None:
+    """Raise an error if the node does not recover in application mode."""
+    network, node = managed_node
+
+    bootloader_discovery = SDCPNodeDiscovery(
+        target=TARGET,
+        interface=INTERFACE,
+        protocol_version=PROTOCOL_VERSION,
+        serial_number=SERIAL_NUMBER,
+        product_code=PRODUCT_CODE,
+        revision_number=REVISION_NUMBER,
+        mode=NodeMode.BOOTLOADER,
+    )
+    node.update(bootloader_discovery)
+
+    load_firmware_mock = mocker.patch.object(node, "load_firmware")
+    mocker.patch(
+        "ingenialink.ethernet.network.identify_sdcp_node",
+        return_value=bootloader_discovery,
+    )
+    sleep_mock = mocker.patch("ingenialink.ethernet.network.time.sleep")
+    mocker.patch(
+        "ingenialink.ethernet.network.time.monotonic",
+        side_effect=[0.0, 0.0, TIMEOUT_S],
+    )
+
+    error_message = f"SDCP node {node.identity} did not recover within {TIMEOUT_S} seconds."
+
+    with pytest.raises(
+        ILFirmwareLoadError,
+        match=re.escape(error_message),
+    ):
+        network.load_firmware_to_node(
+            node=node,
+            firmware_file=mocker.sentinel.firmware_file,
+            recovery_timeout=TIMEOUT_S,
+            recovery_poll_interval=POLL_INTERVAL_S,
+        )
+
+    load_firmware_mock.assert_called_once_with(
+        mocker.sentinel.firmware_file,
+        callback_progress=None,
+    )
+    sleep_mock.assert_called_once_with(POLL_INTERVAL_S)
+    assert node.mode == NodeMode.BOOTLOADER
 
 
 def test_net_status_listener_tracks_sdcp_connection_state(
