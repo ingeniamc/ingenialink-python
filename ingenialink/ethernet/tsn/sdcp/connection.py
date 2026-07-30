@@ -19,6 +19,8 @@ from .messages import (
     SDCPWriteResponse,
 )
 
+DEFAULT_SDCP_TIMEOUT_S = 1.0
+
 
 class SDCPConnection:
     """Execute SDCP transactions over UDP/IPv6.
