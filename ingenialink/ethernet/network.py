@@ -88,22 +88,21 @@ class NetStatusListener(Thread, Generic[EthernetServoT]):
         subscribers of any state changes (connection/disconnection).
         """
         for servo in self.__network.servos:
-            if not isinstance(servo, EthernetServo):
+            if not isinstance(servo, (EthernetServo, SDCPServo)):
                 # Virtual ethernet servos do not yet implement ip address attr
                 # https://novantamotion.atlassian.net/browse/INGK-1286
                 continue
 
-            servo_ip = servo.ip_address
-            servo_state = self.__network.get_servo_state(servo_ip)
+            servo_state = self.__network.get_servo_state(servo)
             is_servo_alive = servo.is_alive(attemps=MAX_NUM_UNSUCCESSFUL_PINGS)
             if servo_state == NetState.CONNECTED and not is_servo_alive:
-                self.__network._transition_servo_state(servo_ip, NetDevEvt.REMOVED)
+                self.__network._transition_servo_state(servo, NetDevEvt.REMOVED)
             if (
                 servo_state == NetState.DISCONNECTED
                 and is_servo_alive
                 and self.__network.recover_from_disconnection(servo)
             ):
-                self.__network._transition_servo_state(servo_ip, NetDevEvt.ADDED)
+                self.__network._transition_servo_state(servo, NetDevEvt.ADDED)
 
     def run(self) -> None:
         """Check the network status."""
@@ -350,8 +349,6 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[Servo]):
 
         if net_status_listener:
             self.start_status_listener()
-        else:
-            self.stop_status_listener()
         return servo
 
     def disconnect_from_slave(self, servo: Servo) -> None:
@@ -411,17 +408,17 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[Servo]):
             True if communication with the servo is recovered, False otherwise.
 
         Raises:
-            ValueError: If the servo argument is None.
+            ValueError: If the servo argument is None or not an Ethernet or SDCP Servo instance.
         """
-        if servo is None or not isinstance(servo, EthernetServo):
-            raise ValueError("Ethernet Servo instance must be provided for recovery.")
+        if servo is None or not isinstance(servo, (EthernetServo, SDCPServo)):
+            raise ValueError("An Ethernet or SDCP Servo instance must be provided for recovery.")
 
         if servo.is_alive(attemps=MAX_NUM_UNSUCCESSFUL_PINGS):
-            logger.info(f"Communication with servo at IP {servo.ip_address} recovered.")
+            logger.info(f"Communication with servo at {servo.target} recovered.")
             return True
-        else:
-            logger.warning(f"Failed to recover communication with servo at IP {servo.ip_address}.")
-            return False
+
+        logger.warning(f"Failed to recover communication with servo at {servo.target}.")
+        return False
 
     def get_servo_state(self, servo_id: ServoTarget) -> NetState:
         """Get the state of a servo that's a part of network.
@@ -429,7 +426,7 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[Servo]):
         The state indicates if the servo is connected or disconnected.
 
         Args:
-            servo_id: The servo's IP address, or the servo instance itself.
+            servo_id: The servo target or servo instance.
 
         Returns:
             The servo's state.
@@ -557,6 +554,7 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
         node: SDCPNode,
         dictionary: str,
         servo_status_listener: bool = False,
+        net_status_listener: bool = False,
         disconnect_callback: Optional[Callable[[Servo], None]] = None,
         connection_timeout: float = DEFAULT_SDCP_TIMEOUT_S,
     ) -> SDCPServo:
@@ -566,6 +564,7 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
             node: SDCP node to connect to.
             dictionary: Path to the target dictionary file.
             servo_status_listener: Whether to start the servo status listener.
+            net_status_listener: Whether to start the network status listener.
             disconnect_callback: Callback invoked when the servo is disconnected.
             connection_timeout: Timeout in seconds for SDCP transactions.
 
@@ -586,6 +585,10 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
         )
         self.servos.append(servo)
         self._set_servo_state(servo, NetState.CONNECTED)
+
+        if net_status_listener:
+            self.start_status_listener()
+
         return servo
 
     def disconnect_from_slave(self, servo: Servo) -> None:

@@ -3,11 +3,11 @@
 import pytest
 
 from ingenialink.enums.node import NodeMode
-from ingenialink.ethernet.network import EthernetNetwork
+from ingenialink.ethernet.network import EthernetNetwork, NetStatusListener
 from ingenialink.ethernet.tsn.sdcp.node import SDCPNode, SDCPNodeDiscovery
 from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
 from ingenialink.exceptions import ILError
-from ingenialink.network import NetState
+from ingenialink.network import NetDevEvt, NetState
 
 TARGET = "fe80::1"
 INTERFACE = "test-interface"
@@ -31,6 +31,15 @@ def discovery() -> SDCPNodeDiscovery:
         revision_number=REVISION_NUMBER,
         mode=NodeMode.APPLICATION,
     )
+
+
+@pytest.fixture
+def servo_mock(mocker) -> SDCPServo:
+    """Return an SDCP servo mock with the required instance attributes."""
+    servo = mocker.MagicMock(spec=SDCPServo)
+    servo.target = TARGET
+    servo._net_state_publisher = mocker.Mock()
+    return servo
 
 
 @pytest.fixture
@@ -182,12 +191,11 @@ def test_connect_to_node_rejects_unmanaged_node(
 
 def test_connect_to_node_connects_and_registers_servo(
     managed_node: tuple[EthernetNetwork, SDCPNode],
+    servo_mock,
     mocker,
 ) -> None:
     """Connect through the node and register the returned servo."""
     network, node = managed_node
-    servo_mock = mocker.MagicMock(spec=SDCPServo)
-    servo_mock.target = TARGET
     disconnect_callback = mocker.Mock()
     dictionary = mocker.sentinel.dictionary
 
@@ -219,12 +227,11 @@ def test_connect_to_node_connects_and_registers_servo(
 
 def test_disconnect_from_slave_disconnects_sdcp_node(
     managed_node: tuple[EthernetNetwork, SDCPNode],
+    servo_mock,
     mocker,
 ) -> None:
     """Disconnect an SDCP servo through its associated node."""
     network, node = managed_node
-    servo_mock = mocker.MagicMock(spec=SDCPServo)
-    servo_mock.target = TARGET
 
     mocker.patch(
         "ingenialink.ethernet.tsn.sdcp.node.SDCPServo",
@@ -249,12 +256,11 @@ def test_disconnect_from_slave_disconnects_sdcp_node(
 
 def test_disconnect_from_slave_preserves_sdcp_associations_on_failure(
     managed_node: tuple[EthernetNetwork, SDCPNode],
+    servo_mock,
     mocker,
 ) -> None:
     """Preserve the node and network associations if disconnection fails."""
     network, node = managed_node
-    servo_mock = mocker.MagicMock(spec=SDCPServo)
-    servo_mock.target = TARGET
     servo_mock.disconnect.side_effect = ILError("Disconnection failed")
 
     mocker.patch(
@@ -319,3 +325,65 @@ def test_load_firmware_to_node_delegates_to_node(
         firmware_file,
         callback_progress=callback_progress,
     )
+
+
+def test_net_status_listener_tracks_sdcp_connection_state(
+    managed_node: tuple[EthernetNetwork, SDCPNode],
+    servo_mock,
+    mocker,
+) -> None:
+    """Track SDCP servo disconnection and reconnection."""
+    network, node = managed_node
+    servo_mock.is_alive.side_effect = [False, True, True]
+
+    mocker.patch.object(
+        node,
+        "connect",
+        return_value=servo_mock,
+    )
+
+    servo = network.connect_to_node(
+        node=node,
+        dictionary=mocker.sentinel.dictionary,
+    )
+
+    listener = NetStatusListener(network)
+
+    listener.process()
+
+    assert network.get_servo_state(servo) == NetState.DISCONNECTED
+
+    listener.process()
+
+    assert network.get_servo_state(servo) == NetState.CONNECTED
+    assert servo_mock._net_state_publisher.notify.call_args_list == [
+        mocker.call(NetDevEvt.REMOVED),
+        mocker.call(NetDevEvt.ADDED),
+    ]
+
+
+def test_connect_to_node_starts_net_status_listener(
+    managed_node: tuple[EthernetNetwork, SDCPNode],
+    servo_mock,
+    mocker,
+) -> None:
+    """Start the network status listener when requested."""
+    network, node = managed_node
+
+    mocker.patch.object(
+        node,
+        "connect",
+        return_value=servo_mock,
+    )
+    start_listener_mock = mocker.patch.object(
+        network,
+        "start_status_listener",
+    )
+
+    network.connect_to_node(
+        node=node,
+        dictionary=mocker.sentinel.dictionary,
+        net_status_listener=True,
+    )
+
+    start_listener_mock.assert_called_once_with()
