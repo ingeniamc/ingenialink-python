@@ -7,6 +7,7 @@ from ingenialink.ethernet.network import EthernetNetwork
 from ingenialink.ethernet.tsn.sdcp.node import SDCPNode, SDCPNodeDiscovery
 from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
 from ingenialink.exceptions import ILError
+from ingenialink.network import NetState
 
 TARGET = "fe80::1"
 INTERFACE = "test-interface"
@@ -186,6 +187,7 @@ def test_connect_to_node_connects_and_registers_servo(
     """Connect through the node and register the returned servo."""
     network, node = managed_node
     servo_mock = mocker.MagicMock(spec=SDCPServo)
+    servo_mock.target = TARGET
     disconnect_callback = mocker.Mock()
     dictionary = mocker.sentinel.dictionary
 
@@ -205,6 +207,7 @@ def test_connect_to_node_connects_and_registers_servo(
 
     assert servo is servo_mock
     assert network.servos == [servo_mock]
+    assert network.get_servo_state(servo) == NetState.CONNECTED
 
     connect_mock.assert_called_once_with(
         dictionary_path=dictionary,
@@ -221,6 +224,7 @@ def test_disconnect_from_slave_disconnects_sdcp_node(
     """Disconnect an SDCP servo through its associated node."""
     network, node = managed_node
     servo_mock = mocker.MagicMock(spec=SDCPServo)
+    servo_mock.target = TARGET
 
     mocker.patch(
         "ingenialink.ethernet.tsn.sdcp.node.SDCPServo",
@@ -232,12 +236,15 @@ def test_disconnect_from_slave_disconnects_sdcp_node(
         dictionary=mocker.sentinel.dictionary,
     )
 
+    assert network.get_servo_state(servo) == NetState.CONNECTED
+
     network.disconnect_from_slave(servo)
 
     servo_mock.stop_status_listener.assert_called_once_with()
     servo_mock.disconnect.assert_called_once_with()
     assert node.servo is None
     assert network.servos == []
+    assert network.get_servo_state(servo) == NetState.DISCONNECTED
 
 
 def test_disconnect_from_slave_preserves_sdcp_associations_on_failure(
@@ -247,6 +254,7 @@ def test_disconnect_from_slave_preserves_sdcp_associations_on_failure(
     """Preserve the node and network associations if disconnection fails."""
     network, node = managed_node
     servo_mock = mocker.MagicMock(spec=SDCPServo)
+    servo_mock.target = TARGET
     servo_mock.disconnect.side_effect = ILError("Disconnection failed")
 
     mocker.patch(
@@ -259,11 +267,14 @@ def test_disconnect_from_slave_preserves_sdcp_associations_on_failure(
         dictionary=mocker.sentinel.dictionary,
     )
 
+    assert network.get_servo_state(servo) == NetState.CONNECTED
+
     with pytest.raises(ILError, match="Disconnection failed"):
         network.disconnect_from_slave(servo)
 
     assert node.servo is servo
     assert network.servos == [servo]
+    assert network.get_servo_state(servo) == NetState.CONNECTED
 
 
 def test_load_firmware_to_node_rejects_unmanaged_node(

@@ -585,6 +585,7 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
             connection_timeout=connection_timeout,
         )
         self.servos.append(servo)
+        self._set_servo_state(servo, NetState.CONNECTED)
         return servo
 
     def disconnect_from_slave(self, servo: Servo) -> None:
@@ -604,6 +605,7 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
             node = self._get_sdcp_node_by_servo(servo)
             servo.stop_status_listener()
             node.disconnect()
+            self._set_servo_state(servo, NetState.DISCONNECTED)
             self._remove_servo(servo)
             return
 
