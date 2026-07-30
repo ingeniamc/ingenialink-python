@@ -1,23 +1,16 @@
 """Discover IPv6 devices using raw sockets on Linux and pcap capture on Windows."""
 
-import re
 import secrets
 import socket
 import struct
 import sys
 import time
-from collections.abc import Sequence
-from dataclasses import dataclass
 from typing import Optional, Protocol
 
+from ingenialink.ethernet.tsn import interfaces
+
 if sys.platform == "win32":
-    from ingenialink.utils.ipv6_pcap_capture import PcapCapture
-
-
-@dataclass(frozen=True)
-class _WindowsIpv6Adapter:
-    AdapterName: str
-    Ipv6IfIndex: int
+    from .ipv6_pcap_capture import PcapCapture
 
 
 # Discovery constants
@@ -28,8 +21,6 @@ ICMPV6_HEADER_FORMAT = "!BBHHH"
 ICMPV6_HEADER_SIZE = struct.calcsize(ICMPV6_HEADER_FORMAT)
 ICMPV6_SEQUENCE_NUMBER = 0
 MAX_ICMPV6_PACKET_SIZE = 65_535
-PCAP_INTERFACE_GUID_PATTERN = re.compile(r"^\\Device\\NPF_(\{[^}]+\})$", re.IGNORECASE)
-
 # Ethernet constants
 ETHERNET_HEADER_SIZE = 14
 ETHERNET_TYPE_OFFSET = 12
@@ -77,7 +68,7 @@ def discover_ipv6_devices(
         OSError: If the network interface or socket cannot be configured.
     """
     _validate_timeout(timeout_s)
-    interface_index = _get_interface_index(interface)
+    interface_index = interfaces.get_interface_index(interface)
     echo_identifier = secrets.randbelow(0xFFFF) + 1
     echo_request = struct.pack(
         ICMPV6_HEADER_FORMAT,
@@ -153,55 +144,6 @@ def _receive_socket_responses(
         if _is_echo_reply(response, echo_identifier):
             discovered_devices[source_address[0]] = None
     return list(discovered_devices)
-
-
-def _get_interface_index(interface: str) -> int:
-    """Return the IPv6 index for a system interface or Pcap device path.
-
-    Raises:
-        OSError: If the interface cannot be resolved.
-    """
-    if sys.platform == "win32":
-        guid_match = PCAP_INTERFACE_GUID_PATTERN.fullmatch(interface)
-        if guid_match is None:
-            return socket.if_nametoindex(interface)
-
-        interface_guid = guid_match.group(1).upper()
-        for adapter in _get_windows_ipv6_adapters():
-            if adapter.AdapterName == interface_guid:
-                return adapter.Ipv6IfIndex
-        raise OSError(f"The pcap interface '{interface}' could not be found.")
-
-    return socket.if_nametoindex(interface)
-
-
-def _get_windows_ipv6_adapters() -> Sequence[_WindowsIpv6Adapter]:
-    """Return all Windows adapters with IPv6 information.
-
-    Raises:
-        OSError: If called outside Windows.
-    """
-    if sys.platform != "win32":
-        raise OSError("Windows IPv6 adapters are only available on Windows.")
-
-    from ingenialink.get_adapters_addresses import (  # type: ignore[import-not-found, unused-ignore, import-untyped]  # noqa: PLC0415
-        AdapterFamily,
-        ScanFlags,
-        get_adapters_addresses,
-    )
-
-    adapters = get_adapters_addresses(
-        adapter_families=AdapterFamily.INET6,
-        scan_flags=[ScanFlags.INCLUDE_ALL_INTERFACES],
-    )
-
-    return [
-        _WindowsIpv6Adapter(
-            AdapterName=adapter.AdapterName,
-            Ipv6IfIndex=adapter.Ipv6IfIndex,
-        )
-        for adapter in adapters
-    ]
 
 
 def _is_echo_reply(response: bytes, identifier: int) -> bool:

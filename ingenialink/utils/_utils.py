@@ -8,7 +8,7 @@ from xml.etree import ElementTree
 
 import ingenialogger
 
-from ingenialink.enums.register import RegDtype
+from ingenialink.enums.register import ByteOrder, RegDtype
 from ingenialink.exceptions import ILValueError
 
 logger = ingenialogger.get_logger(__name__)
@@ -221,7 +221,9 @@ def convert_int_to_ip(int_ip: int) -> str:
 REG_VALUE = Union[float, int, str, bytes]
 
 
-def convert_bytes_to_dtype(data: bytes, dtype: RegDtype) -> REG_VALUE:
+def convert_bytes_to_dtype(
+    data: bytes, dtype: RegDtype, byte_order: ByteOrder = ByteOrder.LITTLE
+) -> REG_VALUE:
     """Convert data in bytes to corresponding dtype.
 
     Bytes have to be ordered in LSB.
@@ -229,6 +231,7 @@ def convert_bytes_to_dtype(data: bytes, dtype: RegDtype) -> REG_VALUE:
     Args:
         data: data to convert
         dtype: output dtype
+        byte_order: byte order of the data
 
     Returns:
         Value formatted in data type
@@ -242,7 +245,10 @@ def convert_bytes_to_dtype(data: bytes, dtype: RegDtype) -> REG_VALUE:
         data = data[:bytes_length]
 
     if dtype == RegDtype.FLOAT:
-        [value] = struct.unpack("f", data)
+        [value] = struct.unpack(
+            f"{_struct_byte_order(byte_order)}f",
+            data,
+        )
         if not isinstance(value, float):
             raise ILValueError(f"Data could not be converted to float. Obtained: {value}")
     elif dtype == RegDtype.STR:
@@ -253,7 +259,7 @@ def convert_bytes_to_dtype(data: bytes, dtype: RegDtype) -> REG_VALUE:
     elif dtype == RegDtype.BYTE_ARRAY_512:
         return data
     else:
-        value = int.from_bytes(data, "little", signed=signed)
+        value = int.from_bytes(data, byte_order.value, signed=signed)
     if dtype == RegDtype.BOOL:
         value = bool(value)
     if not isinstance(value, (int, float, str)):
@@ -261,7 +267,9 @@ def convert_bytes_to_dtype(data: bytes, dtype: RegDtype) -> REG_VALUE:
     return value
 
 
-def convert_dtype_to_bytes(data: REG_VALUE, dtype: RegDtype) -> bytes:
+def convert_dtype_to_bytes(
+    data: REG_VALUE, dtype: RegDtype, byte_order: ByteOrder = ByteOrder.LITTLE
+) -> bytes:
     """Convert data in dtype to bytes.
 
     Bytes will be ordered in LSB.
@@ -269,6 +277,7 @@ def convert_dtype_to_bytes(data: REG_VALUE, dtype: RegDtype) -> bytes:
     Args:
         data: Data to convert.
         dtype: Data type.
+        byte_order: byte order of the data
 
     Returns:
         Value formatted to bytes
@@ -289,7 +298,10 @@ def convert_dtype_to_bytes(data: REG_VALUE, dtype: RegDtype) -> bytes:
     if dtype == RegDtype.FLOAT:
         if not isinstance(data, (float, int)):
             raise ValueError(f"Expected data of type float, but got {type(data)}")
-        return struct.pack("f", float(data))
+        return struct.pack(
+            f"{_struct_byte_order(byte_order)}f",
+            float(data),
+        )
     if dtype == RegDtype.STR:
         if not isinstance(data, str):
             raise ValueError(f"Expected data of type string, but  got {type(data)}")
@@ -297,5 +309,25 @@ def convert_dtype_to_bytes(data: REG_VALUE, dtype: RegDtype) -> bytes:
     if not isinstance(data, int):
         raise ValueError(f"Expected data of type int, but {type(data)}")
     bytes_length, signed = dtype_value[dtype]
-    data_bytes = data.to_bytes(bytes_length, byteorder="little", signed=signed)
+    data_bytes = data.to_bytes(bytes_length, byteorder=byte_order.value, signed=signed)
     return data_bytes
+
+
+def _struct_byte_order(byte_order: ByteOrder) -> str:
+    """Return the struct format prefix for a byte order.
+
+    Args:
+        byte_order: Byte order to convert.
+
+    Returns:
+        Struct format prefix for the given byte order.
+
+    Raises:
+        ValueError: If the byte order is unsupported.
+
+    """
+    if byte_order == ByteOrder.LITTLE:
+        return "<"
+    if byte_order == ByteOrder.BIG:
+        return ">"
+    raise ValueError(f"Unsupported byte order: {byte_order}")

@@ -6,20 +6,22 @@ import sys
 import time
 from pathlib import Path
 from types import TracebackType
-from typing import Callable, NamedTuple, Optional, Union
+from typing import Callable, Optional, Union
 
 import ingenialogger
 
+from ingenialink.ethernet.tsn import interfaces
 from ingenialink.exceptions import ILFirmwareLoadError
-from ingenialink.utils.ipv6_discovery import (
+
+from .ipv6_discovery import (
     IPV6_HEADER_SIZE,
     IPV6_NEXT_HEADER_OFFSET,
     IPV6_SOURCE_ADDRESS_OFFSET,
-    _get_interface_index,
     _get_ipv6_extension_header,
     _get_ipv6_offset,
 )
-from ingenialink.utils.ipv6_pcap_capture import PcapCapture
+from .ipv6_pcap_capture import PcapCapture
+from .types import IPv6SocketAddress
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -38,15 +40,6 @@ IPV6_NEXT_HEADER_UDP = 17
 UDP_HEADER_SIZE = 8
 
 
-class IPv6SocketAddress(NamedTuple):
-    """IPv6 socket address matching Python's ``AF_INET6`` address tuple."""
-
-    address: str
-    port: int
-    flowinfo: int
-    scopeid: int
-
-
 class TftpUploader:
     """Upload firmware files to an IPv6 drive through TFTP.
 
@@ -58,7 +51,7 @@ class TftpUploader:
         drive_address: IPv6 address of the drive. Link-local addresses are
             scoped with ``interface``.
         interface: Network interface in the same format as
-            :func:`ingenialink.utils.ipv6_discovery.discover_ipv6_devices`.
+            :func:`ingenialink.ethernet.tsn.ipv6_discovery.discover_ipv6_devices`.
     """
 
     def __init__(self, drive_address: str, interface: str) -> None:
@@ -102,7 +95,7 @@ class TftpUploader:
         if path.suffix.lower() != ".lfu":
             raise ILFirmwareLoadError("The TFTP server only accepts .lfu files.")
 
-        interface_index = _get_interface_index(self._interface)
+        interface_index = interfaces.get_interface_index(self._interface)
         server_address = IPv6SocketAddress(self._drive_address, TFTP_PORT, 0, interface_index)
         logger.info(f"Uploading firmware to [{self._drive_address}%{interface_index}]:{TFTP_PORT}.")
 

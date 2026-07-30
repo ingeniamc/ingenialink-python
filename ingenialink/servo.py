@@ -38,7 +38,7 @@ from ingenialink.dictionary import (
 )
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.enums.network import NetDevEvt, NetState
-from ingenialink.enums.register import RegAccess, RegAddressType, RegDtype
+from ingenialink.enums.register import ByteOrder, RegAccess, RegAddressType, RegDtype
 from ingenialink.enums.servo import ServoState
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2, EthercatDictionaryV3
 from ingenialink.ethercat.register import EthercatRegister
@@ -388,6 +388,8 @@ class Servo:
 
     """
 
+    _REGISTER_BYTE_ORDER: ByteOrder = ByteOrder.LITTLE
+
     MAX_WRITE_SIZE = 1
 
     STATUS_WORD_REGISTERS = "DRV_STATE_STATUS"
@@ -574,6 +576,7 @@ class Servo:
                             xcf_instance, config_reg, target_reg
                         ),
                         target_reg.dtype,
+                        self._REGISTER_BYTE_ORDER,
                     )
                 )
                 compare_drive: Union[int, float, str, bytes, bool, np.float32] = stored_data
@@ -642,7 +645,9 @@ class Servo:
         if config_register.data is not None:
             return config_register.data
         else:
-            return convert_dtype_to_bytes(config_register.storage, target_register.dtype)
+            return convert_dtype_to_bytes(
+                config_register.storage, target_register.dtype, self._REGISTER_BYTE_ORDER
+            )
 
     def load_configuration(
         self,
@@ -1496,7 +1501,9 @@ class Servo:
             for channel in range(number_of_channels):
                 channel_data_size = self.__monitoring_size[channel]
                 val = convert_bytes_to_dtype(
-                    block_data[:channel_data_size], self.__monitoring_dtype[channel]
+                    block_data[:channel_data_size],
+                    self.__monitoring_dtype[channel],
+                    self._REGISTER_BYTE_ORDER,
                 )
                 if not isinstance(val, (int, float)):
                     continue
@@ -1555,7 +1562,9 @@ class Servo:
         data = b""
         for sample_idx in range(num_samples):
             for channel in range(len(data_arr_aux)):
-                val = convert_dtype_to_bytes(data_arr_aux[channel][sample_idx], dtypes[channel])
+                val = convert_dtype_to_bytes(
+                    data_arr_aux[channel][sample_idx], dtypes[channel], self._REGISTER_BYTE_ORDER
+                )
                 data += val
         chunks = [data[i : i + max_size] for i in range(0, len(data), max_size)]
         return data, chunks
@@ -1580,7 +1589,11 @@ class Servo:
 
         if _reg.access == RegAccess.RO:
             raise ILAccessError("Register is Read-only")
-        data_bytes = data if isinstance(data, bytes) else convert_dtype_to_bytes(data, _reg.dtype)
+        data_bytes = (
+            data
+            if isinstance(data, bytes)
+            else convert_dtype_to_bytes(data, _reg.dtype, self._REGISTER_BYTE_ORDER)
+        )
         self._write_raw(_reg, data_bytes)
         self._notify_register_update(_reg, data)
 
@@ -1608,7 +1621,7 @@ class Servo:
 
         raw_read = self._read_raw(_reg)
 
-        value = convert_bytes_to_dtype(raw_read, _reg.dtype)
+        value = convert_bytes_to_dtype(raw_read, _reg.dtype, self._REGISTER_BYTE_ORDER)
         self._notify_register_update(_reg, value)
         return value
 
