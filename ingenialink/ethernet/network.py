@@ -512,6 +512,10 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
         subnet: Optional subnet in CIDR notation used for IPv4 scanning.
         interface: Optional network interface used to derive the IPv4 subnet
             and perform IPv6 discovery.
+
+    The interface is required for SDCP because link-local IPv6 subnets can
+    exist on multiple network interfaces. The interface identifies the network
+    link used for SDCP communication.
     """
 
     def __init__(
