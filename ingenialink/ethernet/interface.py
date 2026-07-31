@@ -11,11 +11,37 @@ PCAP_INTERFACE_GUID_PATTERN = re.compile(
 )
 
 
+def get_interface_index(interface: str) -> int:
+    """Return the index for a system interface or Pcap device path.
+
+    Args:
+        interface: System interface name, friendly name, or Pcap device path.
+
+    Returns:
+        Interface index.
+
+    Raises:
+        OSError: If the interface cannot be found or has no interface index.
+    """
+    interface_name = _normalize_interface_name(interface)
+
+    for adapter in ifaddr.get_adapters(include_unconfigured=True):
+        if not _interface_matches(adapter, interface_name):
+            continue
+
+        if adapter.index is None:
+            raise OSError(f"The interface '{interface}' has no interface index.")
+
+        return adapter.index
+
+    raise OSError(f"The interface '{interface}' could not be found.")
+
+
 def get_interface_ipv4_subnet(interface: str) -> ipaddress.IPv4Network:
     """Return the IPv4 subnet configured for an interface.
 
     Args:
-        interface: System interface name or Pcap device path.
+        interface: System interface name, friendly name, or Pcap device path.
 
     Returns:
         IPv4 subnet configured for the interface.
@@ -49,7 +75,7 @@ def _normalize_interface_name(interface: str) -> str:
     """Normalize a system interface name or Pcap device path.
 
     Args:
-        interface: System interface name or Pcap device path.
+        interface: System interface name, friendly name, or Pcap device path.
 
     Returns:
         Normalized interface name or Pcap device path.
@@ -66,8 +92,8 @@ def _interface_matches(adapter: ifaddr.Adapter, interface: str) -> bool:
     """Check whether an adapter matches an interface identifier.
 
     Args:
-        adapter: The adapter to check.
-        interface: The interface identifier to match against.
+        adapter: Adapter to check.
+        interface: Normalized interface name or Pcap device path.
 
     Returns:
         True if the adapter matches the interface identifier, False otherwise.

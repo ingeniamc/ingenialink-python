@@ -10,7 +10,7 @@ from typing import Callable, Optional, Union
 
 import ingenialogger
 
-from ingenialink.ethernet.tsn import interfaces
+from ingenialink.ethernet.interface import get_interface_index
 from ingenialink.ethernet.tsn.ipv6_discovery import (
     IPV6_HEADER_SIZE,
     IPV6_NEXT_HEADER_OFFSET,
@@ -94,7 +94,7 @@ class TftpUploader:
         if path.suffix.lower() != ".lfu":
             raise ILFirmwareLoadError("The TFTP server only accepts .lfu files.")
 
-        interface_index = interfaces.get_interface_index(self._interface)
+        interface_index = get_interface_index(self._interface)
         server_address = IPv6SocketAddress(self._drive_address, TFTP_PORT, 0, interface_index)
         logger.info(f"Uploading firmware to [{self._drive_address}%{interface_index}]:{TFTP_PORT}.")
 
