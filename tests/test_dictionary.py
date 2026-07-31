@@ -1,10 +1,13 @@
 import tempfile
 from os.path import join as join_path
+from pathlib import Path
+from typing import Callable
 from xml.dom import minidom
 from xml.etree import ElementTree
 
 import pytest
 import virtual_drive.resources
+from summit_testing_framework.setups.specifiers import DictionaryType, DictionaryVersion
 
 import tests.resources.canopen
 import tests.resources.ethercat
@@ -140,25 +143,29 @@ def test_dictionary_all_descriptions(
         assert test_interface in dict_description.interface_descriptor
 
 
-@pytest.mark.parametrize(
-    "dict_path, register_uid, axis, dict_type",
-    [
-        (tests.resources.DEN_NET_E_2_8_0_xdf_v3, "DRV_AXIS_NUMBER", 0, DictionaryV3),
-        (tests.resources.ethercat.TEST_DICT_ETHERCAT, "MON_CFG_EOC_TYPE", 0, DictionaryV2),
-    ],
-)
 def test_dictionary_parses_register_units_to_none(
-    dict_path: str, register_uid: str, axis: int, dict_type: type[DictionaryV3]
+    product_dictionary: Callable[[str, DictionaryVersion, Interface], Path],
 ) -> None:
-    """Test that registers with 'none' units are parsed correctly to None.
-
-    Test for both DictionaryV2 and DictionaryV3.
-    """
-    dictionary = DictionaryFactory.create_dictionary(dict_path, Interface.ECAT)
-    assert isinstance(dictionary, dict_type)
-
-    register = dictionary.get_register(register_uid, axis=axis)
-    assert register.units is None
+    dictionaries = [
+        (
+            "DEN-NET-E",
+            DictionaryVersion("2.9.1", DictionaryType.XDF_V3),
+            "DRV_AXIS_NUMBER",
+            DictionaryV3,
+        ),
+        (
+            "EVS-NET-E",
+            DictionaryVersion("2.7.5", DictionaryType.XDF_V2),
+            "MON_CFG_EOC_TYPE",
+            DictionaryV2,
+        ),
+    ]
+    for identifier, dictionary_version, register_uid, dictionary_type in dictionaries:
+        dictionary_path = product_dictionary(identifier, dictionary_version, Interface.ECAT)
+        dictionary = DictionaryFactory.create_dictionary(dictionary_path, Interface.ECAT)
+        assert isinstance(dictionary, dictionary_type)
+        register = dictionary.get_register(register_uid, axis=0)
+        assert register.units is None
 
 
 @pytest.mark.parametrize(

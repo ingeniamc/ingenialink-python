@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from collections import OrderedDict
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Callable, ClassVar, Literal, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Callable, Final, Literal, Optional, TypeVar, Union
 
 import bitarray
 from typing_extensions import override
@@ -55,7 +55,7 @@ class PDOMapItem:
     __SUBINDEX_BITFIELD = "SUBINDEX"
     __INDEX_BITFIELD = "INDEX"
 
-    __ITEM_BITFIELDS: ClassVar[dict[str, BitField]] = {
+    __ITEM_BITFIELDS: Final[dict[str, BitField]] = {
         __LENGTH_BITFIELD: BitField(0, 7),
         __SUBINDEX_BITFIELD: BitField(8, 15),
         __INDEX_BITFIELD: BitField(16, 31),

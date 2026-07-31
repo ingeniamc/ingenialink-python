@@ -1,8 +1,6 @@
 import contextlib
 from unittest.mock import MagicMock, PropertyMock, call
 
-import tests.resources
-
 with contextlib.suppress(ImportError):
     import pysoem
 import random
@@ -297,7 +295,7 @@ def test_check_node_state(servo: "EthercatServo", net: "EthercatNetwork") -> Non
 
 
 @pytest.mark.pcap
-def test_check_node_state_with_non_existent_slave(pysoem_mock_network):
+def test_check_node_state_with_non_existent_slave(pysoem_mock_network, den_net_e_2_9_1_xdf_v3: str):
     """Test that _check_node_state handles slaves with slave_exists=False.
 
     This verifies that the method doesn't crash when checking state of a servo
@@ -308,11 +306,11 @@ def test_check_node_state_with_non_existent_slave(pysoem_mock_network):
     # Connect to 2 slaves
     servo1 = net.connect_to_slave(
         slave_id=1,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
     )
     servo2 = net.connect_to_slave(
         slave_id=2,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
     )
 
     # Both servos should initially have valid references
@@ -338,7 +336,9 @@ def test_check_node_state_with_non_existent_slave(pysoem_mock_network):
 
 
 @pytest.mark.pcap
-def test_change_nodes_state_with_non_existent_slave(pysoem_mock_network):
+def test_change_nodes_state_with_non_existent_slave(
+    pysoem_mock_network, den_net_e_2_9_1_xdf_v3: str
+):
     """Test that _change_nodes_state handles slaves with slave_exists=False.
 
     This verifies that the method doesn't crash when trying to change state of a servo
@@ -349,15 +349,15 @@ def test_change_nodes_state_with_non_existent_slave(pysoem_mock_network):
     # Connect to 3 slaves
     servo1 = net.connect_to_slave(
         slave_id=1,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
     )
     servo2 = net.connect_to_slave(
         slave_id=2,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
     )
     servo3 = net.connect_to_slave(
         slave_id=3,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
     )
 
     # All servos should initially have valid references
@@ -410,11 +410,11 @@ def test_change_nodes_state_with_non_existent_slave(pysoem_mock_network):
 
 @pytest.mark.pcap
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
-def test_change_nodes_state_notifies_connected_servos():
+def test_change_nodes_state_notifies_connected_servos(den_net_e_2_9_1_xdf_v3: str):
     """_change_nodes_state notifies each connected servo of the requested state."""
     net = EthercatNetwork("dummy_ifname")
-    servo1 = net.connect_to_slave(slave_id=1, dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3)
-    servo2 = net.connect_to_slave(slave_id=2, dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3)
+    servo1 = net.connect_to_slave(slave_id=1, dictionary=den_net_e_2_9_1_xdf_v3)
+    servo2 = net.connect_to_slave(slave_id=2, dictionary=den_net_e_2_9_1_xdf_v3)
 
     received1: list[SlaveState] = []
     received2: list[SlaveState] = []
@@ -431,11 +431,11 @@ def test_change_nodes_state_notifies_connected_servos():
 
 @pytest.mark.pcap
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
-def test_request_slave_change_routes_through_connected_servo():
+def test_request_slave_change_routes_through_connected_servo(den_net_e_2_9_1_xdf_v3: str):
     """When the node belongs to a connected servo, _request_slave_change goes through the
     servo so subscribers are notified."""
     net = EthercatNetwork("dummy_ifname")
-    servo = net.connect_to_slave(slave_id=1, dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3)
+    servo = net.connect_to_slave(slave_id=1, dictionary=den_net_e_2_9_1_xdf_v3)
 
     received: list[SlaveState] = []
     servo.state_requested_event.subscribe(received.append)
@@ -450,11 +450,11 @@ def test_request_slave_change_routes_through_connected_servo():
 
 @pytest.mark.pcap
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
-def test_request_slave_change_writes_directly_for_unconnected_node():
+def test_request_slave_change_writes_directly_for_unconnected_node(den_net_e_2_9_1_xdf_v3: str):
     """For a node not registered as a servo, _request_slave_change writes the state directly
     on the CdefSlave instead of going through a servo."""
     net = EthercatNetwork("dummy_ifname")
-    net.connect_to_slave(slave_id=1, dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3)
+    net.connect_to_slave(slave_id=1, dictionary=den_net_e_2_9_1_xdf_v3)
 
     orphan_slave = MockSoemSlave(id=99)
     net._request_slave_change(orphan_slave, SlaveState.BOOT_STATE)
@@ -465,7 +465,9 @@ def test_request_slave_change_writes_directly_for_unconnected_node():
 
 
 @pytest.mark.pcap
-def test_disconnect_from_slave_with_non_existent_slave(pysoem_mock_network):
+def test_disconnect_from_slave_with_non_existent_slave(
+    pysoem_mock_network, den_net_e_2_9_1_xdf_v3: str
+):
     """Test that disconnect_from_slave works when the slave doesn't exist.
 
     This verifies that disconnecting a servo whose slave reference has been set to None
@@ -482,12 +484,12 @@ def test_disconnect_from_slave_with_non_existent_slave(pysoem_mock_network):
     # Connect to 2 slaves with disconnect callbacks
     servo1 = net.connect_to_slave(
         slave_id=1,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
         disconnect_callback=disconnect_callback,
     )
     servo2 = net.connect_to_slave(
         slave_id=2,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
         disconnect_callback=disconnect_callback,
     )
 
@@ -528,7 +530,8 @@ def test_disconnect_from_slave_with_non_existent_slave(pysoem_mock_network):
 
 
 @pytest.mark.pcap
-def test_stop_pdos_skips_disconnected_slaves(pysoem_mock_network, mocker):  # noqa: ARG001
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_stop_pdos_skips_disconnected_slaves(mocker, den_net_e_2_9_1_xdf_v3: str):
     """Test that stop_pdos() skips slaves in NONE_STATE and does not call __init_nodes().
 
     When a slave is physically disconnected, its state transitions to NONE_STATE.
@@ -538,7 +541,7 @@ def test_stop_pdos_skips_disconnected_slaves(pysoem_mock_network, mocker):  # no
     net = EthercatNetwork("dummy_ifname")
     servo = net.connect_to_slave(
         slave_id=1,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
     )
     assert servo.slave_exists is True
 
@@ -554,7 +557,9 @@ def test_stop_pdos_skips_disconnected_slaves(pysoem_mock_network, mocker):  # no
 
 @pytest.mark.pcap
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
-def test_recover_from_disconnection_does_not_shortcut_when_slave_ref_cleared():
+def test_recover_from_disconnection_does_not_shortcut_when_slave_ref_cleared(
+    den_net_e_2_9_1_xdf_v3: str,
+):
     """Test that recover_from_disconnection() does not return True when a slave ref is missing.
 
     The master can report PREOP_STATE while a slave reference has been cleared by a
@@ -564,7 +569,7 @@ def test_recover_from_disconnection_does_not_shortcut_when_slave_ref_cleared():
     net = EthercatNetwork("dummy_ifname")
     servo = net.connect_to_slave(
         slave_id=1,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
     )
     assert servo.slave_exists is True
 
@@ -583,9 +588,7 @@ def test_recover_from_disconnection_does_not_shortcut_when_slave_ref_cleared():
 
 @pytest.mark.pcap
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
-def test_recover_from_disconnection_closes_and_reopens_master(
-    mocker,
-):
+def test_recover_from_disconnection_closes_and_reopens_master(mocker, den_net_e_2_9_1_xdf_v3: str):
     """Test that recover_from_disconnection() closes and reopens the SOEM master before re-enum.
 
     After a cable disconnect the SOEM master's internal state can become corrupted.
@@ -595,7 +598,7 @@ def test_recover_from_disconnection_closes_and_reopens_master(
     net = EthercatNetwork("dummy_ifname")
     net.connect_to_slave(
         slave_id=1,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
     )
 
     close_mock = mocker.patch.object(net._ecat_master, "close")
@@ -809,12 +812,12 @@ def test_network_is_not_released_if_gil_operation_ongoing(
 
 @pytest.mark.pcap
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
-def test_slave_update_on_config_init():
+def test_slave_update_on_config_init(den_net_e_2_9_1_xdf_v3: str):
     net = EthercatNetwork("dummy_ifname")
 
     servo = net.connect_to_slave(
         slave_id=1,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
     )
 
     assert len(net.servos) == 1
@@ -833,7 +836,9 @@ def test_slave_update_on_config_init():
 
 
 @pytest.mark.pcap
-def test_slave_reference_set_to_none_when_not_in_init_nodes(pysoem_mock_network):
+def test_slave_reference_set_to_none_when_not_in_init_nodes(
+    pysoem_mock_network, den_net_e_2_9_1_xdf_v3: str
+):
     """Test that servo's slave reference is set to None when slave_id is not in __last_init_nodes.
 
     This verifies the fix for INGK-1211 where missing slaves after config_init
@@ -844,15 +849,15 @@ def test_slave_reference_set_to_none_when_not_in_init_nodes(pysoem_mock_network)
     # Connect to slaves 1, 2, and 3 (default is 3 slaves)
     servo1 = net.connect_to_slave(
         slave_id=1,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
     )
     servo2 = net.connect_to_slave(
         slave_id=2,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
     )
     servo3 = net.connect_to_slave(
         slave_id=3,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
     )
 
     assert len(net.servos) == 3
@@ -878,7 +883,7 @@ def test_slave_reference_set_to_none_when_not_in_init_nodes(pysoem_mock_network)
 
 @pytest.mark.pcap
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
-def test_net_status_listener_handles_none_slave_reference(mocker):
+def test_net_status_listener_handles_none_slave_reference(mocker, den_net_e_2_9_1_xdf_v3: str):
     """Test that NetStatusListener doesn't crash when servo.slave is None.
 
     This verifies the fix for INGK-1211 where the listener checks slave_exists
@@ -888,7 +893,7 @@ def test_net_status_listener_handles_none_slave_reference(mocker):
 
     servo = net.connect_to_slave(
         slave_id=1,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
     )
 
     # Verify initial state
@@ -919,7 +924,10 @@ def test_net_status_listener_handles_none_slave_reference(mocker):
 
 
 @pytest.mark.pcap
-def test_net_status_listener_detects_slave_removal(pysoem_mock_network, mocker):  # noqa: ARG001
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_net_status_listener_detects_slave_removal(
+    den_net_e_2_9_1_xdf_v3: str,
+):
     """Test that NetStatusListener properly detects when a slave is removed.
 
     This verifies the complete flow: slave disappears -> config_init sets reference to None
@@ -936,7 +944,7 @@ def test_net_status_listener_detects_slave_removal(pysoem_mock_network, mocker):
 
     servo = net.connect_to_slave(
         slave_id=1,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
     )
 
     # Subscribe to status changes
@@ -964,7 +972,9 @@ def test_net_status_listener_detects_slave_removal(pysoem_mock_network, mocker):
 
 
 @pytest.mark.pcap
-def test_net_status_listener_detects_slave_reconnection(pysoem_mock_network, mocker):
+def test_net_status_listener_detects_slave_reconnection(
+    pysoem_mock_network, mocker, den_net_e_2_9_1_xdf_v3: str
+):
     """Test that NetStatusListener properly detects when a slave reconnects.
 
     This verifies the complete flow: slave reappears -> config_init updates reference
@@ -983,7 +993,7 @@ def test_net_status_listener_detects_slave_reconnection(pysoem_mock_network, moc
 
     net.connect_to_slave(
         slave_id=1,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
     )
 
     # Subscribe to status changes
@@ -1023,7 +1033,7 @@ def test_net_status_listener_detects_slave_reconnection(pysoem_mock_network, moc
 @pytest.mark.pcap
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
 def test_net_status_listener_retries_recovery_after_failed_attempt(
-    mocker,
+    mocker, den_net_e_2_9_1_xdf_v3: str
 ):
     """Test that process() retries recovery even when slave_exists=False after a failed attempt.
 
@@ -1039,7 +1049,7 @@ def test_net_status_listener_retries_recovery_after_failed_attempt(
     net = EthercatNetwork("dummy_ifname")
     servo = net.connect_to_slave(
         slave_id=1,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
     )
     net.subscribe_to_status(1, status_callback)
     net.start_status_listener()
@@ -1082,6 +1092,7 @@ def test_net_status_listener_retries_recovery_after_failed_attempt(
 def test_net_status_listener_recovery_called_once_for_multiple_disconnected_slaves(
     pysoem_mock_network,
     mocker,  # noqa: ARG001
+    den_net_e_2_9_1_xdf_v3: str,
 ):
     """Test that recover_from_disconnection() is called once even with multiple disconnected slaves.
 
@@ -1094,11 +1105,11 @@ def test_net_status_listener_recovery_called_once_for_multiple_disconnected_slav
 
     servo1 = net.connect_to_slave(
         slave_id=1,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
     )
     servo2 = net.connect_to_slave(
         slave_id=2,
-        dictionary=tests.resources.DEN_NET_E_2_8_0_xdf_v3,
+        dictionary=den_net_e_2_9_1_xdf_v3,
     )
     net.subscribe_to_status(1, lambda _: None)
     net.subscribe_to_status(2, lambda _: None)
@@ -1313,7 +1324,7 @@ def test_ensure_network_reference_method():
 
 @pytest.mark.pcap
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
-def test_net_status_listener_skips_process_when_pdos_active(mocker):
+def test_net_status_listener_skips_process_when_pdos_active(mocker, den_net_e_2_9_1_xdf_v3: str):
     """Test that the listener does not call process() while PDOs are running.
 
     NetStatusListener checks network.pdo_manager.is_active at the top of its run
@@ -1321,7 +1332,7 @@ def test_net_status_listener_skips_process_when_pdos_active(mocker):
     SOEM-master access from the PDO thread and the listener thread.
     """
     net = EthercatNetwork("dummy_ifname")
-    net.connect_to_slave(1, tests.resources.DEN_NET_E_2_8_0_xdf_v3)
+    net.connect_to_slave(1, den_net_e_2_9_1_xdf_v3)
 
     # Patch is_active=True BEFORE starting the listener so that the run loop never
     # sees is_active=False and therefore never calls process().
@@ -1344,10 +1355,10 @@ def test_net_status_listener_skips_process_when_pdos_active(mocker):
 
 @pytest.mark.pcap
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
-def test_net_status_listener_calls_process_when_pdos_inactive(mocker):
+def test_net_status_listener_calls_process_when_pdos_inactive(mocker, den_net_e_2_9_1_xdf_v3: str):
     """Test that the listener calls process() normally when PDOs are not running."""
     net = EthercatNetwork("dummy_ifname")
-    net.connect_to_slave(1, tests.resources.DEN_NET_E_2_8_0_xdf_v3)
+    net.connect_to_slave(1, den_net_e_2_9_1_xdf_v3)
 
     mocker.patch.object(EthercatNetwork, "recover_from_disconnection", return_value=False)
     net.start_status_listener()
@@ -1365,7 +1376,9 @@ def test_net_status_listener_calls_process_when_pdos_inactive(mocker):
 
 
 @pytest.mark.pcap
-def test_net_status_listener_threaded_disconnect_reconnect_cycle(pysoem_mock_network, mocker):
+def test_net_status_listener_threaded_disconnect_reconnect_cycle(
+    pysoem_mock_network, mocker, den_net_e_2_9_1_xdf_v3: str
+):
     """Integration test: the listener *thread* detects a full disconnect/reconnect cycle.
 
     Unlike the process()-direct tests, this runs the NetStatusListener as an actual thread
@@ -1386,7 +1399,7 @@ def test_net_status_listener_threaded_disconnect_reconnect_cycle(pysoem_mock_net
             added_event.set()
 
     net = EthercatNetwork("dummy_ifname")
-    servo = net.connect_to_slave(1, tests.resources.DEN_NET_E_2_8_0_xdf_v3)
+    servo = net.connect_to_slave(1, den_net_e_2_9_1_xdf_v3)
     net.subscribe_to_status(1, status_callback)
     net.start_status_listener()
     listener = net._EthercatNetwork__listener_net_status

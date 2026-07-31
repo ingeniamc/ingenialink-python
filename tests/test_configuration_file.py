@@ -1,5 +1,5 @@
 import logging
-from typing import ClassVar
+from typing import Final
 from xml.etree import ElementTree
 
 import pytest
@@ -19,7 +19,7 @@ from ingenialink.register import Register
 
 
 class RegisterXCFElementFactory:
-    DEFAULT_ATTRIBUTES: ClassVar[dict] = {
+    DEFAULT_ATTRIBUTES: Final[dict] = {
         ConfigRegister._ConfigRegister__ID_ATTR: "PROF_MAX_VEL",
         ConfigRegister._ConfigRegister__SUBNODE_ATTR: "1",
         ConfigRegister._ConfigRegister__DTYPE_ATTR: "float",
