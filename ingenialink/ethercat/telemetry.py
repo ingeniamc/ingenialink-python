@@ -156,15 +156,12 @@ class EthercatTelemetry:
         Returns:
             Timestamped frames in chronological queue order.
 
-        Raises:
-            RuntimeError: If the register contains an incomplete frame.
         """
         frame_size = self.sample_size() + self.TIMESTAMP_SIZE
         data = self._servo.read_complete_access(
             self.DATA_REGISTER, subnode=0, buffer_size=self.DATA_BUFFER_SIZE
         )
-        if len(data) % frame_size != 0:
-            raise RuntimeError("Telemetry data contains an incomplete frame")
+        data = data[: len(data) - len(data) % frame_size]
         return [
             TelemetryFrame(
                 data=data[offset + self.TIMESTAMP_SIZE : offset + frame_size],
@@ -227,7 +224,6 @@ class TelemetryPoller(Thread):
         telemetry: Configured EtherCAT telemetry service.
         registers: Registers mapped by :meth:`EthercatTelemetry.configure`.
         poll_interval: Delay between empty polling attempts, in seconds.
-        queue_size: Maximum number of samples retained for consumers.
     """
 
     def __init__(
@@ -235,20 +231,18 @@ class TelemetryPoller(Thread):
         telemetry: EthercatTelemetry,
         registers: Sequence[Register],
         poll_interval: float = 0.01,
-        queue_size: int = 1024,
     ) -> None:
         super().__init__(daemon=True)
         if not registers:
             raise ValueError("Telemetry poller requires at least one register")
         if poll_interval <= 0:
             raise ValueError("Telemetry poll interval must be positive")
-        if queue_size <= 0:
-            raise ValueError("Telemetry poller queue size must be positive")
         self._telemetry = telemetry
         self._registers = tuple(registers)
         self._poll_interval = poll_interval
-        self._samples: queue.Queue[TelemetrySample] = queue.Queue(maxsize=queue_size)
+        self._samples: queue.Queue[TelemetrySample] = queue.Queue()
         self._stop_event = Event()
+        self._sample_count = 0
 
     def run(self) -> None:
         """Poll frames and enqueue decoded register values.
@@ -280,7 +274,8 @@ class TelemetryPoller(Thread):
                     )
                     offset += size
                 timestamp = frame.timestamp_tick / self._telemetry.TIMESTAMP_FREQUENCY_HZ
-                self._enqueue(TelemetrySample(timestamp=timestamp, values=values))
+                self._samples.put_nowait(TelemetrySample(timestamp=timestamp, values=values))
+                self._sample_count += 1
             if not frames:
                 self._stop_event.wait(self._poll_interval)
 
@@ -297,21 +292,7 @@ class TelemetryPoller(Thread):
         except queue.Empty:
             return None
 
-    def get_latest_sample(self) -> TelemetrySample | None:
-        """Return the newest queued sample and discard older samples."""
-        sample = self.get_sample()
-        if sample is None:
-            return None
-        while True:
-            newer_sample = self.get_sample()
-            if newer_sample is None:
-                return sample
-            sample = newer_sample
-
-    def _enqueue(self, sample: TelemetrySample) -> None:
-        """Enqueue a sample, discarding the oldest one when the queue is full."""
-        try:
-            self._samples.put_nowait(sample)
-        except queue.Full:
-            self._samples.get_nowait()
-            self._samples.put_nowait(sample)
+    @property
+    def sample_count(self) -> int:
+        """Number of decoded telemetry samples."""
+        return self._sample_count
