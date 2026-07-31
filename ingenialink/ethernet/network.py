@@ -112,7 +112,7 @@ class NetStatusListener(Thread, Generic[EthernetServoT]):
         self.__stop = True
 
 
-class EthernetNetworkBase(Generic[EthernetServoT], Network[Servo]):
+class EthernetNetworkBase(Generic[EthernetServoT], Network[Union[EthernetServoT, SDCPServo]]):
     """Network for all Ethernet communications.
 
     Args:
@@ -345,26 +345,22 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[Servo]):
             self.start_status_listener()
         return servo
 
-    def disconnect_from_slave(self, servo: Servo) -> None:
-        """Disconnect a servo from the network.
+    def disconnect_from_slave(self, servo: EthernetServoT) -> None:  # type: ignore [override]
+        """Disconnects the slave from the network.
 
         Args:
-            servo: Instance of the connected servo.
+            servo: Instance of the servo connected.
 
         Raises:
-            ValueError: If the servo is not managed by the network or its type is
-                unsupported.
+            ValueError: If the provided servo is not an Ethernet servo.
+
         """
-        if servo not in self.servos:
-            raise ValueError("The servo is not managed by this network")
-
-        if not isinstance(servo, EthernetServoBase):
-            raise ValueError("Unsupported servo type")
-
         servo.stop_status_listener()
         self.close_socket(servo.socket)
         self._set_servo_state(servo, NetState.DISCONNECTED)
-        self._remove_servo(servo)
+        self.servos.remove(servo)
+        if len(self.servos) == 0:
+            self.stop_status_listener()
         # Notify that disconnect_from_slave has been called
         servo._disconnect_event_publisher.notify(servo)
 
@@ -465,13 +461,6 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[Servo]):
             raise TypeError(f"Expected revision number type to be int, got {type(revision_number)}")
         self.disconnect_from_slave(servo)
         return SlaveInfo(product_code, revision_number)
-
-    def _remove_servo(self, servo: Servo) -> None:
-        """Remove a disconnected servo from the network."""
-        self.servos.remove(servo)
-
-        if not self.servos:
-            self.stop_status_listener()
 
     @property
     def protocol(self) -> NetProt:
@@ -600,7 +589,10 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
         servo.stop_status_listener()
         node.disconnect()
         self._set_servo_state(servo, NetState.DISCONNECTED)
-        self._remove_servo(servo)
+        self.servos.remove(servo)
+
+        if not self.servos:
+            self.stop_status_listener()
 
     def _validate_sdcp_node(self, node: SDCPNode) -> None:
         """Validate that an SDCP node is managed by this network.
