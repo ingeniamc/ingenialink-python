@@ -7,7 +7,7 @@ import sys
 import time
 from typing import Optional, Protocol
 
-from ingenialink.ethernet.interface import get_interface_index
+from ingenialink.ethernet.interface import get_interface_index, get_pcap_interface_name
 
 if sys.platform == "win32":
     from .ipv6_pcap_capture import PcapCapture
@@ -86,8 +86,9 @@ def discover_ipv6_devices(
             interface_index,
         )
         if sys.platform == "win32":
+            pcap_interface = get_pcap_interface_name(interface)
             # Windows raw sockets cannot receive multicast ICMPv6 replies.
-            with PcapCapture(interface) as capture:
+            with PcapCapture(pcap_interface) as capture:
                 deadline = time.monotonic() + timeout_s
                 discovery_socket.sendto(
                     echo_request,

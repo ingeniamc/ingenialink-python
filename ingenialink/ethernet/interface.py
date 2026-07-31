@@ -23,18 +23,12 @@ def get_interface_index(interface: str) -> int:
     Raises:
         OSError: If the interface cannot be found or has no interface index.
     """
-    interface_name = _normalize_interface_name(interface)
+    adapter = _get_interface_adapter(interface)
 
-    for adapter in ifaddr.get_adapters(include_unconfigured=True):
-        if not _interface_matches(adapter, interface_name):
-            continue
+    if adapter.index is None:
+        raise OSError(f"The interface '{interface}' has no interface index.")
 
-        if adapter.index is None:
-            raise OSError(f"The interface '{interface}' has no interface index.")
-
-        return adapter.index
-
-    raise OSError(f"The interface '{interface}' could not be found.")
+    return adapter.index
 
 
 def get_interface_ipv4_subnet(interface: str) -> ipaddress.IPv4Network:
@@ -49,24 +43,67 @@ def get_interface_ipv4_subnet(interface: str) -> ipaddress.IPv4Network:
     Raises:
         OSError: If the interface cannot be found or has no IPv4 address.
     """
-    interface_name = _normalize_interface_name(interface)
+    adapter = _get_interface_adapter(interface)
 
-    for adapter in ifaddr.get_adapters():
-        if not _interface_matches(adapter, interface_name):
+    for adapter_ip in adapter.ips:
+        if not isinstance(adapter_ip.ip, str):
             continue
 
-        for adapter_ip in adapter.ips:
-            if not isinstance(adapter_ip.ip, str):
-                continue
+        ip_address = ipaddress.ip_address(adapter_ip.ip)
+        if isinstance(ip_address, ipaddress.IPv4Address):
+            return ipaddress.IPv4Network(
+                f"{ip_address}/{adapter_ip.network_prefix}",
+                strict=False,
+            )
 
-            ip_address = ipaddress.ip_address(adapter_ip.ip)
-            if isinstance(ip_address, ipaddress.IPv4Address):
-                return ipaddress.IPv4Network(
-                    f"{ip_address}/{adapter_ip.network_prefix}",
-                    strict=False,
-                )
+    raise OSError(f"The interface '{interface}' has no configured IPv4 address.")
 
-        raise OSError(f"The interface '{interface}' has no configured IPv4 address.")
+
+def get_pcap_interface_name(interface: str) -> str:
+    """Return the Pcap device name for an interface.
+
+    Args:
+        interface: System interface name, friendly name, or Pcap device path.
+
+    Returns:
+        Pcap device name.
+
+    Raises:
+        OSError: If the interface cannot be found or its Pcap device name
+            cannot be determined.
+    """
+    if PCAP_INTERFACE_GUID_PATTERN.fullmatch(interface) is not None:
+        return interface
+
+    adapter = _get_interface_adapter(interface)
+    adapter_name = adapter.name
+
+    if PCAP_INTERFACE_GUID_PATTERN.fullmatch(adapter_name) is not None:
+        return adapter_name
+
+    if adapter_name.startswith("{") and adapter_name.endswith("}"):
+        return rf"\Device\NPF_{adapter_name}"
+
+    raise OSError(f"The Pcap device name could not be determined for interface '{interface}'.")
+
+
+def _get_interface_adapter(interface: str) -> ifaddr.Adapter:
+    """Return the adapter matching an interface identifier.
+
+    Args:
+        interface: System interface name, friendly name, or Pcap device path.
+
+    Returns:
+        Matching network adapter.
+
+    Raises:
+        OSError: If the interface cannot be found.
+    """
+    interface_name = _normalize_interface_name(interface)
+
+    for adapter in ifaddr.get_adapters(include_unconfigured=True):
+        if _interface_matches(adapter, interface_name):
+            return adapter
 
     raise OSError(f"The interface '{interface}' could not be found.")
 
