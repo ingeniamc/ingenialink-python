@@ -13,6 +13,7 @@ from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILStateError
 from ingenialink.node import Node
 from ingenialink.servo import Servo
+from ingenialink.utils.timeout import Timeout
 
 DEFAULT_FIRMWARE_RECOVERY_TIMEOUT_S = 30.0
 FIRMWARE_RECOVERY_POLL_INTERVAL_S = 1.0
@@ -212,27 +213,31 @@ class SDCPNode(Node[SDCPNodeDiscovery, SDCPServo]):
             ILFirmwareLoadError: If the node does not recover in application
                 mode within the timeout.
         """
-        deadline = time.monotonic() + timeout
+        with Timeout(timeout) as recovery_timeout:
+            while not recovery_timeout.has_expired:
+                try:
+                    discovery = identify_sdcp_node(
+                        target=self.target,
+                        interface=self.interface,
+                        timeout=min(
+                            DEFAULT_SDCP_TIMEOUT_S,
+                            recovery_timeout.remaining_time_s,
+                        ),
+                    )
+                except ILError:
+                    discovery = None
 
-        while True:
-            try:
-                discovery = identify_sdcp_node(
-                    target=self.target,
-                    interface=self.interface,
-                    timeout=min(DEFAULT_SDCP_TIMEOUT_S, max(deadline - time.monotonic(), 0)),
-                )
-            except ILError:
-                discovery = None
+                if discovery is not None and discovery.mode == NodeMode.APPLICATION:
+                    self.update(discovery)
+                    return
 
-            if discovery is not None and discovery.mode == NodeMode.APPLICATION:
-                self.update(discovery)
-                return
-
-            remaining_time = deadline - time.monotonic()
-            if remaining_time <= 0:
-                break
-
-            time.sleep(min(poll_interval, remaining_time))
+                if not recovery_timeout.has_expired:
+                    time.sleep(
+                        min(
+                            poll_interval,
+                            recovery_timeout.remaining_time_s,
+                        )
+                    )
 
         raise ILFirmwareLoadError(
             f"SDCP node {self.identity} did not recover within {timeout} seconds."
