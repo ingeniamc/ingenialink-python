@@ -19,6 +19,8 @@ from ingenialink.virtual.canopen.network import VirtualCanopenNetwork
 from ingenialink.virtual.ethercat.network import VirtualEthercatNetwork
 from ingenialink.virtual.ethernet.network import VirtualEthernetNetwork
 from tests.ethercat.mock import pysoem_mock_network  # noqa: F401
+from tests.resources.ethercat import TEST_DICT_ETHERCAT_TELEMETRY
+from tests.resources.ethercat.virtual_telemetry import install_telemetry_module
 
 pytest_plugins = [
     "summit_testing_framework.pytest_addoptions",
@@ -193,6 +195,25 @@ def virtual_drive_ethercat_custom_dict():
     for server in servers:
         if server.is_alive():
             server.stop()
+
+
+@pytest.fixture()
+def virtual_drive_ethercat_telemetry():
+    server = VirtualDrive(dictionary_path=TEST_DICT_ETHERCAT_TELEMETRY, protocol=Interface.ECAT)
+    install_telemetry_module(server.register_service._dictionary, server.register_service)
+    server.start()
+    try:
+        net, servo = _connect_virtual_ethercat(server)
+    except Exception:
+        if server.is_alive():
+            server.stop()
+        raise
+
+    yield server, net, servo
+
+    net.disconnect_from_slave(servo)
+    if server.is_alive():
+        server.stop()
 
 
 @pytest.fixture(scope="session")

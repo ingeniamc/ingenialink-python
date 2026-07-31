@@ -36,8 +36,8 @@ dependencies = [
     "ifaddr==0.2.0",
 ]
 
-  [project.optional-dependencies]
-  telemetry = ["pyarrow>=17.0.0"]
+[project.optional-dependencies]
+telemetry = ["pyarrow>=17.0.0"]
 
 [project.urls]
 Homepage = "https://www.ingeniamc.com"

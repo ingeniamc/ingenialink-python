@@ -1,6 +1,7 @@
 import time
 from contextlib import suppress
 
+import pyarrow.parquet as pq
 import pytest
 
 from ingenialink.enums.register import RegDtype
@@ -9,6 +10,7 @@ from ingenialink.ethercat.telemetry import (
     EthercatTelemetry,
     TelemetryFrame,
     TelemetryPoller,
+    TelemetryRecorder,
     TelemetrySample,
 )
 from ingenialink.exceptions import ILRegisterAccessError
@@ -144,3 +146,221 @@ def test_telemetry_poller_decodes_multiple_registers_from_one_frame(mocker) -> N
         timestamp=0.002,
         values=(123, 456, 7),
     )
+
+
+def _fake_register(mocker, identifier: str, dtype: RegDtype) -> Register:
+    register = mocker.MagicMock(spec=Register)
+    register.identifier = identifier
+    register.dtype = dtype
+    return register
+
+
+def _queue_samples(poller: TelemetryPoller, samples: list[TelemetrySample]) -> None:
+    """Make a mocked poller's ``get_sample`` return ``samples`` then ``None`` forever."""
+    remaining = list(samples)
+    poller.get_sample.side_effect = lambda: remaining.pop(0) if remaining else None
+    poller.error = None
+
+
+def test_telemetry_recorder_writes_samples_to_parquet(tmp_path, mocker) -> None:
+    """Verify that recorded samples land in the Parquet file as separate columns."""
+    servo = mocker.MagicMock(spec=EthercatServo)
+    register = _fake_register(mocker, "REG", RegDtype.FLOAT)
+    poller = mocker.patch("ingenialink.ethercat.telemetry.TelemetryPoller").return_value
+    _queue_samples(
+        poller,
+        [
+            TelemetrySample(timestamp=0.0, values=(1.0,)),
+            TelemetrySample(timestamp=0.001, values=(2.0,)),
+        ],
+    )
+    path = tmp_path / "telemetry.parquet"
+
+    recorder = TelemetryRecorder(servo, [register], path, batch_size=10)
+    recorder.start()
+    recorder.stop()
+
+    rows = pq.read_table(path).to_pylist()
+    assert [{"timestamp": row["timestamp"], "REG": row["REG"]} for row in rows] == [
+        {"timestamp": 0.0, "REG": 1.0},
+        {"timestamp": 0.001, "REG": 2.0},
+    ]
+    assert rows[0]["host_time"] is not None
+    assert rows[1]["host_time"] is None
+
+
+def test_telemetry_recorder_is_a_context_manager(tmp_path, mocker) -> None:
+    """Verify entering and exiting the recorder starts and stops recording."""
+    servo = mocker.MagicMock(spec=EthercatServo)
+    register = _fake_register(mocker, "REG", RegDtype.U16)
+    poller = mocker.patch("ingenialink.ethercat.telemetry.TelemetryPoller").return_value
+    _queue_samples(poller, [TelemetrySample(timestamp=0.0, values=(5,))])
+    path = tmp_path / "telemetry.parquet"
+
+    with TelemetryRecorder(servo, [register], path) as recorder:
+        assert recorder.is_recording
+
+    assert not recorder.is_recording
+    rows = pq.read_table(path).to_pylist()
+    assert [{"timestamp": row["timestamp"], "REG": row["REG"]} for row in rows] == [
+        {"timestamp": 0.0, "REG": 5}
+    ]
+
+
+def test_telemetry_recorder_resume_appends_to_the_same_file(tmp_path, mocker) -> None:
+    """Verify that pausing and starting again keeps the file open and appends."""
+    servo = mocker.MagicMock(spec=EthercatServo)
+    register = _fake_register(mocker, "REG", RegDtype.U8)
+    telemetry = mocker.patch("ingenialink.ethercat.telemetry.EthercatTelemetry").return_value
+    poller_cls = mocker.patch("ingenialink.ethercat.telemetry.TelemetryPoller")
+    first_poller, second_poller = mocker.MagicMock(), mocker.MagicMock()
+    poller_cls.side_effect = [first_poller, second_poller]
+    _queue_samples(first_poller, [TelemetrySample(timestamp=0.0, values=(1,))])
+    _queue_samples(second_poller, [TelemetrySample(timestamp=0.001, values=(2,))])
+    path = tmp_path / "telemetry.parquet"
+
+    recorder = TelemetryRecorder(servo, [register], path, batch_size=10)
+    recorder.start()
+    recorder.pause()
+    recorder.start()
+    recorder.stop()
+
+    assert telemetry.configure.call_count == 1
+    assert telemetry.start.call_count == 2
+    assert telemetry.stop.call_count == 2
+    rows = pq.read_table(path).to_pylist()
+    assert [{"timestamp": row["timestamp"], "REG": row["REG"]} for row in rows] == [
+        {"timestamp": 0.0, "REG": 1},
+        {"timestamp": 0.001, "REG": 2},
+    ]
+
+
+def test_telemetry_recorder_pause_without_start_raises(tmp_path, mocker) -> None:
+    """Verify pausing a recorder that never started raises."""
+    servo = mocker.MagicMock(spec=EthercatServo)
+    register = _fake_register(mocker, "REG", RegDtype.U8)
+    recorder = TelemetryRecorder(servo, [register], tmp_path / "telemetry.parquet")
+
+    with pytest.raises(RuntimeError):
+        recorder.pause()
+
+
+def test_telemetry_recorder_double_start_raises(tmp_path, mocker) -> None:
+    """Verify starting an already-running recorder raises."""
+    servo = mocker.MagicMock(spec=EthercatServo)
+    register = _fake_register(mocker, "REG", RegDtype.U8)
+    poller = mocker.patch("ingenialink.ethercat.telemetry.TelemetryPoller").return_value
+    _queue_samples(poller, [])
+    recorder = TelemetryRecorder(servo, [register], tmp_path / "telemetry.parquet")
+
+    recorder.start()
+    try:
+        with pytest.raises(RuntimeError):
+            recorder.start()
+    finally:
+        recorder.stop()
+
+
+def test_telemetry_recorder_requires_pyarrow(mocker, tmp_path) -> None:
+    """Verify a missing pyarrow dependency raises a clear ImportError."""
+    servo = mocker.MagicMock(spec=EthercatServo)
+    register = _fake_register(mocker, "REG", RegDtype.U8)
+    mocker.patch.dict("sys.modules", {"pyarrow": None})
+
+    with pytest.raises(ImportError, match="pyarrow"):
+        TelemetryRecorder(servo, [register], tmp_path / "telemetry.parquet")
+
+
+def test_virtual_telemetry_configures_and_streams_frames(virtual_drive_ethercat_telemetry) -> None:
+    """Verify telemetry sampling against a fake TEL_* firmware service."""
+    _, _, servo = virtual_drive_ethercat_telemetry
+    telemetry = EthercatTelemetry(servo)
+    counter = servo.dictionary.get_register("DRV_DIAG_ERROR_LAST_COM", axis=0)
+    test_channel = servo.dictionary.get_register("TEST_TELEMETRY_U16", axis=0)
+    servo.write("TEST_TELEMETRY_U16", 4321, subnode=0)
+
+    actual_frequency = telemetry.configure([counter, test_channel], desired_frequency=5_000)
+    assert actual_frequency == 5_000
+    assert telemetry.sample_size() == 0  # no mapping applied until telemetry is enabled
+
+    try:
+        telemetry.start()
+        assert telemetry.is_running()
+
+        deadline = time.monotonic() + 2.0
+        frames: list[TelemetryFrame] = []
+        while time.monotonic() < deadline and len(frames) < 20:
+            with suppress(ILRegisterAccessError):
+                frames.extend(telemetry.read_frames())
+            if len(frames) < 20:
+                time.sleep(0.01)
+
+        assert len(frames) >= 20
+        assert telemetry.sample_size() == 6  # s32 counter + u16 test channel
+
+        for frame in frames:
+            assert len(frame.data) == 6
+            counter_value = int.from_bytes(frame.data[0:4], "little", signed=True)
+            test_channel_value = int.from_bytes(frame.data[4:6], "little")
+            assert counter_value == 0
+            assert test_channel_value == 4321
+
+        timestamps = [frame.timestamp_tick for frame in frames]
+        inversion = next(
+            (
+                (previous, current)
+                for previous, current in zip(timestamps, timestamps[1:])
+                if current <= previous
+            ),
+            None,
+        )
+        assert inversion is None, f"Non-incremental firmware timestamps: {inversion}"
+    finally:
+        telemetry.stop()
+        assert not telemetry.is_running()
+
+
+def test_virtual_telemetry_recorder_writes_real_samples_to_parquet(
+    virtual_drive_ethercat_telemetry, tmp_path
+) -> None:
+    """Verify TelemetryRecorder end-to-end against a fake TEL_* firmware service."""
+    _, _, servo = virtual_drive_ethercat_telemetry
+    counter = servo.dictionary.get_register("DRV_DIAG_ERROR_LAST_COM", axis=0)
+    path = tmp_path / "telemetry.parquet"
+
+    with TelemetryRecorder(servo, [counter], path, frequency=2_000, batch_size=10) as recorder:
+        deadline = time.monotonic() + 2.0
+        while recorder._poller is not None and recorder._poller.sample_count < 20:  # noqa: SLF001
+            if time.monotonic() > deadline:
+                break
+            time.sleep(0.01)
+
+    table = pq.read_table(path)
+    assert table.num_rows >= 20
+    assert table.column_names == ["timestamp", "host_time", "DRV_DIAG_ERROR_LAST_COM"]
+    assert all(value == 0 for value in table.column("DRV_DIAG_ERROR_LAST_COM").to_pylist())
+    timestamps = table.column("timestamp").to_pylist()
+    assert timestamps == sorted(timestamps)
+
+
+def test_virtual_telemetry_recorder_pause_and_resume(
+    virtual_drive_ethercat_telemetry, tmp_path
+) -> None:
+    """Verify pause/start against a fake TEL_* firmware service resumes into the same file."""
+    _, _, servo = virtual_drive_ethercat_telemetry
+    counter = servo.dictionary.get_register("DRV_DIAG_ERROR_LAST_COM", axis=0)
+    path = tmp_path / "telemetry.parquet"
+
+    recorder = TelemetryRecorder(servo, [counter], path, frequency=2_000, batch_size=10)
+    recorder.start()
+    time.sleep(0.1)
+    recorder.pause()
+    assert not recorder.is_recording
+    assert not recorder._telemetry.is_running()  # noqa: SLF001
+
+    recorder.start()
+    time.sleep(0.1)
+    recorder.stop()
+
+    table = pq.read_table(path)
+    assert table.num_rows > 0

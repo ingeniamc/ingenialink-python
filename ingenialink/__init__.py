@@ -36,7 +36,13 @@ from .ethercat.dictionary import EthercatDictionary, EthercatDictionaryV2, Ether
 from .ethercat.network import EthercatNetwork, EthercatNetworkBase, GilReleaseConfig
 from .ethercat.register import EthercatRegister
 from .ethercat.servo import EthercatServo
-from .ethercat.telemetry import EthercatTelemetry, TelemetryFrame, TelemetryPoller, TelemetrySample
+from .ethercat.telemetry import (
+    EthercatTelemetry,
+    TelemetryFrame,
+    TelemetryPoller,
+    TelemetryRecorder,
+    TelemetrySample,
+)
 
 # Ethernet
 from .ethernet.dictionary import EthernetDictionary, EthernetDictionaryV2, EthernetDictionaryV3
@@ -80,6 +86,7 @@ __all__ = [
     "EthercatTelemetry",
     "TelemetryFrame",
     "TelemetryPoller",
+    "TelemetryRecorder",
     "TelemetrySample",
     "EthercatDictionary",
     "EthercatDictionaryV2",

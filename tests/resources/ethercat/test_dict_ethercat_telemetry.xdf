@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<IngeniaDictionary>
+	<Header>
+		<Version>3.0</Version>
+		<DefaultLanguage>en_US</DefaultLanguage>
+	</Header>
+	<Body>
+		<Categories>
+			<Category id="OTHERS">
+				<Labels>
+					<Label lang="en_US">Others</Label>
+				</Labels>
+			</Category>
+			<Category id="IDENTIFICATION">
+				<Labels>
+					<Label lang="en_US">Product Identification</Label>
+				</Labels>
+			</Category>
+			<Category id="TELEMETRY">
+				<Labels>
+					<Label lang="en_US">Telemetry</Label>
+				</Labels>
+			</Category>
+			<Category id="REPORTING">
+				<Labels>
+					<Label lang="en_US">Reporting</Label>
+				</Labels>
+			</Category>
+		</Categories>
+		<Devices>
+			<ECATDevice firmwareVersion="2.4.1" ProductCode="61939713" PartNumber="EVS-NET-E" RevisionNumber="196617">
+				<CANopenObjects>
+					<CANopenObject index="0x580F" datatype="VAR">
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="s32" id="DRV_DIAG_ERROR_LAST_COM" pdo_access="CYCLIC_TX" desc="Contains the last generated error" default="00000000" cat_id="OTHERS">
+								<MonDistV3 address="0x000F" subnode="0" cyclic="CYCLIC_TX"/>
+								<Labels>
+									<Label lang="en_US">Last error</Label>
+								</Labels>
+							</Subitem>
+						</Subitems>
+					</CANopenObject>
+					<CANopenObject index="0x2011" datatype="VAR" axis="1">
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="u16" id="DRV_STATE_STATUS" pdo_access="CYCLIC_TX" desc="" units="none" default="0000" cat_id="REPORTING" axis="1">
+								<Labels>
+									<Label lang="en_US">Status word</Label>
+								</Labels>
+								<BitFields>
+									<BitField name="READY_TO_SWITCH_ON" start="0" end="0"/>
+									<BitField name="SWITCHED_ON" start="1" end="1"/>
+									<BitField name="OPERATION_ENABLED" start="2" end="2"/>
+									<BitField name="FAULT" start="3" end="3"/>
+									<BitField name="VOLTAGE_ENABLED" start="4" end="4"/>
+									<BitField name="QUICK_STOP" start="5" end="5"/>
+									<BitField name="SWITCH_ON_DISABLED" start="6" end="6"/>
+									<BitField name="WARNING" start="7" end="7"/>
+									<BitField name="TARGET_REACHED" start="10" end="10"/>
+									<BitField name="SWITCH_LIMITS_ACTIVE" start="11" end="11"/>
+									<BitField name="COMMUTATION_FEEDBACK_ALIGNED" start="14" end="14"/>
+								</BitFields>
+							</Subitem>
+						</Subitems>
+					</CANopenObject>
+					<CANopenObject index="0x58A0" datatype="VAR">
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="u16" id="DRV_AXIS_NUMBER" units="cnt" pdo_access="CONFIG" desc="" default="0100" cat_id="IDENTIFICATION">
+								<Labels>
+									<Label lang="en_US">Number of axes</Label>
+								</Labels>
+							</Subitem>
+						</Subitems>
+					</CANopenObject>
+					<CANopenObject index="0x5A10" datatype="VAR">
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM_NONE" access="rw" dtype="u16" id="TEST_TELEMETRY_U16" units="none" pdo_access="CONFIG" desc="Second telemetry channel used only in tests" default="0000" cat_id="TELEMETRY">
+								<MonDistV3 address="0x0001" subnode="0" cyclic="CYCLIC_TX"/>
+								<Labels>
+									<Label lang="en_US">Test telemetry channel (u16)</Label>
+								</Labels>
+							</Subitem>
+						</Subitems>
+					</CANopenObject>
+					<CANopenObject index="0x5A00" datatype="VAR">
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="u32" id="TEL_STATUS" units="none" pdo_access="CONFIG" desc="" default="00000000" cat_id="TELEMETRY">
+								<Labels>
+									<Label lang="en_US">Telemetry status</Label>
+								</Labels>
+							</Subitem>
+						</Subitems>
+					</CANopenObject>
+					<CANopenObject index="0x5A01" datatype="VAR">
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM_NONE" access="rw" dtype="u16" id="TEL_ENABLE" units="none" pdo_access="CONFIG" desc="" default="0000" cat_id="TELEMETRY">
+								<Labels>
+									<Label lang="en_US">Telemetry enable</Label>
+								</Labels>
+							</Subitem>
+						</Subitems>
+					</CANopenObject>
+					<CANopenObject index="0x5A02" datatype="VAR">
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM_NONE" access="rw" dtype="u16" id="TEL_FREQ_DIV" units="cnt" pdo_access="CONFIG" desc="" default="0001" cat_id="TELEMETRY">
+								<Labels>
+									<Label lang="en_US">Telemetry frequency divider</Label>
+								</Labels>
+							</Subitem>
+						</Subitems>
+					</CANopenObject>
+					<CANopenObject index="0x5A03" datatype="VAR">
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM_NONE" access="rw" dtype="u16" id="TEL_CFG_TOTAL_MAP" units="cnt" pdo_access="CONFIG" desc="" default="0000" cat_id="TELEMETRY">
+								<Labels>
+									<Label lang="en_US">Telemetry mapped register count</Label>
+								</Labels>
+							</Subitem>
+						</Subitems>
+					</CANopenObject>
+					<CANopenObject index="0x5A04" datatype="VAR">
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM_NONE" access="rw" dtype="u32" id="TEL_CFG_REG0_MAP" units="none" pdo_access="CONFIG" desc="" default="00000000" cat_id="TELEMETRY">
+								<Labels>
+									<Label lang="en_US">Telemetry mapped register 0</Label>
+								</Labels>
+							</Subitem>
+						</Subitems>
+					</CANopenObject>
+					<CANopenObject index="0x5A05" datatype="VAR">
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM_NONE" access="rw" dtype="u32" id="TEL_CFG_REG1_MAP" units="none" pdo_access="CONFIG" desc="" default="00000000" cat_id="TELEMETRY">
+								<Labels>
+									<Label lang="en_US">Telemetry mapped register 1</Label>
+								</Labels>
+							</Subitem>
+						</Subitems>
+					</CANopenObject>
+					<CANopenObject index="0x5A06" datatype="VAR">
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="u32" id="TEL_CFG_BYTES_VALUE" units="none" pdo_access="CONFIG" desc="" default="00000000" cat_id="TELEMETRY">
+								<Labels>
+									<Label lang="en_US">Telemetry frame size in bytes</Label>
+								</Labels>
+							</Subitem>
+						</Subitems>
+					</CANopenObject>
+					<CANopenObject index="0x5A07" datatype="VAR">
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="byteArray512" id="TEL_DATA_VALUE" units="none" pdo_access="CONFIG" desc="" default="0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000" cat_id="TELEMETRY">
+								<Labels>
+									<Label lang="en_US">Telemetry data</Label>
+								</Labels>
+							</Subitem>
+						</Subitems>
+					</CANopenObject>
+				</CANopenObjects>
+				<Errors>
+					<Error id="0x00003280" affected_module="Power stage" error_type="cyclic">
+						<Labels>
+							<Label lang="en_US">STO is active and could have disabled the power stage disabled</Label>
+						</Labels>
+					</Error>
+				</Errors>
+			</ECATDevice>
+		</Devices>
+	</Body>
+	<DriveImage encoding="xs:base64Binary">
+		image-text
+	</DriveImage>
+</IngeniaDictionary>
