@@ -119,14 +119,10 @@ def test_telemetry_poller_decodes_multiple_registers_from_one_frame(mocker) -> N
     third_register.identifier = "THIRD_REGISTER"
     third_register.bytes_to_value.side_effect = lambda data: int.from_bytes(data, "little")
     frame = TelemetryFrame(
-        data=(123).to_bytes(2, "little")
-        + (456).to_bytes(4, "little")
-        + (7).to_bytes(1, "little"),
+        data=(123).to_bytes(2, "little") + (456).to_bytes(4, "little") + (7).to_bytes(1, "little"),
         timestamp_tick=2_000,
     )
-    poller = TelemetryPoller(
-        telemetry, [first_register, second_register, third_register]
-    )
+    poller = TelemetryPoller(telemetry, [first_register, second_register, third_register])
 
     def read_one_frame() -> list[TelemetryFrame]:
         poller._stop_event.set()

@@ -2,6 +2,7 @@ import argparse
 import time
 from collections import deque
 from pathlib import Path
+from typing import Optional
 
 import pyqtgraph as pg
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -25,13 +26,12 @@ class TelemetryPlot(QtWidgets.QMainWindow):
         self._poller = poller
         self._registers = registers
         self._window = window
-        self._start_time: float | None = None
+        self._start_time: Optional[float] = None
         self._frequency = frequency
         self._rate_start_time = time.monotonic()
         self._rate_start_count = poller.sample_count
         self._samples = {
-            register.identifier: deque[tuple[float, float]]()
-            for register in registers
+            register.identifier: deque[tuple[float, float]]() for register in registers
         }
         self._plot = pg.PlotWidget(title="EtherCAT telemetry")
         self._plot.setLabel("bottom", "Time", units="s")
@@ -89,7 +89,9 @@ class TelemetryPlot(QtWidgets.QMainWindow):
         for sample in samples:
             if self._start_time is None:
                 self._start_time = sample.timestamp
-            elapsed = sample.timestamp - self._start_time
+            start_time = self._start_time
+            assert start_time is not None
+            elapsed = sample.timestamp - start_time
             for register in self._registers:
                 value = sample.values[register.identifier]
                 if not isinstance(value, (int, float)):
@@ -98,7 +100,7 @@ class TelemetryPlot(QtWidgets.QMainWindow):
                     )
                 self._samples[register.identifier].append((elapsed, float(value)))
 
-        elapsed = samples[-1].timestamp - self._start_time
+        elapsed = samples[-1].timestamp - start_time
         for register in self._registers:
             times, values = zip(*self._samples[register.identifier])
             self._curves[register.identifier].setData(times, values)

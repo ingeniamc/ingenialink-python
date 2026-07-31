@@ -3,6 +3,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from math import isfinite
 from threading import Event, Thread
+from typing import Optional
 
 from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILRegisterAccessError
@@ -285,7 +286,7 @@ class TelemetryPoller(Thread):
         if self.is_alive():
             self.join()
 
-    def get_sample(self) -> TelemetrySample | None:
+    def get_sample(self) -> Optional[TelemetrySample]:
         """Return the oldest queued sample, or ``None`` when the queue is empty."""
         try:
             return self._samples.get_nowait()
