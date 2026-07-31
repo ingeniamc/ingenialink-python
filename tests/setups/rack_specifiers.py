@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from summit_testing_framework.jenkins.pytest_config import PyTestConfig
 from summit_testing_framework.setups.specifier_container import SpecifierContainer
 from summit_testing_framework.setups.specifiers import (
@@ -70,10 +72,19 @@ ECAT_SETUP = SpecifierContainer({
                     },
                 },
             ),
-            "2.10.0": VersionConfig.from_version(
+            "2.10.0": VersionConfig.from_files(
+                firmware=Path(
+                    "//azr-srv-ingfs1/dist/products/i050_summit/"
+                    "i055_cap-net-e/feature/tm/"
+                    "cap-net-e_dev1739b1.lfu"
+                ),
+                dictionary=Path(
+                    "//azr-srv-ingfs1/dist/products/i050_summit/"
+                    "i055_cap-net-e/feature/tm/"
+                    "cap-net-e_dev1739b1.xdf3"
+                ),
                 version="2.10.0",
                 config_file=config_files.CAP_XCR_E_2_9_0_CONFIG,
-                dictionary_type=DictionaryType.XDF_V3,
                 extra_data={
                     __EXECUTION_POLICY_KEY: "always",
                     __TEST_CONFIGS_KEY: {
