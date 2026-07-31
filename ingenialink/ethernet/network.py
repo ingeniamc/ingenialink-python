@@ -9,7 +9,7 @@ from collections import OrderedDict
 from ftplib import FTP
 from threading import Thread
 from time import sleep
-from typing import TYPE_CHECKING, Callable, Generic, Optional, Union
+from typing import Callable, Generic, Optional, Union
 
 import ingenialogger
 from multiping import multi_ping
@@ -40,9 +40,6 @@ from ingenialink.network import (
 )
 from ingenialink.servo import Servo
 from ingenialink.utils.udp import UDP
-
-if TYPE_CHECKING:
-    from ingenialink.node import NodeIdentity
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -498,7 +495,7 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
     ) -> None:
         super().__init__(subnet=subnet)
         self.__interface = interface
-        self._sdcp_nodes: OrderedDict[NodeIdentity, SDCPNode] = OrderedDict()
+        self._sdcp_nodes: dict[str, SDCPNode] = {}
 
     def scan_sdcp_nodes(
         self,
@@ -507,8 +504,7 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
         """Discover SDCP-compatible nodes through IPv6.
 
         IPv6 devices that do not respond to SDCP identification are ignored.
-        Previously known nodes are updated instead of replaced, preserving
-        their identity across endpoint, firmware, and mode changes.
+        Previously known nodes are updated instead of replaced.
 
         Args:
             timeout: Timeout in seconds for SDCP identification transactions.
@@ -522,7 +518,7 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
         if self.__interface is None:
             raise ValueError("A network interface is required to scan SDCP nodes")
 
-        discovered_nodes: OrderedDict[NodeIdentity, SDCPNode] = OrderedDict()
+        discovered_nodes: dict[str, SDCPNode] = {}
         for target in discover_ipv6_devices(self.__interface):
             try:
                 discovery = identify_sdcp_node(
@@ -533,17 +529,14 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
             except ILError:
                 continue
 
-            identity: NodeIdentity = (
-                discovery.product_code,
-                discovery.serial_number,
-            )
-            node = self._sdcp_nodes.get(identity)
+            node = self._sdcp_nodes.get(discovery.target)
             if node is None:
                 node = SDCPNode(discovery)
-                self._sdcp_nodes[identity] = node
+                self._sdcp_nodes[discovery.target] = node
             else:
                 node.update(discovery)
-            discovered_nodes[identity] = node
+
+            discovered_nodes[discovery.target] = node
 
         return list(discovered_nodes.values())
 
@@ -618,7 +611,7 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
         Raises:
             ValueError: If the node is not managed by this network.
         """
-        if self._sdcp_nodes.get(node.identity) is not node:
+        if self._sdcp_nodes.get(node.target) is not node:
             raise ValueError("The SDCP node is not managed by this network")
 
     @property

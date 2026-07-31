@@ -127,7 +127,7 @@ def test_scan_sdcp_nodes_updates_existing_node(
     node = network.scan_sdcp_nodes()[0]
 
     identify_mock.return_value = SDCPNodeDiscovery(
-        target=UPDATED_TARGET,
+        target=TARGET,
         interface=INTERFACE,
         protocol_version=PROTOCOL_VERSION + 1,
         serial_number=SERIAL_NUMBER,
@@ -141,7 +141,7 @@ def test_scan_sdcp_nodes_updates_existing_node(
     assert nodes == [node]
     assert network.sdcp_nodes == [node]
     assert nodes[0] is node
-    assert node.target == UPDATED_TARGET
+    assert node.target == TARGET
     assert node.protocol_version == PROTOCOL_VERSION + 1
     assert node.revision_number == REVISION_NUMBER + 1
 
