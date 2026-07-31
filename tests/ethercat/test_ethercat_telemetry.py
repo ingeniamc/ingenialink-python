@@ -3,9 +3,16 @@ from contextlib import suppress
 
 import pytest
 
+from ingenialink.enums.register import RegDtype
 from ingenialink.ethercat.servo import EthercatServo
-from ingenialink.ethercat.telemetry import EthercatTelemetry, TelemetryFrame
+from ingenialink.ethercat.telemetry import (
+    EthercatTelemetry,
+    TelemetryFrame,
+    TelemetryPoller,
+    TelemetrySample,
+)
 from ingenialink.exceptions import ILRegisterAccessError
+from ingenialink.register import Register
 
 
 @pytest.mark.ethercat
@@ -76,3 +83,37 @@ def test_telemetry_discards_incomplete_buffer_tail(mocker) -> None:
     frames = telemetry.read_frames()
 
     assert frames == [TelemetryFrame(data=b"data", timestamp_tick=123)]
+
+
+def test_telemetry_poller_decodes_multiple_registers_from_one_frame(mocker) -> None:
+    """Verify that one telemetry frame is decoded into multiple register values."""
+    telemetry = mocker.MagicMock(spec=EthercatTelemetry)
+    telemetry.TIMESTAMP_FREQUENCY_HZ = 1_000_000
+    first_register = mocker.MagicMock(spec=Register)
+    first_register.dtype = RegDtype.U32
+    first_register.identifier = "FIRST_REGISTER"
+    first_register.bytes_to_value.side_effect = lambda data: int.from_bytes(data, "little")
+    second_register = mocker.MagicMock(spec=Register)
+    second_register.dtype = RegDtype.U32
+    second_register.identifier = "SECOND_REGISTER"
+    second_register.bytes_to_value.side_effect = lambda data: int.from_bytes(data, "little")
+    frame = TelemetryFrame(
+        data=(123).to_bytes(4, "little") + (456).to_bytes(4, "little"),
+        timestamp_tick=2_000,
+    )
+    poller = TelemetryPoller(telemetry, [first_register, second_register])
+
+    def read_one_frame() -> list[TelemetryFrame]:
+        poller._stop_event.set()
+        return [frame]
+
+    telemetry.read_frames.side_effect = read_one_frame
+    poller.start()
+    poller.join(timeout=1.0)
+
+    assert not poller.is_alive()
+    assert poller.sample_count == 1
+    assert poller.get_sample() == TelemetrySample(
+        timestamp=0.002,
+        values={"FIRST_REGISTER": 123, "SECOND_REGISTER": 456},
+    )
