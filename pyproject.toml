@@ -33,6 +33,7 @@ dependencies = [
     "multiping==1.1.2",
     "numpy>=1.26.0",
     "cypcap>=0.6.2,<0.7.0 ; sys_platform == 'win32'",
+    "ifaddr==0.2.0",
 ]
 
 [project.urls]
