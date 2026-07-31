@@ -85,23 +85,48 @@ def test_telemetry_discards_incomplete_buffer_tail(mocker) -> None:
     assert frames == [TelemetryFrame(data=b"data", timestamp_tick=123)]
 
 
+@pytest.mark.parametrize(
+    ("frequency", "expected_divider"),
+    [
+        (20, 50_000),
+        (2_000, 500),
+        (10_000, 100),
+        (1_000_000, 1),
+    ],
+)
+def test_telemetry_supports_multiple_sampling_frequencies(
+    frequency: int, expected_divider: int
+) -> None:
+    """Verify sampling frequencies map to the expected firmware dividers."""
+    assert EthercatTelemetry._frequency_to_divider(frequency) == expected_divider
+    assert EthercatTelemetry._divider_to_frequency(expected_divider) == frequency
+
+
 def test_telemetry_poller_decodes_multiple_registers_from_one_frame(mocker) -> None:
-    """Verify that one telemetry frame is decoded into multiple register values."""
+    """Verify that one frame decodes multiple mixed-width register values."""
     telemetry = mocker.MagicMock(spec=EthercatTelemetry)
     telemetry.TIMESTAMP_FREQUENCY_HZ = 1_000_000
     first_register = mocker.MagicMock(spec=Register)
-    first_register.dtype = RegDtype.U32
+    first_register.dtype = RegDtype.U16
     first_register.identifier = "FIRST_REGISTER"
     first_register.bytes_to_value.side_effect = lambda data: int.from_bytes(data, "little")
     second_register = mocker.MagicMock(spec=Register)
     second_register.dtype = RegDtype.U32
     second_register.identifier = "SECOND_REGISTER"
     second_register.bytes_to_value.side_effect = lambda data: int.from_bytes(data, "little")
+    third_register = mocker.MagicMock(spec=Register)
+    third_register.dtype = RegDtype.U8
+    third_register.identifier = "THIRD_REGISTER"
+    third_register.bytes_to_value.side_effect = lambda data: int.from_bytes(data, "little")
     frame = TelemetryFrame(
-        data=(123).to_bytes(4, "little") + (456).to_bytes(4, "little"),
+        data=(123).to_bytes(2, "little")
+        + (456).to_bytes(4, "little")
+        + (7).to_bytes(1, "little"),
         timestamp_tick=2_000,
     )
-    poller = TelemetryPoller(telemetry, [first_register, second_register])
+    poller = TelemetryPoller(
+        telemetry, [first_register, second_register, third_register]
+    )
 
     def read_one_frame() -> list[TelemetryFrame]:
         poller._stop_event.set()
@@ -115,5 +140,9 @@ def test_telemetry_poller_decodes_multiple_registers_from_one_frame(mocker) -> N
     assert poller.sample_count == 1
     assert poller.get_sample() == TelemetrySample(
         timestamp=0.002,
-        values={"FIRST_REGISTER": 123, "SECOND_REGISTER": 456},
+        values={
+            "FIRST_REGISTER": 123,
+            "SECOND_REGISTER": 456,
+            "THIRD_REGISTER": 7,
+        },
     )
