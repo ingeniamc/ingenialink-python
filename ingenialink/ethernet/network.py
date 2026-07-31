@@ -116,17 +116,23 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[Union[EthernetServoT,
     """Network for all Ethernet communications.
 
     Args:
-        subnet: The subnet in CIDR notation.
+        subnet: Optional subnet in CIDR notation used for IPv4 scanning.
+        interface: Optional network interface used for Ethernet communication.
 
     """
 
-    def __init__(self, subnet: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        subnet: Optional[str] = None,
+        interface: Optional[str] = None,
+    ) -> None:
         super().__init__()
         self.__subnet: Optional[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]]
         if subnet is not None:
             self.__subnet = ipaddress.ip_network(subnet, strict=False)
         else:
             self.__subnet = None
+        self.__interface = interface
         self.__listener_net_status: Optional[NetStatusListener[EthernetServoT]] = None
 
     @staticmethod
@@ -246,6 +252,7 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[Union[EthernetServoT,
             List containing the IPs that responded to the ping request.
 
         """
+        # Derive the IPv4 subnet from the interface. See INGK-1293.
         if self.__subnet is None:
             return []
         hosts_ips = [str(ip) for ip in self.__subnet]
@@ -467,6 +474,11 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[Union[EthernetServoT,
         """Obtain network protocol."""
         return NetProt.ETH
 
+    @property
+    def interface(self) -> Optional[str]:
+        """Interface used for IPv6 communication."""
+        return self.__interface
+
 
 class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
     """Network for all Ethernet communications.
@@ -482,8 +494,7 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
         subnet: Optional[str] = None,
         interface: Optional[str] = None,
     ) -> None:
-        super().__init__(subnet=subnet)
-        self.__interface = interface
+        super().__init__(subnet=subnet, interface=interface)
         self._sdcp_nodes: dict[str, SDCPNode] = {}
 
     def scan_sdcp_nodes(
@@ -504,15 +515,15 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
         Raises:
             ValueError: If no network interface was configured.
         """
-        if self.__interface is None:
+        if self.interface is None:
             raise ValueError("A network interface is required to scan SDCP nodes")
 
         discovered_nodes: dict[str, SDCPNode] = {}
-        for target in discover_ipv6_devices(self.__interface):
+        for target in discover_ipv6_devices(self.interface):
             try:
                 discovery = identify_sdcp_node(
                     target=target,
-                    interface=self.__interface,
+                    interface=self.interface,
                     timeout=timeout,
                 )
             except ILError:
@@ -614,11 +625,6 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
             Copy of the list of SDCP nodes managed by the network.
         """
         return list(self._sdcp_nodes.values())
-
-    @property
-    def interface(self) -> Optional[str]:
-        """Interface used for IPv6 communication."""
-        return self.__interface
 
     def _create_servo(
         self,
