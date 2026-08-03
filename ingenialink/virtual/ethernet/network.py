@@ -108,9 +108,7 @@ class VirtualEthernetNetwork(EthernetNetworkBase[VirtualEthernetServo]):
             List of discovered slave IDs.
 
         """
-        if self.servos:
-            return [servo.target for servo in self.servos if isinstance(servo.target, str)]
-        return []
+        return [servo.target for servo in self.servos if isinstance(servo.target, str)]
 
     def scan_slaves_info(self) -> OrderedDict[str, SlaveInfo]:  # type: ignore [override]
         """Scan for virtual Ethernet drives and retrieve basic info.
