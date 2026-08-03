@@ -113,7 +113,7 @@ class NetStatusListener(Thread, Generic[EthernetServoT]):
         self.__stop = True
 
 
-class EthernetNetworkBase(Generic[EthernetServoT], Network[Union[EthernetServoT, SDCPServo]]):
+class EthernetNetworkBase(Generic[EthernetServoT], Network[Servo]):
     """Base class  for all Ethernet communications."""
 
     def __init__(
