@@ -83,11 +83,6 @@ class NetStatusListener(Thread, Generic[EthernetServoT]):
         subscribers of any state changes (connection/disconnection).
         """
         for servo in self.__network.servos:
-            if not isinstance(servo, (EthernetServo, SDCPServo)):
-                # Virtual ethernet servos do not yet implement ip address attr
-                # https://novantamotion.atlassian.net/browse/INGK-1286
-                continue
-
             servo_state = self.__network.get_servo_state(servo)
             is_servo_alive = servo.is_alive(attemps=MAX_NUM_UNSUCCESSFUL_PINGS)
             if servo_state == NetState.CONNECTED and not is_servo_alive:
@@ -189,6 +184,31 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[Servo]):
         if net_status_listener:
             self.start_status_listener()
         return servo
+
+    def disconnect_from_slave(self, servo: EthernetServoT) -> None:  # type: ignore [override]
+        """Disconnects the slave from the network.
+
+        Args:
+            servo: Instance of the servo connected.
+
+        Raises:
+            ValueError: If the provided servo is not an Ethernet servo.
+
+        """
+        servo.stop_status_listener()
+        self._close_socket(servo.socket)
+        self._set_servo_state(servo, NetState.DISCONNECTED)
+        self.servos.remove(servo)
+        if len(self.servos) == 0:
+            self.stop_status_listener()
+        # Notify that disconnect_from_slave has been called
+        servo._disconnect_event_publisher.notify(servo)
+
+    @staticmethod
+    def _close_socket(sock: socket.socket) -> None:
+        """Closes the established network socket."""
+        sock.shutdown(socket.SHUT_RDWR)
+        sock.close()
 
     def start_status_listener(self) -> None:
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
@@ -460,31 +480,6 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
             raise TypeError(f"Expected revision number type to be int, got {type(revision_number)}")
         self.disconnect_from_slave(servo)
         return SlaveInfo(product_code, revision_number)
-
-    def disconnect_from_slave(self, servo: EthernetServoT) -> None:  # type: ignore [override]
-        """Disconnects the slave from the network.
-
-        Args:
-            servo: Instance of the servo connected.
-
-        Raises:
-            ValueError: If the provided servo is not an Ethernet servo.
-
-        """
-        servo.stop_status_listener()
-        self.close_socket(servo.socket)
-        self._set_servo_state(servo, NetState.DISCONNECTED)
-        self.servos.remove(servo)
-        if len(self.servos) == 0:
-            self.stop_status_listener()
-        # Notify that disconnect_from_slave has been called
-        servo._disconnect_event_publisher.notify(servo)
-
-    @staticmethod
-    def close_socket(sock: socket.socket) -> None:
-        """Closes the established network socket."""
-        sock.shutdown(socket.SHUT_RDWR)
-        sock.close()
 
     @override
     def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:
