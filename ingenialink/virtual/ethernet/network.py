@@ -92,7 +92,7 @@ class VirtualEthernetNetwork(EthernetNetworkBase[VirtualEthernetServo]):
         return True
 
     @override
-    def load_firmware(*_args: Any, **_kwargs: Any) -> None:
+    def load_firmware(self, *_args: Any, **_kwargs: Any) -> None:
         """Load firmware to a virtual Ethernet drive.
 
         Raises:

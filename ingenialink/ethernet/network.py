@@ -36,6 +36,7 @@ from ingenialink.network import (
     NetProt,
     NetState,
     Network,
+    ServoT,
     ServoTarget,
     SlaveInfo,
 )
@@ -60,7 +61,7 @@ SCAN_CONNECTION_TIMEOUT = 0.5
 EthernetServoT = TypeVar("EthernetServoT", bound=EthernetServoBase, default=EthernetServoBase)
 
 
-class NetStatusListener(Thread, Generic[EthernetServoT]):
+class NetStatusListener(Thread, Generic[ServoT]):
     """Network status listener thread to check if the drive is alive.
 
     Args:
@@ -68,9 +69,7 @@ class NetStatusListener(Thread, Generic[EthernetServoT]):
 
     """
 
-    def __init__(
-        self, network: "EthernetNetworkBase[EthernetServoT]", refresh_time: float = 0.25
-    ) -> None:
+    def __init__(self, network: "Network[ServoT]", refresh_time: float = 0.25) -> None:
         super().__init__()
         self.__network = network
         self.__refresh_time = refresh_time
@@ -115,7 +114,7 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[Servo]):
         self,
     ) -> None:
         super().__init__()
-        self.__listener_net_status: Optional[NetStatusListener[EthernetServoT]] = None
+        self.__listener_net_status: Optional[NetStatusListener[Servo]] = None
 
     @abstractmethod
     def _create_servo(
@@ -213,7 +212,7 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[Servo]):
     def start_status_listener(self) -> None:
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
         if self.__listener_net_status is None:
-            listener = NetStatusListener[EthernetServoT](self)
+            listener = NetStatusListener(self)
             listener.start()
             self.__listener_net_status = listener
 

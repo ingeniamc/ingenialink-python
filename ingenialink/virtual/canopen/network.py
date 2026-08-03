@@ -1,7 +1,5 @@
 import socket
-import time
 from collections import OrderedDict
-from threading import Thread
 from typing import Any, Callable, Optional
 
 import ingenialogger
@@ -9,56 +7,14 @@ from typing_extensions import override
 
 from ingenialink.canopen.network import CanopenNetworkBase
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
+from ingenialink.ethernet.network import NetStatusListener
 from ingenialink.exceptions import ILError
-from ingenialink.network import NetDevEvt, NetProt, NetState, SlaveInfo
+from ingenialink.network import NetProt, NetState, SlaveInfo
 from ingenialink.servo import Servo
 from ingenialink.virtual.base_network import VirtualNetworkBase
 from ingenialink.virtual.canopen.servo import VirtualCanopenServo
 
 logger = ingenialogger.get_logger(__name__)
-
-
-class VirtualCanopenNetStatusListener(Thread):
-    """Network status listener for virtual CANopen servos.
-
-    Periodically checks whether each servo is alive and emits
-    connection/disconnection events when the state changes.
-
-    Args:
-        network: The virtual CANopen network instance.
-        refresh_time: How often to poll servo status, in seconds.
-
-    """
-
-    def __init__(self, network: "VirtualCanopenNetwork", refresh_time: float = 0.25) -> None:
-        super().__init__()
-        self.__network = network
-        self.__refresh_time = refresh_time
-        self.__stop = False
-
-    def run(self) -> None:
-        """Continuously check the status of all servos in the network."""
-        while not self.__stop:
-            try:
-                for servo in self.__network.servos:
-                    target = servo.target
-                    servo_state = self.__network.get_servo_state(target)
-                    is_servo_alive = servo.is_alive()
-                    if servo_state == NetState.CONNECTED and not is_servo_alive:
-                        self.__network._transition_servo_state(target, NetDevEvt.REMOVED)
-                    if (
-                        servo_state == NetState.DISCONNECTED
-                        and is_servo_alive
-                        and self.__network.recover_from_disconnection(servo)
-                    ):
-                        self.__network._transition_servo_state(target, NetDevEvt.ADDED)
-            except Exception as e:
-                logger.exception(f"Exception during virtual CANopen status check: {e}")
-            time.sleep(self.__refresh_time)
-
-    def stop(self) -> None:
-        """Stop the listener."""
-        self.__stop = True
 
 
 class VirtualCanopenNetwork(CanopenNetworkBase[VirtualCanopenServo]):
@@ -67,7 +23,7 @@ class VirtualCanopenNetwork(CanopenNetworkBase[VirtualCanopenServo]):
     def __init__(self) -> None:
         super().__init__()
         self._virtual_base = VirtualNetworkBase()
-        self.__listener_net_status: Optional[VirtualCanopenNetStatusListener] = None
+        self.__listener_net_status: Optional[NetStatusListener[VirtualCanopenServo]] = None
 
     @property
     def protocol(self) -> NetProt:
@@ -171,7 +127,7 @@ class VirtualCanopenNetwork(CanopenNetworkBase[VirtualCanopenServo]):
     def start_status_listener(self) -> None:
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
         if self.__listener_net_status is None:
-            listener = VirtualCanopenNetStatusListener(self)
+            listener = NetStatusListener(self)
             listener.start()
             self.__listener_net_status = listener
 
