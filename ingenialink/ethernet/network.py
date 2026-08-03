@@ -114,26 +114,12 @@ class NetStatusListener(Thread, Generic[EthernetServoT]):
 
 
 class EthernetNetworkBase(Generic[EthernetServoT], Network[Union[EthernetServoT, SDCPServo]]):
-    """Network for all Ethernet communications.
-
-    Args:
-        subnet: Optional subnet in CIDR notation used for IPv4 scanning.
-        interface: Optional network interface used for Ethernet communication.
-
-    """
+    """Base class  for all Ethernet communications."""
 
     def __init__(
         self,
-        subnet: Optional[str] = None,
-        interface: Optional[str] = None,
     ) -> None:
         super().__init__()
-        self.__subnet: Optional[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]]
-        if subnet is not None:
-            self.__subnet = ipaddress.ip_network(subnet, strict=False)
-        else:
-            self.__subnet = None
-        self.__interface = interface
         self.__listener_net_status: Optional[NetStatusListener[EthernetServoT]] = None
 
     @abstractmethod
@@ -260,7 +246,13 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
         subnet: Optional[str] = None,
         interface: Optional[str] = None,
     ) -> None:
-        super().__init__(subnet=subnet, interface=interface)
+        super().__init__()
+        self.__subnet: Optional[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]]
+        if subnet is not None:
+            self.__subnet = ipaddress.ip_network(subnet, strict=False)
+        else:
+            self.__subnet = None
+        self.__interface = interface
         self._sdcp_nodes: dict[str, SDCPNode] = {}
 
     @staticmethod
