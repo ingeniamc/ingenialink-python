@@ -17,7 +17,7 @@ from ingenialink.utils._utils import REG_VALUE, dtype_length_bits
 if TYPE_CHECKING:
     import os
 
-    import pyarrow as pa  # type: ignore[import-not-found]
+    import pyarrow as pa  # type: ignore[import-untyped]
 
 
 @dataclass(frozen=True)
@@ -410,7 +410,7 @@ class TelemetryRecorder:
     ) -> None:
         try:
             import pyarrow as pa  # noqa: PLC0415
-            import pyarrow.parquet as pq  # type: ignore[import-not-found]  # noqa: PLC0415
+            import pyarrow.parquet as pq  # type: ignore[import-untyped]  # noqa: PLC0415
         except ImportError as ex:
             raise ImportError(
                 "TelemetryRecorder requires pyarrow. Install it with the "
