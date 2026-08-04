@@ -4,6 +4,7 @@ from xml.etree import ElementTree
 
 import ingenialogger
 
+from ingenialink.canopen.dictionary import CanopenDictionary
 from ingenialink.constants import MAP_ADDRESS_OFFSET
 from ingenialink.dictionary import (
     Dictionary,
@@ -151,3 +152,14 @@ class EoEDictionaryV3(EoEDictionary, DictionaryV3):
         dictionary_path: Path to the Ingenia dictionary.
 
     """
+
+
+class SDCPDictionaryV3(CanopenDictionary, DictionaryV3):
+    """Contains all registers and information of a SDCP dictionary.
+
+    Args:
+        dictionary_path: Path to the Ingenia dictionary.
+
+    """
+
+    interface = Interface.SDCP

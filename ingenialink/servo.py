@@ -46,6 +46,7 @@ from ingenialink.ethernet.dictionary import (
     EoEDictionaryV3,
     EthernetDictionaryV2,
     EthernetDictionaryV3,
+    SDCPDictionaryV3,
 )
 from ingenialink.exceptions import (
     ILAccessError,
@@ -115,6 +116,8 @@ class DictionaryFactory:
                 return EoEDictionaryV3(dictionary_path)
             if interface == Interface.ETH:
                 return EthernetDictionaryV3(dictionary_path)
+            if interface == Interface.SDCP:
+                return SDCPDictionaryV3(dictionary_path)
         if major_version == 2:
             if interface == Interface.CAN:
                 return CanopenDictionaryV2(dictionary_path)

@@ -23,7 +23,7 @@ from ingenialink.enums.register import (
     RegDtype,
 )
 from ingenialink.ethercat.register import EthercatRegister
-from ingenialink.ethernet.register import EthernetRegister
+from ingenialink.ethernet.register import EthernetRegister, SDCPRegister
 from ingenialink.exceptions import ILDictionaryParseError
 from ingenialink.register import MonDistV3, Register
 from ingenialink.utils._utils import weak_lru
@@ -74,6 +74,8 @@ class Interface(enum.Enum):
     """EtherCAT"""
     EoE = enum.auto()
     """Ethernet over EtherCAT"""
+    SDCP = enum.auto()
+    """SDCP"""
 
 
 class SubnodeType(enum.Enum):
@@ -999,6 +1001,8 @@ class DictionaryV3(Dictionary):
             return "ECATDevice"
         if interface is Interface.EoE:
             return "EoEDevice"
+        if interface is Interface.SDCP:
+            return "ETH-SDCP"
         raise ILDictionaryParseError(f"{interface=} has no device element associated.")
 
     @staticmethod
@@ -1244,6 +1248,8 @@ class DictionaryV3(Dictionary):
         if self.interface == Interface.ETH:
             self.__read_device_eth(device_element)
         if self.interface == Interface.CAN:
+            self.__read_device_can(device_element)
+        if self.interface == Interface.SDCP:
             self.__read_device_can(device_element)
         if self.interface == Interface.ECAT:
             self.__read_device_ecat(device_element)
@@ -1618,6 +1624,8 @@ class DictionaryV3(Dictionary):
             register_instance = CanopenRegister
         elif self.interface == Interface.ECAT:
             register_instance = EthercatRegister
+        elif self.interface == Interface.SDCP:
+            register_instance = SDCPRegister
         else:
             raise ValueError(
                 f"Cannot create Canopen/Ethercat register for interface {self.interface}"

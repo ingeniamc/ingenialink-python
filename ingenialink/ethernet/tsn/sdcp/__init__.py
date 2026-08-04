@@ -65,4 +65,6 @@ __all__ = [
     "SDCPOpcode",
     "identify_sdcp_node",
     "DEFAULT_SDCP_TIMEOUT_S",
+    "SDCPNode",
+    "SDCPServo",
 ]
