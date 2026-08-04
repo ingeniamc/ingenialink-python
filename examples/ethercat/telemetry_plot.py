@@ -92,8 +92,8 @@ class TelemetryPlot(QtWidgets.QMainWindow):
             start_time = self._start_time
             assert start_time is not None
             elapsed = sample.timestamp - start_time
-            for register in self._registers:
-                value = sample.values[register.identifier]
+            for index, register in enumerate(self._registers):
+                value = sample.values[index]
                 if not isinstance(value, (int, float)):
                     raise TypeError(
                         f"Telemetry register {register.identifier} did not return a number"

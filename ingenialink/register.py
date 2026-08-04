@@ -1,6 +1,7 @@
+import struct
 from abc import ABC
 from dataclasses import dataclass
-from typing import Any, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 from ingenialink import exceptions as exc
 from ingenialink.bitfield import BitField
@@ -16,7 +17,37 @@ from ingenialink.utils._utils import (
     convert_bytes_to_dtype,
     convert_dtype_to_bytes,
     dtype_length_bits,
+    dtype_value,
 )
+
+BytesLike = Union[bytes, memoryview]
+
+
+def _build_decoder(dtype: RegDtype) -> Callable[[BytesLike], REG_VALUE]:
+    if dtype == RegDtype.FLOAT:
+        unpack = struct.Struct("<f").unpack
+
+        def decode_float(data: BytesLike) -> REG_VALUE:
+            return unpack(data[:4])[0]  # type: ignore[no-any-return]
+
+        return decode_float
+    if dtype == RegDtype.BOOL:
+
+        def decode_bool(data: BytesLike) -> REG_VALUE:
+            return bool(int.from_bytes(data[:1], "little"))
+
+        return decode_bool
+    if dtype == RegDtype.BYTE_ARRAY_512:
+        return bytes
+    if dtype in dtype_value:
+        bytes_length, signed = dtype_value[dtype]
+
+        def decode_int(data: BytesLike) -> REG_VALUE:
+            return int.from_bytes(data[:bytes_length], "little", signed=signed)
+
+        return decode_int
+    return lambda data: convert_bytes_to_dtype(bytes(data), dtype)
+
 
 dtypes_ranges: dict[RegDtype, dict[str, Union[int, float]]] = {
     RegDtype.U8: {"max": 255, "min": 0},
@@ -104,6 +135,7 @@ class Register(ABC):
         self.__type_errors(dtype, access, phy)
 
         self._dtype = dtype.value
+        self._decoder: Callable[[BytesLike], REG_VALUE] = _build_decoder(dtype)
         self._access = access.value
         self._identifier = identifier
         self._units = units
@@ -352,7 +384,7 @@ class Register(ABC):
         """
         return convert_dtype_to_bytes(value, self.dtype)
 
-    def bytes_to_value(self, data: bytes) -> REG_VALUE:
+    def bytes_to_value(self, data: BytesLike) -> REG_VALUE:
         """Convert bytes to a value according to the register's data type.
 
         Args:
@@ -361,4 +393,4 @@ class Register(ABC):
         Returns:
             The bytes converted to a value.
         """
-        return convert_bytes_to_dtype(data, self.dtype)
+        return self._decoder(data)

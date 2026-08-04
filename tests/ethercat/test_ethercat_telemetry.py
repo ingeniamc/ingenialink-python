@@ -73,12 +73,18 @@ def test_telemetry_firmware_timestamps_are_incremental(servo) -> None:
         telemetry.stop()
 
 
-def test_telemetry_discards_incomplete_buffer_tail(mocker) -> None:
-    """Verify that fixed-size EtherCAT responses may end with a partial frame."""
+def test_telemetry_reads_count_prefixed_frames(mocker) -> None:
+    """Verify that the telemetry response declares its complete frame count."""
     servo = mocker.MagicMock(spec=EthercatServo)
     telemetry = EthercatTelemetry(servo)
-    servo.read.return_value = 12
-    servo.read_complete_access.return_value = (123).to_bytes(8, "little") + b"data" + b"tail"
+    telemetry._frame_size = 12
+    telemetry._read_buffer_size = 1024
+    servo.read_complete_access.return_value = (
+        (1).to_bytes(EthercatTelemetry.FRAME_COUNT_SIZE, "little")
+        + (123).to_bytes(8, "little")
+        + b"data"
+        + b"tail"
+    )
 
     frames = telemetry.read_frames()
 
@@ -136,9 +142,5 @@ def test_telemetry_poller_decodes_multiple_registers_from_one_frame(mocker) -> N
     assert poller.sample_count == 1
     assert poller.get_sample() == TelemetrySample(
         timestamp=0.002,
-        values={
-            "FIRST_REGISTER": 123,
-            "SECOND_REGISTER": 456,
-            "THIRD_REGISTER": 7,
-        },
+        values=(123, 456, 7),
     )

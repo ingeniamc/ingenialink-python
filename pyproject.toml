@@ -36,6 +36,9 @@ dependencies = [
     "ifaddr==0.2.0",
 ]
 
+  [project.optional-dependencies]
+  telemetry = ["pyarrow>=17.0.0"]
+
 [project.urls]
 Homepage = "https://www.ingeniamc.com"
 Documentation = "https://distext.ingeniamc.com/doc/ingenialink-python/latest/"
@@ -127,6 +130,7 @@ jinja2 = "==3.1.6"
 [tool.poetry.group.tests]
 optional = true
 [tool.poetry.group.tests.dependencies]
+pyarrow = ">=17.0.0"
 pytest = "==8.4.1"
 pytest-env = "==1.1.5"
 pytest-cov = "==7.1.0"
