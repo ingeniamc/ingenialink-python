@@ -76,12 +76,12 @@ ECAT_SETUP = SpecifierContainer({
                 firmware=Path(
                     "//azr-srv-ingfs1/dist/products/i050_summit/"
                     "i055_cap-net-e/feature/tm/"
-                    "cap-net-e_devf3d6c9.lfu"
+                    "cap-net-e_dev1739b1.lfu"
                 ),
                 dictionary=Path(
                     "//azr-srv-ingfs1/dist/products/i050_summit/"
                     "i055_cap-net-e/feature/tm/"
-                    "cap-net-e_devf3d6c9.xdf3"
+                    "cap-net-e_dev1739b1.xdf3"
                 ),
                 version="2.10.0",
                 config_file=config_files.CAP_XCR_E_2_9_0_CONFIG,
