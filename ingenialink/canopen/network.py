@@ -339,7 +339,7 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
         if self._connection is None:
             return []
 
-        self._connection.scanner.reset()
+        self._connection.scanner.reset()  # type: ignore[no-untyped-call]
         try:
             self._connection.scanner.search()
         except Exception as e:
@@ -574,7 +574,7 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
 
         try:
             for node in self._connection.scanner.nodes:
-                cast("canopen.RemoteNode", self._connection.nodes[node]).nmt.stop_node_guarding()
+                cast("canopen.RemoteNode", self._connection.nodes[node]).nmt.stop_node_guarding()  # type: ignore[no-untyped-call]
             if self._connection.bus:
                 self._connection.bus.flush_tx_buffer()
                 logger.info("Bus flushed")
@@ -831,7 +831,7 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
         except canopen.nmt.NmtError as e:
             raise ILFirmwareLoadError("Could not recover drive") from e
         finally:
-            servo.node.nmt.stop_node_guarding()
+            servo.node.nmt.stop_node_guarding()  # type: ignore[no-untyped-call]
 
     @staticmethod
     def __program_control_to_start(
@@ -981,14 +981,14 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
 
         try:
             logger.debug("Switching LSS into CONFIGURATION state...")
-            r = self._connection.lss.send_switch_state_selective(
+            r = self._connection.lss.send_switch_state_selective(  # type: ignore[no-untyped-call]
                 vendor_id,
                 product_code,
                 rev_number,
                 serial_number,
             )
             if r >= 0:
-                self._connection.lss.configure_bit_timing(CAN_BIT_TIMMING[new_target_baudrate])
+                self._connection.lss.configure_bit_timing(CAN_BIT_TIMMING[new_target_baudrate])  # type: ignore[no-untyped-call]
                 sleep(0.1)
 
                 self._lss_store_configuration()
@@ -1030,14 +1030,14 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
 
         try:
             logger.debug("Switching LSS into CONFIGURATION state...")
-            r = self._connection.lss.send_switch_state_selective(
+            r = self._connection.lss.send_switch_state_selective(  # type: ignore[no-untyped-call]
                 vendor_id,
                 product_code,
                 rev_number,
                 serial_number,
             )
             if r >= 0:
-                self._connection.lss.configure_node_id(new_target_node)
+                self._connection.lss.configure_node_id(new_target_node)  # type: ignore[no-untyped-call]
                 sleep(0.1)
 
                 self._lss_store_configuration()
@@ -1056,10 +1056,10 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
         """
         if self._connection is None:
             raise ILError("Can not store configuration. The connection is not established yet.")
-        self._connection.lss.store_configuration()
+        self._connection.lss.store_configuration()  # type: ignore[no-untyped-call]
         sleep(0.1)
         logger.info("Stored new configuration")
-        self._connection.lss.send_switch_state_global(self._connection.lss.WAITING_STATE)
+        self._connection.lss.send_switch_state_global(self._connection.lss.WAITING_STATE)  # type: ignore[no-untyped-call]
 
     def _lss_reset_connection_nodes(self, target_node: int) -> None:
         """Resets the connection and starts node guarding for the connection nodes.
@@ -1083,7 +1083,7 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
             self._connection.add_node(int(servo.target))
 
         # Reset all nodes to default state
-        self._connection.lss.send_switch_state_global(self._connection.lss.WAITING_STATE)
+        self._connection.lss.send_switch_state_global(self._connection.lss.WAITING_STATE)  # type: ignore[no-untyped-call]
 
         cast("canopen.RemoteNode", self._connection.nodes[target_node]).nmt.start_node_guarding(
             self.NODE_GUARDING_PERIOD_S
@@ -1110,7 +1110,7 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
             return
         try:
             for node_obj in self._connection.nodes.values():
-                cast("canopen.RemoteNode", node_obj).nmt.stop_node_guarding()
+                cast("canopen.RemoteNode", node_obj).nmt.stop_node_guarding()  # type: ignore[no-untyped-call]
         except Exception as e:
             logger.error("Could not stop node guarding. Exception: %s", str(e))
         if self.__listener_net_status is not None:
@@ -1214,7 +1214,7 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
 
     @staticmethod
     def _is_kvaser_virtual_channel(channel: int) -> bool:
-        channel_info = can.interfaces.kvaser.get_channel_info(channel)
+        channel_info = can.interfaces.kvaser.get_channel_info(channel)  # type: ignore[no-untyped-call]
         if isinstance(channel_info, str):
             return "Virtual" in channel_info
         if isinstance(channel_info, dict):
@@ -1225,8 +1225,8 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
     @staticmethod
     def _reload_kvaser_lib() -> None:
         """Reload the Kvaser library to refresh the connected transceivers."""
-        can_unload_library = get_canlib_function("canUnloadLibrary")
-        can_initialize_library = get_canlib_function("canInitializeLibrary")
+        can_unload_library = get_canlib_function("canUnloadLibrary")  # type: ignore[no-untyped-call]
+        can_initialize_library = get_canlib_function("canInitializeLibrary")  # type: ignore[no-untyped-call]
         can_unload_library()
         can_initialize_library()
 
