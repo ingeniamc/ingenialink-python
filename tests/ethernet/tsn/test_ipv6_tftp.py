@@ -53,7 +53,7 @@ def test_upload_ipv6_firmware_uses_scoped_address_and_uploads_file(mocker, tftp_
     firmware_file = tmp_path / "firmware.lfu"
     firmware_file.write_bytes(b"firmware")
     interface_index = mocker.patch(
-        "ingenialink.ethernet.tsn.interfaces.get_interface_index", return_value=7
+        "ingenialink.ethernet.tsn.ipv6_tftp.get_interface_index", return_value=7
     )
     socket_factory = mocker.patch(
         "ingenialink.ethernet.tsn.ipv6_tftp.socket.socket", return_value=tftp_socket
@@ -88,7 +88,7 @@ def test_upload_ipv6_firmware_reports_acknowledged_progress(mocker, tftp_socket,
     mocker.patch("ingenialink.ethernet.tsn.ipv6_tftp.sys.platform", "linux")
     firmware_file = tmp_path / "firmware.lfu"
     firmware_file.write_bytes(b"firmware" * 128 + b"x")
-    mocker.patch("ingenialink.ethernet.tsn.interfaces.get_interface_index", return_value=4)
+    mocker.patch("ingenialink.ethernet.tsn.ipv6_tftp.get_interface_index", return_value=4)
     mocker.patch("ingenialink.ethernet.tsn.ipv6_tftp.socket.socket", return_value=tftp_socket)
     transfer_address = ("fe80::1", 20_069, 0, 4)
     tftp_socket.recvfrom.side_effect = [
@@ -129,7 +129,7 @@ def test_upload_ipv6_firmware_retries_data_without_repeating_write_request(
     mocker.patch("ingenialink.ethernet.tsn.ipv6_tftp.sys.platform", "linux")
     firmware_file = tmp_path / "firmware.lfu"
     firmware_file.write_bytes(b"firmware")
-    mocker.patch("ingenialink.ethernet.tsn.interfaces.get_interface_index", return_value=4)
+    mocker.patch("ingenialink.ethernet.tsn.ipv6_tftp.get_interface_index", return_value=4)
     mocker.patch("ingenialink.ethernet.tsn.ipv6_tftp.socket.socket", return_value=tftp_socket)
     transfer_address = ("fe80::1", 20_069, 0, 4)
     tftp_socket.recvfrom.side_effect = [
@@ -154,7 +154,7 @@ def test_upload_ipv6_firmware_ignores_responses_from_another_endpoint(
     mocker.patch("ingenialink.ethernet.tsn.ipv6_tftp.sys.platform", "linux")
     firmware_file = tmp_path / "firmware.lfu"
     firmware_file.write_bytes(b"firmware")
-    mocker.patch("ingenialink.ethernet.tsn.interfaces.get_interface_index", return_value=4)
+    mocker.patch("ingenialink.ethernet.tsn.ipv6_tftp.get_interface_index", return_value=4)
     mocker.patch("ingenialink.ethernet.tsn.ipv6_tftp.socket.socket", return_value=tftp_socket)
     transfer_address = ("fe80::1", 20_069, 0, 4)
     tftp_socket.recvfrom.side_effect = [
@@ -203,7 +203,7 @@ def test_upload_ipv6_firmware_waits_for_captured_write_request_ack(mocker, tftp_
         ("fe80::1", 20_069, 0, 7),
     )
     mocker.patch("ingenialink.ethernet.tsn.ipv6_tftp.sys.platform", "win32")
-    mocker.patch("ingenialink.ethernet.tsn.interfaces.get_interface_index", return_value=7)
+    mocker.patch("ingenialink.ethernet.tsn.ipv6_tftp.get_interface_index", return_value=7)
     mocker.patch("ingenialink.ethernet.tsn.ipv6_tftp.socket.socket", return_value=tftp_socket)
     pcap_capture = mocker.patch(
         "ingenialink.ethernet.tsn.ipv6_tftp.PcapCapture", return_value=capture
@@ -223,7 +223,7 @@ def test_upload_ipv6_firmware_raises_on_tftp_error(mocker, tftp_socket, tmp_path
     mocker.patch("ingenialink.ethernet.tsn.ipv6_tftp.sys.platform", "linux")
     firmware_file = tmp_path / "firmware.lfu"
     firmware_file.touch()
-    mocker.patch("ingenialink.ethernet.tsn.interfaces.get_interface_index", return_value=4)
+    mocker.patch("ingenialink.ethernet.tsn.ipv6_tftp.get_interface_index", return_value=4)
     mocker.patch("ingenialink.ethernet.tsn.ipv6_tftp.socket.socket", return_value=tftp_socket)
     tftp_socket.recvfrom.return_value = (
         b"\0\x05\0\x01access denied\0",

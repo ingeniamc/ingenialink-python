@@ -3,7 +3,7 @@ from contextlib import suppress
 from types import TracebackType
 from typing import Optional, Union
 
-from ingenialink.ethernet.tsn.interfaces import get_interface_index
+from ingenialink.ethernet.interface import get_interface_index
 from ingenialink.ethernet.tsn.types import IPv6SocketAddress
 from ingenialink.exceptions import ILIOError, ILTimeoutError
 
