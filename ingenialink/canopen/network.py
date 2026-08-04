@@ -9,7 +9,7 @@ from collections import OrderedDict
 from enum import Enum
 from threading import Thread
 from time import sleep
-from typing import Callable, Generic, Optional, Union
+from typing import TYPE_CHECKING, Callable, Generic, Optional, Union, cast
 
 import can
 import canopen
@@ -46,6 +46,10 @@ else:
     VCIError = _VCIErrorPlaceholderError  # type: ignore[assignment,misc]
 
 from canopen import Network as NetworkLib
+from canopen.network import MessageListener as CanopenMessageListener
+
+if TYPE_CHECKING:
+    from canopen.nmt import NmtMaster
 
 KVASER_DRIVER_INSTALLED = True
 try:
@@ -161,7 +165,7 @@ CAN_BIT_TIMMING = {
 }
 
 
-class CustomListener(can.Listener):
+class CustomListener(CanopenMessageListener):
     """Custom listener for IXXAT and KVASER connection.
 
     It is used to ignore the exceptions that occur when
@@ -169,7 +173,7 @@ class CustomListener(can.Listener):
     """
 
     def __init__(self) -> None:
-        super().__init__()
+        pass
 
     def on_message_received(self, msg: can.Message) -> None:
         """On message received callback."""
@@ -211,7 +215,10 @@ class NetStatusListener(Thread):
             return timestamps
         for node_id, node in list(self.__network._connection.nodes.items()):
             sleep(1.5)
-            current_timestamp = node.nmt.timestamp
+            nmt_master = cast("NmtMaster", node.nmt)
+            current_timestamp = nmt_master.timestamp
+            if current_timestamp is None:
+                continue
             if node_id not in timestamps:
                 timestamps[node_id] = current_timestamp
                 continue
@@ -220,7 +227,10 @@ class NetStatusListener(Thread):
             if is_alive:
                 if servo_state != NetState.CONNECTED:
                     self.__network._transition_servo_state(node_id, NetDevEvt.ADDED)
-                timestamps[node_id] = node.nmt.timestamp
+                new_timestamp = nmt_master.timestamp
+                #  NmtMaster.timestamp is None until the first heartbeat is received
+                if new_timestamp is not None:
+                    timestamps[node_id] = new_timestamp
             elif servo_state == NetState.DISCONNECTED:
                 self.__network.recover_from_disconnection()
             else:
@@ -340,7 +350,7 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
                 and self._connection.bus is not None
                 and hasattr(self._connection.bus, "reset")
             ):
-                self._connection.bus.reset()
+                getattr(self._connection.bus, "reset")()
         sleep(0.05)
 
         nodes = self._connection.scanner.nodes
@@ -348,7 +358,7 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
         if is_connection_created:
             self._teardown_connection()
 
-        return nodes  # type: ignore [no-any-return]
+        return nodes
 
     def scan_slaves_info(self) -> OrderedDict[int, SlaveInfo]:
         """Scans for nodes in the network and return an ordered dict with the slave information.
@@ -401,8 +411,12 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
                     f"{type(e).__name__}: {e}"
                 )
                 with contextlib.suppress(Exception):
-                    if self._connection is not None and self._connection.bus is not None:
-                        self._connection.bus.reset()
+                    if (
+                        self._connection is not None
+                        and self._connection.bus is not None
+                        and hasattr(self._connection.bus, "reset")
+                    ):
+                        getattr(self._connection.bus, "reset")()
                 slave_info[slave_id] = SlaveInfo()
             else:
                 slave_info[slave_id] = SlaveInfo(int(product_code), int(revision_number))
@@ -560,7 +574,7 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
 
         try:
             for node in self._connection.scanner.nodes:
-                self._connection.nodes[node].nmt.stop_node_guarding()
+                cast("canopen.RemoteNode", self._connection.nodes[node]).nmt.stop_node_guarding()
             if self._connection.bus:
                 self._connection.bus.flush_tx_buffer()
                 logger.info("Bus flushed")
@@ -571,7 +585,7 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
         try:
             self._connection.connect(**self.__connection_args)
             for servo in self.servos:
-                servo.node = self._connection.add_node(servo.target)
+                servo.node = self._connection.add_node(int(servo.target))
                 servo.node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
         except BaseException as e:
             logger.error(f"Connection failed. Exception: {e}")
@@ -1066,12 +1080,14 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
 
         for servo in self.servos:
             logger.info("Node connected: %i", servo.target)
-            self._connection.add_node(servo.target)
+            self._connection.add_node(int(servo.target))
 
         # Reset all nodes to default state
         self._connection.lss.send_switch_state_global(self._connection.lss.WAITING_STATE)
 
-        self._connection.nodes[target_node].nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
+        cast("canopen.RemoteNode", self._connection.nodes[target_node]).nmt.start_node_guarding(
+            self.NODE_GUARDING_PERIOD_S
+        )
 
     def is_listener_started(self) -> bool:
         """Check if the listener has been started.
@@ -1094,7 +1110,7 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
             return
         try:
             for node_obj in self._connection.nodes.values():
-                node_obj.nmt.stop_node_guarding()
+                cast("canopen.RemoteNode", node_obj).nmt.stop_node_guarding()
         except Exception as e:
             logger.error("Could not stop node guarding. Exception: %s", str(e))
         if self.__listener_net_status is not None:
@@ -1118,7 +1134,7 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
         return self.__baudrate
 
     @property
-    def network(self) -> canopen.Network:
+    def network(self) -> Optional[canopen.Network]:
         """The instance of the CANopen Network."""
         return self._connection
 
@@ -1198,7 +1214,7 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
 
     @staticmethod
     def _is_kvaser_virtual_channel(channel: int) -> bool:
-        channel_info = can.interfaces.kvaser.get_channel_info(channel)  # type: ignore[no-untyped-call]
+        channel_info = can.interfaces.kvaser.get_channel_info(channel)
         if isinstance(channel_info, str):
             return "Virtual" in channel_info
         if isinstance(channel_info, dict):
@@ -1209,8 +1225,8 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
     @staticmethod
     def _reload_kvaser_lib() -> None:
         """Reload the Kvaser library to refresh the connected transceivers."""
-        can_unload_library = get_canlib_function("canUnloadLibrary")  # type: ignore[no-untyped-call]
-        can_initialize_library = get_canlib_function("canInitializeLibrary")  # type: ignore[no-untyped-call]
+        can_unload_library = get_canlib_function("canUnloadLibrary")
+        can_initialize_library = get_canlib_function("canInitializeLibrary")
         can_unload_library()
         can_initialize_library()
 
