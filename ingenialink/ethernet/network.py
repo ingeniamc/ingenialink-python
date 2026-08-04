@@ -17,6 +17,18 @@ from typing_extensions import TypeVar, override
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
 from ingenialink.ethernet.resources import BASIC_ETHERNET_V2_XDF
+from ingenialink.ethernet.servo import EthernetServo, EthernetServoBase
+from ingenialink.ethernet.tsn.ipv6_discovery import (
+    discover_ipv6_devices,
+)
+from ingenialink.ethernet.tsn.sdcp.connection import (
+    DEFAULT_SDCP_TIMEOUT_S,
+)
+from ingenialink.ethernet.tsn.sdcp.identification import (
+    identify_sdcp_node,
+)
+from ingenialink.ethernet.tsn.sdcp.node import SDCPNode
+from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import (
     NetDevEvt,
@@ -28,8 +40,6 @@ from ingenialink.network import (
 )
 from ingenialink.servo import Servo
 from ingenialink.utils.udp import UDP
-
-from .servo import EthernetServo, EthernetServoBase
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -45,7 +55,6 @@ MAX_NUM_UNSUCCESSFUL_PINGS = 3
 
 MAX_NUMBER_OF_SCAN_TRIES = 2
 SCAN_CONNECTION_TIMEOUT = 0.5
-
 
 EthernetServoT = TypeVar("EthernetServoT", bound=EthernetServoBase, default=EthernetServoBase)
 
@@ -73,22 +82,21 @@ class NetStatusListener(Thread, Generic[EthernetServoT]):
         subscribers of any state changes (connection/disconnection).
         """
         for servo in self.__network.servos:
-            if not isinstance(servo, EthernetServo):
+            if not isinstance(servo, (EthernetServo, SDCPServo)):
                 # Virtual ethernet servos do not yet implement ip address attr
                 # https://novantamotion.atlassian.net/browse/INGK-1286
                 continue
 
-            servo_ip = servo.ip_address
-            servo_state = self.__network.get_servo_state(servo_ip)
+            servo_state = self.__network.get_servo_state(servo)
             is_servo_alive = servo.is_alive(attemps=MAX_NUM_UNSUCCESSFUL_PINGS)
             if servo_state == NetState.CONNECTED and not is_servo_alive:
-                self.__network._transition_servo_state(servo_ip, NetDevEvt.REMOVED)
+                self.__network._transition_servo_state(servo, NetDevEvt.REMOVED)
             if (
                 servo_state == NetState.DISCONNECTED
                 and is_servo_alive
                 and self.__network.recover_from_disconnection(servo)
             ):
-                self.__network._transition_servo_state(servo_ip, NetDevEvt.ADDED)
+                self.__network._transition_servo_state(servo, NetDevEvt.ADDED)
 
     def run(self) -> None:
         """Check the network status."""
@@ -104,7 +112,7 @@ class NetStatusListener(Thread, Generic[EthernetServoT]):
         self.__stop = True
 
 
-class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
+class EthernetNetworkBase(Generic[EthernetServoT], Network[Union[EthernetServoT, SDCPServo]]):
     """Network for all Ethernet communications.
 
     Args:
@@ -238,6 +246,7 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
             List containing the IPs that responded to the ping request.
 
         """
+        # Derive the IPv4 subnet from the interface. See INGK-1293.
         if self.__subnet is None:
             return []
         hosts_ips = [str(ip) for ip in self.__subnet]
@@ -335,8 +344,6 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
 
         if net_status_listener:
             self.start_status_listener()
-        else:
-            self.stop_status_listener()
         return servo
 
     def disconnect_from_slave(self, servo: EthernetServoT) -> None:  # type: ignore [override]
@@ -393,17 +400,17 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
             True if communication with the servo is recovered, False otherwise.
 
         Raises:
-            ValueError: If the servo argument is None.
+            ValueError: If the servo argument is None or not an Ethernet or SDCP Servo instance.
         """
-        if servo is None or not isinstance(servo, EthernetServo):
-            raise ValueError("Ethernet Servo instance must be provided for recovery.")
+        if servo is None or not isinstance(servo, (EthernetServo, SDCPServo)):
+            raise ValueError("An Ethernet or SDCP Servo instance must be provided for recovery.")
 
         if servo.is_alive(attemps=MAX_NUM_UNSUCCESSFUL_PINGS):
-            logger.info(f"Communication with servo at IP {servo.ip_address} recovered.")
+            logger.info(f"Communication with servo at {servo.target} recovered.")
             return True
-        else:
-            logger.warning(f"Failed to recover communication with servo at IP {servo.ip_address}.")
-            return False
+
+        logger.warning(f"Failed to recover communication with servo at {servo.target}.")
+        return False
 
     def get_servo_state(self, servo_id: ServoTarget) -> NetState:
         """Get the state of a servo that's a part of network.
@@ -411,7 +418,7 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
         The state indicates if the servo is connected or disconnected.
 
         Args:
-            servo_id: The servo's IP address, or the servo instance itself.
+            servo_id: The servo target or servo instance.
 
         Returns:
             The servo's state.
@@ -463,7 +470,156 @@ class EthernetNetworkBase(Generic[EthernetServoT], Network[EthernetServoT]):
 
 
 class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
-    """Network for all Ethernet communications."""
+    """Network for all Ethernet communications.
+
+    Args:
+        subnet: The subnet in CIDR notation.
+        interface: The network interface used for IPv6 communication.
+
+    """
+
+    def __init__(
+        self,
+        subnet: Optional[str] = None,
+        interface: Optional[str] = None,
+    ) -> None:
+        super().__init__(subnet=subnet)
+        self.__interface = interface
+        self._sdcp_nodes: dict[str, SDCPNode] = {}
+
+    def scan_sdcp_nodes(
+        self,
+        timeout: float = DEFAULT_SDCP_TIMEOUT_S,
+    ) -> list[SDCPNode]:
+        """Discover SDCP-compatible nodes through IPv6.
+
+        IPv6 devices that do not respond to SDCP identification are ignored.
+        Previously known nodes are updated instead of replaced.
+
+        Args:
+            timeout: Timeout in seconds for SDCP identification transactions.
+
+        Returns:
+            SDCP nodes identified during the current scan.
+
+        Raises:
+            ValueError: If no network interface was configured.
+        """
+        if self.__interface is None:
+            raise ValueError("A network interface is required to scan SDCP nodes")
+
+        discovered_nodes: dict[str, SDCPNode] = {}
+        for target in discover_ipv6_devices(self.__interface):
+            try:
+                discovery = identify_sdcp_node(
+                    target=target,
+                    interface=self.__interface,
+                    timeout=timeout,
+                )
+            except ILError:
+                continue
+
+            node = self._sdcp_nodes.get(discovery.target)
+            if node is None:
+                node = SDCPNode(discovery)
+                self._sdcp_nodes[discovery.target] = node
+            else:
+                node.update(discovery)
+
+            discovered_nodes[discovery.target] = node
+
+        return list(discovered_nodes.values())
+
+    def connect_to_node(
+        self,
+        node: SDCPNode,
+        dictionary: str,
+        servo_status_listener: bool = False,
+        net_status_listener: bool = False,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
+        connection_timeout: float = DEFAULT_SDCP_TIMEOUT_S,
+    ) -> SDCPServo:
+        """Connect to an SDCP node managed by the network.
+
+        Args:
+            node: SDCP node to connect to.
+            dictionary: Path to the target dictionary file.
+            servo_status_listener: Whether to start the servo status listener.
+            net_status_listener: Whether to start the network status listener.
+            disconnect_callback: Callback invoked when the servo is disconnected.
+            connection_timeout: Timeout in seconds for SDCP transactions.
+
+        Returns:
+            Connected SDCP servo.
+
+        Raises:
+            ValueError: If the node is not managed by this network.
+        """
+        self._validate_sdcp_node(node)
+
+        servo = node.connect(
+            dictionary_path=dictionary,
+            servo_status_listener=servo_status_listener,
+            disconnect_callback=disconnect_callback,
+            connection_timeout=connection_timeout,
+        )
+        self.servos.append(servo)
+        self._set_servo_state(servo, NetState.CONNECTED)
+
+        if net_status_listener:
+            self.start_status_listener()
+
+        return servo
+
+    def disconnect_from_node(self, node: SDCPNode) -> None:
+        """Disconnect from an SDCP node managed by the network.
+
+        Args:
+            node: SDCP node to disconnect from.
+
+        Raises:
+            ValueError: If the node is not managed by the network or is not
+                connected through it.
+        """
+        self._validate_sdcp_node(node)
+
+        servo = node.servo
+        if servo is None or servo not in self.servos:
+            raise ValueError("The SDCP node is not connected through this network")
+
+        servo.stop_status_listener()
+        node.disconnect()
+        self._set_servo_state(servo, NetState.DISCONNECTED)
+        self.servos.remove(servo)
+
+        if not self.servos:
+            self.stop_status_listener()
+
+    def _validate_sdcp_node(self, node: SDCPNode) -> None:
+        """Validate that an SDCP node is managed by this network.
+
+        Args:
+            node: SDCP node to validate.
+
+        Raises:
+            ValueError: If the node is not managed by this network.
+        """
+        if self._sdcp_nodes.get(node.target) is not node:
+            raise ValueError("The SDCP node is not managed by this network")
+
+    @property
+    def sdcp_nodes(self) -> list[SDCPNode]:
+        """The list of SDCP nodes managed by the network.
+
+        Returns:
+            Copy of the list of SDCP nodes managed by the network.
+        """
+        return list(self._sdcp_nodes.values())
+
+    @property
+    def interface(self) -> Optional[str]:
+        """Interface used for IPv6 communication."""
+        return self.__interface
 
     def _create_servo(
         self,

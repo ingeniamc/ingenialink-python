@@ -1,5 +1,6 @@
 """Tests for the SDCP node lifecycle."""
 
+import re
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -8,11 +9,13 @@ import pytest
 from ingenialink.enums.node import NodeMode
 from ingenialink.ethernet.tsn.sdcp.node import SDCPNode, SDCPNodeDiscovery
 from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
-from ingenialink.exceptions import ILIOError, ILStateError
+from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILIOError, ILStateError
 
 TARGET = "fe80::1"
 INTERFACE = "test-interface"
 DICTIONARY_PATH = "test_dictionary.xdf"
+RECOVERY_TIMEOUT_S = 2.0
+RECOVERY_POLL_INTERVAL_S = 0.01
 
 PROTOCOL_VERSION = 1
 SERIAL_NUMBER = 0x12345678
@@ -74,6 +77,36 @@ def connected_node(
         application_node.connect(DICTIONARY_PATH)
 
     return application_node, servo_mock
+
+
+@pytest.fixture
+def timeout_mock_factory(mocker):
+    """Create a configurable Timeout mock.
+
+    Returns:
+        Factory that creates the Timeout context and class mocks.
+    """
+
+    def create(has_expired: list[bool]) -> tuple[MagicMock, MagicMock]:
+        timeout_mock = MagicMock()
+        type(timeout_mock).has_expired = mocker.PropertyMock(
+            side_effect=has_expired,
+        )
+        type(timeout_mock).remaining_time_s = mocker.PropertyMock(
+            return_value=RECOVERY_TIMEOUT_S,
+        )
+
+        timeout_context = MagicMock()
+        timeout_context.__enter__.return_value = timeout_mock
+
+        timeout_class_mock = mocker.patch(
+            "ingenialink.ethernet.tsn.sdcp.node.Timeout",
+            return_value=timeout_context,
+        )
+
+        return timeout_context, timeout_class_mock
+
+    return create
 
 
 def test_node_exposes_discovery_information(application_node: SDCPNode) -> None:
@@ -200,7 +233,7 @@ def test_update_rejects_connection_context_change_while_connected(
     connected_node: tuple[SDCPNode, MagicMock],
     updated_discovery: SDCPNodeDiscovery,
 ) -> None:
-    """Reject endpoint or mode changes while a servo is associated."""
+    """Reject target, interface, or mode changes while connected."""
     node, _ = connected_node
 
     with pytest.raises(
@@ -213,7 +246,7 @@ def test_update_rejects_connection_context_change_while_connected(
 def test_connect_creates_and_associates_sdcp_servo(
     application_node: SDCPNode,
 ) -> None:
-    """Create an SDCP servo using the node endpoint and connection options."""
+    """Create an SDCP servo using the node connection information."""
     servo_mock = MagicMock(spec=SDCPServo)
     disconnect_callback = MagicMock()
 
@@ -290,21 +323,46 @@ def test_disconnect_preserves_association_when_servo_disconnect_fails(
     assert node.is_connected
 
 
-def test_load_firmware_uses_tftp_uploader(bootloader_node: SDCPNode) -> None:
-    """Upload firmware using the node IPv6 target and interface."""
+def test_load_firmware_uploads_and_updates_node_after_recovery(
+    bootloader_node: SDCPNode,
+    bootloader_discovery: SDCPNodeDiscovery,
+    timeout_mock_factory,
+) -> None:
+    """Upload firmware, wait for recovery, and refresh the node information."""
     firmware_file = Path("firmware.lfu")
     callback_progress = MagicMock()
     uploader_mock = MagicMock()
     uploader_context = MagicMock()
     uploader_context.__enter__.return_value = uploader_mock
+    timeout_context, timeout_class_mock = timeout_mock_factory(
+        has_expired=[False, False, False],
+    )
+    application_discovery = SDCPNodeDiscovery(
+        target=TARGET,
+        interface=INTERFACE,
+        protocol_version=PROTOCOL_VERSION + 1,
+        serial_number=SERIAL_NUMBER,
+        product_code=PRODUCT_CODE,
+        revision_number=REVISION_NUMBER + 1,
+        mode=NodeMode.APPLICATION,
+    )
 
-    with patch(
-        "ingenialink.ethernet.tsn.sdcp.node.TftpUploader",
-        return_value=uploader_context,
-    ) as uploader_class_mock:
+    with (
+        patch(
+            "ingenialink.ethernet.tsn.sdcp.node.TftpUploader",
+            return_value=uploader_context,
+        ) as uploader_class_mock,
+        patch(
+            "ingenialink.ethernet.tsn.sdcp.node.identify_sdcp_node",
+            side_effect=[bootloader_discovery, application_discovery],
+        ) as identify_mock,
+        patch("ingenialink.ethernet.tsn.sdcp.node.time.sleep") as sleep_mock,
+    ):
         bootloader_node.load_firmware(
             firmware_file,
             callback_progress=callback_progress,
+            recovery_timeout=RECOVERY_TIMEOUT_S,
+            recovery_poll_interval=RECOVERY_POLL_INTERVAL_S,
         )
 
     uploader_class_mock.assert_called_once_with(TARGET, INTERFACE)
@@ -313,6 +371,95 @@ def test_load_firmware_uses_tftp_uploader(bootloader_node: SDCPNode) -> None:
         callback_progress=callback_progress,
     )
     uploader_context.__exit__.assert_called_once()
+    timeout_class_mock.assert_called_once_with(RECOVERY_TIMEOUT_S)
+    timeout_context.__exit__.assert_called_once()
+    assert identify_mock.call_count == 2
+    sleep_mock.assert_called_once_with(RECOVERY_POLL_INTERVAL_S)
+    assert bootloader_node.target == TARGET
+    assert bootloader_node.interface == INTERFACE
+    assert bootloader_node.protocol_version == PROTOCOL_VERSION + 1
+    assert bootloader_node.revision_number == REVISION_NUMBER + 1
+    assert bootloader_node.mode == NodeMode.APPLICATION
+
+
+def test_load_firmware_retries_if_node_cannot_be_identified(
+    bootloader_node: SDCPNode,
+    timeout_mock_factory,
+) -> None:
+    """Retry identification while the node is rebooting."""
+    timeout_context, timeout_class_mock = timeout_mock_factory(
+        has_expired=[False, False, False],
+    )
+    application_discovery = SDCPNodeDiscovery(
+        target=TARGET,
+        interface=INTERFACE,
+        protocol_version=PROTOCOL_VERSION + 1,
+        serial_number=SERIAL_NUMBER,
+        product_code=PRODUCT_CODE,
+        revision_number=REVISION_NUMBER + 1,
+        mode=NodeMode.APPLICATION,
+    )
+
+    with (
+        patch("ingenialink.ethernet.tsn.sdcp.node.TftpUploader"),
+        patch(
+            "ingenialink.ethernet.tsn.sdcp.node.identify_sdcp_node",
+            side_effect=[ILError("Node not available"), application_discovery],
+        ) as identify_mock,
+        patch("ingenialink.ethernet.tsn.sdcp.node.time.sleep") as sleep_mock,
+    ):
+        bootloader_node.load_firmware(
+            "firmware.lfu",
+            recovery_timeout=RECOVERY_TIMEOUT_S,
+            recovery_poll_interval=RECOVERY_POLL_INTERVAL_S,
+        )
+
+    timeout_class_mock.assert_called_once_with(RECOVERY_TIMEOUT_S)
+    timeout_context.__exit__.assert_called_once()
+    assert identify_mock.call_count == 2
+    sleep_mock.assert_called_once_with(RECOVERY_POLL_INTERVAL_S)
+    assert bootloader_node.mode == NodeMode.APPLICATION
+    assert bootloader_node.revision_number == REVISION_NUMBER + 1
+
+
+def test_load_firmware_raises_if_node_does_not_recover(
+    bootloader_node: SDCPNode,
+    bootloader_discovery: SDCPNodeDiscovery,
+    timeout_mock_factory,
+) -> None:
+    """Raise an error if the node does not recover in application mode."""
+    uploader_context = MagicMock()
+    uploader_context.__enter__.return_value = MagicMock()
+    timeout_context, timeout_class_mock = timeout_mock_factory(
+        has_expired=[False, True, True],
+    )
+    error_message = (
+        f"SDCP node {bootloader_node.identity} did not recover within {RECOVERY_TIMEOUT_S} seconds."
+    )
+
+    with (
+        patch(
+            "ingenialink.ethernet.tsn.sdcp.node.TftpUploader",
+            return_value=uploader_context,
+        ),
+        patch(
+            "ingenialink.ethernet.tsn.sdcp.node.identify_sdcp_node",
+            return_value=bootloader_discovery,
+        ) as identify_mock,
+        patch("ingenialink.ethernet.tsn.sdcp.node.time.sleep") as sleep_mock,
+        pytest.raises(ILFirmwareLoadError, match=re.escape(error_message)),
+    ):
+        bootloader_node.load_firmware(
+            "firmware.lfu",
+            recovery_timeout=RECOVERY_TIMEOUT_S,
+            recovery_poll_interval=RECOVERY_POLL_INTERVAL_S,
+        )
+
+    timeout_class_mock.assert_called_once_with(RECOVERY_TIMEOUT_S)
+    timeout_context.__exit__.assert_called_once()
+    identify_mock.assert_called_once()
+    sleep_mock.assert_not_called()
+    assert bootloader_node.mode == NodeMode.BOOTLOADER
 
 
 def test_load_firmware_rejects_application_node(

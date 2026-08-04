@@ -3,6 +3,7 @@
 from ingenialink.enums.node import NodeMode
 from ingenialink.enums.register import ByteOrder
 from ingenialink.ethernet.tsn.sdcp.connection import DEFAULT_SDCP_TIMEOUT_S, SDCPConnection
+from ingenialink.ethernet.tsn.sdcp.discovery import SDCPNodeDiscovery
 from ingenialink.ethernet.tsn.sdcp.messages import (
     SDCPIdentificationRequest,
     SDCPIdentificationResponse,
@@ -11,7 +12,6 @@ from ingenialink.ethernet.tsn.sdcp.messages import (
     SDCPReadResponse,
     SDCPReadResponseError,
 )
-from ingenialink.ethernet.tsn.sdcp.node import SDCPNodeDiscovery
 from ingenialink.exceptions import ILIOError
 
 _IDENTIFICATION_TRANSACTION_ID = 0x0000

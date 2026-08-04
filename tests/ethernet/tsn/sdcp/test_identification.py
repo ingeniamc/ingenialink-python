@@ -14,11 +14,11 @@ from ingenialink.ethernet.tsn.sdcp import (
     SDCPReadResponseError,
     SDCPWriteResponse,
 )
+from ingenialink.ethernet.tsn.sdcp.discovery import SDCPNodeDiscovery
 from ingenialink.ethernet.tsn.sdcp.identification import (
     _decode_node_mode,
     identify_sdcp_node,
 )
-from ingenialink.ethernet.tsn.sdcp.node import SDCPNodeDiscovery
 from ingenialink.exceptions import ILIOError
 
 TARGET = "fe80::1"
