@@ -1,29 +1,22 @@
 """Representation of an SDCP node."""
 
-from dataclasses import dataclass
+import time
 from pathlib import Path
 from typing import Callable, Optional, Union
 
 from ingenialink.enums.node import NodeMode
 from ingenialink.ethernet.tsn.ipv6_tftp import TftpUploader
 from ingenialink.ethernet.tsn.sdcp.connection import DEFAULT_SDCP_TIMEOUT_S
+from ingenialink.ethernet.tsn.sdcp.discovery import SDCPNodeDiscovery
+from ingenialink.ethernet.tsn.sdcp.identification import identify_sdcp_node
 from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
-from ingenialink.exceptions import ILStateError
+from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILStateError
 from ingenialink.node import Node
 from ingenialink.servo import Servo
+from ingenialink.utils.timeout import Timeout
 
-
-@dataclass(frozen=True)
-class SDCPNodeDiscovery:
-    """Information obtained while discovering an SDCP node."""
-
-    target: str
-    interface: str
-    protocol_version: int
-    serial_number: int
-    product_code: int
-    revision_number: int
-    mode: NodeMode
+DEFAULT_FIRMWARE_RECOVERY_TIMEOUT_S = 30.0
+FIRMWARE_RECOVERY_POLL_INTERVAL_S = 1.0
 
 
 class SDCPNode(Node[SDCPNodeDiscovery, SDCPServo]):
@@ -127,10 +120,10 @@ class SDCPNode(Node[SDCPNodeDiscovery, SDCPServo]):
 
         Args:
             dictionary_path: Path to the drive dictionary.
-            connection_timeout: Timeout in seconds for SDCP transactions.
             servo_status_listener: Whether to start the servo status listener.
             disconnect_callback: Callback invoked when the servo is
                 disconnected.
+            connection_timeout: Timeout in seconds for SDCP transactions.
 
         Returns:
             The connected SDCP servo.
@@ -166,20 +159,26 @@ class SDCPNode(Node[SDCPNodeDiscovery, SDCPServo]):
         self,
         firmware_file: Union[str, Path],
         callback_progress: Optional[Callable[[int], None]] = None,
+        recovery_timeout: float = DEFAULT_FIRMWARE_RECOVERY_TIMEOUT_S,
+        recovery_poll_interval: float = FIRMWARE_RECOVERY_POLL_INTERVAL_S,
     ) -> None:
-        """Load firmware into the node through TFTP over IPv6.
+        """Load firmware and refresh the node after it reboots.
 
         Args:
             firmware_file: Path to the LFU firmware file.
             callback_progress: Optional callback receiving the acknowledged
                 upload progress as a percentage.
+            recovery_timeout: Maximum time to wait for the node to return in
+                application mode.
+            recovery_poll_interval: Delay between identification attempts.
 
         Raises:
             ILStateError: If the node is connected or is not in bootloader
                 mode.
+            ValueError: If a recovery argument is not greater than zero.
             FileNotFoundError: If the firmware file does not exist.
-            ILFirmwareLoadError: If the firmware file is invalid or the TFTP
-                transfer fails.
+            ILFirmwareLoadError: If the firmware transfer fails or the node
+                does not recover in application mode within the timeout.
         """
         if self.is_connected:
             raise ILStateError("Cannot load firmware while the SDCP node is connected")
@@ -187,8 +186,59 @@ class SDCPNode(Node[SDCPNodeDiscovery, SDCPServo]):
         if self.mode != NodeMode.BOOTLOADER:
             raise ILStateError("Cannot load firmware to an SDCP node in application mode")
 
+        if recovery_timeout <= 0:
+            raise ValueError("Recovery timeout must be greater than zero")
+        if recovery_poll_interval <= 0:
+            raise ValueError("Recovery poll interval must be greater than zero")
+
         with TftpUploader(self.target, self.interface) as uploader:
             uploader.upload_file(
                 firmware_file,
                 callback_progress=callback_progress,
             )
+
+        self._wait_for_recovery(
+            timeout=recovery_timeout,
+            poll_interval=recovery_poll_interval,
+        )
+
+    def _wait_for_recovery(self, timeout: float, poll_interval: float) -> None:
+        """Wait for the node to reboot in application mode and refresh it.
+
+        Args:
+            timeout: Maximum time to wait for recovery.
+            poll_interval: Delay between identification attempts.
+
+        Raises:
+            ILFirmwareLoadError: If the node does not recover in application
+                mode within the timeout.
+        """
+        with Timeout(timeout) as recovery_timeout:
+            while not recovery_timeout.has_expired:
+                try:
+                    discovery = identify_sdcp_node(
+                        target=self.target,
+                        interface=self.interface,
+                        timeout=min(
+                            DEFAULT_SDCP_TIMEOUT_S,
+                            recovery_timeout.remaining_time_s,
+                        ),
+                    )
+                except ILError:
+                    discovery = None
+
+                if discovery is not None and discovery.mode == NodeMode.APPLICATION:
+                    self.update(discovery)
+                    return
+
+                if not recovery_timeout.has_expired:
+                    time.sleep(
+                        min(
+                            poll_interval,
+                            recovery_timeout.remaining_time_s,
+                        )
+                    )
+
+        raise ILFirmwareLoadError(
+            f"SDCP node {self.identity} did not recover within {timeout} seconds."
+        )
