@@ -104,6 +104,14 @@ optional = true
 [tool.poetry.group.type.dependencies]
 mypy = "==1.19.1"
 
+# Dependencies for live plotting examples
+[tool.poetry.group.plot]
+optional = true
+[tool.poetry.group.plot.dependencies]
+pyqtgraph = ">=0.13,<1.0"
+PyQt5 = "==5.15.11"
+PyQt5-Qt5 = "==5.15.2"
+
 # Dependencies for docs task
 [tool.poetry.group.docs]
 optional = true
