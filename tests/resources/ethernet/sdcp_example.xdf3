@@ -14,9 +14,6 @@
     </Categories>
     <Devices>
       <ETH-SDCP firmwareVersion="2.11.0" ProductCode="57745409" PartNumber="EVS-NET" RevisionNumber="196635">
-        <Subnodes>
-          <Subnode index="0">Communication</Subnode>
-        </Subnodes>
         <CANopenObjects>
           <CANopenObject id="PRODUCT_CODE" index="0x1000" datatype="VAR">
             <Labels>

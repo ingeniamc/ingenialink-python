@@ -155,7 +155,7 @@ class EoEDictionaryV3(EoEDictionary, DictionaryV3):
 
 
 class SDCPDictionaryV3(CanopenDictionary, DictionaryV3):
-    """Contains all registers and information of a SDCP dictionary.
+    """Contains all registers and information of an SDCP dictionary.
 
     Args:
         dictionary_path: Path to the Ingenia dictionary.
