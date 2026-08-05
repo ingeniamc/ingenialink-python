@@ -9,12 +9,33 @@ from ingenialink.virtual.base_network import VirtualNetworkBase
 from ingenialink.virtual.ethernet.servo import VirtualEthernetServo
 
 
-class VirtualEthernetNetwork(EthernetNetworkBase):
+class VirtualEthernetNetwork(EthernetNetworkBase[VirtualEthernetServo]):
     """Network for all virtual Ethernet drive communications."""
 
     def __init__(self) -> None:
         super().__init__()
         self._virtual_base = VirtualNetworkBase()
+
+    def _create_servo(
+        self,
+        *,
+        target: str,
+        dictionary: str,
+        port: int,
+        connection_timeout: float,
+        servo_status_listener: bool,
+        is_eoe: bool,
+        disconnect_callback: Optional[Callable[[Servo], None]],
+    ) -> VirtualEthernetServo:
+        return VirtualEthernetServo(
+            target,
+            dictionary,
+            port,
+            connection_timeout,
+            servo_status_listener,
+            is_eoe,
+            disconnect_callback=disconnect_callback,
+        )
 
     def connect_to_slave(  # type: ignore [override]
         self,
@@ -38,11 +59,11 @@ class VirtualEthernetNetwork(EthernetNetworkBase):
             disconnect_callback: Callback function to be called when the servo is disconnected.
                 If not specified, no callback will be called.
 
-        Raises:
-            ILError: if the drive is not found in IP.
-
         Returns:
             VirtualEthernetServo: Instance of the servo connected.
+
+        Raises:
+            ILError: if the drive is not found in IP.
         """
         servo = VirtualEthernetServo(
             self._virtual_base.virtual_drive_ip_address,

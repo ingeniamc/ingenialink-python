@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from ingenialink.enums.register import RegDtype
+from ingenialink.enums.register import ByteOrder, RegDtype
 from ingenialink.exceptions import ILValueError
 from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, weak_lru
 from ingenialink.utils.event import create_event
@@ -29,6 +29,26 @@ def test_bytes_dtype_conversions(byts, value, dtype):
     assert convert_bytes_to_dtype(byts, dtype) == value
 
     assert convert_dtype_to_bytes(value, dtype) == byts
+
+
+def test_float_conversion_uses_big_endian_byte_order():
+    data = b"\x42\x0a\x00\x00"
+    value = 34.5
+
+    assert convert_bytes_to_dtype(
+        data,
+        RegDtype.FLOAT,
+        ByteOrder.BIG,
+    ) == pytest.approx(value)
+
+    assert (
+        convert_dtype_to_bytes(
+            value,
+            RegDtype.FLOAT,
+            ByteOrder.BIG,
+        )
+        == data
+    )
 
 
 def test_null_terminated_string():

@@ -1,5 +1,6 @@
 import contextlib
 import ftplib
+import ipaddress
 import socket
 import time
 from ftplib import error_temp
@@ -26,9 +27,16 @@ from ingenialink.ethernet.network import (
     NetState,
 )
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
+from tests.net_status_helpers import NetStatusRecorder
 
 if TYPE_CHECKING:
+    from summit_testing_framework.environment import Environment
+
     from ingenialink.ethernet.servo import EthernetServo
+
+
+INTERFACE = "test-interface"
+IPV4_SUBNET = "192.168.2.0/24"
 
 
 class FTPServer(Thread):
@@ -418,3 +426,105 @@ def test_recover_from_disconnection(net: "EthernetNetwork", servo: "EthernetServ
     # Simulate servo reconnection by mocking is_alive to return True again
     mocker.patch.object(servo, "is_alive", return_value=True)
     assert net.recover_from_disconnection(servo) is True
+
+
+@pytest.mark.ethernet
+def test_net_status_listener_detects_power_cycle(
+    net: "EthernetNetwork", servo: "EthernetServo", environment: "Environment"
+) -> None:
+    """Test that NetStatusListener detects disconnection and reconnection on a real power cycle.
+
+    The detection latencies are logged at INFO to profile the library's real reconnection
+    timing (ping-based ``is_alive`` detection, see ``EthernetNetwork.NetStatusListener``).
+    """
+    with NetStatusRecorder(net, servo, "ethernet") as recorder:
+        environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
+
+        assert recorder.wait_removed(timeout=30.0), (
+            "NetStatusListener did not detect the drive disconnection within 30 s"
+        )
+        assert net.get_servo_state(servo.ip_address) == NetState.DISCONNECTED
+
+        assert recorder.wait_added(timeout=60.0), (
+            "NetStatusListener did not detect the drive reconnection within 60 s"
+        )
+        assert net.get_servo_state(servo.ip_address) == NetState.CONNECTED
+
+
+def test_get_ipv4_subnet_uses_configured_subnet(mocker) -> None:
+    """Use the configured subnet instead of resolving the interface."""
+    resolver_mock = mocker.patch(
+        "ingenialink.ethernet.network.get_interface_ipv4_subnet",
+    )
+    net = EthernetNetwork(
+        subnet=IPV4_SUBNET,
+        interface=INTERFACE,
+    )
+
+    subnet = net._get_ipv4_subnet()
+
+    assert subnet == ipaddress.IPv4Network(IPV4_SUBNET)
+    resolver_mock.assert_not_called()
+
+
+def test_get_ipv4_subnet_uses_interface(mocker) -> None:
+    """Derive the subnet from the interface when no subnet is configured."""
+    expected_subnet = ipaddress.IPv4Network(IPV4_SUBNET)
+    resolver_mock = mocker.patch(
+        "ingenialink.ethernet.network.get_interface_ipv4_subnet",
+        return_value=expected_subnet,
+    )
+    net = EthernetNetwork(interface=INTERFACE)
+
+    subnet = net._get_ipv4_subnet()
+
+    assert subnet == expected_subnet
+    resolver_mock.assert_called_once_with(INTERFACE)
+
+
+def test_get_ipv4_subnet_rejects_ipv6_subnet() -> None:
+    """Reject an IPv6 subnet for IPv4 scanning."""
+    net = EthernetNetwork(subnet="2001:db8::/64")
+
+    with pytest.raises(
+        ValueError,
+        match="An IPv4 subnet is required for IPv4 scanning",
+    ):
+        net._get_ipv4_subnet()
+
+
+def test_get_ipv4_subnet_propagates_interface_error(mocker) -> None:
+    """Propagate errors raised while resolving the interface."""
+    mocker.patch(
+        "ingenialink.ethernet.network.get_interface_ipv4_subnet",
+        side_effect=OSError("Interface not found"),
+    )
+    net = EthernetNetwork(interface=INTERFACE)
+
+    with pytest.raises(OSError, match="Interface not found"):
+        net._get_ipv4_subnet()
+
+
+def test_scan_slaves_uses_interface_subnet(mocker) -> None:
+    """Scan the subnet derived from the configured interface."""
+    subnet = ipaddress.IPv4Network("192.168.2.0/30")
+    resolver_mock = mocker.patch(
+        "ingenialink.ethernet.network.get_interface_ipv4_subnet",
+        return_value=subnet,
+    )
+    ping_mock = mocker.patch(
+        "ingenialink.ethernet.network.multi_ping",
+        return_value=({"192.168.2.2": 0.01}, []),
+    )
+    net = EthernetNetwork(interface=INTERFACE)
+
+    detected_slaves = net._scan_slaves()
+
+    assert detected_slaves == ["192.168.2.2"]
+    resolver_mock.assert_called_once_with(INTERFACE)
+    assert ping_mock.call_count == 2
+    ping_mock.assert_called_with(
+        [str(ip) for ip in subnet],
+        timeout=1,
+        ignore_lookup_errors=True,
+    )

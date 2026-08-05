@@ -29,9 +29,11 @@ dependencies = [
     "ingenialogger>=0.2.1",
     "ping3==5.1.5",
     "pysoem>=1.1.13, <1.2.0",
-    "bitarray==3.8.0",
+    "bitarray==3.9.0",
     "multiping==1.1.2",
     "numpy>=1.26.0",
+    "cypcap>=0.6.2,<0.7.0 ; sys_platform == 'win32'",
+    "ifaddr==0.2.0",
 ]
 
 [project.urls]
@@ -82,6 +84,7 @@ optional = true
 [tool.poetry.group.dev.dependencies]
 poethepoet = {extras = ["poetry-plugin"], version = "^0.35.0"}
 Cython  = "==3.2.4"
+setuptools = "==75.6.0"
 
 # Dependencies for build wheel tasks
 [tool.poetry.group.build]
@@ -93,7 +96,7 @@ twine = "==6.2.0"
 [tool.poetry.group.format]
 optional = true
 [tool.poetry.group.format.dependencies]
-ruff = "==0.15.2"
+ruff = "==0.16.0"
 
 # Dependencies for type task
 [tool.poetry.group.type]
@@ -123,8 +126,8 @@ pytest-mock = "==3.15.1"
 pytest-repeat = "==0.9.4"
 pytest-console-scripts = "==1.4.1"
 twisted = "==25.5.0"
-summit-testing-framework = {version = "0.3.0.post409+develop.c85ffbb"}
-virtual_drive = {version = "0.1.1.post124+mot3.5494.cogging.compensation.6c8d9cd"}
+summit-testing-framework = {version = "0.3.0.post485+develop.eeac7c1"}
+virtual_drive = {version = "0.1.1.post162+develop.5f8b4fd"}
 xmlschema = ">=3.0.0"
 
 # -----------------------------------------------------------------------

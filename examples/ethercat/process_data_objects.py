@@ -58,11 +58,11 @@ class ProcessDataExample:
         Args:
             servo: Servo to create the PDO maps for.
 
-        Raises:
-            TypeError: If the register or item types are not as expected.
-
         Returns:
             Tuple with the RPDOMap and TPDOMap created.
+
+        Raises:
+            TypeError: If the register or item types are not as expected.
         """
         rpdo_map = RPDOMap()
         tpdo_map = TPDOMap()

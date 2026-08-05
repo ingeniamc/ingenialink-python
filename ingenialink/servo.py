@@ -37,7 +37,8 @@ from ingenialink.dictionary import (
     SubnodeType,
 )
 from ingenialink.emcy import EmergencyMessage
-from ingenialink.enums.register import RegAccess, RegAddressType, RegDtype
+from ingenialink.enums.network import NetDevEvt, NetState
+from ingenialink.enums.register import ByteOrder, RegAccess, RegAddressType, RegDtype
 from ingenialink.enums.servo import ServoState
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2, EthercatDictionaryV3
 from ingenialink.ethercat.register import EthercatRegister
@@ -387,6 +388,8 @@ class Servo:
 
     """
 
+    _REGISTER_BYTE_ORDER: ByteOrder = ByteOrder.LITTLE
+
     MAX_WRITE_SIZE = 1
 
     STATUS_WORD_REGISTERS = "DRV_STATE_STATUS"
@@ -489,6 +492,10 @@ class Servo:
         ] = []
         # Event and publisher for disconnection events, emitted after the servo is disconnected
         self.disconnect_event, self._disconnect_event_publisher = create_event(Servo)  # type: ignore[type-abstract]
+        self._net_state: Optional[NetState] = None
+        """Network-connection state, owned and mutated only by the servo's Network."""
+        self._net_state_observers, self._net_state_publisher = create_event(NetDevEvt)
+        """Subscribers to this servo's network-connection state changes, owned by Network."""
         if servo_status_listener:
             self.start_status_listener()
         else:
@@ -569,6 +576,7 @@ class Servo:
                             xcf_instance, config_reg, target_reg
                         ),
                         target_reg.dtype,
+                        self._REGISTER_BYTE_ORDER,
                     )
                 )
                 compare_drive: Union[int, float, str, bytes, bool, np.float32] = stored_data
@@ -637,7 +645,9 @@ class Servo:
         if config_register.data is not None:
             return config_register.data
         else:
-            return convert_dtype_to_bytes(config_register.storage, target_register.dtype)
+            return convert_dtype_to_bytes(
+                config_register.storage, target_register.dtype, self._REGISTER_BYTE_ORDER
+            )
 
     def load_configuration(
         self,
@@ -1420,11 +1430,11 @@ class Servo:
             register_coco: COCO Register ID to be read.
             register_moco: MOCO Register ID to be read.
 
-        Raises:
-            ILError: if there is an error reading the register.
-
         Returns:
             Read value of the register.
+
+        Raises:
+            ILError: if there is an error reading the register.
         """
         try:
             return str(self.read(register_coco, subnode=0))
@@ -1491,7 +1501,9 @@ class Servo:
             for channel in range(number_of_channels):
                 channel_data_size = self.__monitoring_size[channel]
                 val = convert_bytes_to_dtype(
-                    block_data[:channel_data_size], self.__monitoring_dtype[channel]
+                    block_data[:channel_data_size],
+                    self.__monitoring_dtype[channel],
+                    self._REGISTER_BYTE_ORDER,
                 )
                 if not isinstance(val, (int, float)):
                     continue
@@ -1550,7 +1562,9 @@ class Servo:
         data = b""
         for sample_idx in range(num_samples):
             for channel in range(len(data_arr_aux)):
-                val = convert_dtype_to_bytes(data_arr_aux[channel][sample_idx], dtypes[channel])
+                val = convert_dtype_to_bytes(
+                    data_arr_aux[channel][sample_idx], dtypes[channel], self._REGISTER_BYTE_ORDER
+                )
                 data += val
         chunks = [data[i : i + max_size] for i in range(0, len(data), max_size)]
         return data, chunks
@@ -1575,7 +1589,11 @@ class Servo:
 
         if _reg.access == RegAccess.RO:
             raise ILAccessError("Register is Read-only")
-        data_bytes = data if isinstance(data, bytes) else convert_dtype_to_bytes(data, _reg.dtype)
+        data_bytes = (
+            data
+            if isinstance(data, bytes)
+            else convert_dtype_to_bytes(data, _reg.dtype, self._REGISTER_BYTE_ORDER)
+        )
         self._write_raw(_reg, data_bytes)
         self._notify_register_update(_reg, data)
 
@@ -1603,7 +1621,7 @@ class Servo:
 
         raw_read = self._read_raw(_reg)
 
-        value = convert_bytes_to_dtype(raw_read, _reg.dtype)
+        value = convert_bytes_to_dtype(raw_read, _reg.dtype, self._REGISTER_BYTE_ORDER)
         self._notify_register_update(_reg, value)
         return value
 
@@ -1647,12 +1665,12 @@ class Servo:
             subnode: Target subnode of the drive.
             buffer_size: Size of the buffer to read.
 
+        Returns:
+            Data read from the register.
+
         Raises:
             ValueError: if buffer size is not specified or cannot be detected for EthercatRegister.
             TypeError: if the register is not a CanopenRegister or EthercatRegister.
-
-        Returns:
-            Data read from the register.
         """
         if not isinstance(reg, CanOpenObject):
             _reg = self._get_reg(reg, subnode)
@@ -1692,14 +1710,14 @@ class Servo:
             bitfields: Optional bitfield specification.
                 If not it will be used from the register definition (if Any).
 
-        Raises:
-            ValueError: if the register does not have bitfields.
-            TypeError: if the register is not of integer type.
-
         Returns:
             Dictionary with values of the bitfields.
             Key is the name of the bitfield.
             Value is the value parsed.
+
+        Raises:
+            ValueError: if the register does not have bitfields.
+            TypeError: if the register is not of integer type.
         """
         _reg = self._get_reg(reg, subnode)
 
@@ -1899,12 +1917,12 @@ class Servo:
     def _monitoring_read_data(self) -> bytes:
         """Read monitoring data frame.
 
+        Returns:
+            The monitoring data read.
+
         Raises:
             NotImplementedError: If monitoring is not supported by the device.
             ValueError: if the data read is not of type bytes.
-
-        Returns:
-            monitoring data read.
         """
         if not self._is_monitoring_implemented():
             raise NotImplementedError("Monitoring is not supported by this device.")
@@ -1989,7 +2007,7 @@ class Servo:
 
     @property
     def dictionary(self) -> Dictionary:
-        """Returns dictionary object."""
+        """Dictionary object."""
         return self._dictionary
 
     @dictionary.setter
@@ -2088,28 +2106,18 @@ class Servo:
 
     @property
     def monitoring_number_mapped_registers(self) -> int:
-        """Get the number of mapped monitoring registers."""
+        """The number of mapped monitoring registers."""
         return int(self.read(self.MONITORING_NUMBER_MAPPED_REGISTERS, subnode=0))
 
     @property
     def monitoring_data_size(self) -> int:
-        """Obtain monitoring data size.
-
-        Returns:
-            Current monitoring data size in bytes.
-
-        """
+        """The monitoring data size in bytes."""
         number_of_samples = int(self.read("MON_CFG_WINDOW_SAMP", subnode=0))
         return self.monitoring_get_bytes_per_block() * number_of_samples
 
     @property
     def disturbance_data(self) -> bytes:
-        """Obtain disturbance data.
-
-        Returns:
-            Current disturbance data.
-
-        """
+        """The disturbance data."""
         return self.__disturbance_data
 
     @disturbance_data.setter
@@ -2124,15 +2132,10 @@ class Servo:
 
     @property
     def disturbance_data_size(self) -> int:
-        """Obtain disturbance data size.
-
-        Returns:
-            Current disturbance data size.
-
-        """
+        """The disturbance data size."""
         return len(self.__disturbance_data)
 
     @property
     def disturbance_number_mapped_registers(self) -> int:
-        """Get the number of mapped disturbance registers."""
+        """The number of mapped disturbance registers."""
         return int(self.read(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS, subnode=0))

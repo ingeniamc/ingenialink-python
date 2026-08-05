@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from collections import OrderedDict
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Callable, ClassVar, Literal, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Callable, Final, Literal, Optional, TypeVar, Union
 
 import bitarray
 from typing_extensions import override
@@ -55,7 +55,7 @@ class PDOMapItem:
     __SUBINDEX_BITFIELD = "SUBINDEX"
     __INDEX_BITFIELD = "INDEX"
 
-    __ITEM_BITFIELDS: ClassVar[dict[str, BitField]] = {
+    __ITEM_BITFIELDS: Final[dict[str, BitField]] = {
         __LENGTH_BITFIELD: BitField(0, 7),
         __SUBINDEX_BITFIELD: BitField(8, 15),
         __INDEX_BITFIELD: BitField(16, 31),
@@ -158,12 +158,12 @@ class PDOMapItem:
     def value(self) -> Union[int, float, bool, bytes]:
         """Register value. Converts the raw data bytes into the register value.
 
+        Returns:
+            Register value.
+
         Raises:
             ILError: If the raw data is empty.
             ILError: If the register type is not int or float.
-
-        Returns:
-            Register value.
         """
         value: Union[bool, int, float, str, bytes]
         if self.register.identifier == PADDING_REGISTER_IDENTIFIER:
@@ -577,12 +577,12 @@ class PDOMap:
         or express what the mapping on the slave should be.
         Use PDOMap.write_to_slave method instead
 
+        Returns:
+            dictionary with mapping register as keys and mapping value or None as values.
+
         Raises:
             ValueError: If the map_object is None.
                 The map_object must be set before calling this method.
-
-        Returns:
-            dictionary with mapping register as keys and mapping value or None as values.
         """
         if self.map_object is None:
             raise ValueError("The map_object must be set.")
@@ -624,11 +624,7 @@ class PDOMap:
 
     @property
     def items_mapping(self) -> bytearray:
-        """Returns all register item mappings concatenated.
-
-        Returns:
-            int: _description_
-        """
+        """Concatenated register item mappings."""
         map_bytes = bytearray()
         for pdo_map_item in self.items:
             map_bytes += pdo_map_item.register_mapping.to_bytes(MAP_REGISTER_BYTES, BIT_ENDIAN)
@@ -715,12 +711,12 @@ class PDOMap:
     def is_editable(self) -> bool:
         """Check if the PDOMap is editable.
 
+        Returns:
+            bool: True if the PDOMap is editable, False otherwise.
+
         Raises:
             ValueError: If the map_object is None.
                 The map_object must be set to check if the map is editable.
-
-        Returns:
-            bool: True if the PDOMap is editable, False otherwise.
         """
         if self.map_object is None:
             raise ValueError("The map_object must be set to check if the map is editable")
@@ -799,12 +795,12 @@ class PDOMap:
     def get_item_bits(self) -> bitarray.bitarray:
         """Return the concatenated items raw data (in bits).
 
+        Returns:
+            Concatenated items raw data in bits.
+
         Raises:
             ILError: Raw data is empty.
             ILError: If the length of the bit array is incorrect.
-
-        Returns:
-            Concatenated items raw data in bits.
         """
         data_bits = bitarray.bitarray(endian=BIT_ENDIAN)
         try:

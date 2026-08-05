@@ -1,5 +1,5 @@
 // https://novantamotion.atlassian.net/browse/CIT-707
-@Library('cicd-lib@8814927') _
+@Library('cicd-lib@646e931') _
 
 import python.VirtualEnvironment
 import python.VEnvManager
@@ -115,6 +115,9 @@ def pipelineParams = PyTestParams.pytestParams(this, currentBuild, [
     clearSuccessfulWiresharkLogsConfig: [
         default: true,
     ],
+    checkStateScopeConfig: [
+        default: 'session',
+    ],
 ])
 
 properties([
@@ -164,28 +167,26 @@ pipeline {
                     TEST_SESSIONS.setAttributeInCascade(
                         runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames(pythonVersions),
                         jobName: "${env.JOB_NAME}-#${env.BUILD_NUMBER}",
-                        wiresharkScope: params.WIRESHARK_LOGGING_SCOPE,
-                        clearSuccessfulWiresharkLogs: params.CLEAR_SUCCESSFUL_WIRESHARK_LOGS,
+                        wiresharkScope: PyTestParams.readValue(params, 'wiresharkLoggingScope'),
+                        clearSuccessfulWiresharkLogs: PyTestParams.readValue(params, 'clearSuccessfulWiresharkLogs', env, currentBuild),
+                        checkStateScope: PyTestParams.readValue(params, 'checkStateScope'),
                         archiveData: "*",
                         testSelectionRepeatCount: PyTestParams.readValue(params, 'pytestRepeatCounts'),
                         logLevel: PyTestParams.readValue(params, 'pytestLoggingLevel')
                     )
 
                     // Configure if ECAT and ETH sessions use Wireshark logging based on parameter
-                    ECAT_TESTS.baseTestSession.setAttributeInCascade(
-                        useWiresharkLogging: PyTestParams.readValue(params, 'wiresharkLogging'),
-                    )
-                    ETH_TESTS.baseTestSession.setAttributeInCascade(
-                        useWiresharkLogging: PyTestParams.readValue(params, 'wiresharkLogging'),
-                    )
+                    def wiresharkLogging = PyTestParams.readValue(params, 'wiresharkLogging', env, currentBuild)
+                    ECAT_TESTS.baseTestSession.setAttributeInCascade(useWiresharkLogging: wiresharkLogging)
+                    ETH_TESTS.baseTestSession.setAttributeInCascade(useWiresharkLogging: wiresharkLogging)
 
                     testManager.testSessionFilter = PyTestParams.readValue(params, 'testSessionFilter')
                     testManager.testSessionSelection = PyTestParams.readValue(params, 'pytestSelection')
 
                     // Parse run policy tags from boolean parameters
                     def runPolicyTags = [] as Set
-                    if (PyTestParams.readValue(params, 'runPolicyNightly')) { runPolicyTags.add("nightly") }
-                    if (PyTestParams.readValue(params, 'runPolicyWeekend')) { runPolicyTags.add("weekends") }
+                    if (PyTestParams.readValue(params, 'runPolicyNightly', env, currentBuild)) { runPolicyTags.add("nightly") }
+                    if (PyTestParams.readValue(params, 'runPolicyWeekend', env, currentBuild)) { runPolicyTags.add("weekends") }
                     testManager.runPolicyTags = runPolicyTags
 
                     echo("Test sessions have been configured to run with the following base configuration:\n${TEST_SESSIONS.configSummary()}")
@@ -265,24 +266,6 @@ pipeline {
                                         }
                                     }
                                 }
-                                stage('Make a static type analysis') {
-                                    steps {
-                                        script {
-                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                                                venv.run("poetry run poe type")
-                                            }
-                                        }
-                                    }
-                                }
-                                stage('Check formatting') {
-                                    steps {
-                                        script {
-                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                                                venv.run("poetry run poe format")
-                                            }
-                                        }
-                                    }
-                                }
                                 stage('Archive artifacts') {
                                     steps {
                                         archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
@@ -290,25 +273,6 @@ pipeline {
                                             stash_name = "publish_wheels-windows"
                                             wheel_stashes.add(stash_name)
                                             stash includes: "dist\\*", name: stash_name
-                                        }
-                                    }
-                                }
-                                stage('Generate documentation') {
-                                    steps {
-                                        script {
-                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                                                venv.run("poetry run poe install-wheel")
-                                                venv.run("poetry run poe docs")
-                                            }
-                                        }
-                                    }
-                                    post {
-                                        success {
-                                            script {
-                                                venvManager.runInWorkingFolder('"C:\\Program Files\\7-Zip\\7z.exe" a -r docs.zip -w _docs -mem=AES256')
-                                                venvManager.copyFromWorkingFolder("docs.zip")
-                                            }
-                                            stash includes: 'docs.zip', name: 'docs'
                                         }
                                     }
                                 }
@@ -396,6 +360,41 @@ pipeline {
                                         }
                                     }
                                 }
+                                stage('Make a static type analysis') {
+                                    steps {
+                                        script {
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                venv.run("poetry run poe type")
+                                            }
+                                        }
+                                    }
+                                }
+                                stage('Check formatting') {
+                                    steps {
+                                        script {
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                venv.run("poetry run poe format")
+                                            }
+                                        }
+                                    }
+                                }
+                                stage('Generate documentation') {
+                                    steps {
+                                        script {
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                venv.run("poetry run poe install-wheel")
+                                                venv.run("poetry run poe docs")
+                                            }
+                                            venvManager.copyFromWorkingFolder("_docs/")
+                                        }
+                                    }
+                                    post {
+                                        success {
+                                            archiveArtifacts artifacts: '_docs/**'
+                                            stash includes: '_docs/**', name: 'docs'
+                                        }
+                                    }
+                                }
                                 stage('Prepare test sessions') {
                                     steps {
                                         script {
@@ -460,7 +459,6 @@ pipeline {
                     }
                     steps {
                         unstash 'docs'
-                        unzip zipFile: 'docs.zip', dir: '.'
                         publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
                     }
                 }

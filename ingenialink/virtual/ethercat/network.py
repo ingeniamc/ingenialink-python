@@ -45,15 +45,13 @@ class VirtualNetStatusListener(Thread):
                     servo_state = self.__network.get_servo_state(slave_id)
                     is_servo_alive = servo.is_alive()
                     if servo_state == NetState.CONNECTED and not is_servo_alive:
-                        self.__network._notify_status(slave_id, NetDevEvt.REMOVED)
-                        self.__network._set_servo_state(slave_id, NetState.DISCONNECTED)
+                        self.__network._transition_servo_state(slave_id, NetDevEvt.REMOVED)
                     if (
                         servo_state == NetState.DISCONNECTED
                         and is_servo_alive
                         and self.__network.recover_from_disconnection(servo)
                     ):
-                        self.__network._notify_status(slave_id, NetDevEvt.ADDED)
-                        self.__network._set_servo_state(slave_id, NetState.CONNECTED)
+                        self.__network._transition_servo_state(slave_id, NetDevEvt.ADDED)
             except Exception as e:
                 logger.exception(f"Exception during virtual EtherCAT status check: {e}")
             time.sleep(self.__refresh_time)
@@ -63,7 +61,7 @@ class VirtualNetStatusListener(Thread):
         self.__stop = True
 
 
-class VirtualEthercatNetwork(EthercatNetworkBase):
+class VirtualEthercatNetwork(EthercatNetworkBase[VirtualEthercatServo]):
     """Network for all virtual EtherCAT drive communications."""
 
     def __init__(self) -> None:
@@ -115,11 +113,11 @@ class VirtualEthercatNetwork(EthercatNetworkBase):
             disconnect_callback: Callback function to be called when the servo is disconnected.
                 If not specified, no callback will be called.
 
-        Raises:
-            ILError: If the drive is not reachable through the configured connection.
-
         Returns:
             VirtualEthercatServo: Instance of the servo connected.
+
+        Raises:
+            ILError: If the drive is not reachable through the configured connection.
         """
         sock = self._virtual_base.create_connection(connection_timeout, port)
         servo = VirtualEthercatServo(
@@ -158,11 +156,11 @@ class VirtualEthercatNetwork(EthercatNetworkBase):
         """
         if not isinstance(servo, VirtualEthercatServo):
             raise ValueError("Virtual EtherCAT Servo instance must be provided.")
-        self.servos.remove(servo)
         servo.stop_status_listener()
         servo.socket.shutdown(socket.SHUT_RDWR)
         servo.socket.close()
         self._set_servo_state(servo.slave_id, NetState.DISCONNECTED)
+        self.servos.remove(servo)
         if len(self.servos) == 0:
             self.stop_status_listener()
         servo._disconnect_event_publisher.notify(servo)

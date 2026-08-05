@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 ### Changed
+- Fix race condition where network state is notified before being updated
 
 ## [7.6.1] - 2026-04-29
 ### Added
