@@ -75,6 +75,131 @@ def test_telemetry_firmware_timestamps_are_incremental(servo) -> None:
         telemetry.stop()
 
 
+RECORDING_DURATION_S = 10.0
+
+
+def _record_generator_capture(
+    servo,
+    test_output_handler,
+    mode_name: str,
+    mode_value: int,
+    generator_frequency_hz: float,
+    telemetry_frequency_hz: float,
+) -> "pq.Table":
+    """Configure the internal generator, record it to Parquet, and return the captured table.
+
+    Restores the generator to Constant mode afterwards regardless of outcome.
+
+    Returns:
+        The recorded table, with the generator, bus voltage, and phase current columns.
+    """
+    servo.write("FBK_GEN_MODE", mode_value, subnode=1)
+    servo.write("FBK_GEN_FREQ", generator_frequency_hz, subnode=1)
+    servo.write("FBK_GEN_GAIN", 1.0, subnode=1)
+    servo.write("FBK_GEN_OFFSET", 0.0, subnode=1)
+    # Far more cycles than fit in the capture window, so the waveform is still running when
+    # recording stops regardless of what a cycle count of 0 would mean.
+    servo.write(
+        "FBK_GEN_CYCLES",
+        round(generator_frequency_hz * RECORDING_DURATION_S * 10),
+        subnode=1,
+    )
+    servo.write("FBK_GEN_REARM", 1, subnode=1)
+
+    registers = [
+        servo.dictionary.get_register("FBK_GEN_VALUE", axis=1),
+        servo.dictionary.get_register("DRV_PROT_VBUS_VALUE", axis=1),
+        servo.dictionary.get_register("FBK_CUR_A_VALUE", axis=1),
+    ]
+    output_dir = test_output_handler.tests_output_dir / "ethercat_telemetry"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    filename = (
+        f"{mode_name}_gen{generator_frequency_hz:g}hz_tel{telemetry_frequency_hz:g}hz.parquet"
+    )
+    path = output_dir / filename
+
+    try:
+        with TelemetryRecorder(
+            servo, registers, path, frequency=telemetry_frequency_hz
+        ) as recorder:
+            assert recorder.is_recording
+            time.sleep(RECORDING_DURATION_S)
+    finally:
+        servo.write("FBK_GEN_MODE", 0, subnode=1)
+
+    table = pq.read_table(path)
+    assert table.num_rows > 0
+    assert table.column_names == [
+        "timestamp",
+        "host_time",
+        "FBK_GEN_VALUE",
+        "DRV_PROT_VBUS_VALUE",
+        "FBK_CUR_A_VALUE",
+    ]
+    timestamps = table.column("timestamp").to_pylist()
+    assert timestamps == sorted(timestamps)
+    return table
+
+
+@pytest.mark.ethercat
+@pytest.mark.parametrize("telemetry_frequency_hz", [1_000.0, 5_000.0, 20_000.0])
+@pytest.mark.parametrize("generator_frequency_hz", [1.0, 5.0, 20.0])
+def test_telemetry_recorder_captures_internal_generator_saw_tooth_signal(
+    servo, test_output_handler, generator_frequency_hz: float, telemetry_frequency_hz: float
+) -> None:
+    """Verify TelemetryRecorder captures a saw-tooth waveform from the internal generator.
+
+    The internal generator injects a synthetic waveform into the feedback path, so this
+    exercises a real changing signal without commanding any motor motion. It is recorded
+    alongside two other frequently-changing drive signals to demonstrate a multi-channel
+    capture. Each generator/telemetry frequency pair is left as its own Parquet file under
+    the test output directory for inspection and comparison.
+    """
+    table = _record_generator_capture(
+        servo,
+        test_output_handler,
+        "saw_tooth",
+        1,
+        generator_frequency_hz,
+        telemetry_frequency_hz,
+    )
+
+    generator_samples = table.column("FBK_GEN_VALUE").to_pylist()
+    deltas = [
+        current - previous for previous, current in zip(generator_samples, generator_samples[1:])
+    ]
+    assert any(delta > 0 for delta in deltas), "Saw-tooth capture should show a rising ramp"
+    assert any(delta < 0 for delta in deltas), "Saw-tooth capture should show a reset"
+
+
+@pytest.mark.ethercat
+@pytest.mark.parametrize("telemetry_frequency_hz", [1_000.0, 5_000.0, 20_000.0])
+@pytest.mark.parametrize("generator_frequency_hz", [1.0, 5.0, 20.0])
+def test_telemetry_recorder_captures_internal_generator_square_signal(
+    servo, test_output_handler, generator_frequency_hz: float, telemetry_frequency_hz: float
+) -> None:
+    """Verify TelemetryRecorder captures a square waveform from the internal generator.
+
+    Same setup as the saw-tooth capture, but with the generator in Square mode, to show a
+    different signal shape landing in the same Parquet schema.
+    """
+    table = _record_generator_capture(
+        servo,
+        test_output_handler,
+        "square",
+        2,
+        generator_frequency_hz,
+        telemetry_frequency_hz,
+    )
+
+    generator_samples = table.column("FBK_GEN_VALUE").to_pylist()
+    deltas = [
+        current - previous for previous, current in zip(generator_samples, generator_samples[1:])
+    ]
+    assert any(delta > 0 for delta in deltas), "Square capture should show a rising edge"
+    assert any(delta < 0 for delta in deltas), "Square capture should show a falling edge"
+
+
 def test_telemetry_reads_count_prefixed_frames(mocker) -> None:
     """Verify that the telemetry response declares its complete frame count."""
     servo = mocker.MagicMock(spec=EthercatServo)
