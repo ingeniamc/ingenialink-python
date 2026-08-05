@@ -10,7 +10,7 @@ It packages:
 Resolution order is fixed and minimal:
 1. Pure-Python wheels.
 2. aarch64 Linux wheels.
-3. Fail if neither wheel is available.
+3. Log and continue if neither wheel is available.
 """
 
 from __future__ import annotations
@@ -56,6 +56,25 @@ def load_project_version() -> str:
         return "unknown"
 
     return match.group(1)
+
+
+def load_base_project_version(pyproject: Path) -> str | None:
+    """Load the base release version from ``[tool.poetry].version``.
+
+    Args:
+        pyproject: Path to project TOML file.
+
+    Returns:
+        Base version string if present, otherwise ``None``.
+
+    """
+    with pyproject.open("rb") as f:
+        data = tomllib.load(f)
+
+    version = data.get("tool", {}).get("poetry", {}).get("version")
+    if isinstance(version, str) and version.strip():
+        return version.strip()
+    return None
 
 
 def parse_args() -> argparse.Namespace:
@@ -222,7 +241,7 @@ def download_dependencies(
     destination: Path,
     python_version: str,
     platform_tag: str,
-) -> None:
+) -> list[str]:
     """Download dependency artifacts using the fixed wheel fallback order.
 
     Args:
@@ -231,23 +250,28 @@ def download_dependencies(
         python_version: Target Python version for wheel resolution.
         platform_tag: Target platform tag for wheel resolution.
 
-    Raises:
-        RuntimeError: If a dependency has neither a pure wheel nor an aarch64 wheel.
+    Returns:
+        Requirement strings that could not be downloaded as either pure or aarch64 wheels.
 
     """
     base_cmd = build_download_base_cmd(
         destination=destination,
     )
 
+    missing_requirements: list[str] = []
+
     for requirement in parse_requirements_file(requirements_file):
-        download_wheel_with_fallback(
+        downloaded = download_wheel_with_fallback(
             requirement=requirement,
             base_cmd=base_cmd,
             python_version=python_version,
             platform_tag=platform_tag,
         )
+        if not downloaded:
+            missing_requirements.append(requirement)
 
     prune_duplicate_artifacts(destination)
+    return missing_requirements
 
 
 def parse_requirements_file(requirements_file: Path) -> list[str]:
@@ -365,7 +389,7 @@ def download_wheel_with_fallback(
     base_cmd: list[str],
     python_version: str,
     platform_tag: str,
-) -> None:
+) -> bool:
     """Download one requirement using the fixed wheel-only fallback order.
 
     Resolution order:
@@ -378,14 +402,14 @@ def download_wheel_with_fallback(
         python_version: Target Python version.
         platform_tag: Target platform tag.
 
-    Raises:
-        RuntimeError: If no supported wheel is available.
+    Returns:
+        ``True`` if a wheel was downloaded, ``False`` otherwise.
 
     """
     pure_wheel_cmd = build_pure_wheel_only_cmd(base_cmd=base_cmd, requirement=requirement)
     try:
         run_pip_download_with_hint(pure_wheel_cmd)
-        return
+        return True
     except RuntimeError:
         LOGGER.warning(
             "No pure-Python wheel available for %s. Trying target aarch64 wheel.",
@@ -400,15 +424,64 @@ def download_wheel_with_fallback(
     )
     try:
         run_pip_download_with_hint(target_wheel_cmd)
-        return
+        return True
     except RuntimeError:
         LOGGER.warning(
             "No aarch64 wheel available for %s.",
             requirement,
         )
-        raise RuntimeError(
-            f"No supported wheel found for {requirement}. Expected a pure-Python or aarch64 wheel."
+        LOGGER.warning(
+            "No supported wheel found for %s. Continuing without this dependency artifact.",
+            requirement,
         )
+        return False
+
+
+def find_new_pure_wheel(destination: Path, before_files: set[str]) -> Path | None:
+    """Return a newly downloaded pure-Python wheel from ``destination`` if present.
+
+    Args:
+        destination: Directory where artifacts are downloaded.
+        before_files: File names present before running pip download.
+
+    Returns:
+        Path to one new pure wheel, otherwise ``None``.
+
+    """
+    new_files = sorted({p.name for p in destination.iterdir() if p.is_file()} - before_files)
+    for name in new_files:
+        if name.endswith(".whl") and "-none-any.whl" in name:
+            return destination / name
+    return None
+
+
+def try_download_project_pure_wheel(
+    requirement: str,
+    base_cmd: list[str],
+    destination: Path,
+) -> Path | None:
+    """Try downloading a pure-Python project wheel for a requirement.
+
+    Args:
+        requirement: Requirement specifier for ingenialink.
+        base_cmd: Pip download base command.
+        destination: Directory where project artifacts are stored.
+
+    Returns:
+        Downloaded wheel path when successful, otherwise ``None``.
+
+    """
+    cmd = [
+        *build_pure_wheel_only_cmd(base_cmd=base_cmd, requirement=requirement),
+        "--no-deps",
+    ]
+    before_files = {p.name for p in destination.iterdir() if p.is_file()}
+    try:
+        run_pip_download_with_hint(cmd)
+    except RuntimeError:
+        return None
+
+    return find_new_pure_wheel(destination=destination, before_files=before_files)
 
 
 def prune_duplicate_artifacts(destination: Path) -> None:
@@ -519,18 +592,26 @@ def ensure_local_project_build_requirements(
         python_version: Target Python version.
         platform_tag: Target platform tag.
 
+    Raises:
+        RuntimeError: If a required build dependency wheel cannot be downloaded.
+
     """
     for requirement in load_local_project_build_requirements():
         if "://" in requirement:
             run_pip_download_with_hint([*base_cmd, requirement, "--no-deps"])
             continue
 
-        download_wheel_with_fallback(
+        downloaded = download_wheel_with_fallback(
             requirement=requirement,
             base_cmd=base_cmd,
             python_version=python_version,
             platform_tag=platform_tag,
         )
+        if not downloaded:
+            raise RuntimeError(
+                "Missing build requirement wheel for local ingenialink source fallback: "
+                f"{requirement}"
+            )
 
 
 def package_project_artifact(
@@ -555,7 +636,7 @@ def package_project_artifact(
 
     """
     project_version = load_project_version()
-    requirement = f"ingenialink=={project_version}"
+    base_project_version = load_base_project_version(PYPROJECT_FILE)
 
     pyproject_index, pyproject_extras = load_pip_sources_from_pyproject(PYPROJECT_FILE)
     if pyproject_index or pyproject_extras:
@@ -567,29 +648,35 @@ def package_project_artifact(
             extra_index_urls=([pyproject_index] if pyproject_index else []) + pyproject_extras,
             trusted_hosts=pyproject_hosts,
         )
-        retry_cmd = [
-            *build_pure_wheel_only_cmd(base_cmd=retry_base_cmd, requirement=requirement),
-            "--no-deps",
-        ]
-        before_retry_files = {p.name for p in project_destination.iterdir() if p.is_file()}
-        try:
-            run_pip_download_with_hint(retry_cmd)
-            retry_new_files = sorted(
-                {p.name for p in project_destination.iterdir() if p.is_file()} - before_retry_files
+
+        candidate_requirements = [f"ingenialink=={project_version}"]
+        if base_project_version and base_project_version != project_version:
+            candidate_requirements.append(f"ingenialink=={base_project_version}")
+        candidate_requirements.append("ingenialink")
+
+        for candidate in candidate_requirements:
+            wheel_path = try_download_project_pure_wheel(
+                requirement=candidate,
+                base_cmd=retry_base_cmd,
+                destination=project_destination,
             )
-            retry_wheels = [
-                name
-                for name in retry_new_files
-                if name.endswith(".whl") and "-none-any.whl" in name
-            ]
-            if retry_wheels:
-                LOGGER.info("Found ingenialink wheel using pyproject sources.")
-                return project_destination / retry_wheels[0]
-        except RuntimeError:
+            if wheel_path is not None:
+                LOGGER.info(
+                    "Found ingenialink pure wheel using pyproject sources with requirement: %s",
+                    candidate,
+                )
+                return wheel_path
+
             LOGGER.warning(
-                "No pure-Python wheel found for local ingenialink version %s in pyproject sources.",
-                project_version,
+                "No pure-Python wheel found in pyproject sources for requirement: %s",
+                candidate,
             )
+
+        LOGGER.warning(
+            "Ingenialink local version %s may include SCM/local tags not published as wheel. "
+            "Falling back to source build.",
+            project_version,
+        )
     else:
         LOGGER.warning("No pyproject package sources configured for ingenialink wheel lookup.")
 
@@ -642,7 +729,7 @@ def main() -> int:
         destination=deps_dir,
     )
 
-    download_dependencies(
+    missing_dependency_requirements = download_dependencies(
         requirements_file=requirements_file,
         destination=deps_dir,
         python_version=args.python_version,
@@ -664,8 +751,16 @@ def main() -> int:
         "requirements_file": str(requirements_file.relative_to(args.output_dir)),
         "project_artifact": str(project_artifact.relative_to(args.output_dir)),
         "dependency_files": sorted(p.name for p in deps_dir.iterdir() if p.is_file()),
+        "missing_runtime_dependency_wheels": missing_dependency_requirements,
     }
     write_metadata(meta_dir / "bundle-metadata.json", metadata)
+
+    if missing_dependency_requirements:
+        LOGGER.warning(
+            "Missing wheel artifacts for %d runtime dependencies: %s",
+            len(missing_dependency_requirements),
+            ", ".join(missing_dependency_requirements),
+        )
 
     LOGGER.info("Offline bundle created: %s", args.output_dir)
     LOGGER.info("Install on offline target with:")
