@@ -36,7 +36,8 @@ For the `ingenialink` project artifact, the script tries pure wheel lookup in
 `tool.poetry.source` indexes (for example Novanta PyPI) using this sequence:
 
 1. Local SCM-generated version from `ingenialink/_version.py`.
-2. Base release version from `[tool.poetry].version`.
+2. If local version has `.postN`, the newest wheel in the same release line and
+   greater or equal post version.
 3. Unpinned `ingenialink` (latest wheel available in configured sources).
 
 If no pure-Python wheel exists, it falls back to a versioned local source

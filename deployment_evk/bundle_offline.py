@@ -484,6 +484,33 @@ def try_download_project_pure_wheel(
     return find_new_pure_wheel(destination=destination, before_files=before_files)
 
 
+def build_project_wheel_candidates(
+    project_version: str,
+    base_project_version: str | None,
+) -> list[str]:
+    """Build wheel lookup requirements prioritizing development parity.
+
+    Args:
+        project_version: Local SCM-generated project version.
+        base_project_version: Base release version from ``[tool.poetry].version``.
+
+    Returns:
+        Ordered requirement candidates for wheel lookup.
+
+    """
+    candidates: list[str] = [f"ingenialink=={project_version}"]
+
+    public_version = project_version.split("+", maxsplit=1)[0]
+    if base_project_version and ".post" in public_version:
+        # Prefer newer wheels from the same release line, not the plain base release.
+        candidates.append(f"ingenialink>={public_version},=={base_project_version}.*")
+
+    # Fallback to latest available wheel in configured indexes.
+    candidates.append("ingenialink")
+
+    return candidates
+
+
 def prune_duplicate_artifacts(destination: Path) -> None:
     """Keep only one artifact per package version.
 
@@ -649,10 +676,10 @@ def package_project_artifact(
             trusted_hosts=pyproject_hosts,
         )
 
-        candidate_requirements = [f"ingenialink=={project_version}"]
-        if base_project_version and base_project_version != project_version:
-            candidate_requirements.append(f"ingenialink=={base_project_version}")
-        candidate_requirements.append("ingenialink")
+        candidate_requirements = build_project_wheel_candidates(
+            project_version=project_version,
+            base_project_version=base_project_version,
+        )
 
         for candidate in candidate_requirements:
             wheel_path = try_download_project_pure_wheel(
