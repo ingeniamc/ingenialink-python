@@ -27,7 +27,11 @@ class PcapCapture:
             self._capture.activate()
             if self._capture.datalink() != cypcap.DatalinkType.EN10MB:
                 raise OSError("Pcap discovery requires an Ethernet interface.")
-            self._capture.setfilter("ip6 or (vlan and ip6)")
+            # The IPv4 netmask is not required for this IPv6-only filter, so avoid its lookup.
+            self._capture.setfilter(
+                "ip6 or (vlan and ip6)",
+                netmask=cypcap.NETMASK_UNKNOWN,
+            )
         except cypcap.Error as error:
             self.close()
             raise OSError(f"Unable to configure pcap capture: {error}") from error
