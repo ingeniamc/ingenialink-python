@@ -53,6 +53,7 @@ class TelemetryModule(BaseModule):
 
     BASE_FREQUENCY_HZ = 1_000_000
     TIMESTAMP_SIZE = 8
+    FRAME_COUNT_SIZE = 2
 
     def __init__(
         self,
@@ -141,10 +142,19 @@ class TelemetryModule(BaseModule):
         return self.TIMESTAMP_SIZE + self._bytes_per_sample
 
     def _read_data(self) -> bytes:
+        frame_size = self.TIMESTAMP_SIZE + self._bytes_per_sample
         with self._buffer_lock:
-            data = bytes(self._buffer)
-            self._buffer.clear()
-        return data
+            if frame_size <= 0:
+                return self._pack_frame_count(0)
+            frame_count = len(self._buffer) // frame_size
+            used = frame_count * frame_size
+            data = bytes(self._buffer[:used])
+            del self._buffer[:used]
+        return self._pack_frame_count(frame_count) + data
+
+    @classmethod
+    def _pack_frame_count(cls, frame_count: int) -> bytes:
+        return frame_count.to_bytes(cls.FRAME_COUNT_SIZE, "little")
 
     def _map_registers(self) -> None:
         self._channels_register.clear()
