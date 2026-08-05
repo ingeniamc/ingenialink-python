@@ -20,7 +20,9 @@ def test_pcap_capture_applies_ipv6_filter(mocker):
     capture.set_promisc.assert_called_once_with(False)
     capture.set_timeout.assert_called_once_with(0.01)
     capture.activate.assert_called_once_with()
-    capture.setfilter.assert_called_once_with("ip6 or (vlan and ip6)")
+    capture.setfilter.assert_called_once_with(
+        "ip6 or (vlan and ip6)", netmask=cypcap.NETMASK_UNKNOWN
+    )
     pcap_capture.close()
 
 
