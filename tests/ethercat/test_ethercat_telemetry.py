@@ -1,3 +1,4 @@
+import logging
 import time
 from contextlib import suppress
 
@@ -15,6 +16,8 @@ from ingenialink.ethercat.telemetry import (
 )
 from ingenialink.exceptions import ILRegisterAccessError
 from ingenialink.register import Register
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.mark.ethercat
@@ -78,6 +81,19 @@ def test_telemetry_firmware_timestamps_are_incremental(servo) -> None:
 RECORDING_DURATION_S = 10.0
 
 
+def _log_generator_registers(servo, context: str) -> None:
+    logger.info(
+        "Internal generator %s: mode=%s freq=%s gain=%s offset=%s cycles=%s value=%s",
+        context,
+        servo.read("FBK_GEN_MODE", subnode=1),
+        servo.read("FBK_GEN_FREQ", subnode=1),
+        servo.read("FBK_GEN_GAIN", subnode=1),
+        servo.read("FBK_GEN_OFFSET", subnode=1),
+        servo.read("FBK_GEN_CYCLES", subnode=1),
+        servo.read("FBK_GEN_VALUE", subnode=1),
+    )
+
+
 def _record_generator_capture(
     servo,
     test_output_handler,
@@ -93,6 +109,9 @@ def _record_generator_capture(
     Returns:
         The recorded table, with the generator, bus voltage, and phase current columns.
     """
+    servo.write("DRV_OP_CMD", 0, subnode=1)
+    servo.write("COMMU_ANGLE_SENSOR", 3, subnode=1)
+    servo.write("COMMU_PHASING_MODE", 2, subnode=1)
     servo.write("FBK_GEN_MODE", mode_value, subnode=1)
     servo.write("FBK_GEN_FREQ", generator_frequency_hz, subnode=1)
     servo.write("FBK_GEN_GAIN", 1.0, subnode=1)
@@ -105,6 +124,7 @@ def _record_generator_capture(
         subnode=1,
     )
     servo.write("FBK_GEN_REARM", 1, subnode=1)
+    _log_generator_registers(servo, "after configuration")
 
     registers = [
         servo.dictionary.get_register("FBK_GEN_VALUE", axis=1),
@@ -123,9 +143,18 @@ def _record_generator_capture(
             servo, registers, path, frequency=telemetry_frequency_hz
         ) as recorder:
             assert recorder.is_recording
-            time.sleep(RECORDING_DURATION_S)
+            deadline = time.monotonic() + RECORDING_DURATION_S
+            next_log = time.monotonic()
+            while time.monotonic() < deadline:
+                now = time.monotonic()
+                if now >= next_log:
+                    _log_generator_registers(servo, "during recording")
+                    next_log += 1.0
+                time.sleep(min(0.1, max(0.0, deadline - now)))
     finally:
+        _log_generator_registers(servo, "before disabling")
         servo.write("FBK_GEN_MODE", 0, subnode=1)
+        _log_generator_registers(servo, "after disabling")
 
     table = pq.read_table(path)
     assert table.num_rows > 0
