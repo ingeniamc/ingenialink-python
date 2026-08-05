@@ -3,7 +3,6 @@ import struct
 
 import pytest
 
-from ingenialink.ethernet.tsn.interfaces import get_interface_index
 from ingenialink.ethernet.tsn.ipv6_discovery import (
     ALL_NODES_IPV6_ADDRESS,
     ICMPV6_ECHO_REPLY,
@@ -12,6 +11,10 @@ from ingenialink.ethernet.tsn.ipv6_discovery import (
     _get_echo_reply_source_address,
     discover_ipv6_devices,
 )
+
+INTERFACE = "test-interface"
+INTERFACE_INDEX = 4
+PCAP_INTERFACE = r"\Device\NPF_{DEADC0FF-EEEE-4444-8888-2BF6900CBFA0}"
 
 
 def _echo_reply_packet(identifier):
@@ -45,6 +48,9 @@ def test_discover_ipv6_devices_collects_unique_responses(mocker, discovery_socke
     """Collect matching Linux responses once and preserve their response order."""
     mocker.patch("ingenialink.ethernet.tsn.ipv6_discovery.secrets.randbelow", return_value=122)
     mocker.patch("ingenialink.ethernet.tsn.ipv6_discovery.sys.platform", "linux")
+    mocker.patch(
+        "ingenialink.ethernet.tsn.ipv6_discovery.get_interface_index", return_value=INTERFACE_INDEX
+    )
     discovery_socket.recvfrom.side_effect = [
         (
             _echo_reply_packet(123),
@@ -61,7 +67,6 @@ def test_discover_ipv6_devices_collects_unique_responses(mocker, discovery_socke
         ),
         socket.timeout,
     ]
-    mocker.patch("ingenialink.ethernet.tsn.interfaces.socket.if_nametoindex", return_value=4)
     socket_factory = mocker.patch(
         "ingenialink.ethernet.tsn.ipv6_discovery.socket.socket", return_value=discovery_socket
     )
@@ -90,35 +95,7 @@ def test_discover_ipv6_devices_collects_unique_responses(mocker, discovery_socke
 def test_discover_ipv6_devices_rejects_invalid_timeout(timeout_s):
     """Reject zero and negative timeouts before configuring a socket."""
     with pytest.raises(ValueError):
-        discover_ipv6_devices("Ethernet", timeout_s)
-
-
-def test_get_interface_index_uses_pcap_guid_on_windows(mocker):
-    """Map a Pcap interface GUID to its Windows IPv6 interface index."""
-    adapter = mocker.Mock(AdapterName="{DEADC0FF-EEEE-4444-8888-2BF6900CBFA0}", Ipv6IfIndex=7)
-    mocker.patch("ingenialink.ethernet.tsn.interfaces.sys.platform", "win32")
-    get_windows_ipv6_adapters = mocker.patch(
-        "ingenialink.ethernet.tsn.interfaces._get_windows_ipv6_adapters",
-        return_value=[adapter],
-        create=True,
-    )
-
-    interface_index = get_interface_index(r"\Device\NPF_{DEADC0FF-EEEE-4444-8888-2BF6900CBFA0}")
-
-    assert interface_index == 7
-    get_windows_ipv6_adapters.assert_called_once_with()
-
-
-def test_get_interface_index_uses_native_interface_name_outside_windows(mocker):
-    """Use the native socket interface lookup outside Windows."""
-    mocker.patch("ingenialink.ethernet.tsn.interfaces.sys.platform", "linux")
-    if_nametoindex = mocker.patch(
-        "ingenialink.ethernet.tsn.interfaces.socket.if_nametoindex",
-        return_value=4,
-    )
-
-    assert get_interface_index("eth0") == 4
-    if_nametoindex.assert_called_once_with("eth0")
+        discover_ipv6_devices(INTERFACE, timeout_s)
 
 
 def test_discover_ipv6_devices_uses_pcap_on_windows(mocker, discovery_socket):
@@ -129,8 +106,7 @@ def test_discover_ipv6_devices_uses_pcap_on_windows(mocker, discovery_socket):
     capture.read_packet.side_effect = [None, None]
     mocker.patch("ingenialink.ethernet.tsn.ipv6_discovery.secrets.randbelow", return_value=122)
     mocker.patch("ingenialink.ethernet.tsn.ipv6_discovery.sys.platform", "win32")
-    mocker.patch("ingenialink.ethernet.tsn.interfaces.sys.platform", "win32")
-    mocker.patch("ingenialink.ethernet.tsn.interfaces.get_interface_index", return_value=4)
+    mocker.patch("ingenialink.ethernet.tsn.ipv6_discovery.get_interface_index", return_value=4)
     pcap_capture = mocker.patch(
         "ingenialink.ethernet.tsn.ipv6_discovery.PcapCapture",
         side_effect=lambda _: events.append("capture_started") or capture,

@@ -1690,6 +1690,18 @@ markers = {dev = "python_version < \"4.0\""}
 all = ["mypy (>=1.11.2)", "pytest (>=8.3.2)", "ruff (>=0.6.2)"]
 
 [[package]]
+name = "ifaddr"
+version = "0.2.0"
+description = "Cross-platform network interface and IP address enumeration library"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "ifaddr-0.2.0-py3-none-any.whl", hash = "sha256:085e0305cfe6f16ab12d72e2024030f5d52674afad6911bb1eee207177b8a748"},
+    {file = "ifaddr-0.2.0.tar.gz", hash = "sha256:cc0cbfcaabf765d44595825fb96a99bb12c79716b73b44330ea38ee2b0c4aed4"},
+]
+
+[[package]]
 name = "imagesize"
 version = "1.5.0"
 description = "Getting image size from png/jpeg/jpeg2000/gif file"
@@ -6084,4 +6096,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "48c5fc9ccf7fcdac3be0422e094503fba84d80431224dbbe4c72145bf6a8c041"
+content-hash = "110cac9724febca93d10e26cfc9db1d858e8f3d5634eb7a77fbb5479abf94065"
