@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<IngeniaDictionary>
+  <Header>
+    <Version>3.1</Version>
+    <DefaultLanguage>en_US</DefaultLanguage>
+  </Header>
+  <Body>
+    <Categories>
+      <Category id="IDENTIFICATION">
+        <Labels>
+          <Label lang="en_US">Product Identification</Label>
+        </Labels>
+      </Category>
+    </Categories>
+    <Devices>
+      <ETH-SDCP firmwareVersion="2.11.0" ProductCode="57745409" PartNumber="EVS-NET" RevisionNumber="196635">
+        <CANopenObjects>
+          <CANopenObject id="PRODUCT_CODE" index="0x1000" datatype="VAR">
+            <Labels>
+              <Label lang="en_US">Product code</Label>
+            </Labels>
+            <Subitems>
+              <Subitem subindex="0" address_type="NVM_NONE" access="r" dtype="u32" id="PRODUCT_CODE" pdo_access="CONFIG" desc="This object shall provide information about the device type. The object describes the type of the logical device and its functionality." units="-" default="00000000" cat_id="IDENTIFICATION">
+                <Labels>
+                  <Label lang="en_US">Product code</Label>
+                </Labels>
+              </Subitem>
+            </Subitems>
+          </CANopenObject>
+        </CANopenObjects>
+        <Errors>
+          <Error id="0x00003280" affected_module="Power stage" error_type="cyclic">
+            <Labels>
+              <Label lang="en_US">STO Active and Power stage is shutdown</Label>
+            </Labels>
+          </Error>
+        </Errors>
+      </ETH-SDCP>
+    </Devices>
+  </Body>
+  <DriveImage encoding="xs:base64Binary"></DriveImage>
+</IngeniaDictionary>

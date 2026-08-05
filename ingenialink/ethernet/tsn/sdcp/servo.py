@@ -35,8 +35,7 @@ class SDCPServo(TSNServoBase):
 
     """
 
-    # Temporary use of the CAN interface until TSN dictionary support is available (INGK-1279).
-    interface = Interface.CAN
+    interface = Interface.SDCP
 
     _CONNECTION_TIMEOUT_S = 1.0
     _INITIAL_TRANSACTION_ID = 0x0000
