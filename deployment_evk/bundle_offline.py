@@ -502,11 +502,14 @@ def build_project_wheel_candidates(
 
     public_version = project_version.split("+", maxsplit=1)[0]
     if base_project_version and ".post" in public_version:
-        # Prefer newer wheels from the same release line, not the plain base release.
-        candidates.append(f"ingenialink>={public_version},=={base_project_version}.*")
-
-    # Fallback to latest available wheel in configured indexes.
-    candidates.append("ingenialink")
+        # Keep wheel lookup bounded to the same release line and never ahead
+        # of the local post version (for example <=7.6.1.post388).
+        candidates.append(
+            "ingenialink"
+            f"<={public_version},"
+            f"!={base_project_version},"
+            f"=={base_project_version}.*"
+        )
 
     return candidates
 
