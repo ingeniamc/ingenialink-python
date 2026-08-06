@@ -1,6 +1,7 @@
 import logging
 import time
 from contextlib import suppress
+from threading import Event
 
 import pyarrow.parquet as pq
 import pytest
@@ -279,6 +280,29 @@ def test_telemetry_reads_count_prefixed_frames(mocker) -> None:
     assert frames == [TelemetryFrame(data=b"data", timestamp_tick=123)]
 
 
+def test_telemetry_read_uses_complete_access_so_gil_release_config_applies(mocker) -> None:
+    """Verify telemetry reads go through the GIL-aware complete-access path.
+
+    ``EthercatServo.read_complete_access`` forwards to ``_read_raw``, which is where
+    ``GilReleaseConfig.sdo_read_write`` reaches ``pysoem.sdo_read``. Telemetry must use
+    that path rather than bypassing it, or the ``release_gil`` guidance documented on
+    ``TelemetryRecorder`` would have no effect.
+    """
+    servo = mocker.MagicMock(spec=EthercatServo)
+    telemetry = EthercatTelemetry(servo)
+    telemetry._frame_size = 12
+    telemetry._read_buffer_size = 1024
+    servo.read_complete_access.return_value = (0).to_bytes(
+        EthercatTelemetry.FRAME_COUNT_SIZE, "little"
+    )
+
+    telemetry.read_frames()
+
+    servo.read_complete_access.assert_called_once_with(
+        EthercatTelemetry.DATA_REGISTER, subnode=0, buffer_size=1024
+    )
+
+
 @pytest.mark.parametrize(
     ("frequency", "expected_divider"),
     [
@@ -316,15 +340,16 @@ def test_telemetry_poller_decodes_multiple_registers_from_one_frame(mocker) -> N
         data=(123).to_bytes(2, "little") + (456).to_bytes(4, "little") + (7).to_bytes(1, "little"),
         timestamp_tick=2_000,
     )
-    poller = TelemetryPoller(telemetry, [first_register, second_register, third_register])
+    telemetry.read_frames.side_effect = [[frame], *([[]] * 1_000)]
+    poller = TelemetryPoller(
+        telemetry, [first_register, second_register, third_register], poll_interval=0.001
+    )
 
-    def read_one_frame() -> list[TelemetryFrame]:
-        poller._stop_event.set()
-        return [frame]
-
-    telemetry.read_frames.side_effect = read_one_frame
     poller.start()
-    poller.join(timeout=1.0)
+    try:
+        _wait_for(lambda: poller.sample_count >= 1)
+    finally:
+        poller.stop()
 
     assert not poller.is_alive()
     assert poller.sample_count == 1
@@ -332,6 +357,168 @@ def test_telemetry_poller_decodes_multiple_registers_from_one_frame(mocker) -> N
         timestamp=0.002,
         values=(123, 456, 7),
     )
+
+
+def _wait_for(condition, timeout: float = 1.0) -> None:
+    """Block until ``condition()`` is true or ``timeout`` seconds have elapsed."""
+    deadline = time.monotonic() + timeout
+    while not condition() and time.monotonic() < deadline:
+        time.sleep(0.001)
+
+
+def test_telemetry_poller_reader_drains_repeatedly_until_empty(mocker) -> None:
+    """Verify the reader keeps reading while frames are available, without waiting."""
+    telemetry = mocker.MagicMock(spec=EthercatTelemetry)
+    telemetry.TIMESTAMP_FREQUENCY_HZ = 1_000_000
+    register = _fake_register(mocker, "REG", RegDtype.U8)
+    register.bytes_to_value.side_effect = lambda data: int.from_bytes(data, "little")
+    frame = TelemetryFrame(data=b"\x01", timestamp_tick=1)
+    remaining_non_empty_reads = 5
+    read_calls: list[float] = []
+
+    def read_frames() -> list[TelemetryFrame]:
+        nonlocal remaining_non_empty_reads
+        read_calls.append(time.monotonic())
+        if remaining_non_empty_reads > 0:
+            remaining_non_empty_reads -= 1
+            return [frame]
+        return []
+
+    telemetry.read_frames.side_effect = read_frames
+    poller = TelemetryPoller(telemetry, [register], poll_interval=0.5)
+
+    start = time.monotonic()
+    poller.start()
+    try:
+        _wait_for(lambda: len(read_calls) > 5, timeout=2.0)
+        time.sleep(0.01)  # let the first empty read after the burst be observed
+    finally:
+        poller.stop()
+
+    assert len(read_calls) >= 6
+    # The five non-empty reads plus the following empty read all happen well before a
+    # poll_interval wait would allow, proving the reader drains without pausing between
+    # non-empty reads.
+    assert read_calls[5] - start < 0.5
+    assert poller.sample_count == 5
+
+
+def test_telemetry_poller_decoder_runs_independently_of_reader(mocker) -> None:
+    """Verify the decoder consumes queued frames even while the reader is stalled."""
+    telemetry = mocker.MagicMock(spec=EthercatTelemetry)
+    telemetry.TIMESTAMP_FREQUENCY_HZ = 1_000_000
+    register = _fake_register(mocker, "REG", RegDtype.U8)
+    register.bytes_to_value.side_effect = lambda data: int.from_bytes(data, "little")
+    reader_blocked = Event()
+    telemetry.read_frames.side_effect = lambda: [] if reader_blocked.wait() else []
+    poller = TelemetryPoller(telemetry, [register], poll_interval=0.01)
+
+    poller.start()
+    try:
+        poller._raw_frames.append(TelemetryFrame(data=b"\x09", timestamp_tick=5))  # noqa: SLF001
+        poller._frame_available.set()  # noqa: SLF001
+
+        _wait_for(lambda: poller.sample_count >= 1)
+
+        assert poller.sample_count == 1
+        assert poller.get_sample() == TelemetrySample(timestamp=0.000005, values=(9,))
+    finally:
+        reader_blocked.set()
+        poller.stop()
+
+
+def test_telemetry_poller_reader_error_stops_decoder(mocker) -> None:
+    """Verify a reader exception surfaces via error and stops the decoder too."""
+    telemetry = mocker.MagicMock(spec=EthercatTelemetry)
+    telemetry.TIMESTAMP_FREQUENCY_HZ = 1_000_000
+    register = _fake_register(mocker, "REG", RegDtype.U8)
+    telemetry.read_frames.side_effect = RuntimeError("transport failed")
+    poller = TelemetryPoller(telemetry, [register], poll_interval=0.001)
+
+    poller.start()
+    poller._reader_thread.join(timeout=1.0)  # noqa: SLF001
+    poller._decoder_thread.join(timeout=1.0)  # noqa: SLF001
+
+    assert not poller.is_alive()
+    assert isinstance(poller.error, RuntimeError)
+
+
+def test_telemetry_poller_decoder_error_stops_reader(mocker) -> None:
+    """Verify a decode error (frame size mismatch) surfaces via error and stops the reader."""
+    telemetry = mocker.MagicMock(spec=EthercatTelemetry)
+    telemetry.TIMESTAMP_FREQUENCY_HZ = 1_000_000
+    register = _fake_register(mocker, "REG", RegDtype.U16)
+    bad_frame = TelemetryFrame(data=b"\x01", timestamp_tick=1)  # 1 byte, but U16 needs 2
+    telemetry.read_frames.side_effect = [[bad_frame], *([[]] * 1_000)]
+    poller = TelemetryPoller(telemetry, [register], poll_interval=0.001)
+
+    poller.start()
+    poller._decoder_thread.join(timeout=1.0)  # noqa: SLF001
+    poller._reader_thread.join(timeout=1.0)  # noqa: SLF001
+
+    assert not poller.is_alive()
+    assert isinstance(poller.error, RuntimeError)
+
+
+def test_telemetry_poller_retries_after_transient_register_access_error(mocker) -> None:
+    """Verify a transient ILRegisterAccessError is retried after poll_interval."""
+    telemetry = mocker.MagicMock(spec=EthercatTelemetry)
+    telemetry.TIMESTAMP_FREQUENCY_HZ = 1_000_000
+    register = _fake_register(mocker, "REG", RegDtype.U8)
+    register.bytes_to_value.side_effect = lambda data: int.from_bytes(data, "little")
+    frame = TelemetryFrame(data=b"\x01", timestamp_tick=1)
+    transient_error = ILRegisterAccessError(
+        base_message="transient",
+        reg=mocker.MagicMock(),
+        base_exception=Exception("transient"),
+        reason="transient",
+    )
+    telemetry.read_frames.side_effect = [
+        transient_error,
+        [frame],
+        *([[]] * 1_000),
+    ]
+    poller = TelemetryPoller(telemetry, [register], poll_interval=0.01)
+
+    poller.start()
+    try:
+        _wait_for(lambda: poller.sample_count >= 1)
+    finally:
+        poller.stop()
+
+    assert poller.sample_count == 1
+    assert poller.error is None
+
+
+def test_telemetry_poller_stop_joins_worker_threads_without_deadlock(mocker) -> None:
+    """Verify stop() joins both threads promptly, even with a pending backlog."""
+    telemetry = mocker.MagicMock(spec=EthercatTelemetry)
+    telemetry.TIMESTAMP_FREQUENCY_HZ = 1_000_000
+    register = _fake_register(mocker, "REG", RegDtype.U8)
+    register.bytes_to_value.side_effect = lambda data: int.from_bytes(data, "little")
+    frame = TelemetryFrame(data=b"\x01", timestamp_tick=1)
+    frames_remaining = 5_000
+
+    def read_frames() -> list[TelemetryFrame]:
+        nonlocal frames_remaining
+        if frames_remaining <= 0:
+            return []
+        batch = min(50, frames_remaining)
+        frames_remaining -= batch
+        return [frame] * batch
+
+    telemetry.read_frames.side_effect = read_frames
+    poller = TelemetryPoller(telemetry, [register], poll_interval=0.01)
+
+    poller.start()
+    start = time.monotonic()
+    poller.stop()
+    elapsed = time.monotonic() - start
+
+    assert not poller.is_alive()
+    assert elapsed < 2.0
+
+    poller.stop()  # idempotent: must not hang or raise
 
 
 def _fake_register(mocker, identifier: str, dtype: RegDtype) -> Register:

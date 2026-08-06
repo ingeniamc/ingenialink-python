@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import summit_drives_ci_configs.config_files as config_files
 from summit_testing_framework.jenkins.pytest_config import PyTestConfig
 from summit_testing_framework.setups.specifier_container import SpecifierContainer
 from summit_testing_framework.setups.specifiers import (
@@ -10,7 +11,6 @@ from summit_testing_framework.setups.specifiers import (
     VersionConfig,
 )
 
-import summit_drives_ci_configs.config_files as config_files
 from ingenialink.dictionary import Interface
 
 __EXECUTION_POLICY_KEY: str = "execution_policy"

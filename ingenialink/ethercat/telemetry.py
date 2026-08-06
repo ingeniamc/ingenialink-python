@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from math import isfinite
-from threading import Event, Thread
+from threading import Event, Lock, Thread
 from types import ModuleType
 from typing import TYPE_CHECKING, Optional, Union
 
@@ -258,13 +258,27 @@ class EthercatTelemetry:
         return cls.BASE_FREQUENCY_HZ / frequency_divider
 
 
-class TelemetryPoller(Thread):
-    """Poll decoded telemetry samples in a worker thread.
+class TelemetryPoller:
+    """Poll decoded telemetry samples using separate reader and decoder threads.
+
+    The reader thread performs complete-access reads and enqueues raw
+    :class:`TelemetryFrame` objects as soon as they arrive, draining the
+    device repeatedly while frames are available so a busy decoder never
+    delays the next read. The decoder thread independently consumes that
+    queue, validates and decodes each frame, and publishes
+    :class:`TelemetrySample` objects for :meth:`get_sample`.
+
+    At high sampling frequencies, complete-access reads should release the
+    GIL so the reader is not blocked behind Python-level work on other
+    threads. Construct the owning ``EthercatNetwork`` with
+    ``GilReleaseConfig(sdo_read_write=True)`` (or :meth:`GilReleaseConfig.always`)
+    for high-rate telemetry capture.
 
     Args:
         telemetry: Configured EtherCAT telemetry service.
         registers: Registers mapped by :meth:`EthercatTelemetry.configure`.
-        poll_interval: Delay between empty polling attempts, in seconds.
+        poll_interval: Delay after an empty read, and the idle recheck
+            interval for both threads, in seconds.
     """
 
     def __init__(
@@ -273,7 +287,6 @@ class TelemetryPoller(Thread):
         registers: Sequence[Register],
         poll_interval: float = 0.01,
     ) -> None:
-        super().__init__(daemon=True)
         if not registers:
             raise ValueError("Telemetry poller requires at least one register")
         if poll_interval <= 0:
@@ -291,58 +304,107 @@ class TelemetryPoller(Thread):
         self._layout: tuple[tuple[Register, int, int], ...] = tuple(layout)
         self._expected_frame_size = offset
 
+        self._raw_frames: deque[TelemetryFrame] = deque()
+        self._frame_available = Event()
         self._samples: deque[TelemetrySample] = deque()
         self._stop_event = Event()
         self._sample_count = 0
         self._error: Optional[BaseException] = None
+        self._error_lock = Lock()
+        self._reader_thread = Thread(
+            target=self._read_loop, name="TelemetryPoller-reader", daemon=True
+        )
+        self._decoder_thread = Thread(
+            target=self._decode_loop, name="TelemetryPoller-decoder", daemon=True
+        )
 
-    def run(self) -> None:
-        """Poll frames and enqueue decoded register values.
+    def start(self) -> None:
+        """Start the reader and decoder threads."""
+        self._reader_thread.start()
+        self._decoder_thread.start()
 
-        Any error other than a transient register-access failure stops the
-        thread early and is stored on :attr:`error`.
+    def stop(self) -> None:
+        """Stop polling and wait for the reader and decoder threads to finish."""
+        self._stop_event.set()
+        self._frame_available.set()
+        if self._reader_thread.is_alive():
+            self._reader_thread.join()
+        if self._decoder_thread.is_alive():
+            self._decoder_thread.join()
+
+    def is_alive(self) -> bool:
+        """Return whether the reader or the decoder thread is still running."""
+        return self._reader_thread.is_alive() or self._decoder_thread.is_alive()
+
+    def _read_loop(self) -> None:
+        """Drain raw telemetry frames as fast as the device produces them.
+
+        Each cycle keeps reading while the device returns frames, and only
+        waits for :attr:`_poll_interval` after an empty read. Any error other
+        than a transient register-access failure stops both stages early and
+        is stored on :attr:`error`.
         """
         while not self._stop_event.is_set():
             try:
-                self._poll_once()
+                frames = self._telemetry.read_frames()
             except ILRegisterAccessError:  # noqa: PERF203
                 self._stop_event.wait(self._poll_interval)
+                continue
             except Exception as ex:
-                self._error = ex
+                self._set_error(ex)
+                return
+            if not frames:
+                self._stop_event.wait(self._poll_interval)
+                continue
+            self._raw_frames.extend(frames)
+            self._frame_available.set()
+
+    def _decode_loop(self) -> None:
+        """Decode queued raw frames into :class:`TelemetrySample` objects.
+
+        Runs independently of the reader and never blocks it. Any error
+        stops both stages early and is stored on :attr:`error`.
+        """
+        while True:
+            if not self._frame_available.wait(timeout=self._poll_interval):
+                if self._stop_event.is_set() and not self._raw_frames:
+                    return
+                continue
+            self._frame_available.clear()
+            try:
+                while self._raw_frames:
+                    self._decode_frame(self._raw_frames.popleft())
+            except Exception as ex:
+                self._set_error(ex)
+                return
+            if self._stop_event.is_set() and not self._raw_frames:
                 return
 
-    def _poll_once(self) -> None:
-        """Read, decode, and enqueue one batch of telemetry frames.
+    def _decode_frame(self, frame: TelemetryFrame) -> None:
+        """Validate, decode, and enqueue one raw telemetry frame.
 
         Raises:
             RuntimeError: If a frame size does not match the configured registers.
         """
-        frames = self._telemetry.read_frames()
-        if not frames:
-            self._stop_event.wait(self._poll_interval)
-            return
-        samples: list[TelemetrySample] = []
-        for frame in frames:
-            if len(frame.data) != self._expected_frame_size:
-                raise RuntimeError(
-                    f"Telemetry frame has {len(frame.data)} bytes; "
-                    f"expected {self._expected_frame_size}"
-                )
-            view = memoryview(frame.data)
-            values = tuple(
-                register.bytes_to_value(view[offset : offset + size])
-                for register, offset, size in self._layout
+        if len(frame.data) != self._expected_frame_size:
+            raise RuntimeError(
+                f"Telemetry frame has {len(frame.data)} bytes; expected {self._expected_frame_size}"
             )
-            timestamp = frame.timestamp_tick / self._telemetry.TIMESTAMP_FREQUENCY_HZ
-            samples.append(TelemetrySample(timestamp=timestamp, values=values))
-        self._samples.extend(samples)
-        self._sample_count += len(samples)
+        view = memoryview(frame.data)
+        values = tuple(
+            register.bytes_to_value(view[offset : offset + size])
+            for register, offset, size in self._layout
+        )
+        timestamp = frame.timestamp_tick / self._telemetry.TIMESTAMP_FREQUENCY_HZ
+        self._samples.append(TelemetrySample(timestamp=timestamp, values=values))
+        self._sample_count += 1
 
-    def stop(self) -> None:
-        """Stop polling and wait for the worker thread to finish."""
+    def _set_error(self, ex: BaseException) -> None:
+        """Record the first error and stop both stages."""
+        with self._error_lock:
+            if self._error is None:
+                self._error = ex
         self._stop_event.set()
-        if self.is_alive():
-            self.join()
 
     def get_sample(self) -> Optional[TelemetrySample]:
         """Return the oldest queued sample, or ``None`` when the queue is empty."""
@@ -358,8 +420,9 @@ class TelemetryPoller(Thread):
 
     @property
     def error(self) -> Optional[BaseException]:
-        """Exception that stopped the polling thread early, if any."""
-        return self._error
+        """Exception that stopped the reader or decoder thread early, if any."""
+        with self._error_lock:
+            return self._error
 
 
 def _pyarrow_type(pa: ModuleType, dtype: RegDtype) -> "pa.DataType":
@@ -387,7 +450,15 @@ def _pyarrow_type(pa: ModuleType, dtype: RegDtype) -> "pa.DataType":
 
 
 class TelemetryRecorder:
-    """Record polled telemetry samples to a Parquet file."""
+    """Record polled telemetry samples to a Parquet file.
+
+    For high-rate capture (5 kHz and above), construct the ``servo``'s
+    owning ``EthercatNetwork`` with ``GilReleaseConfig(sdo_read_write=True)``
+    (or :meth:`GilReleaseConfig.always`) so complete-access telemetry reads
+    do not block other Python threads while the SDO transaction is pending.
+    Without it, the default pysoem behavior may serialize the reader thread
+    against unrelated Python-side work and reintroduce read timing jitter.
+    """
 
     TIMESTAMP_COLUMN = "timestamp"
     HOST_TIME_COLUMN = "host_time"
