@@ -3,7 +3,7 @@ from typing import Any, Callable, Optional
 
 from ingenialink.ethernet.network import NetStatusListener
 from ingenialink.ethernet.tsn.sdcp.connection import DEFAULT_SDCP_TIMEOUT_S
-from ingenialink.exceptions import ILStateError
+from ingenialink.exceptions import ILError, ILStateError
 from ingenialink.network import NetProt, NetState, Network, ServoTarget, SlaveInfo
 from ingenialink.servo import Servo
 from ingenialink.virtual.sdcp.servo import VirtualSDCPServo
@@ -46,8 +46,8 @@ class VirtualSDCPNetwork(Network[VirtualSDCPServo]):
 
         Raises:
             ILStateError: If the virtual drive is already connected.
+            ILError: If the virtual SDCP server does not respond.
         """
-        _ = net_status_listener
         if self.servos:
             raise ILStateError("The virtual SDCP drive is already connected")
 
@@ -58,6 +58,13 @@ class VirtualSDCPNetwork(Network[VirtualSDCPServo]):
             servo_status_listener=servo_status_listener,
             disconnect_callback=disconnect_callback,
         )
+        try:
+            servo.get_state()
+        except ILError as error:
+            servo.stop_status_listener()
+            servo.disconnect()
+            raise ILError("Virtual SDCP server is not available") from error
+
         self.servos.append(servo)
         self._set_servo_state(servo, NetState.CONNECTED)
         if net_status_listener:

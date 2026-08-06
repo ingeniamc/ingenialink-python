@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from ingenialink.ethernet.network import NetStatusListener
+from ingenialink.exceptions import ILError
 from ingenialink.network import NetDevEvt, NetState
 from ingenialink.virtual.sdcp.network import VIRTUAL_SDCP_TARGET, VirtualSDCPNetwork
 from ingenialink.virtual.sdcp.servo import VirtualSDCPServo
@@ -18,6 +19,7 @@ class ServoDouble(VirtualSDCPServo):
 
     def __init__(self, **kwargs) -> None:
         self.target = kwargs["target"]
+        self.get_state = MagicMock()
         self.stop_status_listener = MagicMock()
         self.disconnect = MagicMock()
 
@@ -55,6 +57,26 @@ def test_connect_to_slave_uses_loopback_target(
         servo_status_listener=False,
         disconnect_callback=None,
     )
+
+
+def test_connect_to_slave_rejects_unavailable_server(
+    network: VirtualSDCPNetwork,
+    mocker,
+) -> None:
+    """Fail during connection when the virtual SDCP server does not respond."""
+    servo = ServoDouble(target=VIRTUAL_SDCP_TARGET)
+    servo.get_state.side_effect = ILError("request timed out")
+    mocker.patch(
+        "ingenialink.virtual.sdcp.network.VirtualSDCPServo",
+        return_value=servo,
+    )
+
+    with pytest.raises(ILError, match="Virtual SDCP server is not available"):
+        network.connect_to_slave(dictionary=DICTIONARY_PATH)
+
+    servo.stop_status_listener.assert_called_once_with()
+    servo.disconnect.assert_called_once_with()
+    assert network.servos == []
 
 
 def test_connect_to_slave_starts_network_status_listener(
