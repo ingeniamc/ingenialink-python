@@ -79,6 +79,38 @@ def test_telemetry_firmware_timestamps_are_incremental(servo) -> None:
 
 
 RECORDING_DURATION_S = 10.0
+COMPLETE_ACCESS_BUFFER_SIZES = (1_024, 2_048, 4_096, 8_192, 16_384, 32_768)
+
+
+@pytest.mark.ethercat
+def test_telemetry_complete_access_buffer_size_sweep(servo) -> None:
+    """Find the largest complete-access buffer accepted by the drive."""
+    telemetry = EthercatTelemetry(servo)
+    register = servo.dictionary.get_register("DRV_PROT_VBUS_VALUE", axis=1)
+    telemetry.configure([register], desired_frequency=1_000)
+    largest_supported_size = 0
+
+    try:
+        telemetry.start()
+        time.sleep(0.05)
+        for buffer_size in COMPLETE_ACCESS_BUFFER_SIZES:
+            try:
+                servo.read_complete_access(
+                    telemetry.DATA_REGISTER,
+                    subnode=0,
+                    buffer_size=buffer_size,
+                )
+            except ILRegisterAccessError:
+                break
+            largest_supported_size = buffer_size
+    finally:
+        telemetry.stop()
+
+    logger.info(
+        "Largest supported telemetry complete-access buffer: %d bytes",
+        largest_supported_size,
+    )
+    assert largest_supported_size >= COMPLETE_ACCESS_BUFFER_SIZES[0]
 
 
 def _log_generator_registers(servo, context: str) -> None:

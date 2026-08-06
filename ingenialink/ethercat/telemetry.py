@@ -40,7 +40,7 @@ class EthercatTelemetry:
     """Configure and read the CoMoCo EtherCAT telemetry service."""
 
     MAX_CHANNELS = 16
-    DATA_BUFFER_SIZE = 1024
+    DATA_BUFFER_SIZE = 8 * 1024
     BASE_FREQUENCY_HZ = 1_000_000
     MAX_FREQUENCY_DIVIDER = 0xFFFF
     TIMESTAMP_SIZE = 8
