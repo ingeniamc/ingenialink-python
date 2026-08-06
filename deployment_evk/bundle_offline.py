@@ -108,6 +108,16 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Delete the output directory before creating the bundle.",
     )
+    parser.add_argument(
+        "--exclude",
+        nargs="+",
+        default=[],
+        metavar="PACKAGE",
+        help=(
+            "Runtime dependency package names to skip (for example: pysoem ping3)."
+            " Useful for trimming packages not needed on the target."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -749,8 +759,19 @@ def main() -> int:
     meta_dir.mkdir(parents=True, exist_ok=True)
 
     runtime_deps = load_runtime_dependencies(PYPROJECT_FILE)
+    excluded_packages: list[str] = args.exclude
+    excluded_normalized = {normalize_dist_name(p) for p in excluded_packages}
+
+    # Pre-filter excluded packages before writing the requirements file.
+    deps_to_bundle = [
+        dep
+        for dep in runtime_deps
+        if normalize_dist_name(re.split(r"[><=!;\[]", dep, maxsplit=1)[0].strip())
+        not in excluded_normalized
+    ]
+
     requirements_file = meta_dir / "requirements-runtime.txt"
-    write_requirements_file(runtime_deps, requirements_file)
+    write_requirements_file(deps_to_bundle, requirements_file)
 
     base_cmd = build_download_base_cmd(
         destination=deps_dir,
@@ -762,6 +783,19 @@ def main() -> int:
         python_version=args.python_version,
         platform_tag=args.platform,
     )
+
+    # Rewrite requirements file to only include successfully bundled packages.
+    missing_normalized = {
+        normalize_dist_name(re.split(r"[><=!;\[]", r, maxsplit=1)[0].strip())
+        for r in missing_dependency_requirements
+    }
+    bundled_deps = [
+        dep
+        for dep in deps_to_bundle
+        if normalize_dist_name(re.split(r"[><=!;\[]", dep, maxsplit=1)[0].strip())
+        not in missing_normalized
+    ]
+    write_requirements_file(bundled_deps, requirements_file)
 
     project_artifact = package_project_artifact(
         project_destination=project_dir,
@@ -778,6 +812,7 @@ def main() -> int:
         "requirements_file": str(requirements_file.relative_to(args.output_dir)),
         "project_artifact": str(project_artifact.relative_to(args.output_dir)),
         "dependency_files": sorted(p.name for p in deps_dir.iterdir() if p.is_file()),
+        "excluded_runtime_dependencies": sorted(excluded_packages),
         "missing_runtime_dependency_wheels": missing_dependency_requirements,
     }
     write_metadata(meta_dir / "bundle-metadata.json", metadata)
@@ -795,7 +830,9 @@ def main() -> int:
         "  python -m pip install --no-index --find-links dependencies "
         "-r metadata/requirements-runtime.txt"
     )
-    LOGGER.info("  python -m pip install --no-index --find-links project <PROJECT_ARTIFACT>")
+    LOGGER.info(
+        "  python -m pip install --no-index --find-links project --no-deps <PROJECT_ARTIFACT>"
+    )
 
     return 0
 

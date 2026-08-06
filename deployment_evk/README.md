@@ -63,7 +63,7 @@ From inside the copied `offline_bundle` directory:
 
 ```bash
 python -m pip install --no-index --find-links dependencies -r metadata/requirements-runtime.txt
-python -m pip install --no-index --find-links project project/<PROJECT_ARTIFACT>
+python -m pip install --no-index --find-links project --no-deps project/<PROJECT_ARTIFACT>
 ```
 
 Replace `<PROJECT_ARTIFACT>` with the actual file name inside `project`.
