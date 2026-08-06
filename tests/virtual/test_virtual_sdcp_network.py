@@ -59,6 +59,14 @@ def test_connect_to_slave_uses_loopback_target(
     )
 
 
+def test_connects_to_virtual_sdcp_drive(virtual_drive_sdcp) -> None:
+    """Read a register from the connected virtual drive through SDCP."""
+    _, network, servo = virtual_drive_sdcp
+
+    assert network.get_servo_state(servo) == NetState.CONNECTED
+    assert servo.read("DRV_ID_PRODUCT_CODE") == 12345678
+
+
 def test_connect_to_slave_rejects_unavailable_server(
     network: VirtualSDCPNetwork,
     mocker,
