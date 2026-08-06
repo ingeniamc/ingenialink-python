@@ -48,6 +48,7 @@ class TelemetryModule(BaseModule):
     SAMPLE_SIZE_REGISTER = "TEL_CFG_BYTES_VALUE"
     ENABLE_REGISTER = "TEL_ENABLE"
     FREQUENCY_DIVIDER_REGISTER = "TEL_FREQ_DIV"
+    ADAPTIVE_RATE_REGISTER = "TEL_ADAPTIVE_RATE"
     MAPPED_REGISTER_COUNT_REGISTER = "TEL_CFG_TOTAL_MAP"
     MAPPED_REGISTER_PREFIX = "TEL_CFG_REG"
 
@@ -66,6 +67,7 @@ class TelemetryModule(BaseModule):
         self._broker: RegisterBroker = register_service._broker  # noqa: SLF001
         self._status = 0
         self._freq_divider = 1
+        self._adaptive_rate = 0
         self._number_mapped = 0
         self._bytes_per_sample = 0
         self._tick = 0
@@ -87,6 +89,7 @@ class TelemetryModule(BaseModule):
             (self.STATUS_REGISTER, self._read_status, None),
             (self.ENABLE_REGISTER, self._read_enable, self._write_enable),
             (self.FREQUENCY_DIVIDER_REGISTER, self._read_freq_divider, self._write_freq_divider),
+            (self.ADAPTIVE_RATE_REGISTER, self._read_adaptive_rate, self._write_adaptive_rate),
             (
                 self.MAPPED_REGISTER_COUNT_REGISTER,
                 self._read_number_mapped,
@@ -131,6 +134,12 @@ class TelemetryModule(BaseModule):
 
     def _write_freq_divider(self, value: "RegisterValue") -> None:
         self._freq_divider = int(value)
+
+    def _read_adaptive_rate(self) -> int:
+        return self._adaptive_rate
+
+    def _write_adaptive_rate(self, value: "RegisterValue") -> None:
+        self._adaptive_rate = int(bool(value))
 
     def _read_number_mapped(self) -> int:
         return self._number_mapped

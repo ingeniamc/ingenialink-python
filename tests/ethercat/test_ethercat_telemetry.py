@@ -320,6 +320,21 @@ def test_telemetry_supports_multiple_sampling_frequencies(
     assert EthercatTelemetry._divider_to_frequency(expected_divider) == frequency
 
 
+@pytest.mark.parametrize("adaptive_rate", [False, True])
+def test_telemetry_configures_adaptive_rate(mocker, adaptive_rate: bool) -> None:
+    """Verify both adaptive sampling modes are explicitly configured on the drive."""
+    servo = mocker.MagicMock(spec=EthercatServo)
+    register = _fake_register(mocker, "REG", RegDtype.U16)
+    register.monitoring = mocker.MagicMock(subnode=0, address=1)
+    telemetry = EthercatTelemetry(servo)
+
+    telemetry.configure([register], adaptive_rate=adaptive_rate)
+
+    servo.write.assert_any_call(
+        EthercatTelemetry.ADAPTIVE_RATE_REGISTER, int(adaptive_rate), subnode=0
+    )
+
+
 def test_telemetry_poller_decodes_multiple_registers_from_one_frame(mocker) -> None:
     """Verify that one frame decodes multiple mixed-width register values."""
     telemetry = mocker.MagicMock(spec=EthercatTelemetry)
@@ -535,10 +550,15 @@ def _queue_samples(poller: TelemetryPoller, samples: list[TelemetrySample]) -> N
     poller.error = None
 
 
-def test_telemetry_recorder_writes_samples_to_parquet(tmp_path, mocker) -> None:
+@pytest.mark.parametrize("adaptive_rate", [False, True])
+def test_telemetry_recorder_writes_samples_to_parquet(
+    tmp_path, mocker, adaptive_rate: bool
+) -> None:
     """Verify that recorded samples land in the Parquet file as separate columns."""
     servo = mocker.MagicMock(spec=EthercatServo)
     register = _fake_register(mocker, "REG", RegDtype.FLOAT)
+    telemetry = mocker.patch("ingenialink.ethercat.telemetry.EthercatTelemetry").return_value
+    telemetry.configure.return_value = 1_000
     poller = mocker.patch("ingenialink.ethercat.telemetry.TelemetryPoller").return_value
     _queue_samples(
         poller,
@@ -549,10 +569,15 @@ def test_telemetry_recorder_writes_samples_to_parquet(tmp_path, mocker) -> None:
     )
     path = tmp_path / "telemetry.parquet"
 
-    recorder = TelemetryRecorder(servo, [register], path, batch_size=10)
+    recorder = TelemetryRecorder(
+        servo, [register], path, batch_size=10, adaptive_rate=adaptive_rate
+    )
     recorder.start()
     recorder.stop()
 
+    telemetry.configure.assert_called_once_with(
+        (register,), desired_frequency=1_000, adaptive_rate=adaptive_rate
+    )
     rows = pq.read_table(path).to_pylist()
     assert [{"timestamp": row["timestamp"], "REG": row["REG"]} for row in rows] == [
         {"timestamp": 0.0, "REG": 1.0},
@@ -644,7 +669,10 @@ def test_telemetry_recorder_requires_pyarrow(mocker, tmp_path) -> None:
         TelemetryRecorder(servo, [register], tmp_path / "telemetry.parquet")
 
 
-def test_virtual_telemetry_configures_and_streams_frames(virtual_drive_ethercat_telemetry) -> None:
+@pytest.mark.parametrize("adaptive_rate", [False, True])
+def test_virtual_telemetry_configures_and_streams_frames(
+    virtual_drive_ethercat_telemetry, adaptive_rate: bool
+) -> None:
     """Verify telemetry sampling against a fake TEL_* firmware service."""
     _, _, servo = virtual_drive_ethercat_telemetry
     telemetry = EthercatTelemetry(servo)
@@ -652,8 +680,11 @@ def test_virtual_telemetry_configures_and_streams_frames(virtual_drive_ethercat_
     test_channel = servo.dictionary.get_register("TEST_TELEMETRY_U16", axis=0)
     servo.write("TEST_TELEMETRY_U16", 4321, subnode=0)
 
-    actual_frequency = telemetry.configure([counter, test_channel], desired_frequency=5_000)
+    actual_frequency = telemetry.configure(
+        [counter, test_channel], desired_frequency=5_000, adaptive_rate=adaptive_rate
+    )
     assert actual_frequency == 5_000
+    assert servo.read("TEL_ADAPTIVE_RATE", subnode=0) == int(adaptive_rate)
     assert telemetry.sample_size() == 0  # no mapping applied until telemetry is enabled
 
     try:

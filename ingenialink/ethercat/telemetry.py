@@ -51,6 +51,7 @@ class EthercatTelemetry:
     SAMPLE_SIZE_REGISTER = "TEL_CFG_BYTES_VALUE"
     ENABLE_REGISTER = "TEL_ENABLE"
     FREQUENCY_DIVIDER_REGISTER = "TEL_FREQ_DIV"
+    ADAPTIVE_RATE_REGISTER = "TEL_ADAPTIVE_RATE"
     MAPPED_REGISTER_COUNT_REGISTER = "TEL_CFG_TOTAL_MAP"
     MAPPED_REGISTER_PREFIX = "TEL_CFG_REG"
 
@@ -65,6 +66,7 @@ class EthercatTelemetry:
         self,
         registers: Sequence[Register],
         desired_frequency: float = 1_000,
+        adaptive_rate: bool = False,
     ) -> float:
         """Configure mapped registers and sampling frequency.
 
@@ -72,6 +74,8 @@ class EthercatTelemetry:
             registers: Register instances to sample, in payload order.
             desired_frequency: Requested telemetry sampling frequency in hertz.
                 The closest achievable frequency is configured and returned.
+            adaptive_rate: Whether firmware may adapt the sampling rate based on
+                telemetry buffer occupancy.
 
         Returns:
             The closest achievable sampling frequency in hertz.
@@ -103,6 +107,7 @@ class EthercatTelemetry:
             self._servo.write(f"{self.MAPPED_REGISTER_PREFIX}{channel}_MAP", mapping, subnode=0)
         self._servo.write(self.MAPPED_REGISTER_COUNT_REGISTER, len(registers), subnode=0)
         self._servo.write(self.FREQUENCY_DIVIDER_REGISTER, frequency_divider, subnode=0)
+        self._servo.write(self.ADAPTIVE_RATE_REGISTER, int(adaptive_rate), subnode=0)
         self._frame_size = payload_size + self.TIMESTAMP_SIZE
         self._read_buffer_size = self._buffer_size_for(self._frame_size)
         self._pending_frames = []
@@ -478,6 +483,7 @@ class TelemetryRecorder:
         batch_size: int = 1_000,
         poll_interval: float = 0.01,
         flush_interval: float = 5.0,
+        adaptive_rate: bool = False,
     ) -> None:
         try:
             import pyarrow as pa  # noqa: PLC0415
@@ -492,6 +498,7 @@ class TelemetryRecorder:
         self._registers = tuple(registers)
         self._path = path
         self._frequency = frequency
+        self._adaptive_rate = adaptive_rate
         self._batch_size = batch_size
         self._poll_interval = poll_interval
         self._flush_interval = flush_interval
@@ -527,7 +534,9 @@ class TelemetryRecorder:
             raise RuntimeError("Telemetry recorder is already running")
         if self._writer is None:
             achieved_frequency = self._telemetry.configure(
-                self._registers, desired_frequency=self._frequency
+                self._registers,
+                desired_frequency=self._frequency,
+                adaptive_rate=self._adaptive_rate,
             )
             schema = self._schema.with_metadata({
                 self.METADATA_FORMAT_VERSION_KEY: self.FORMAT_VERSION,

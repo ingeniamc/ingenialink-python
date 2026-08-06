@@ -153,6 +153,15 @@
 							</Subitem>
 						</Subitems>
 					</CANopenObject>
+					<CANopenObject index="0x5A08" datatype="VAR">
+						<Subitems>
+							<Subitem subindex="0" address_type="NVM_NONE" access="rw" dtype="u16" id="TEL_ADAPTIVE_RATE" units="none" pdo_access="CONFIG" desc="Enables telemetry sampling rate adaptation based on buffer occupancy." default="0000" cat_id="TELEMETRY">
+								<Labels>
+									<Label lang="en_US">Adaptive telemetry rate</Label>
+								</Labels>
+							</Subitem>
+						</Subitems>
+					</CANopenObject>
 				</CANopenObjects>
 				<Errors>
 					<Error id="0x00003280" affected_module="Power stage" error_type="cyclic">
