@@ -109,6 +109,7 @@ def test_register_set_storage():
 @pytest.mark.parametrize(
     "dtype, reg_range, expected_range, reg_type",
     [
+        (RegDtype.BOOL, ("0", "1"), (0, 1), int),
         (RegDtype.U8, (0, 100), (0, 100), int),
         (RegDtype.FLOAT, (0.0, 1.0), (0.0, 1.0), float),
         (RegDtype.S16, (-100, None), (-100, 32767), int),

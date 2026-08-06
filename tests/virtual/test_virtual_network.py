@@ -28,7 +28,7 @@ def test_virtual_drive_disconnection(virtual_drive_custom_dict):
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     _, net, servo = virtual_drive_custom_dict(dictionary, Interface.ETH)
     net.disconnect_from_slave(servo)
-    assert net.get_servo_state(VirtualDrive.IP_ADDRESS) == NetState.DISCONNECTED
+    assert net.get_servo_state(servo.ip_address) == NetState.DISCONNECTED
     assert len(net.servos) == 0
     assert servo.socket._closed
 
