@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from typing import Any, Callable, Optional
 
+from ingenialink.ethernet.network import NetStatusListener
 from ingenialink.ethernet.tsn.sdcp.connection import DEFAULT_SDCP_TIMEOUT_S
 from ingenialink.exceptions import ILStateError
 from ingenialink.network import NetProt, NetState, Network, ServoTarget, SlaveInfo
@@ -12,6 +13,10 @@ VIRTUAL_SDCP_TARGET = "::1"
 
 class VirtualSDCPNetwork(Network[VirtualSDCPServo]):
     """Network for the virtual SDCP drive on the IPv6 loopback address."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.__listener_net_status: Optional[NetStatusListener[VirtualSDCPServo]] = None
 
     @property
     def protocol(self) -> NetProt:
@@ -55,6 +60,8 @@ class VirtualSDCPNetwork(Network[VirtualSDCPServo]):
         )
         self.servos.append(servo)
         self._set_servo_state(servo, NetState.CONNECTED)
+        if net_status_listener:
+            self.start_status_listener()
         return servo
 
     def disconnect_from_slave(self, servo: Servo) -> None:
@@ -72,17 +79,27 @@ class VirtualSDCPNetwork(Network[VirtualSDCPServo]):
         servo.disconnect()
         self._set_servo_state(servo, NetState.DISCONNECTED)
         self.servos.remove(servo)
+        if len(self.servos) == 0:
+            self.stop_status_listener()
 
     def close(self) -> None:
         """Disconnect all virtual SDCP servos."""
         for servo in list(self.servos):
             self.disconnect_from_slave(servo)
 
-    def start_status_listener(self, *_args: Any, **_kwargs: Any) -> None:
-        """Virtual SDCP does not provide a network status listener."""
+    def start_status_listener(self) -> None:
+        """Start monitoring the virtual SDCP connection status."""
+        if self.__listener_net_status is None:
+            listener = NetStatusListener(self)
+            listener.start()
+            self.__listener_net_status = listener
 
-    def stop_status_listener(self, *_args: Any, **_kwargs: Any) -> None:
-        """Virtual SDCP does not provide a network status listener."""
+    def stop_status_listener(self) -> None:
+        """Stop monitoring the virtual SDCP connection status."""
+        if self.__listener_net_status is not None:
+            self.__listener_net_status.stop()
+            self.__listener_net_status.join()
+        self.__listener_net_status = None
 
     def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:
         """The virtual SDCP network requires no recovery action.

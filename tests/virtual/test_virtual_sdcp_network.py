@@ -4,7 +4,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from ingenialink.network import NetState
+from ingenialink.ethernet.network import NetStatusListener
+from ingenialink.network import NetDevEvt, NetState
 from ingenialink.virtual.sdcp.network import VIRTUAL_SDCP_TARGET, VirtualSDCPNetwork
 from ingenialink.virtual.sdcp.servo import VirtualSDCPServo
 
@@ -54,6 +55,49 @@ def test_connect_to_slave_uses_loopback_target(
         servo_status_listener=False,
         disconnect_callback=None,
     )
+
+
+def test_connect_to_slave_starts_network_status_listener(
+    network: VirtualSDCPNetwork,
+    mocker,
+) -> None:
+    """Start the network listener when requested by the caller."""
+    servo_mock = MagicMock(spec=VirtualSDCPServo)
+    servo_mock.target = VIRTUAL_SDCP_TARGET
+    mocker.patch(
+        "ingenialink.virtual.sdcp.network.VirtualSDCPServo",
+        return_value=servo_mock,
+    )
+    start_listener_mock = mocker.patch.object(network, "start_status_listener")
+
+    network.connect_to_slave(
+        dictionary=DICTIONARY_PATH,
+        net_status_listener=True,
+    )
+
+    start_listener_mock.assert_called_once_with()
+
+
+def test_network_status_listener_tracks_virtual_sdcp_connection_state(
+    network: VirtualSDCPNetwork,
+    mocker,
+) -> None:
+    """Publish network events when the virtual SDCP servo disappears and returns."""
+    servo_mock = ServoDouble(target=VIRTUAL_SDCP_TARGET)
+    servo_mock.is_alive = MagicMock(side_effect=[False, True])
+    servo_mock._net_state_publisher = MagicMock()
+    network.servos.append(servo_mock)
+    network._set_servo_state(servo_mock, NetState.CONNECTED)
+
+    listener = NetStatusListener(network)
+    listener.process()
+    listener.process()
+
+    assert network.get_servo_state(servo_mock) == NetState.CONNECTED
+    assert servo_mock._net_state_publisher.notify.call_args_list == [
+        mocker.call(NetDevEvt.REMOVED),
+        mocker.call(NetDevEvt.ADDED),
+    ]
 
 
 def test_disconnects_virtual_servo(
