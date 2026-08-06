@@ -1,6 +1,7 @@
 from typing import Any, Optional, Union
 
 from ingenialink.bitfield import BitField
+from ingenialink.canopen.register import CanopenRegister
 from ingenialink.enums.register import (
     RegAccess,
     RegAddressType,
@@ -97,3 +98,7 @@ class EthernetRegister(Register):
     def address(self) -> int:
         """Register address."""
         return self.__address
+
+
+class SDCPRegister(CanopenRegister):
+    """Class to represent an SDCP register."""
