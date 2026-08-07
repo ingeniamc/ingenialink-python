@@ -24,11 +24,11 @@ class VirtualSDCPNetwork(Network[VirtualSDCPServo]):
         return NetProt.ETH
 
     def scan_slaves(self) -> list[str]:  # type: ignore[override]
-        """Return the known virtual SDCP drive address."""
+        """Return the targets of currently connected virtual SDCP servos."""
         return [servo.target for servo in self.servos if isinstance(servo.target, str)]
 
     def scan_slaves_info(self) -> OrderedDict[str, SlaveInfo]:  # type: ignore[override]
-        """Return basic information for the known virtual SDCP drive."""
+        """Return basic information for currently connected virtual SDCP servos."""
         return OrderedDict((target, SlaveInfo()) for target in self.scan_slaves())
 
     def connect_to_slave(
