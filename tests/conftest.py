@@ -18,6 +18,7 @@ from ingenialink.servo import Servo
 from ingenialink.virtual.canopen.network import VirtualCanopenNetwork
 from ingenialink.virtual.ethercat.network import VirtualEthercatNetwork
 from ingenialink.virtual.ethernet.network import VirtualEthernetNetwork
+from ingenialink.virtual.sdcp.network import VirtualSDCPNetwork
 from tests.ethercat.mock import pysoem_mock_network  # noqa: F401
 
 pytest_plugins = [
@@ -116,6 +117,12 @@ def _connect_virtual_canopen(server: VirtualDrive) -> tuple[Any, Any]:
     return net, servo
 
 
+def _connect_virtual_sdcp(server: VirtualDrive) -> tuple[VirtualSDCPNetwork, Any]:
+    net = VirtualSDCPNetwork()
+    servo = net.connect_to_slave(server.dictionary_path)
+    return net, servo
+
+
 @pytest.fixture()
 def virtual_drive():
     server, _, virtual_servo = _create_virtual_drive_connection(
@@ -123,6 +130,29 @@ def virtual_drive():
         Interface.ETH,
     )
     yield server, virtual_servo
+    server.stop()
+
+
+@pytest.fixture()
+def virtual_drive_sdcp():
+    """Connect to a virtual SDCP drive on the endpoint used by the SDCP client.
+
+    Yields:
+        The virtual drive server, network, and connected servo.
+    """
+    dictionary_path = Path(__file__).parent / "resources" / "ethernet" / "sdcp_example.xdf3"
+    server = VirtualDrive(
+        port=22_334,
+        dictionary_path=str(dictionary_path),
+        protocol=Interface.SDCP,
+    )
+    server.start()
+    try:
+        net, servo = _connect_virtual_sdcp(server)
+    except Exception:
+        server.stop()
+        raise
+    yield server, net, servo
     server.stop()
 
 

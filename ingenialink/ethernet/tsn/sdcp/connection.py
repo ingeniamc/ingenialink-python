@@ -1,3 +1,4 @@
+import ipaddress
 import socket
 from contextlib import suppress
 from types import TracebackType
@@ -46,7 +47,9 @@ class SDCPConnection:
         interface: str,
         timeout: float,
     ) -> None:
-        interface_index = get_interface_index(interface)
+        interface_index = (
+            0 if ipaddress.IPv6Address(address).is_loopback else get_interface_index(interface)
+        )
 
         self._destination = IPv6SocketAddress(
             address,

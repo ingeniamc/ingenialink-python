@@ -1,6 +1,9 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- SDCP support for physical and virtual drives.
+
 ### Changed
 - Fix race condition where network state is notified before being updated
 

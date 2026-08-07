@@ -114,6 +114,42 @@ def test_init_closes_socket_when_connection_fails(
     socket_mock.close.assert_called_once_with()
 
 
+def test_init_resolves_interface_scope(socket_mock: MagicMock) -> None:
+    """Use the resolved interface index for the IPv6 destination."""
+    with (
+        patch(
+            "ingenialink.ethernet.tsn.sdcp.connection.get_interface_index",
+            return_value=INTERFACE_INDEX,
+        ),
+        patch(
+            "ingenialink.ethernet.tsn.sdcp.connection.socket.socket",
+            return_value=socket_mock,
+        ),
+    ):
+        SDCPConnection(
+            address=DEVICE_ADDRESS,
+            interface=INTERFACE,
+            timeout=TIMEOUT_S,
+        )
+
+    socket_mock.connect.assert_called_once_with((DEVICE_ADDRESS, 22_334, 0, INTERFACE_INDEX))
+
+
+def test_init_uses_zero_scope_for_loopback(socket_mock: MagicMock) -> None:
+    """Use the node-local scope for an IPv6 loopback destination."""
+    with patch(
+        "ingenialink.ethernet.tsn.sdcp.connection.socket.socket",
+        return_value=socket_mock,
+    ):
+        SDCPConnection(
+            address="::1",
+            interface=INTERFACE,
+            timeout=TIMEOUT_S,
+        )
+
+    socket_mock.connect.assert_called_once_with(("::1", 22_334, 0, 0))
+
+
 def test_request_returns_valid_response(
     connection: SDCPConnection,
     socket_mock: MagicMock,
