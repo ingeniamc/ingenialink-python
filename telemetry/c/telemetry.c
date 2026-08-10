@@ -129,9 +129,10 @@ static void telemetry_update_adaptive_rate(
     if (telemetry->adaptive_occupancy_q8 > upper_target_q8)
     {
         desired_prescaler = telemetry->configured_prescaler;
-        desired_prescaler += ((uint64_t)telemetry->configured_prescaler
-                              * (telemetry->adaptive_occupancy_q8 - upper_target_q8))
-                             / upper_target_q8;
+        desired_prescaler += (((uint64_t)telemetry->configured_prescaler
+                       * (telemetry->adaptive_occupancy_q8 - upper_target_q8))
+                      + upper_target_q8 - 1U)
+                     / upper_target_q8;
         max_prescaler = (uint64_t)telemetry->configured_prescaler
             * TELEMETRY_ADAPTIVE_MAX_DIVIDER_MULTIPLIER;
         if (max_prescaler > UINT32_MAX)
