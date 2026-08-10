@@ -39,6 +39,28 @@ def reassignFilePermissions() {
     }
 }
 
+def ensureRustToolchain() {
+    if (isUnix()) {
+        sh '''
+            if ! command -v rustc >/dev/null 2>&1 || ! command -v cargo >/dev/null 2>&1; then
+                curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+            fi
+            rustc --version
+            cargo --version
+        '''
+    } else {
+        bat '''
+            where rustc >nul 2>&1 && where cargo >nul 2>&1
+            if %ERRORLEVEL% NEQ 0 (
+                powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference = 'Stop'; $installer = Join-Path $env:TEMP 'rustup-init.exe'; Invoke-WebRequest -UseBasicParsing https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe -OutFile $installer; & $installer -y --profile minimal; Remove-Item $installer"
+            )
+            set "PATH=%USERPROFILE%\\.cargo\\bin;%PATH%"
+            rustc --version
+            cargo --version
+        '''
+    }
+}
+
 VEnvManager venvManager = new VEnvManager(
     pipeline: this,
     default_python_version: DEFAULT_PYTHON_VERSION,
@@ -256,9 +278,12 @@ pipeline {
                                 stage('Build wheels') {
                                     steps {
                                         script {
-                                            venvManager.forEachEnvironment() { venv ->
-                                                venv.run("poetry run poe build-wheel")
-                                                venv.run("poetry run poe check-wheels")
+                                            withEnv(["PATH=C:\\Users\\ContainerAdministrator\\.cargo\\bin;${env.PATH}"]) {
+                                                ensureRustToolchain()
+                                                venvManager.forEachEnvironment() { venv ->
+                                                    venv.run("poetry run poe build-wheel")
+                                                    venv.run("poetry run poe check-wheels")
+                                                }
                                             }
                                             venvManager.copyFromWorkingFolder("ingenialink/_version.py")
                                             venvManager.copyFromWorkingFolder("dist/")
@@ -342,9 +367,12 @@ pipeline {
                                         script {
                                             // Linux for now does not contain compiled code
                                             // so building on one python version is enough
-                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                                                venv.run("poetry run poe build-wheel")
-                                                venv.run("poetry run poe check-wheels")
+                                            withEnv(["PATH=/root/.cargo/bin:${env.PATH}"]) {
+                                                ensureRustToolchain()
+                                                venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                    venv.run("poetry run poe build-wheel")
+                                                    venv.run("poetry run poe check-wheels")
+                                                }
                                             }
                                             venvManager.copyFromWorkingFolder("dist/")
                                         }
@@ -631,4 +659,3 @@ pipeline {
         }
     }
 }
-
