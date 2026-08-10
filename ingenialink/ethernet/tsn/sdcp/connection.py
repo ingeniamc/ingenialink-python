@@ -41,7 +41,6 @@ class SDCPConnection:
     """
 
     _MAX_RESPONSE_SIZE = 65_535
-    _ACYCLIC_PORT = DEFAULT_SDCP_PORT
 
     def __init__(
         self,
