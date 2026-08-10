@@ -1,6 +1,8 @@
 import platform
-from Cython.Build import cythonize
+
 import setuptools
+from Cython.Build import cythonize
+from setuptools_rust import Binding, RustExtension
 
 ext_modules = []
 
@@ -18,5 +20,12 @@ if platform.system() == "Windows":
     )
 
 setuptools.setup(
-    ext_modules=cythonize(ext_modules, compiler_directives={'language_level': "3"}),
+    ext_modules=cythonize(ext_modules, compiler_directives={"language_level": "3"}),
+    rust_extensions=[
+        RustExtension(
+            "telemetry",
+            path="telemetry/Cargo.toml",
+            binding=Binding.PyO3,
+        )
+    ],
 )

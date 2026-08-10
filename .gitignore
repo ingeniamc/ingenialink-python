@@ -38,6 +38,9 @@ out.txt
 
 # Cython compilation
 /ingenialink/cython_files/*.cpp
+/telemetry/target/
+# Vendored telemetry C sources are build inputs, not generated Cython output.
+!telemetry/c/*.c
 temp/*
 
 # tests setups and JSON export files

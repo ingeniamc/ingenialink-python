@@ -1,0 +1,20 @@
+[package]
+name = "telemetry"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "telemetry"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+pyo3 = { version = "0.23.5", features = ["extension-module", "abi3-py39"] }
+
+[lints.rust]
+missing_docs = "deny"
+
+[lints.clippy]
+doc_markdown = "warn"
+missing_docs_in_private_items = "deny"
+missing_errors_doc = "deny"
+missing_panics_doc = "deny"
