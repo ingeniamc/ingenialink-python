@@ -375,8 +375,8 @@ pipeline {
                                             ]) {
                                                 ensureRustToolchain()
                                                 venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                                                    venv.run("poetry run poe build-wheel")
-                                                    venv.run("poetry run poe check-wheels")
+                                                    venv.run("export PATH=/root/.cargo/bin:\$PATH; export RUSTC=/root/.cargo/bin/rustc; export CARGO=/root/.cargo/bin/cargo; poetry run poe build-wheel")
+                                                    venv.run("export PATH=/root/.cargo/bin:\$PATH; export RUSTC=/root/.cargo/bin/rustc; export CARGO=/root/.cargo/bin/cargo; poetry run poe check-wheels")
                                                 }
                                             }
                                             venvManager.copyFromWorkingFolder("dist/")
