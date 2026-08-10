@@ -2,7 +2,7 @@ from collections import OrderedDict
 from typing import Any, Callable, Optional
 
 from ingenialink.ethernet.network import NetStatusListener
-from ingenialink.ethernet.tsn.sdcp.connection import DEFAULT_SDCP_TIMEOUT_S
+from ingenialink.ethernet.tsn.sdcp.connection import DEFAULT_SDCP_PORT, DEFAULT_SDCP_TIMEOUT_S
 from ingenialink.exceptions import ILError, ILStateError
 from ingenialink.network import NetProt, NetState, Network, ServoTarget, SlaveInfo
 from ingenialink.servo import Servo
@@ -34,12 +34,24 @@ class VirtualSDCPNetwork(Network[VirtualSDCPServo]):
     def connect_to_slave(
         self,
         dictionary: str,
+        port: int = DEFAULT_SDCP_PORT,
         connection_timeout: float = DEFAULT_SDCP_TIMEOUT_S,
         servo_status_listener: bool = False,
         net_status_listener: bool = False,
         disconnect_callback: Optional[Callable[[Servo], None]] = None,
     ) -> VirtualSDCPServo:
         """Connect to the virtual SDCP drive without performing discovery.
+
+        Args:
+            dictionary: Path to the target dictionary file.
+            port: UDP port to connect to the virtual SDCP drive.
+            connection_timeout: Timeout in seconds for SDCP requests and responses.
+            servo_status_listener: Toggle the listener of the servo for
+                its status, errors, faults, etc.
+            net_status_listener: Toggle the listener of the network
+                status, connection and disconnection.
+            disconnect_callback: Callback function to be called when the servo is disconnected.
+                If not specified, no callback will be called.
 
         Returns:
             The connected virtual SDCP servo.
@@ -57,6 +69,7 @@ class VirtualSDCPNetwork(Network[VirtualSDCPServo]):
             connection_timeout=connection_timeout,
             servo_status_listener=servo_status_listener,
             disconnect_callback=disconnect_callback,
+            port=port,
         )
         try:
             servo.get_state()
