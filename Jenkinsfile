@@ -368,7 +368,11 @@ pipeline {
                                         script {
                                             // Linux for now does not contain compiled code
                                             // so building on one python version is enough
-                                            withEnv(["PATH=/root/.cargo/bin:${env.PATH}"]) {
+                                            withEnv([
+                                                "PATH=/root/.cargo/bin:${env.PATH}",
+                                                "RUSTC=/root/.cargo/bin/rustc",
+                                                "CARGO=/root/.cargo/bin/cargo",
+                                            ]) {
                                                 ensureRustToolchain()
                                                 venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
                                                     venv.run("poetry run poe build-wheel")
