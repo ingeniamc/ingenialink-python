@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from ingenialink.ethernet.network import NetStatusListener
+from ingenialink.ethernet.tsn.sdcp.connection import DEFAULT_SDCP_PORT
 from ingenialink.exceptions import ILError
 from ingenialink.network import NetDevEvt, NetState
 from ingenialink.virtual.sdcp.network import VIRTUAL_SDCP_TARGET, VirtualSDCPNetwork
@@ -56,7 +57,25 @@ def test_connect_to_slave_uses_loopback_target(
         connection_timeout=TIMEOUT_S,
         servo_status_listener=False,
         disconnect_callback=None,
+        port=DEFAULT_SDCP_PORT,
     )
+
+
+def test_connect_to_slave_uses_configured_port(
+    network: VirtualSDCPNetwork,
+    mocker,
+) -> None:
+    """Pass the configured port to the virtual SDCP servo."""
+    servo_mock = MagicMock(spec=VirtualSDCPServo)
+    servo_mock.target = VIRTUAL_SDCP_TARGET
+    servo_class_mock = mocker.patch(
+        "ingenialink.virtual.sdcp.network.VirtualSDCPServo",
+        return_value=servo_mock,
+    )
+
+    network.connect_to_slave(dictionary=DICTIONARY_PATH, port=22_335)
+
+    assert servo_class_mock.call_args.kwargs["port"] == 22_335
 
 
 def test_connects_to_virtual_sdcp_drive(virtual_drive_sdcp) -> None:

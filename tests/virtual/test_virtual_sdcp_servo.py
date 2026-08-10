@@ -7,6 +7,7 @@ from ingenialink.virtual.sdcp.servo import VIRTUAL_SDCP_INTERFACE, VirtualSDCPSe
 
 DICTIONARY_PATH = "test_dictionary.xdf"
 TARGET = "::1"
+PORT = 22_335
 TIMEOUT_S = 2.0
 
 
@@ -16,7 +17,7 @@ def test_virtual_servo_creates_loopback_connection() -> None:
 
     with (
         patch(
-            "ingenialink.ethernet.tsn.sdcp.servo.SDCPConnection",
+            "ingenialink.virtual.sdcp.servo.SDCPConnection",
             return_value=connection_mock,
         ) as connection_class_mock,
         patch(
@@ -28,10 +29,16 @@ def test_virtual_servo_creates_loopback_connection() -> None:
             target=TARGET,
             dictionary_path=DICTIONARY_PATH,
             connection_timeout=TIMEOUT_S,
+            port=PORT,
         )
 
     assert servo._connection is connection_mock
-    connection_class_mock.assert_called_once_with(TARGET, VIRTUAL_SDCP_INTERFACE, TIMEOUT_S)
+    connection_class_mock.assert_called_once_with(
+        TARGET,
+        VIRTUAL_SDCP_INTERFACE,
+        TIMEOUT_S,
+        PORT,
+    )
 
     servo._disconnect_event_publisher = MagicMock()
     servo.disconnect()

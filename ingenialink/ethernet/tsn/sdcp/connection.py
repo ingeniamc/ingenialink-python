@@ -21,6 +21,7 @@ from .messages import (
 )
 
 DEFAULT_SDCP_TIMEOUT_S = 1.0
+DEFAULT_SDCP_PORT = 22_334
 
 
 class SDCPConnection:
@@ -31,6 +32,7 @@ class SDCPConnection:
         interface: Network interface in the same format as
             :func:`ingenialink.ethernet.tsn.ipv6_discovery.discover_ipv6_devices`.
         timeout: Timeout in seconds for SDCP requests and responses.
+        port: UDP port used for SDCP requests.
 
     Raises:
         OSError: If the interface cannot be resolved.
@@ -39,13 +41,13 @@ class SDCPConnection:
     """
 
     _MAX_RESPONSE_SIZE = 65_535
-    _ACYCLIC_PORT = 22_334
 
     def __init__(
         self,
         address: str,
         interface: str,
         timeout: float,
+        port: int = DEFAULT_SDCP_PORT,
     ) -> None:
         interface_index = (
             0 if ipaddress.IPv6Address(address).is_loopback else get_interface_index(interface)
@@ -53,7 +55,7 @@ class SDCPConnection:
 
         self._destination = IPv6SocketAddress(
             address,
-            self._ACYCLIC_PORT,
+            port,
             0,
             interface_index,
         )
