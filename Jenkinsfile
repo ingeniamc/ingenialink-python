@@ -45,6 +45,7 @@ def ensureRustToolchain() {
             if ! command -v rustc >/dev/null 2>&1 || ! command -v cargo >/dev/null 2>&1; then
                 curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
             fi
+            . "$HOME/.cargo/env"
             rustc --version
             cargo --version
         '''
