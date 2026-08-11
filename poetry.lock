@@ -5097,13 +5097,13 @@ test = ["pytest"]
 
 [[package]]
 name = "summit-testing-framework"
-version = "0.3.0.post529+develop.f2ad726"
+version = "0.3.0.post328+hotfix.0.3.1.9c7b246"
 description = "Testing framework for Novanta drives"
 optional = false
 python-versions = ">=3.9"
 groups = ["tests"]
 files = [
-    {file = "summit_testing_framework-0.3.0.post529+develop.f2ad726-py3-none-any.whl", hash = "sha256:7fba8029967d48f3e1367d66669fd81766539616edfe35f4df5a646743c247e6"},
+    {file = "summit_testing_framework-0.3.0.post328+hotfix.0.3.1.9c7b246-py3-none-any.whl", hash = "sha256:9187b677c94a32f3b8b4541eae876df4ded31c36491ae99b420b989a57943823"},
 ]
 
 [package.dependencies]
@@ -5113,7 +5113,6 @@ jinja2 = ">=3.1.0"
 pytest = ">=8.4.1,<9.0.0"
 pytest-env = ">=1.1.5"
 rpyc = "6.0.0"
-typing_extensions = ">=4.16.0"
 virtual_drive = ">=0.1.1"
 
 [package.extras]
@@ -5913,4 +5912,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "c75fa267c24e20187ac288c63f65e535cb4fbccd14abe6fe499fd477a2da8bdc"
+content-hash = "c7832947c24a87294aa5908908637af7c647aa4b2b54eb1d07f0d1748883fca2"
