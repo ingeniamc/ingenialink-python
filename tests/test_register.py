@@ -45,17 +45,17 @@ def test_register_type_errors():
     dtype = "False type"
     access = RegAccess.RW
     with pytest.raises(ILValueError):
-        Register(dtype, access)
+        Register(dtype, access, "MOCK")
 
     dtype = RegDtype.FLOAT
     access = "False access"
     with pytest.raises(ILAccessError):
-        Register(dtype, access)
+        Register(dtype, access, "MOCK")
 
     dtype = RegDtype.FLOAT
     access = RegAccess.RW
     with pytest.raises(ILValueError):
-        Register(dtype, access, phy="False Phy")
+        Register(dtype, access, phy="False Phy", identifier="MOCK")
 
 
 def test_register_get_storage():
@@ -63,33 +63,33 @@ def test_register_get_storage():
 
     # invalid storage
     dtype = RegDtype.STR
-    register = Register(dtype, access, storage=1)
+    register = Register(dtype, access, storage=1, identifier="MOCK")
     assert register.storage_valid == 0
     assert register.storage is None
 
     # no storage
     dtype = RegDtype.FLOAT
-    register = Register(dtype, access)
+    register = Register(dtype, access, identifier="MOCK")
     assert register.storage_valid == 0
     assert register.storage is None
 
     # float storage
     dtype = RegDtype.FLOAT
     storage = 12.34
-    register = Register(dtype, access, storage=storage)
+    register = Register(dtype, access, storage=storage, identifier="MOCK")
     assert register.storage_valid == 1
     assert register.storage == storage
 
     # parse float storage
     dtype = RegDtype.FLOAT
     storage = 123
-    register = Register(dtype, access, storage=storage)
+    register = Register(dtype, access, storage=storage, identifier="MOCK")
     assert isinstance(register.storage, float)
 
     # parse int storage
     dtype = RegDtype.U8
     storage = 123.1
-    register = Register(dtype, access, storage=storage)
+    register = Register(dtype, access, storage=storage, identifier="MOCK")
     assert isinstance(register.storage, int)
     assert register.storage == 123
 
@@ -98,7 +98,7 @@ def test_register_set_storage():
     access = RegAccess.RW
     dtype = RegDtype.FLOAT
     storage = 20.0
-    register = Register(dtype, access, storage=storage)
+    register = Register(dtype, access, storage=storage, identifier="MOCK")
     assert register.storage == storage
 
     storage = 1.1
@@ -118,7 +118,7 @@ def test_register_set_storage():
     ],
 )
 def test_register_range(dtype, reg_range, expected_range, reg_type):
-    register = Register(dtype, RegAccess.RW, reg_range=reg_range)
+    register = Register(dtype, RegAccess.RW, reg_range=reg_range, identifier="MOCK")
 
     assert type(register.range[0]) is reg_type
     assert type(register.range[1]) is reg_type
@@ -154,3 +154,43 @@ def test_bit_register_write_invalid_value(virtual_drive, write_value):
         str(exc_info.value)
         == f"Invalid value. Expected values: [0, 1, True, False], got {write_value}"
     )
+
+
+class TestRegisterEquality:
+    def test_equal_registers(self):
+        reg1 = Register(RegDtype.U32, RegAccess.RW, identifier="MOT_POLE_PAIRS", subnode=1)
+        reg2 = Register(RegDtype.U32, RegAccess.RW, identifier="MOT_POLE_PAIRS", subnode=1)
+        assert reg1 == reg2
+        assert reg1 == reg2
+
+    def test_different_identifier(self):
+        reg1 = Register(RegDtype.U32, RegAccess.RW, identifier="MOT_POLE_PAIRS", subnode=1)
+        reg2 = Register(RegDtype.U32, RegAccess.RW, identifier="DRV_OP_CMD", subnode=1)
+        assert reg1 != reg2
+
+    def test_different_subnode(self):
+        reg1 = Register(RegDtype.U32, RegAccess.RW, identifier="MOT_POLE_PAIRS", subnode=0)
+        reg2 = Register(RegDtype.U32, RegAccess.RW, identifier="MOT_POLE_PAIRS", subnode=1)
+        assert reg1 != reg2
+
+    def test_same_identity_ignores_other_fields(self):
+        reg1 = Register(RegDtype.U32, RegAccess.RW, identifier="REG_A", subnode=1)
+        reg2 = Register(RegDtype.FLOAT, RegAccess.RO, identifier="REG_A", subnode=1)
+        assert reg1 == reg2
+
+    def test_hash_consistent_with_equality(self):
+        reg1 = Register(RegDtype.U32, RegAccess.RW, identifier="MOT_POLE_PAIRS", subnode=1)
+        reg2 = Register(RegDtype.FLOAT, RegAccess.RO, identifier="MOT_POLE_PAIRS", subnode=1)
+        assert hash(reg1) == hash(reg2)
+
+    def test_usable_as_dict_key(self):
+        reg1 = Register(RegDtype.U32, RegAccess.RW, identifier="MOT_POLE_PAIRS", subnode=1)
+        reg2 = Register(RegDtype.U32, RegAccess.RW, identifier="MOT_POLE_PAIRS", subnode=1)
+        d = {reg1: 42}
+        assert d[reg2] == 42
+
+    def test_not_equal_to_non_register(self):
+        reg = Register(RegDtype.U32, RegAccess.RW, identifier="REG_A", subnode=1)
+        assert reg != "REG_A"
+        assert reg != 42
+        assert reg != (1, "REG_A")

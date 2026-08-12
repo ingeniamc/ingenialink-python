@@ -11,17 +11,15 @@ def adapters_module():
         import ingenialink.get_adapters_addresses as adapters  # noqa: PLC0415
 
         return adapters
-    pytest.skip(f"Skipping test, only available on Windows, platform={current_platform}")
+
+    raise NotImplementedError(
+        "Get adapters addresses is not implemented on this platform. "
+        "Do not run these tests under this platform"
+    )
 
 
-@pytest.mark.canopen
 @pytest.mark.ethercat
 def test_get_adapters_addresses(adapters_module, setup_descriptor):
-    if not hasattr(setup_descriptor, "ifname"):
-        pytest.skip(
-            f"Skipping test because 'ifname' is not in the '{setup_descriptor=}' information."
-        )
-
     ifname_match = re.search(r"\{[^}]*\}", setup_descriptor.ifname)
     expected_adapter_address = ifname_match.group(0) if ifname_match else None
     assert expected_adapter_address is not None

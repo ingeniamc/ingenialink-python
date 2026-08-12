@@ -1,5 +1,7 @@
 from collections import OrderedDict
-from typing import TYPE_CHECKING, Optional, Union, cast
+from collections.abc import Callable, Container, Iterable, Iterator, Mapping
+from types import MappingProxyType
+from typing import TYPE_CHECKING, NamedTuple, Optional, Union
 
 from ingenialogger import get_logger
 
@@ -9,11 +11,63 @@ from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.exceptions import ILIOError
 from ingenialink.register import Register
 from ingenialink.servo import RegisterAccessOperation, Servo
+from ingenialink.utils._utils import REG_VALUE
 
 if TYPE_CHECKING:
     from ingenialink.canopen.register import CanopenRegister
 
 logger = get_logger(__name__)
+
+
+class RestoredEntry(NamedTuple):
+    """A register that was successfully restored to its baseline value."""
+
+    register: Register
+    value: REG_VALUE
+
+
+class FailedEntry(NamedTuple):
+    """A register that failed to restore after all retry attempts."""
+
+    register: Register
+    value: REG_VALUE
+    error: Exception
+
+
+class SkippedEntry(NamedTuple):
+    """A register that was skipped during restoration."""
+
+    register: Register
+    reason: str
+
+
+class RestoreResult:
+    """Structured result from a register restoration operation.
+
+    Collects which registers were successfully restored, which failed, and
+    which were skipped, so callers can log, display, or raise as appropriate
+    instead of having the restore method raise on individual failures.
+    """
+
+    def __init__(self) -> None:
+        self.restored: list[RestoredEntry] = []
+        self.failed: list[FailedEntry] = []
+        self.skipped: list[SkippedEntry] = []
+
+    @property
+    def all_succeeded(self) -> bool:
+        """Return ``True`` if no registers failed to restore."""
+        return len(self.failed) == 0
+
+    def summary(self) -> str:
+        """Return a one-line human-readable summary of the result."""
+        parts = [f"Restored: {len(self.restored)}"]
+        if self.failed:
+            parts.append(f"Failed: {len(self.failed)}")
+        if self.skipped:
+            parts.append(f"Skipped: {len(self.skipped)}")
+        return ", ".join(parts)
+
 
 # PDO registers
 _PDO_RPDO_MAP_REGISTER_UID = "ETG_COMMS_RPDO_"
@@ -24,6 +78,347 @@ _PDO_TPDO_MAP_REGISTER_UID = "ETG_COMMS_TPDO_"
 # In EtherCAT dictionaries, the uid is "MON_DATA" and "DIST_DATA"
 _MON_DATA_OBJECT_UID = "MON_DATA"
 _DIST_DATA_OBJECT_UID = "DIST_DATA"
+
+
+class DriveRegistersValue:
+    """Class to represent an immutable state of the drive registers."""
+
+    def __init__(self, values: OrderedDict[Register, REG_VALUE]) -> None:
+        """Initialize with an ordered mapping of registers to their values.
+
+        Args:
+            values: Ordered mapping from ``Register`` objects to their read values.
+        """
+        self._values = values
+
+    @classmethod
+    def from_hardware(
+        cls,
+        servo: "Servo",
+        axis: Optional[int] = None,
+        ignore_registers: Container[Register] = frozenset(),
+        read_max_attempts: int = 2,
+    ) -> "DriveRegistersValue":
+        """Read current register values from a servo and return an immutable snapshot.
+
+        Args:
+            servo: The servo to read registers from.
+            axis: If given, only read registers for this axis (subnode).
+                When ``None``, all registers from every subnode are read.
+            ignore_registers: Register instances to skip.
+            read_max_attempts: Number of read attempts per register before
+                giving up and skipping it.
+
+        Returns:
+            A new ``DriveRegistersValue`` containing the successfully read values.
+        """
+        register_values: OrderedDict[Register, REG_VALUE] = OrderedDict()
+
+        registers_iter = (
+            servo.dictionary.all_registers()
+            if axis is None
+            else servo.dictionary.registers(axis).values()
+        )
+
+        for register in cls.filter_registers(registers_iter, ignore_registers, axis):
+            if register.access in [RegAccess.WO, RegAccess.RO]:
+                continue
+
+            for attempt in range(1, read_max_attempts + 1):
+                try:
+                    register_values[register] = servo.read(register)
+                    break
+                except ILIOError as e:
+                    message = (
+                        f"{e}\n"
+                        f"An exception happened while trying to read "
+                        f"{register.identifier} from {axis=} "
+                        f"attempt ({attempt}/{read_max_attempts})\n "
+                    )
+
+                    if attempt < read_max_attempts:
+                        logger.warning(f"{message}, \n trying again...")
+                    else:
+                        logger.error(f"{message}, \n Skipping this register")
+                        break
+
+        return cls(register_values)
+
+    def diff(
+        self, other: "DriveRegistersValue"
+    ) -> OrderedDict[Register, tuple[REG_VALUE, REG_VALUE]]:
+        """Compare this state with another and return registers that differ.
+
+        Only registers present in both states are compared.
+
+        Args:
+            other: The other state to compare against.
+
+        Returns:
+            OrderedDict mapping registers to ``(self_value, other_value)`` for
+            registers whose values differ.
+        """
+        result: OrderedDict[Register, tuple[REG_VALUE, REG_VALUE]] = OrderedDict()
+        for register, self_value in self._values.items():
+            if register in other._values:
+                other_value = other._values[register]
+                if self_value != other_value:
+                    result[register] = (self_value, other_value)
+        return result
+
+    @classmethod
+    def from_dict(
+        cls,
+        data: OrderedDict[Register, REG_VALUE],
+        ignore_registers: Container[Register] = frozenset(),
+        axis: Optional[int] = None,
+    ) -> "DriveRegistersValue":
+        """Construct a value snapshot from an existing in-memory mapping.
+
+        This enables building a baseline without hardware I/O, for example
+        from an application-level register cache.
+
+        Args:
+            data: Ordered mapping from ``Register`` objects to their values.
+            ignore_registers: Registers to exclude from the snapshot.
+            axis: If given, only include registers with this subnode.
+                When ``None``, all subnodes are included.
+
+        Returns:
+            A new ``DriveRegistersValue`` wrapping the filtered data.
+        """
+        return cls(
+            OrderedDict(
+                (reg, data[reg]) for reg in cls.filter_registers(data, ignore_registers, axis)
+            )
+        )
+
+    @staticmethod
+    def filter_registers(
+        registers: Iterable[Register],
+        ignore_registers: Container[Register] = frozenset(),
+        axis: Optional[int] = None,
+    ) -> Iterator[Register]:
+        """Yield registers that pass the axis and exclusion filters.
+
+        Args:
+            registers: The register iterable to filter.
+            ignore_registers: Registers to exclude.
+            axis: If given, only yield registers with this subnode.
+                When ``None``, all subnodes pass.
+
+        Yields:
+            Registers that are not in the exclusion set and match the axis.
+        """
+        for reg in registers:
+            if reg not in ignore_registers and (axis is None or reg.subnode == axis):
+                yield reg
+
+    def get(self, register: Register) -> Optional[REG_VALUE]:
+        """Look up a single register value from the snapshot.
+
+        Args:
+            register: The register to look up.
+
+        Returns:
+            The stored value, or ``None`` if the register is not in this snapshot.
+        """
+        return self._values.get(register)
+
+
+class DriveRegistersSession:
+    """Stateful tracker that monitors register changes against a baseline.
+
+    Subscribes to servo register-update callbacks to record which registers have
+    been modified and their new values. ``start()`` / ``stop()`` control the
+    callback subscription.
+
+    Args:
+        servo: The servo whose register updates are tracked.
+        baseline: The immutable snapshot used as the reference state.
+        do_not_restore_registers: UIDs that should be ignored by the tracker.
+        axis: Axis (subnode) scope.  ``None`` means all axes.
+    """
+
+    def __init__(
+        self,
+        servo: Servo,
+        baseline: DriveRegistersValue,
+        do_not_restore_registers: Container[Register] = frozenset(),
+        axis: Optional[int] = None,
+    ) -> None:
+        self._servo = servo
+        self._baseline = baseline
+        self._do_not_restore_registers = do_not_restore_registers
+        self._axis = axis
+        self._changes: OrderedDict[Register, REG_VALUE] = OrderedDict()
+        self._subscribed_servo: Optional[Servo] = None
+
+    @property
+    def is_running(self) -> bool:
+        """True if the session is currently tracking updates."""
+        return self._subscribed_servo is self._servo
+
+    @property
+    def servo(self) -> Servo:
+        """Servo whose register updates are tracked."""
+        return self._servo
+
+    @property
+    def baseline(self) -> DriveRegistersValue:
+        """Baseline snapshot used as the reference state."""
+        return self._baseline
+
+    def _register_update_callback(
+        self,
+        servo: Servo,  # noqa: ARG002 - required by callback signature, unused here
+        register: Register,
+        value: REG_VALUE,
+    ) -> None:
+        """Record a register write if it differs from the baseline."""
+        if register.access in [RegAccess.WO, RegAccess.RO]:
+            return
+        if register in self._do_not_restore_registers:
+            return
+        if register not in self.baseline._values:
+            return
+
+        if register in self._changes:
+            previous_value = self._changes[register]
+        else:
+            previous_value = self.baseline._values[register]
+        if value == previous_value:
+            return
+        self._changes[register] = value
+        logger.debug(
+            f"{id(self)}: uid={register.identifier!r} changed from {previous_value!r} to {value!r}"
+        )
+
+    def current_value(self) -> DriveRegistersValue:
+        """Return the current register values: baseline overlaid with tracked changes.
+
+        Returns:
+            A new ``DriveRegistersValue`` with baseline values updated by any
+            changes recorded so far.
+        """
+        merged: OrderedDict[Register, REG_VALUE] = OrderedDict(self.baseline._values)
+        merged.update(self._changes)
+        return DriveRegistersValue(merged)
+
+    @property
+    def changes(self) -> Mapping[Register, REG_VALUE]:
+        """Read-only view of the tracked register changes."""
+        return MappingProxyType(self._changes)
+
+    def _write_with_retry(
+        self,
+        register: Register,
+        value: REG_VALUE,
+        result: RestoreResult,
+        max_attempts: int = 2,
+    ) -> None:
+        """Write a register value with retry, recording the outcome in *result*."""
+        for attempt in range(1, max_attempts + 1):
+            try:
+                self.servo.write(register, value)
+                result.restored.append(RestoredEntry(register, value))
+                return
+            except Exception as e:  # noqa: PERF203
+                if attempt < max_attempts:
+                    logger.error(
+                        f"{id(self)}: {register.identifier} failed to restore to "
+                        f"{value!r} on axis={register.subnode} with exception '{e}', "
+                        f"attempt ({attempt}/{max_attempts})"
+                    )
+                else:
+                    result.failed.append(FailedEntry(register, value, e))
+
+    def restore(self, write_max_attempts: int = 2) -> RestoreResult:
+        """Restore tracked changes back to their baseline values.
+
+        Iterates changes in reverse chronological order (undo-stack), writing
+        the original baseline value back to hardware for each changed register.
+
+        Args:
+            write_max_attempts: Number of write attempts per register before
+                recording a failure.
+
+        Returns:
+            A ``RestoreResult`` summarising successes, failures, and skips.
+        """
+        result = RestoreResult()
+
+        for register, current_value in reversed(self._changes.items()):
+            baseline_value = self.baseline._values.get(register)
+            if baseline_value is None:
+                result.skipped.append(SkippedEntry(register, "No baseline value"))
+                continue
+
+            if current_value == baseline_value:
+                continue
+
+            logger.debug(
+                f"Restoring {register.identifier!s} to {baseline_value!r} "
+                f"on axis={register.subnode}"
+            )
+            self._write_with_retry(register, baseline_value, result, write_max_attempts)
+
+        return result
+
+    def force_restore(self, write_max_attempts: int = 2) -> RestoreResult:
+        """Force-restore all registers to baseline by re-reading hardware.
+
+        Re-reads all registers via ``DriveRegistersValue.from_hardware()``,
+        diffs against the baseline, and restores any that differ.  The tracked
+        changes are cleared before reading so subsequent tracking starts fresh.
+
+        Args:
+            write_max_attempts: Number of write attempts per register before
+                recording a failure.
+
+        Returns:
+            A ``RestoreResult`` summarising successes, failures, and skips.
+        """
+        self._changes.clear()
+
+        current = DriveRegistersValue.from_hardware(
+            self.servo,
+            axis=self._axis,
+            ignore_registers=self._do_not_restore_registers,
+        )
+        differences = self.baseline.diff(current)
+
+        result = RestoreResult()
+        for register, (baseline_value, _current_value) in differences.items():
+            logger.debug(
+                f"Force restoring {register.identifier!s} to {baseline_value!r} "
+                f"on axis={register.subnode}"
+            )
+            self._write_with_retry(register, baseline_value, result, write_max_attempts)
+
+        return result
+
+    def start(self) -> None:
+        """Subscribe the tracking callback to the servo."""
+        if self._subscribed_servo is not self._servo:
+            self.servo.register_update_subscribe(self._register_update_callback)
+            self._subscribed_servo = self._servo
+
+    def stop(self) -> None:
+        """Unsubscribe the tracking callback from the servo."""
+        if self._subscribed_servo is self._servo:
+            self.servo.register_update_unsubscribe(self._register_update_callback)
+            self._subscribed_servo = None
+
+    def reset(self) -> None:
+        """Clear all tracked changes.
+
+        After calling this, the session behaves as if no register writes
+        have occurred since the baseline was established. This clears ``self._changes``
+        and re-bases the session from the current tracked state.
+        """
+        self._baseline = self.current_value()
+        self._changes.clear()
 
 
 class DriveContextManager:
@@ -38,6 +433,8 @@ class DriveContextManager:
         axis: Optional[int] = None,
         do_not_restore_registers: Optional[list[str]] = None,
         complete_access_objects: Optional[list[str]] = None,
+        baseline: Optional[DriveRegistersValue] = None,
+        track_objects: bool = True,
     ) -> None:
         """Initializes the registers that shouldn't be stored.
 
@@ -53,75 +450,121 @@ class DriveContextManager:
             Also, monitoring and disturbance data objects ("MON_DATA" and "DIST_DATA")
                 should be read using complete access.
                 Defaults to None.
+            baseline: pre-built register snapshot to use as the baseline state.
+                When provided, ``__enter__`` skips the hardware read and uses this
+                snapshot directly.  Defaults to None (read from hardware).
+            track_objects: whether to read and restore complete-access objects
+                (PDO maps, monitoring/disturbance data).  Defaults to True.
+                Set to False when only register-level tracking is needed.
         """
-        self.drive = servo
-        self._axis: Optional[int] = axis
+        self._drive = servo
+        self._axis = axis
 
-        self._do_not_restore_registers: set[str] = (
-            set(do_not_restore_registers) if isinstance(do_not_restore_registers, list) else set()
+        self._do_not_restore_registers: set[Register] = set(
+            servo.dictionary.find_registers(
+                # User-provided UIDs
+                *(do_not_restore_registers or []),
+                # Default registers that should never be restored
+                servo.STORE_COCO_ALL,
+                servo.STORE_MOCO_ALL_REGISTERS,
+                servo.RESTORE_COCO_ALL,
+                servo.RESTORE_MOCO_ALL_REGISTERS,
+                # Mac address should not be restored, in certain FW versions the reading of MAC
+                # address provides different values each time
+                "COMMS_ETH_MAC",
+                # Total number of error register should not be restored, only a 0 can be written
+                "ETG_ERROR_FIELD",
+                "CIA301_COMMS_ERROR_FIELD",
+                # PDO mapping registers are restored via complete access, not individually.
+                "ETG_COMMS_RPDO_MAP*",
+                "ETG_COMMS_TPDO_MAP*",
+            )
         )
-        self._do_not_restore_registers.update([
-            servo.STORE_COCO_ALL,
-            servo.STORE_MOCO_ALL_REGISTERS,
-            servo.RESTORE_COCO_ALL,
-            servo.RESTORE_MOCO_ALL_REGISTERS,
-            # Mac address should not be restored, in certain FW versions the reading of MAC
-            # address provides different values each time
-            "COMMS_ETH_MAC",
-            # Total number of error register should not be restored, only a 0 can be written
-            "ETG_ERROR_FIELD",
-            "CIA301_COMMS_ERROR_FIELD",
-        ])
 
         # Set the objects that should be read using complete access
         self._complete_access_objects: set[str] = (
             set(complete_access_objects) if isinstance(complete_access_objects, list) else set()
         )
 
-        self._original_register_values: OrderedDict[
-            tuple[int, str], Union[int, float, str, bytes]
-        ] = OrderedDict()
+        self._baseline: Optional[DriveRegistersValue] = baseline
+
+        self._track_objects = track_objects
+
+        self._session: Optional[DriveRegistersSession] = None
 
         self._original_canopen_object_values: dict[CanOpenObject, bytes] = {}
 
-        # Key: (axis, uid), value
-        self._registers_changed = OrderedDict[tuple[int, str], Union[int, float, str, bytes]]()
-
         self._objects_changed: dict[CanOpenObject, bytes] = {}
 
+    @property
+    def is_running(self) -> bool:
+        """True if tracking is currently active."""
+        return self._session.is_running if self._session else False
+
+    @property
+    def drive(self) -> Servo:
+        """The servo this context manager operates on."""
+        return self._drive
+
+    @drive.setter
+    def drive(self, servo: Servo) -> None:
+        if self._drive is servo:
+            return
+
+        if self._session is not None:
+            active = self.is_running
+            if active:
+                self.stop()
+
+            self._drive = servo
+            self._session._servo = servo
+            self._session._subscribed_servo = None
+
+            if active:
+                self.start()
+        else:
+            self._drive = servo
+
+    def start(self) -> None:
+        """Start tracking register changes on the current drive.
+
+        Raises:
+            RuntimeError: If no active session exists.
+        """
+        if self._session is None:
+            raise RuntimeError("Cannot start tracking without an active session.")
+
+        if not self.is_running:
+            self._session.start()
+            if self._track_objects:
+                self.drive.register_update_complete_access_subscribe(self._complete_access_callback)
+
+    def stop(self) -> None:
+        """Stop tracking register changes on the current drive."""
+        if self.is_running:
+            if self._session is not None:
+                self._session.stop()
+
+            if self._track_objects:
+                self.drive.register_update_complete_access_unsubscribe(
+                    self._complete_access_callback
+                )
+
+    @property
     def _register_update_callback(
         self,
-        servo: Servo,  # noqa: ARG002
-        register: Register,
-        value: Union[int, float, str, bytes],
-    ) -> None:
-        """Saves the register uids that are changed.
+    ) -> Callable[[Servo, Register, REG_VALUE], None]:
+        """Alias for backward compatibility; delegates to the session callback.
 
-        It will ignore the registers that should not be restored `self._do_not_restore_registers`.
-
-        Args:
-            servo: servo.
-            register: register.
-            value: changed value.
+        Raises:
+            RuntimeError: If no active session exists (``__enter__`` not called).
         """
-        uid: str = cast("str", register.identifier)
-        if register.access in [RegAccess.WO, RegAccess.RO]:
-            return
-        if uid in self._do_not_restore_registers:
-            return
-        dict_key = (register.subnode, uid)
-        if dict_key not in self._original_register_values:
-            return
-
-        # Check if the new value is different from the previous one
-        if dict_key in self._registers_changed:
-            previous_value = self._registers_changed[dict_key]
-        previous_value = self._original_register_values[dict_key]
-        current_value = value if value is not None else previous_value
-        if current_value == previous_value:
-            return
-        self._registers_changed[dict_key] = current_value
-        logger.debug(f"{id(self)}: {uid=} changed from {previous_value!r} to {current_value!r}")
+        if self._session is None:
+            raise RuntimeError(
+                "DriveContextManager has no active session. "
+                "Call __enter__() before accessing _register_update_callback."
+            )
+        return self._session._register_update_callback
 
     def _complete_access_callback(
         self,
@@ -157,44 +600,18 @@ class DriveContextManager:
         # If at least one register is read-only, do not restore the object,
         # restore the register individually instead
         if not obj.all_registers_writable:
-            self._register_update_callback(servo=servo, register=register, value=value)
+            if self._session is None:
+                raise RuntimeError(
+                    "DriveContextManager has no active session. "
+                    "Call __enter__() before accessing _complete_access_callback."
+                )
+            self._session._register_update_callback(servo=servo, register=register, value=value)
             return
 
         # Store the object as changed (actual value will be determined during restoration)
         self._objects_changed[obj] = b""  # Placeholder, actual restore uses original value
 
         logger.debug(f"{id(self)}: Object {obj.uid} changed using complete access to {value!r}.")
-
-    def _store_register_data(self) -> OrderedDict[tuple[int, str], Union[int, float, str, bytes]]:
-        """Reads and returns the value of all registers.
-
-        Returns:
-            OrderedDict mapping (axis, uid) tuple to register value.
-        """
-        register_values: OrderedDict[tuple[int, str], Union[int, float, str, bytes]] = OrderedDict()
-        axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
-        for axis in axes:
-            for uid, register in self.drive.dictionary.registers(subnode=axis).items():
-                if uid in self._do_not_restore_registers:
-                    continue
-                if register.access in [RegAccess.WO, RegAccess.RO]:
-                    continue
-
-                try:
-                    register_value = self.drive.read(uid, subnode=axis)
-                except ILIOError:
-                    continue
-                except Exception as e:
-                    logger.warning(
-                        f"{id(self)}: '{e}' happened while trying to read {uid=} from {axis=}, "
-                        "trying again..."
-                    )
-                    try:
-                        register_value = self.drive.read(uid, subnode=axis)
-                    except ILIOError:
-                        continue
-                register_values[(axis, uid)] = register_value
-        return register_values
 
     def _store_objects_data(self) -> dict[CanOpenObject, bytes]:
         """Reads and returns complete access objects data.
@@ -230,50 +647,6 @@ class DriveContextManager:
             object_values[obj] = obj_value
         return object_values
 
-    def _restore_register_data(
-        self,
-        original_values: OrderedDict[tuple[int, str], Union[int, float, str, bytes]],
-        changed_values: OrderedDict[tuple[int, str], Union[int, float, str, bytes]],
-        force_restore: bool = False,
-    ) -> None:
-        """Restores the drive values.
-
-        Args:
-            original_values: OrderedDict mapping (axis, uid) to original value.
-            changed_values: OrderedDict mapping (axis, uid) to changed value.
-            force_restore: If True, registers are being restored by force mode.
-        """
-        axes = list(self.drive.dictionary.subnodes) if self._axis is None else [self._axis]
-        restored_registers: dict[int, list[str]] = {axis: [] for axis in axes}
-
-        for (axis, uid), current_value in reversed(changed_values.items()):
-            # No original data for the register
-            if (axis, uid) not in original_values:
-                continue
-            # Register has already been restored with a newer value than the evaluated one
-            if uid in restored_registers[axis]:
-                continue
-            # Skip PDO mapping registers: handled via complete access in _restore_objects_data
-            if force_restore and (
-                _PDO_RPDO_MAP_REGISTER_UID in uid or _PDO_TPDO_MAP_REGISTER_UID in uid
-            ):
-                continue
-            restore_value = original_values[(axis, uid)]
-            # No change with respect to the original value
-            if current_value == restore_value:
-                continue
-
-            try:
-                logger.debug(f"Restoring {uid=} to {restore_value!r} on {axis=}")
-                self.drive.write(uid, restore_value, subnode=axis)
-            except Exception as e:
-                logger.error(
-                    f"{id(self)}: {uid} failed to restore value={current_value!r} "
-                    f"to {restore_value!r} with exception '{e}', trying again..."
-                )
-                self.drive.write(uid, restore_value, subnode=axis)
-            restored_registers[axis].append(uid)
-
     def _restore_objects_data(
         self,
         original_values: dict[CanOpenObject, bytes],
@@ -305,17 +678,27 @@ class DriveContextManager:
 
     def __enter__(self) -> None:
         """Subscribes to register update callbacks and saves the drive values."""
-        self._original_register_values = self._store_register_data()
-        self._original_canopen_object_values = self._store_objects_data()
-        self.drive.register_update_subscribe(self._register_update_callback)
-        self.drive.register_update_complete_access_subscribe(self._complete_access_callback)
+        if self._baseline is None:
+            self._baseline = DriveRegistersValue.from_hardware(
+                self.drive, axis=self._axis, ignore_registers=self._do_not_restore_registers
+            )
+        self._session = DriveRegistersSession(
+            servo=self.drive,
+            baseline=self._baseline,
+            do_not_restore_registers=self._do_not_restore_registers,
+            axis=self._axis,
+        )
+        if self._track_objects:
+            self._original_canopen_object_values = self._store_objects_data()
+
+        self.start()
 
     def force_restore(self, restore_registers: bool = True, restore_objects: bool = True) -> None:
         """Force restoration of all registers to their original values.
 
         This method re-reads all registers that were originally stored in __enter__,
         compares them with the original values, and restores any that have changed.
-        It ignores the current state of _registers_changed and _objects_changed,
+        It ignores the current state of the session's tracked changes and _objects_changed,
         effectively performing a complete refresh and restoration.
 
         This is useful when changes have been made outside the context manager's
@@ -328,23 +711,17 @@ class DriveContextManager:
         if not restore_registers and not restore_objects:
             return
 
+        assert self._session is not None
+        assert self._baseline is not None
+
         # Temporarily unsubscribe from callbacks to avoid re-populating tracking during restoration
-        self.drive.register_update_unsubscribe(self._register_update_callback)
-        self.drive.register_update_complete_access_unsubscribe(self._complete_access_callback)
+        self.stop()
 
         try:
             if restore_registers:
-                # Clear the current tracking
-                self._registers_changed.clear()
-                # Re-read current register values and restore any differences
-                current_register_values = self._store_register_data()
-                self._restore_register_data(
-                    original_values=self._original_register_values,
-                    changed_values=current_register_values,
-                    force_restore=True,
-                )
+                self._session.force_restore()
 
-            if restore_objects:
+            if restore_objects and self._track_objects:
                 # Clear the current tracking
                 self._objects_changed.clear()
 
@@ -356,19 +733,117 @@ class DriveContextManager:
                 )
         finally:
             # Re-subscribe to callbacks
-            self.drive.register_update_subscribe(self._register_update_callback)
-            self.drive.register_update_complete_access_subscribe(self._complete_access_callback)
+            self.start()
+
+    def reset(self, force: bool = False) -> None:
+        """Reset the drive to its baseline state.
+
+        Restores the drive to the baseline captured during ``__enter__``, without
+        re-reading the baseline itself. Clears tracked changes and re-arms change tracking.
+
+        Args:
+            force: If True, re-reads all registers vs. baseline and restores differences
+                (for side-channel writes the context manager never saw). If False, restores
+                only the tracked changes and clears the tracked sets (default).
+
+        Raises:
+            RuntimeError: If no active session exists (``__enter__`` not called).
+        """
+        if self._session is None:
+            raise RuntimeError(
+                "DriveContextManager has no active session. "
+                "Call __enter__() before calling reset()."
+            )
+        if self._baseline is None:
+            raise RuntimeError(
+                "DriveContextManager has no baseline. Call __enter__() before calling reset()."
+            )
+
+        # Unsubscribe from callbacks to avoid re-populating tracking
+        self.stop()
+
+        try:
+            if force:
+                # Force mode: re-read and restore all differences
+                try:
+                    self._session.force_restore()
+                except ILIOError as e:
+                    logger.warning(
+                        f"{id(self)}: Force restore failed during register read/write: {e}. "
+                        f"Drive may have disconnected. Continuing with tracking reset."
+                    )
+
+                if self._track_objects:
+                    try:
+                        current_object_values = self._store_objects_data()
+                        self._restore_objects_data(
+                            original_values=self._original_canopen_object_values,
+                            changed_values=current_object_values,
+                        )
+                    except ILIOError as e:
+                        logger.warning(
+                            f"{id(self)}: Force restore failed during object read/write: {e}. "
+                            f"Drive may have disconnected. Skipping object restoration."
+                        )
+            else:
+                # Tracked mode: restore only tracked changes
+                try:
+                    self._session.restore()
+                except ILIOError as e:
+                    logger.warning(
+                        f"{id(self)}: Restore failed during register write: {e}. "
+                        f"Drive may have disconnected. Continuing with tracking reset."
+                    )
+
+                if self._track_objects:
+                    try:
+                        self._restore_objects_data(
+                            original_values=self._original_canopen_object_values,
+                            changed_values=self._objects_changed,
+                        )
+                    except ILIOError as e:
+                        logger.warning(
+                            f"{id(self)}: Restore failed during object write: {e}. "
+                            f"Drive may have disconnected. Skipping object restoration."
+                        )
+
+            # Clear tracking and rebuild session
+            if self._track_objects:
+                self._objects_changed.clear()
+
+            self._session = DriveRegistersSession(
+                servo=self.drive,
+                baseline=self._baseline,
+                do_not_restore_registers=self._session._do_not_restore_registers,
+                axis=self._axis,
+            )
+        finally:
+            # Re-subscribe to callbacks
+            self.start()
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:  # type: ignore [no-untyped-def]
         """Unsubscribes from register updates and restores the drive values."""
-        self.drive.register_update_unsubscribe(self._register_update_callback)
-        self.drive.register_update_complete_access_unsubscribe(self._complete_access_callback)
-        self._restore_register_data(
-            original_values=self._original_register_values,
-            changed_values=self._registers_changed,
-            force_restore=False,
-        )
-        self._restore_objects_data(
-            original_values=self._original_canopen_object_values,
-            changed_values=self._objects_changed,
-        )
+        if self._session is None or self._baseline is None:
+            return
+
+        self.stop()
+
+        try:
+            self._session.restore()
+        except ILIOError as e:
+            logger.warning(
+                f"{id(self)}: Restore failed during context exit register write: {e}. "
+                f"Drive may have disconnected."
+            )
+
+        if self._track_objects:
+            try:
+                self._restore_objects_data(
+                    original_values=self._original_canopen_object_values,
+                    changed_values=self._objects_changed,
+                )
+            except ILIOError as e:
+                logger.warning(
+                    f"{id(self)}: Restore failed during context exit object write: {e}. "
+                    f"Drive may have disconnected."
+                )

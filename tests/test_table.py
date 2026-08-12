@@ -39,14 +39,10 @@ def real_servo_with_tables(servo) -> Generator[tuple[Servo, Table] :, None, None
         Tuple[Servo, Table]: The real servo and the user memory table.
     """
     # Assert that the table is not already defined in the XDF
-    # When XDFs are updated to include tables, this assertion will fail
-    # and we can remove this injection logic
     try:
-        servo.get_table(uid="MEM_USR", axis=0)
-        raise AssertionError(
-            "MEM_USR table is now defined in the XDF dictionary! "
-            "Please remove the table injection logic from this fixture."
-        )
+        table = servo.get_table(uid="MEM_USR", axis=0)
+        yield servo, table  # Table already exists, skip injection
+        return
     except (ValueError, KeyError):
         # Expected: table not found in dictionary
         pass

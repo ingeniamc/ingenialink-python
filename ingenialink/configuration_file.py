@@ -264,8 +264,6 @@ class ConfigRegister:
         Raises:
             ValueError: Register has no an identifier
         """
-        if register.identifier is None:
-            raise ValueError("register has not an identifier")
         return cls(register.identifier, register.subnode, register.dtype, register.access, value)
 
     def to_xcf(self) -> ElementTree.Element:
