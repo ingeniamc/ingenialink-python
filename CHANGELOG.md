@@ -2,12 +2,12 @@
 
 ## [7.6.2] - 2026-08-12
 ### Added
-- Extended the `ConfigurationFile` API with `from_dictionary_defaults()`, `override_values()`, and direct `ConfigurationFile` support in `load_configuration()`
+- Extended the `ConfigurationFile` API with `from_dictionary_defaults()`, `override_values()`, and direct `ConfigurationFile` support in `load_configuration()`.
 
 ### Fixed
-- Fixed FoE process failure during multiple consecutive firmware upgrades
-- Fixed `AVAILABLE_PDOS` limit for comoco products incorrectly capping PDO maps at 2 instead of 3
-- Fixed PDO map insertion order not matching processing order when multiple maps are active simultaneously
+- FoE process failures during multiple consecutive firmware upgrades.
+- Incorrect `AVAILABLE_PDOS` limit for COMOCO products, which restricted the number of PDO maps to two instead of three.
+- PDO map insertion order not matching the processing order when multiple maps are active simultaneously.
 
 ## [7.6.1] - 2026-04-29
 ### Added
