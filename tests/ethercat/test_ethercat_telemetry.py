@@ -134,6 +134,7 @@ def _record_generator_capture(
     mode_value: int,
     generator_frequency_hz: float,
     telemetry_frequency_hz: float,
+    adaptive_rate: bool,
 ) -> "pq.Table":
     """Configure the internal generator, record it to Parquet, and return the captured table.
 
@@ -166,14 +167,20 @@ def _record_generator_capture(
     ]
     output_dir = test_output_handler.tests_output_dir / "ethercat_telemetry"
     output_dir.mkdir(parents=True, exist_ok=True)
+    rate_mode = "adaptive" if adaptive_rate else "fixed"
     filename = (
-        f"{mode_name}_gen{generator_frequency_hz:g}hz_tel{telemetry_frequency_hz:g}hz.parquet"
+        f"{mode_name}_gen{generator_frequency_hz:g}hz_"
+        f"tel{telemetry_frequency_hz:g}hz_{rate_mode}.parquet"
     )
     path = output_dir / filename
 
     try:
         with TelemetryRecorder(
-            servo, registers, path, frequency=telemetry_frequency_hz
+            servo,
+            registers,
+            path,
+            frequency=telemetry_frequency_hz,
+            adaptive_rate=adaptive_rate,
         ) as recorder:
             assert recorder.is_recording
             deadline = time.monotonic() + RECORDING_DURATION_S
@@ -204,10 +211,15 @@ def _record_generator_capture(
 
 
 @pytest.mark.ethercat
+@pytest.mark.parametrize("adaptive_rate", [False, True], ids=["fixed", "adaptive"])
 @pytest.mark.parametrize("telemetry_frequency_hz", [1_000.0, 5_000.0, 20_000.0])
 @pytest.mark.parametrize("generator_frequency_hz", [1.0, 5.0, 20.0])
 def test_telemetry_recorder_captures_internal_generator_saw_tooth_signal(
-    servo, test_output_handler, generator_frequency_hz: float, telemetry_frequency_hz: float
+    servo,
+    test_output_handler,
+    generator_frequency_hz: float,
+    telemetry_frequency_hz: float,
+    adaptive_rate: bool,
 ) -> None:
     """Verify TelemetryRecorder captures a saw-tooth waveform from the internal generator.
 
@@ -224,6 +236,7 @@ def test_telemetry_recorder_captures_internal_generator_saw_tooth_signal(
         1,
         generator_frequency_hz,
         telemetry_frequency_hz,
+        adaptive_rate,
     )
 
     generator_samples = table.column("FBK_GEN_VALUE").to_pylist()
@@ -235,10 +248,15 @@ def test_telemetry_recorder_captures_internal_generator_saw_tooth_signal(
 
 
 @pytest.mark.ethercat
+@pytest.mark.parametrize("adaptive_rate", [False, True], ids=["fixed", "adaptive"])
 @pytest.mark.parametrize("telemetry_frequency_hz", [1_000.0, 5_000.0, 20_000.0])
 @pytest.mark.parametrize("generator_frequency_hz", [1.0, 5.0, 20.0])
 def test_telemetry_recorder_captures_internal_generator_square_signal(
-    servo, test_output_handler, generator_frequency_hz: float, telemetry_frequency_hz: float
+    servo,
+    test_output_handler,
+    generator_frequency_hz: float,
+    telemetry_frequency_hz: float,
+    adaptive_rate: bool,
 ) -> None:
     """Verify TelemetryRecorder captures a square waveform from the internal generator.
 
@@ -252,6 +270,7 @@ def test_telemetry_recorder_captures_internal_generator_square_signal(
         2,
         generator_frequency_hz,
         telemetry_frequency_hz,
+        adaptive_rate,
     )
 
     generator_samples = table.column("FBK_GEN_VALUE").to_pylist()
