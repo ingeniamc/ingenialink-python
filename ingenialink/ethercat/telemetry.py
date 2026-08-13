@@ -505,6 +505,7 @@ class TelemetryRecorder:
         self._poll_interval = poll_interval
         self._flush_interval = flush_interval
         self._telemetry = EthercatTelemetry(servo)
+        self._connection_epoch = 0
         self._schema = pa.schema(
             [
                 pa.field(self.TIMESTAMP_COLUMN, pa.float64()),
@@ -547,10 +548,34 @@ class TelemetryRecorder:
             resolved_timestamp = self._last_timestamp if timestamp is None else timestamp
             if resolved_timestamp is None:
                 raise RuntimeError("No samples recorded yet; pass an explicit timestamp")
-            self._markers.append({"time": resolved_timestamp, "label": label})
-            self._writer.add_key_value_metadata(
-                {self.METADATA_MARKERS_KEY: json.dumps(self._markers)}
-            )
+            marker: dict[str, object] = {"time": resolved_timestamp, "label": label}
+            if self._connection_epoch:
+                marker["connection_epoch"] = self._connection_epoch
+            self._markers.append(marker)
+            self._writer.add_key_value_metadata({
+                self.METADATA_MARKERS_KEY: json.dumps(self._markers)
+            })
+
+    def rebind(self, servo: EthercatServo) -> None:
+        """Rebind recording to a replacement servo connection.
+
+        The Parquet writer remains open, so samples collected before and after the
+        reconnect are stored in one artifact. Markers record the connection epoch
+        because firmware timestamps may restart when the drive reconnects.
+
+        Args:
+            servo: The replacement connected EtherCAT servo.
+
+        Raises:
+            RuntimeError: If recording is not running.
+        """
+        if self._writer is None:
+            raise RuntimeError("Telemetry recorder is not running")
+        if self.is_recording:
+            self.pause()
+        self._telemetry = EthercatTelemetry(servo)
+        self._connection_epoch += 1
+        self.start()
 
     def start(self) -> None:
         """Start recording, or resume it after :meth:`pause`.
