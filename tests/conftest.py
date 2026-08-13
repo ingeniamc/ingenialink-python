@@ -17,7 +17,9 @@ from ingenialink.exceptions import ILRegisterNotFoundError
 from ingenialink.servo import Servo
 from ingenialink.virtual.canopen.network import VirtualCanopenNetwork
 from ingenialink.virtual.ethercat.network import VirtualEthercatNetwork
+from ingenialink.virtual.ethercat.servo import VirtualEthercatServo
 from ingenialink.virtual.ethernet.network import VirtualEthernetNetwork
+from ingenialink.virtual.ethernet.servo import VirtualEthernetServo
 from tests.ethercat.mock import pysoem_mock_network  # noqa: F401
 from tests.resources.ethercat import TEST_DICT_ETHERCAT_TELEMETRY
 from tests.resources.ethercat.virtual_telemetry import install_telemetry_module
@@ -214,6 +216,24 @@ def virtual_drive_ethercat_telemetry():
     net.disconnect_from_slave(servo)
     if server.is_alive():
         server.stop()
+
+
+@pytest.fixture()
+def telemetry_servo(request: pytest.FixtureRequest, servo):
+    """Provide a hardware servo or the telemetry-capable virtual equivalent.
+
+    The shared ``servo`` fixture is a real hardware connection in hardware test
+    runs. Local test environments may provide a generic virtual Ethernet servo,
+    which does not include the telemetry service registers; use the dedicated
+    virtual telemetry fixture in that case.
+
+    Returns:
+        A servo with the telemetry service available.
+    """
+    if isinstance(servo, (VirtualEthercatServo, VirtualEthernetServo)):
+        _, _, virtual_servo = request.getfixturevalue("virtual_drive_ethercat_telemetry")
+        return virtual_servo
+    return servo
 
 
 @pytest.fixture(scope="session")

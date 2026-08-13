@@ -37,31 +37,67 @@ class TelemetrySample:
     values: tuple[REG_VALUE, ...]
 
 
+@dataclass(frozen=True)
+class TelemetryDescriptor:
+    """Describe the registers and limits of a telemetry service."""
+
+    name: str
+    max_channels: int
+    data_buffer_size: int
+    base_frequency_hz: int
+    max_frequency_divider: int
+    timestamp_size: int
+    timestamp_frequency_hz: int
+    frame_count_size: int
+    status_reg_uid: str
+    data_reg_uid: str
+    sample_size_reg_uid: str
+    enable_reg_uid: str
+    frequency_divider_reg_uid: str
+    adaptive_rate_reg_uid: str
+    mapped_register_count_reg_uid: str
+    mapped_register_prefix: str
+
+
+ETHERCAT_TELEMETRY = TelemetryDescriptor(
+    name="EtherCAT",
+    max_channels=16,
+    data_buffer_size=8 * 1024,
+    base_frequency_hz=1_000_000,
+    max_frequency_divider=0xFFFF,
+    timestamp_size=8,
+    timestamp_frequency_hz=1_000_000,
+    frame_count_size=2,
+    status_reg_uid="TEL_STATUS",
+    data_reg_uid="TEL_DATA_VALUE",
+    sample_size_reg_uid="TEL_CFG_BYTES_VALUE",
+    enable_reg_uid="TEL_ENABLE",
+    frequency_divider_reg_uid="TEL_FREQ_DIV",
+    adaptive_rate_reg_uid="TEL_ADAPTIVE_RATE",
+    mapped_register_count_reg_uid="TEL_CFG_TOTAL_MAP",
+    mapped_register_prefix="TEL_CFG_REG",
+)
+
+
 class EthercatTelemetry:
-    """Configure and read the CoMoCo EtherCAT telemetry service."""
+    """Configure and read a telemetry service through an EtherCAT servo."""
 
-    MAX_CHANNELS = 16
-    DATA_BUFFER_SIZE = 8 * 1024
-    BASE_FREQUENCY_HZ = 1_000_000
-    MAX_FREQUENCY_DIVIDER = 0xFFFF
-    TIMESTAMP_SIZE = 8
-    TIMESTAMP_FREQUENCY_HZ = 1_000_000
-    FRAME_COUNT_SIZE = 2
-    STATUS_REGISTER = "TEL_STATUS"
-    DATA_REGISTER = "TEL_DATA_VALUE"
-    SAMPLE_SIZE_REGISTER = "TEL_CFG_BYTES_VALUE"
-    ENABLE_REGISTER = "TEL_ENABLE"
-    FREQUENCY_DIVIDER_REGISTER = "TEL_FREQ_DIV"
-    ADAPTIVE_RATE_REGISTER = "TEL_ADAPTIVE_RATE"
-    MAPPED_REGISTER_COUNT_REGISTER = "TEL_CFG_TOTAL_MAP"
-    MAPPED_REGISTER_PREFIX = "TEL_CFG_REG"
-
-    def __init__(self, servo: EthercatServo) -> None:
+    def __init__(
+        self,
+        servo: EthercatServo,
+        descriptor: TelemetryDescriptor = ETHERCAT_TELEMETRY,
+    ) -> None:
         """Create a telemetry client for an EtherCAT servo."""
         self._servo = servo
+        self._descriptor = descriptor
         self._pending_frames: list[TelemetryFrame] = []
         self._frame_size: Optional[int] = None
         self._read_buffer_size: Optional[int] = None
+
+    @property
+    def descriptor(self) -> TelemetryDescriptor:
+        """Telemetry service descriptor."""
+        return self._descriptor
 
     def configure(
         self,
@@ -85,12 +121,12 @@ class EthercatTelemetry:
             ValueError: If the configuration is outside the firmware limits.
             RuntimeError: If a register has no telemetry mapping metadata.
         """
-        if not registers or len(registers) > self.MAX_CHANNELS:
-            raise ValueError(f"Telemetry requires 1 to {self.MAX_CHANNELS} registers")
-        frequency_divider = self._frequency_to_divider(desired_frequency)
+        if not registers or len(registers) > self._descriptor.max_channels:
+            raise ValueError(f"Telemetry requires 1 to {self._descriptor.max_channels} registers")
+        frequency_divider = self._frequency_to_divider(desired_frequency, self._descriptor)
 
         self.stop()
-        self._servo.write(self.MAPPED_REGISTER_COUNT_REGISTER, 0, subnode=0)
+        self._servo.write(self._descriptor.mapped_register_count_reg_uid, 0, subnode=0)
         payload_size = 0
         for channel, register in enumerate(registers):
             if register.monitoring is None:
@@ -105,22 +141,26 @@ class EthercatTelemetry:
                 register.dtype.value,
                 value_size,
             )
-            self._servo.write(f"{self.MAPPED_REGISTER_PREFIX}{channel}_MAP", mapping, subnode=0)
-        self._servo.write(self.MAPPED_REGISTER_COUNT_REGISTER, len(registers), subnode=0)
-        self._servo.write(self.FREQUENCY_DIVIDER_REGISTER, frequency_divider, subnode=0)
-        self._servo.write(self.ADAPTIVE_RATE_REGISTER, int(adaptive_rate), subnode=0)
-        self._frame_size = payload_size + self.TIMESTAMP_SIZE
-        self._read_buffer_size = self._buffer_size_for(self._frame_size)
+            self._servo.write(
+                f"{self._descriptor.mapped_register_prefix}{channel}_MAP",
+                mapping,
+                subnode=0,
+            )
+        self._servo.write(self._descriptor.mapped_register_count_reg_uid, len(registers), subnode=0)
+        self._servo.write(self._descriptor.frequency_divider_reg_uid, frequency_divider, subnode=0)
+        self._servo.write(self._descriptor.adaptive_rate_reg_uid, int(adaptive_rate), subnode=0)
+        self._frame_size = payload_size + self._descriptor.timestamp_size
+        self._read_buffer_size = self._buffer_size_for(self._frame_size, self._descriptor)
         self._pending_frames = []
-        return self._divider_to_frequency(frequency_divider)
+        return self._divider_to_frequency(frequency_divider, self._descriptor)
 
     def start(self) -> None:
         """Start telemetry sampling."""
-        self._servo.write(self.ENABLE_REGISTER, 1, subnode=0)
+        self._servo.write(self._descriptor.enable_reg_uid, 1, subnode=0)
 
     def stop(self) -> None:
         """Stop telemetry sampling."""
-        self._servo.write(self.ENABLE_REGISTER, 0, subnode=0)
+        self._servo.write(self._descriptor.enable_reg_uid, 0, subnode=0)
 
     def is_running(self) -> bool:
         """Return whether telemetry sampling is enabled.
@@ -128,7 +168,7 @@ class EthercatTelemetry:
         Returns:
             ``True`` when sampling is enabled.
         """
-        return bool(self._servo.read(self.STATUS_REGISTER, subnode=0))
+        return bool(self._servo.read(self._descriptor.status_reg_uid, subnode=0))
 
     def sample_size(self) -> int:
         """Return the packed register payload size of one telemetry frame.
@@ -139,10 +179,10 @@ class EthercatTelemetry:
         Raises:
             RuntimeError: If the firmware reports an invalid frame size.
         """
-        frame_size = int(self._servo.read(self.SAMPLE_SIZE_REGISTER, subnode=0))
-        if frame_size < self.TIMESTAMP_SIZE:
+        frame_size = int(self._servo.read(self._descriptor.sample_size_reg_uid, subnode=0))
+        if frame_size < self._descriptor.timestamp_size:
             raise RuntimeError("Telemetry sample size is smaller than its timestamp")
-        return frame_size - self.TIMESTAMP_SIZE
+        return frame_size - self._descriptor.timestamp_size
 
     def read_frame(self) -> TelemetryFrame:
         """Read and remove the oldest queued telemetry frame.
@@ -186,12 +226,12 @@ class EthercatTelemetry:
         assert self._frame_size is not None, "configure() must be called before reading frames"
         frame_size = self._frame_size
         data = self._servo.read_complete_access(
-            self.DATA_REGISTER, subnode=0, buffer_size=self._read_buffer_size
+            self._descriptor.data_reg_uid, subnode=0, buffer_size=self._read_buffer_size
         )
-        if len(data) < self.FRAME_COUNT_SIZE:
+        if len(data) < self._descriptor.frame_count_size:
             return []
-        frame_count = int.from_bytes(data[: self.FRAME_COUNT_SIZE], "little")
-        expected_size = self.FRAME_COUNT_SIZE + frame_count * frame_size
+        frame_count = int.from_bytes(data[: self._descriptor.frame_count_size], "little")
+        expected_size = self._descriptor.frame_count_size + frame_count * frame_size
         if len(data) < expected_size:
             raise RuntimeError(
                 f"Telemetry read declared {frame_count} frames ({expected_size} bytes) "
@@ -199,25 +239,27 @@ class EthercatTelemetry:
             )
         return [
             TelemetryFrame(
-                data=data[offset + self.TIMESTAMP_SIZE : offset + frame_size],
+                data=data[offset + self._descriptor.timestamp_size : offset + frame_size],
                 timestamp_tick=int.from_bytes(
-                    data[offset : offset + self.TIMESTAMP_SIZE], "little"
+                    data[offset : offset + self._descriptor.timestamp_size], "little"
                 ),
             )
             for offset in range(
-                self.FRAME_COUNT_SIZE,
-                self.FRAME_COUNT_SIZE + frame_count * frame_size,
+                self._descriptor.frame_count_size,
+                self._descriptor.frame_count_size + frame_count * frame_size,
                 frame_size,
             )
         ]
 
     @classmethod
-    def _buffer_size_for(cls, frame_size: int) -> int:
-        available = cls.DATA_BUFFER_SIZE - cls.FRAME_COUNT_SIZE
+    def _buffer_size_for(
+        cls, frame_size: int, descriptor: TelemetryDescriptor = ETHERCAT_TELEMETRY
+    ) -> int:
+        available = descriptor.data_buffer_size - descriptor.frame_count_size
         if frame_size >= available:
-            return cls.FRAME_COUNT_SIZE + frame_size
+            return descriptor.frame_count_size + frame_size
         frame_count = available // frame_size
-        return cls.FRAME_COUNT_SIZE + frame_count * frame_size
+        return descriptor.frame_count_size + frame_count * frame_size
 
     @staticmethod
     def _map_register_value(subnode: int, address: int, dtype: int, size: int) -> int:
@@ -231,7 +273,9 @@ class EthercatTelemetry:
         return (data_high << 16) | data_low
 
     @classmethod
-    def _frequency_to_divider(cls, frequency_hz: float) -> int:
+    def _frequency_to_divider(
+        cls, frequency_hz: float, descriptor: TelemetryDescriptor = ETHERCAT_TELEMETRY
+    ) -> int:
         """Convert a requested frequency to the nearest firmware divider.
 
         Returns:
@@ -242,26 +286,28 @@ class EthercatTelemetry:
 
             ValueError: If the frequency cannot be represented by the firmware.
         """
-        minimum_frequency = cls.BASE_FREQUENCY_HZ / cls.MAX_FREQUENCY_DIVIDER
+        minimum_frequency = descriptor.base_frequency_hz / descriptor.max_frequency_divider
         if (
             not isfinite(frequency_hz)
             or frequency_hz < minimum_frequency
-            or frequency_hz > cls.BASE_FREQUENCY_HZ
+            or frequency_hz > descriptor.base_frequency_hz
         ):
             raise ValueError(
                 f"Telemetry frequency must be between {minimum_frequency} and "
-                f"{cls.BASE_FREQUENCY_HZ} Hz"
+                f"{descriptor.base_frequency_hz} Hz"
             )
-        return round(cls.BASE_FREQUENCY_HZ / frequency_hz)
+        return round(descriptor.base_frequency_hz / frequency_hz)
 
     @classmethod
-    def _divider_to_frequency(cls, frequency_divider: int) -> float:
+    def _divider_to_frequency(
+        cls, frequency_divider: int, descriptor: TelemetryDescriptor = ETHERCAT_TELEMETRY
+    ) -> float:
         """Convert a firmware divider to its resulting sampling frequency.
 
         Returns:
             The sampling frequency in hertz.
         """
-        return cls.BASE_FREQUENCY_HZ / frequency_divider
+        return descriptor.base_frequency_hz / frequency_divider
 
 
 class TelemetryPoller:
@@ -401,7 +447,7 @@ class TelemetryPoller:
             register.bytes_to_value(view[offset : offset + size])
             for register, offset, size in self._layout
         )
-        timestamp = frame.timestamp_tick / self._telemetry.TIMESTAMP_FREQUENCY_HZ
+        timestamp = frame.timestamp_tick / self._telemetry.descriptor.timestamp_frequency_hz
         self._samples.append(TelemetrySample(timestamp=timestamp, values=values))
         self._sample_count += 1
 
@@ -486,6 +532,7 @@ class TelemetryRecorder:
         poll_interval: float = 0.01,
         flush_interval: float = 5.0,
         adaptive_rate: bool = False,
+        descriptor: TelemetryDescriptor = ETHERCAT_TELEMETRY,
     ) -> None:
         try:
             import pyarrow as pa  # noqa: PLC0415
@@ -504,7 +551,7 @@ class TelemetryRecorder:
         self._batch_size = batch_size
         self._poll_interval = poll_interval
         self._flush_interval = flush_interval
-        self._telemetry = EthercatTelemetry(servo)
+        self._telemetry = EthercatTelemetry(servo, descriptor)
         self._connection_epoch = 0
         self._schema = pa.schema(
             [
@@ -573,7 +620,7 @@ class TelemetryRecorder:
             raise RuntimeError("Telemetry recorder is not running")
         if self.is_recording:
             self.pause()
-        self._telemetry = EthercatTelemetry(servo)
+        self._telemetry = EthercatTelemetry(servo, self._telemetry.descriptor)
         self._connection_epoch += 1
         self.start()
 
@@ -594,7 +641,9 @@ class TelemetryRecorder:
             schema = self._schema.with_metadata({
                 self.METADATA_FORMAT_VERSION_KEY: self.FORMAT_VERSION,
                 self.METADATA_START_TIME_KEY: datetime.now(timezone.utc).isoformat(),
-                self.METADATA_TICK_FREQUENCY_KEY: str(self._telemetry.TIMESTAMP_FREQUENCY_HZ),
+                self.METADATA_TICK_FREQUENCY_KEY: str(
+                    self._telemetry.descriptor.timestamp_frequency_hz
+                ),
                 self.METADATA_REQUESTED_FREQUENCY_KEY: str(self._frequency),
                 self.METADATA_ACHIEVED_FREQUENCY_KEY: str(achieved_frequency),
             })

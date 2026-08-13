@@ -10,7 +10,9 @@ import pytest
 from ingenialink.enums.register import RegDtype
 from ingenialink.ethercat.servo import EthercatServo
 from ingenialink.ethercat.telemetry import (
+    ETHERCAT_TELEMETRY,
     EthercatTelemetry,
+    TelemetryDescriptor,
     TelemetryFrame,
     TelemetryPoller,
     TelemetryRecorder,
@@ -18,15 +20,34 @@ from ingenialink.ethercat.telemetry import (
 )
 from ingenialink.exceptions import ILRegisterAccessError
 from ingenialink.register import Register
+from ingenialink.virtual.ethercat.servo import VirtualEthercatServo
+from ingenialink.virtual.ethernet.servo import VirtualEthernetServo
 
 logger = logging.getLogger(__name__)
 
 
+def _skip_virtual_generator_test(servo) -> None:
+    """Skip generator waveform tests when only the generic virtual drive is available."""
+    if isinstance(servo, (VirtualEthercatServo, VirtualEthernetServo)):
+        pytest.skip("The virtual drive does not simulate the internal feedback generator")
+
+
+def _get_telemetry_test_register(servo):
+    """Get the production telemetry register or the dedicated virtual test register.
+
+    Returns:
+        Register used as the telemetry source for the current servo.
+    """
+    if isinstance(servo, VirtualEthercatServo):
+        return servo.dictionary.get_register("TEST_TELEMETRY_U16", axis=0)
+    return servo.dictionary.get_register("DRV_PROT_VBUS_VALUE", axis=1)
+
+
 @pytest.mark.ethercat
-def test_telemetry_configures_and_reads_frames(servo) -> None:
+def test_telemetry_configures_and_reads_frames(telemetry_servo) -> None:
     """Verify that an EtherCAT drive produces raw telemetry frames."""
-    telemetry = EthercatTelemetry(servo)
-    register = servo.dictionary.get_register("DRV_PROT_VBUS_VALUE", axis=1)
+    telemetry = EthercatTelemetry(telemetry_servo)
+    register = _get_telemetry_test_register(telemetry_servo)
     actual_frequency = telemetry.configure([register], desired_frequency=10_000)
     assert actual_frequency == 10_000
 
@@ -50,10 +71,10 @@ def test_telemetry_configures_and_reads_frames(servo) -> None:
 
 
 @pytest.mark.ethercat
-def test_telemetry_firmware_timestamps_are_incremental(servo) -> None:
+def test_telemetry_firmware_timestamps_are_incremental(telemetry_servo) -> None:
     """Verify that firmware telemetry timestamps increase in arrival order."""
-    telemetry = EthercatTelemetry(servo)
-    register = servo.dictionary.get_register("DRV_PROT_VBUS_VALUE", axis=1)
+    telemetry = EthercatTelemetry(telemetry_servo)
+    register = _get_telemetry_test_register(telemetry_servo)
     telemetry.configure([register], desired_frequency=2_000)
     timestamps: list[int] = []
 
@@ -85,10 +106,10 @@ COMPLETE_ACCESS_BUFFER_SIZES = (1_024, 2_048, 4_096, 8_192, 16_384, 32_768)
 
 
 @pytest.mark.ethercat
-def test_telemetry_complete_access_buffer_size_sweep(servo) -> None:
+def test_telemetry_complete_access_buffer_size_sweep(telemetry_servo) -> None:
     """Find the largest complete-access buffer accepted by the drive."""
-    telemetry = EthercatTelemetry(servo)
-    register = servo.dictionary.get_register("DRV_PROT_VBUS_VALUE", axis=1)
+    telemetry = EthercatTelemetry(telemetry_servo)
+    register = _get_telemetry_test_register(telemetry_servo)
     telemetry.configure([register], desired_frequency=1_000)
     largest_supported_size = 0
 
@@ -97,8 +118,8 @@ def test_telemetry_complete_access_buffer_size_sweep(servo) -> None:
         time.sleep(0.05)
         for buffer_size in COMPLETE_ACCESS_BUFFER_SIZES:
             try:
-                servo.read_complete_access(
-                    telemetry.DATA_REGISTER,
+                telemetry_servo.read_complete_access(
+                    telemetry.descriptor.data_reg_uid,
                     subnode=0,
                     buffer_size=buffer_size,
                 )
@@ -230,6 +251,7 @@ def test_telemetry_recorder_captures_internal_generator_saw_tooth_signal(
     capture. Each generator/telemetry frequency pair is left as its own Parquet file under
     the test output directory for inspection and comparison.
     """
+    _skip_virtual_generator_test(servo)
     table = _record_generator_capture(
         servo,
         test_output_handler,
@@ -264,6 +286,7 @@ def test_telemetry_recorder_captures_internal_generator_square_signal(
     Same setup as the saw-tooth capture, but with the generator in Square mode, to show a
     different signal shape landing in the same Parquet schema.
     """
+    _skip_virtual_generator_test(servo)
     table = _record_generator_capture(
         servo,
         test_output_handler,
@@ -289,7 +312,7 @@ def test_telemetry_reads_count_prefixed_frames(mocker) -> None:
     telemetry._frame_size = 12
     telemetry._read_buffer_size = 1024
     servo.read_complete_access.return_value = (
-        (1).to_bytes(EthercatTelemetry.FRAME_COUNT_SIZE, "little")
+        (1).to_bytes(ETHERCAT_TELEMETRY.frame_count_size, "little")
         + (123).to_bytes(8, "little")
         + b"data"
         + b"tail"
@@ -313,13 +336,13 @@ def test_telemetry_read_uses_complete_access_so_gil_release_config_applies(mocke
     telemetry._frame_size = 12
     telemetry._read_buffer_size = 1024
     servo.read_complete_access.return_value = (0).to_bytes(
-        EthercatTelemetry.FRAME_COUNT_SIZE, "little"
+        ETHERCAT_TELEMETRY.frame_count_size, "little"
     )
 
     telemetry.read_frames()
 
     servo.read_complete_access.assert_called_once_with(
-        EthercatTelemetry.DATA_REGISTER, subnode=0, buffer_size=1024
+        ETHERCAT_TELEMETRY.data_reg_uid, subnode=0, buffer_size=1024
     )
 
 
@@ -351,14 +374,47 @@ def test_telemetry_configures_adaptive_rate(mocker, adaptive_rate: bool) -> None
     telemetry.configure([register], adaptive_rate=adaptive_rate)
 
     servo.write.assert_any_call(
-        EthercatTelemetry.ADAPTIVE_RATE_REGISTER, int(adaptive_rate), subnode=0
+        ETHERCAT_TELEMETRY.adaptive_rate_reg_uid, int(adaptive_rate), subnode=0
     )
+
+
+def test_telemetry_uses_descriptor_configuration(mocker) -> None:
+    """Verify register UIDs and protocol limits come from the descriptor."""
+    descriptor = TelemetryDescriptor(
+        name="Test",
+        max_channels=1,
+        data_buffer_size=16,
+        base_frequency_hz=1_000,
+        max_frequency_divider=10,
+        timestamp_size=4,
+        timestamp_frequency_hz=1_000,
+        frame_count_size=1,
+        status_reg_uid="STATUS",
+        data_reg_uid="DATA",
+        sample_size_reg_uid="SAMPLE_SIZE",
+        enable_reg_uid="ENABLE",
+        frequency_divider_reg_uid="FREQUENCY",
+        adaptive_rate_reg_uid="ADAPTIVE",
+        mapped_register_count_reg_uid="MAP_COUNT",
+        mapped_register_prefix="MAP_",
+    )
+    servo = mocker.MagicMock(spec=EthercatServo)
+    register = _fake_register(mocker, "REG", RegDtype.U16)
+    register.monitoring = mocker.MagicMock(subnode=0, address=1)
+    telemetry = EthercatTelemetry(servo, descriptor)
+
+    assert telemetry.configure([register], desired_frequency=500) == 500
+    assert telemetry.descriptor is descriptor
+    servo.write.assert_any_call("MAP_0_MAP", mocker.ANY, subnode=0)
+    servo.write.assert_any_call("MAP_COUNT", 1, subnode=0)
+    servo.write.assert_any_call("FREQUENCY", 2, subnode=0)
+    servo.write.assert_any_call("ADAPTIVE", 0, subnode=0)
 
 
 def test_telemetry_poller_decodes_multiple_registers_from_one_frame(mocker) -> None:
     """Verify that one frame decodes multiple mixed-width register values."""
     telemetry = mocker.MagicMock(spec=EthercatTelemetry)
-    telemetry.TIMESTAMP_FREQUENCY_HZ = 1_000_000
+    telemetry.descriptor = ETHERCAT_TELEMETRY
     first_register = mocker.MagicMock(spec=Register)
     first_register.dtype = RegDtype.U16
     first_register.identifier = "FIRST_REGISTER"
@@ -404,7 +460,7 @@ def _wait_for(condition, timeout: float = 1.0) -> None:
 def test_telemetry_poller_reader_drains_repeatedly_until_empty(mocker) -> None:
     """Verify the reader keeps reading while frames are available, without waiting."""
     telemetry = mocker.MagicMock(spec=EthercatTelemetry)
-    telemetry.TIMESTAMP_FREQUENCY_HZ = 1_000_000
+    telemetry.descriptor = ETHERCAT_TELEMETRY
     register = _fake_register(mocker, "REG", RegDtype.U8)
     register.bytes_to_value.side_effect = lambda data: int.from_bytes(data, "little")
     frame = TelemetryFrame(data=b"\x01", timestamp_tick=1)
@@ -441,7 +497,7 @@ def test_telemetry_poller_reader_drains_repeatedly_until_empty(mocker) -> None:
 def test_telemetry_poller_decoder_runs_independently_of_reader(mocker) -> None:
     """Verify the decoder consumes queued frames even while the reader is stalled."""
     telemetry = mocker.MagicMock(spec=EthercatTelemetry)
-    telemetry.TIMESTAMP_FREQUENCY_HZ = 1_000_000
+    telemetry.descriptor = ETHERCAT_TELEMETRY
     register = _fake_register(mocker, "REG", RegDtype.U8)
     register.bytes_to_value.side_effect = lambda data: int.from_bytes(data, "little")
     reader_blocked = Event()
@@ -465,7 +521,7 @@ def test_telemetry_poller_decoder_runs_independently_of_reader(mocker) -> None:
 def test_telemetry_poller_reader_error_stops_decoder(mocker) -> None:
     """Verify a reader exception surfaces via error and stops the decoder too."""
     telemetry = mocker.MagicMock(spec=EthercatTelemetry)
-    telemetry.TIMESTAMP_FREQUENCY_HZ = 1_000_000
+    telemetry.descriptor = ETHERCAT_TELEMETRY
     register = _fake_register(mocker, "REG", RegDtype.U8)
     telemetry.read_frames.side_effect = RuntimeError("transport failed")
     poller = TelemetryPoller(telemetry, [register], poll_interval=0.001)
@@ -481,7 +537,7 @@ def test_telemetry_poller_reader_error_stops_decoder(mocker) -> None:
 def test_telemetry_poller_decoder_error_stops_reader(mocker) -> None:
     """Verify a decode error (frame size mismatch) surfaces via error and stops the reader."""
     telemetry = mocker.MagicMock(spec=EthercatTelemetry)
-    telemetry.TIMESTAMP_FREQUENCY_HZ = 1_000_000
+    telemetry.descriptor = ETHERCAT_TELEMETRY
     register = _fake_register(mocker, "REG", RegDtype.U16)
     bad_frame = TelemetryFrame(data=b"\x01", timestamp_tick=1)  # 1 byte, but U16 needs 2
     telemetry.read_frames.side_effect = [[bad_frame], *([[]] * 1_000)]
@@ -498,7 +554,7 @@ def test_telemetry_poller_decoder_error_stops_reader(mocker) -> None:
 def test_telemetry_poller_retries_after_transient_register_access_error(mocker) -> None:
     """Verify a transient ILRegisterAccessError is retried after poll_interval."""
     telemetry = mocker.MagicMock(spec=EthercatTelemetry)
-    telemetry.TIMESTAMP_FREQUENCY_HZ = 1_000_000
+    telemetry.descriptor = ETHERCAT_TELEMETRY
     register = _fake_register(mocker, "REG", RegDtype.U8)
     register.bytes_to_value.side_effect = lambda data: int.from_bytes(data, "little")
     frame = TelemetryFrame(data=b"\x01", timestamp_tick=1)
@@ -528,7 +584,7 @@ def test_telemetry_poller_retries_after_transient_register_access_error(mocker) 
 def test_telemetry_poller_stop_joins_worker_threads_without_deadlock(mocker) -> None:
     """Verify stop() joins both threads promptly, even with a pending backlog."""
     telemetry = mocker.MagicMock(spec=EthercatTelemetry)
-    telemetry.TIMESTAMP_FREQUENCY_HZ = 1_000_000
+    telemetry.descriptor = ETHERCAT_TELEMETRY
     register = _fake_register(mocker, "REG", RegDtype.U8)
     register.bytes_to_value.side_effect = lambda data: int.from_bytes(data, "little")
     frame = TelemetryFrame(data=b"\x01", timestamp_tick=1)
