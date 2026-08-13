@@ -1,3 +1,4 @@
+import json
 import time
 from collections import deque
 from collections.abc import Sequence
@@ -473,6 +474,7 @@ class TelemetryRecorder:
     METADATA_TICK_FREQUENCY_KEY = "ingenialink.telemetry.timestamp_tick_frequency_hz"
     METADATA_REQUESTED_FREQUENCY_KEY = "ingenialink.telemetry.requested_frequency_hz"
     METADATA_ACHIEVED_FREQUENCY_KEY = "ingenialink.telemetry.achieved_frequency_hz"
+    METADATA_MARKERS_KEY = "ingenialink.telemetry.markers"
 
     def __init__(
         self,
@@ -515,14 +517,40 @@ class TelemetryRecorder:
         )
         self._poller: Optional[TelemetryPoller] = None
         self._writer: Optional[pq.ParquetWriter] = None
+        self._writer_lock = Lock()
         self._drain_thread: Optional[Thread] = None
         self._drain_error: Optional[BaseException] = None
         self._stop_drain = Event()
+        self._markers: list[dict[str, object]] = []
+        self._last_timestamp: Optional[float] = None
 
     @property
     def is_recording(self) -> bool:
         """Whether telemetry sampling is currently running."""
         return self._poller is not None
+
+    def add_marker(self, label: str, timestamp: Optional[float] = None) -> None:
+        """Record a labeled marker into the file's metadata, for viewers to display.
+
+        Args:
+            label: Short text describing the marker.
+            timestamp: Position on the recording's timestamp column. Defaults
+                to the timestamp of the most recently written sample.
+
+        Raises:
+            RuntimeError: If recording has not started, or no timestamp is
+                given and no sample has been written yet.
+        """
+        with self._writer_lock:
+            if self._writer is None:
+                raise RuntimeError("Telemetry recorder has not started recording")
+            resolved_timestamp = self._last_timestamp if timestamp is None else timestamp
+            if resolved_timestamp is None:
+                raise RuntimeError("No samples recorded yet; pass an explicit timestamp")
+            self._markers.append({"time": resolved_timestamp, "label": label})
+            self._writer.add_key_value_metadata(
+                {self.METADATA_MARKERS_KEY: json.dumps(self._markers)}
+            )
 
     def start(self) -> None:
         """Start recording, or resume it after :meth:`pause`.
@@ -584,7 +612,8 @@ class TelemetryRecorder:
             except RuntimeError as ex:
                 pause_error = ex
         if self._writer is not None:
-            self._writer.close()
+            with self._writer_lock:
+                self._writer.close()
             self._writer = None
         if pause_error is not None:
             raise pause_error
@@ -616,6 +645,7 @@ class TelemetryRecorder:
                 self._stop_drain.wait(self._poll_interval)
                 continue
             buffer.append(sample)
+            self._last_timestamp = sample.timestamp
             if len(buffer) >= self._batch_size:
                 if not self._flush(buffer):
                     return
@@ -623,6 +653,7 @@ class TelemetryRecorder:
                 last_flush = time.monotonic()
         while (sample := poller.get_sample()) is not None:
             buffer.append(sample)
+            self._last_timestamp = sample.timestamp
         if buffer:
             self._flush(buffer)
 
@@ -650,4 +681,5 @@ class TelemetryRecorder:
             for index, register in enumerate(self._registers)
         )
         table = self._pa.Table.from_arrays(arrays, schema=self._schema)
-        self._writer.write_table(table)
+        with self._writer_lock:
+            self._writer.write_table(table)

@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from contextlib import suppress
@@ -604,6 +605,68 @@ def test_telemetry_recorder_writes_samples_to_parquet(
     ]
     assert rows[0]["host_time"] is not None
     assert rows[1]["host_time"] is None
+
+
+def test_telemetry_recorder_add_marker_writes_metadata(tmp_path, mocker) -> None:
+    """Verify markers land in the file's metadata as a JSON list, keyed by column time."""
+    servo = mocker.MagicMock(spec=EthercatServo)
+    register = _fake_register(mocker, "REG", RegDtype.FLOAT)
+    mocker.patch("ingenialink.ethercat.telemetry.EthercatTelemetry").return_value
+    poller = mocker.patch("ingenialink.ethercat.telemetry.TelemetryPoller").return_value
+    _queue_samples(
+        poller,
+        [
+            TelemetrySample(timestamp=0.0, values=(1.0,)),
+            TelemetrySample(timestamp=0.001, values=(2.0,)),
+        ],
+    )
+    path = tmp_path / "telemetry.parquet"
+
+    recorder = TelemetryRecorder(servo, [register], path, batch_size=10)
+    recorder.start()
+    recorder.add_marker("start of test")
+    recorder.add_marker("explicit time", timestamp=0.0005)
+    recorder.stop()
+
+    metadata = pq.ParquetFile(path).metadata.metadata
+    markers = json.loads(metadata[TelemetryRecorder.METADATA_MARKERS_KEY.encode()])
+    assert markers == [
+        {"time": 0.001, "label": "start of test"},
+        {"time": 0.0005, "label": "explicit time"},
+    ]
+
+
+def test_telemetry_recorder_add_marker_before_start_raises(tmp_path, mocker) -> None:
+    """Verify adding a marker before recording starts raises."""
+    servo = mocker.MagicMock(spec=EthercatServo)
+    register = _fake_register(mocker, "REG", RegDtype.U8)
+    recorder = TelemetryRecorder(servo, [register], tmp_path / "telemetry.parquet")
+
+    with pytest.raises(RuntimeError):
+        recorder.add_marker("too early")
+
+
+def test_telemetry_recorder_add_marker_without_samples_requires_explicit_time(
+    tmp_path, mocker
+) -> None:
+    """Verify a marker added before any sample is written needs an explicit timestamp."""
+    servo = mocker.MagicMock(spec=EthercatServo)
+    register = _fake_register(mocker, "REG", RegDtype.U8)
+    mocker.patch("ingenialink.ethercat.telemetry.EthercatTelemetry").return_value
+    poller = mocker.patch("ingenialink.ethercat.telemetry.TelemetryPoller").return_value
+    _queue_samples(poller, [])
+    recorder = TelemetryRecorder(servo, [register], tmp_path / "telemetry.parquet")
+    recorder.start()
+
+    with pytest.raises(RuntimeError):
+        recorder.add_marker("no samples yet")
+
+    recorder.add_marker("explicit", timestamp=1.5)
+    recorder.stop()
+
+    metadata = pq.ParquetFile(tmp_path / "telemetry.parquet").metadata.metadata
+    markers = json.loads(metadata[TelemetryRecorder.METADATA_MARKERS_KEY.encode()])
+    assert markers == [{"time": 1.5, "label": "explicit"}]
 
 
 def test_telemetry_recorder_is_a_context_manager(tmp_path, mocker) -> None:
