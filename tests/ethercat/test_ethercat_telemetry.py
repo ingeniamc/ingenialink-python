@@ -2,6 +2,7 @@ import json
 import logging
 import time
 from contextlib import suppress
+from dataclasses import replace
 from threading import Event
 
 import pyarrow.parquet as pq
@@ -24,6 +25,8 @@ from ingenialink.virtual.ethercat.servo import VirtualEthercatServo
 from ingenialink.virtual.ethernet.servo import VirtualEthernetServo
 
 logger = logging.getLogger(__name__)
+
+VIRTUAL_TELEMETRY_DESCRIPTOR = replace(ETHERCAT_TELEMETRY, data_buffer_size=512)
 
 
 def _skip_virtual_generator_test(servo) -> None:
@@ -642,6 +645,7 @@ def _fake_register(mocker, identifier: str, dtype: RegDtype) -> Register:
 
 def _queue_samples(poller: TelemetryPoller, samples: list[TelemetrySample]) -> None:
     """Make a mocked poller's ``get_sample`` return ``samples`` then ``None`` forever."""
+    poller.poll_interval = 0.01
     remaining = list(samples)
     poller.get_sample.side_effect = lambda: remaining.pop(0) if remaining else None
     poller.error = None
@@ -892,7 +896,14 @@ def test_virtual_telemetry_recorder_writes_real_samples_to_parquet(
     counter = servo.dictionary.get_register("DRV_DIAG_ERROR_LAST_COM", axis=0)
     path = tmp_path / "telemetry.parquet"
 
-    with TelemetryRecorder(servo, [counter], path, frequency=2_000, batch_size=10) as recorder:
+    with TelemetryRecorder(
+        servo,
+        [counter],
+        path,
+        frequency=2_000,
+        batch_size=10,
+        descriptor=VIRTUAL_TELEMETRY_DESCRIPTOR,
+    ) as recorder:
         deadline = time.monotonic() + 2.0
         while recorder._poller is not None and recorder._poller.sample_count < 20:  # noqa: SLF001
             if time.monotonic() > deadline:
@@ -915,7 +926,14 @@ def test_virtual_telemetry_recorder_pause_and_resume(
     counter = servo.dictionary.get_register("DRV_DIAG_ERROR_LAST_COM", axis=0)
     path = tmp_path / "telemetry.parquet"
 
-    recorder = TelemetryRecorder(servo, [counter], path, frequency=2_000, batch_size=10)
+    recorder = TelemetryRecorder(
+        servo,
+        [counter],
+        path,
+        frequency=2_000,
+        batch_size=10,
+        descriptor=VIRTUAL_TELEMETRY_DESCRIPTOR,
+    )
     recorder.start()
     time.sleep(0.1)
     recorder.pause()
