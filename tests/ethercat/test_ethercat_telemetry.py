@@ -363,6 +363,22 @@ def test_telemetry_supports_multiple_sampling_frequencies(
     assert EthercatTelemetry._divider_to_frequency(expected_divider) == frequency
 
 
+def test_telemetry_recommends_polling_at_half_buffer_capacity(mocker) -> None:
+    """Calculate polling from the number of frames that fit in the read buffer."""
+    registers = [
+        _fake_register(mocker, "FIRST", RegDtype.U32),
+        _fake_register(mocker, "SECOND", RegDtype.U32),
+    ]
+    frame_size = ETHERCAT_TELEMETRY.timestamp_size + 8
+    frames_per_read = (
+        EthercatTelemetry._buffer_size_for(frame_size) - ETHERCAT_TELEMETRY.frame_count_size
+    ) // frame_size
+
+    assert EthercatTelemetry.recommended_poll_interval(registers, 1_000) == pytest.approx(
+        frames_per_read / 2 / 1_000
+    )
+
+
 @pytest.mark.parametrize("adaptive_rate", [False, True])
 def test_telemetry_configures_adaptive_rate(mocker, adaptive_rate: bool) -> None:
     """Verify both adaptive sampling modes are explicitly configured on the drive."""
@@ -653,6 +669,9 @@ def test_telemetry_recorder_writes_samples_to_parquet(
 
     telemetry.configure.assert_called_once_with(
         (register,), desired_frequency=1_000, adaptive_rate=adaptive_rate
+    )
+    telemetry.recommended_poll_interval.assert_called_once_with(
+        (register,), 1_000, 0.5, telemetry.descriptor
     )
     rows = pq.read_table(path).to_pylist()
     assert [{"timestamp": row["timestamp"], "REG": row["REG"]} for row in rows] == [

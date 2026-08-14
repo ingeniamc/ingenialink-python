@@ -261,6 +261,39 @@ class EthercatTelemetry:
         frame_count = available // frame_size
         return descriptor.frame_count_size + frame_count * frame_size
 
+    @classmethod
+    def recommended_poll_interval(
+        cls,
+        registers: Sequence[Register],
+        frequency: float,
+        buffer_fill_ratio: float = 0.5,
+        descriptor: TelemetryDescriptor = ETHERCAT_TELEMETRY,
+    ) -> float:
+        """Calculate a host poll interval from telemetry buffer capacity.
+
+        Args:
+            registers: Registers mapped into each telemetry frame.
+            frequency: Achieved telemetry sampling frequency in hertz.
+            buffer_fill_ratio: Fraction of one read buffer to fill before polling.
+            descriptor: Telemetry service limits and register identifiers.
+
+        Returns:
+            The estimated host poll interval in seconds.
+
+        Raises:
+            ValueError: If the frequency or buffer fill ratio is invalid.
+        """
+        if frequency <= 0:
+            raise ValueError("Telemetry frequency must be positive")
+        if not 0 < buffer_fill_ratio <= 1:
+            raise ValueError("Telemetry buffer fill ratio must be between 0 and 1")
+        frame_size = descriptor.timestamp_size + sum(
+            dtype_length_bits[register.dtype] // 8 for register in registers
+        )
+        read_buffer_size = cls._buffer_size_for(frame_size, descriptor)
+        frames_per_read = (read_buffer_size - descriptor.frame_count_size) // frame_size
+        return buffer_fill_ratio * frames_per_read / frequency
+
     @staticmethod
     def _map_register_value(subnode: int, address: int, dtype: int, size: int) -> int:
         """Encode a firmware telemetry mapping entry.
@@ -529,10 +562,11 @@ class TelemetryRecorder:
         path: Union[str, "os.PathLike[str]"],
         frequency: float = 1_000,
         batch_size: int = 1_000,
-        poll_interval: float = 0.01,
+        poll_interval: Optional[float] = None,
         flush_interval: float = 5.0,
         adaptive_rate: bool = False,
         descriptor: TelemetryDescriptor = ETHERCAT_TELEMETRY,
+        buffer_fill_ratio: float = 0.5,
     ) -> None:
         try:
             import pyarrow as pa  # noqa: PLC0415
@@ -550,8 +584,10 @@ class TelemetryRecorder:
         self._adaptive_rate = adaptive_rate
         self._batch_size = batch_size
         self._poll_interval = poll_interval
+        self._buffer_fill_ratio = buffer_fill_ratio
         self._flush_interval = flush_interval
         self._telemetry = EthercatTelemetry(servo, descriptor)
+        self._achieved_frequency: Optional[float] = None
         self._connection_epoch = 0
         self._schema = pa.schema(
             [
@@ -633,7 +669,7 @@ class TelemetryRecorder:
         if self.is_recording:
             raise RuntimeError("Telemetry recorder is already running")
         if self._writer is None:
-            achieved_frequency = self._telemetry.configure(
+            self._achieved_frequency = self._telemetry.configure(
                 self._registers,
                 desired_frequency=self._frequency,
                 adaptive_rate=self._adaptive_rate,
@@ -645,10 +681,19 @@ class TelemetryRecorder:
                     self._telemetry.descriptor.timestamp_frequency_hz
                 ),
                 self.METADATA_REQUESTED_FREQUENCY_KEY: str(self._frequency),
-                self.METADATA_ACHIEVED_FREQUENCY_KEY: str(achieved_frequency),
+                self.METADATA_ACHIEVED_FREQUENCY_KEY: str(self._achieved_frequency),
             })
             self._writer = self._pq.ParquetWriter(self._path, schema)
-        poller = TelemetryPoller(self._telemetry, self._registers, self._poll_interval)
+        assert self._achieved_frequency is not None
+        poll_interval = self._poll_interval
+        if poll_interval is None:
+            poll_interval = self._telemetry.recommended_poll_interval(
+                self._registers,
+                self._achieved_frequency,
+                self._buffer_fill_ratio,
+                self._telemetry.descriptor,
+            )
+        poller = TelemetryPoller(self._telemetry, self._registers, poll_interval)
         self._poller = poller
         self._stop_drain.clear()
         self._telemetry.start()
