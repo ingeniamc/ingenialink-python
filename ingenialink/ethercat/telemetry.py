@@ -93,11 +93,46 @@ class EthercatTelemetry:
         self._pending_frames: list[TelemetryFrame] = []
         self._frame_size: Optional[int] = None
         self._read_buffer_size: Optional[int] = None
+        self._achieved_frequency: Optional[float] = None
 
     @property
     def descriptor(self) -> TelemetryDescriptor:
         """Telemetry service descriptor."""
         return self._descriptor
+
+    @property
+    def achieved_frequency(self) -> float:
+        """Configured telemetry sampling frequency.
+
+        Raises:
+            RuntimeError: If telemetry has not been configured yet.
+        """
+        if self._achieved_frequency is None:
+            raise RuntimeError("Telemetry must be configured before reading its frequency")
+        return self._achieved_frequency
+
+    def recommended_poll_interval(self, buffer_fill_ratio: float = 0.5) -> float:
+        """Calculate a host poll interval from the configured telemetry buffer.
+
+        Args:
+            buffer_fill_ratio: Fraction of one read buffer to fill before polling.
+
+        Returns:
+            The estimated host poll interval in seconds.
+
+        Raises:
+            RuntimeError: If telemetry has not been configured yet.
+            ValueError: If the buffer fill ratio is invalid.
+        """
+        if self._frame_size is None or self._read_buffer_size is None:
+            raise RuntimeError("Telemetry must be configured before calculating its poll interval")
+        if not 0 < buffer_fill_ratio <= 1:
+            raise ValueError("Telemetry buffer fill ratio must be between 0 and 1")
+        frames_per_read = max(
+            1,
+            (self._read_buffer_size - self._descriptor.frame_count_size) // self._frame_size,
+        )
+        return buffer_fill_ratio * frames_per_read / self.achieved_frequency
 
     def configure(
         self,
@@ -152,7 +187,8 @@ class EthercatTelemetry:
         self._frame_size = payload_size + self._descriptor.timestamp_size
         self._read_buffer_size = self._buffer_size_for(self._frame_size, self._descriptor)
         self._pending_frames = []
-        return self._divider_to_frequency(frequency_divider, self._descriptor)
+        self._achieved_frequency = self._divider_to_frequency(frequency_divider, self._descriptor)
+        return self._achieved_frequency
 
     def start(self) -> None:
         """Start telemetry sampling."""
@@ -261,39 +297,6 @@ class EthercatTelemetry:
         frame_count = available // frame_size
         return descriptor.frame_count_size + frame_count * frame_size
 
-    @classmethod
-    def recommended_poll_interval(
-        cls,
-        registers: Sequence[Register],
-        frequency: float,
-        buffer_fill_ratio: float = 0.5,
-        descriptor: TelemetryDescriptor = ETHERCAT_TELEMETRY,
-    ) -> float:
-        """Calculate a host poll interval from telemetry buffer capacity.
-
-        Args:
-            registers: Registers mapped into each telemetry frame.
-            frequency: Achieved telemetry sampling frequency in hertz.
-            buffer_fill_ratio: Fraction of one read buffer to fill before polling.
-            descriptor: Telemetry service limits and register identifiers.
-
-        Returns:
-            The estimated host poll interval in seconds.
-
-        Raises:
-            ValueError: If the frequency or buffer fill ratio is invalid.
-        """
-        if frequency <= 0:
-            raise ValueError("Telemetry frequency must be positive")
-        if not 0 < buffer_fill_ratio <= 1:
-            raise ValueError("Telemetry buffer fill ratio must be between 0 and 1")
-        frame_size = descriptor.timestamp_size + sum(
-            dtype_length_bits[register.dtype] // 8 for register in registers
-        )
-        read_buffer_size = cls._buffer_size_for(frame_size, descriptor)
-        frames_per_read = (read_buffer_size - descriptor.frame_count_size) // frame_size
-        return buffer_fill_ratio * frames_per_read / frequency
-
     @staticmethod
     def _map_register_value(subnode: int, address: int, dtype: int, size: int) -> int:
         """Encode a firmware telemetry mapping entry.
@@ -364,21 +367,28 @@ class TelemetryPoller:
         registers: Registers mapped by :meth:`EthercatTelemetry.configure`.
         poll_interval: Delay after an empty read, and the idle recheck
             interval for both threads, in seconds.
+        buffer_fill_ratio: Fraction of the telemetry buffer to fill before
+            polling when ``poll_interval`` is not provided.
     """
 
     def __init__(
         self,
         telemetry: EthercatTelemetry,
         registers: Sequence[Register],
-        poll_interval: float = 0.01,
+        poll_interval: Optional[float] = None,
+        buffer_fill_ratio: float = 0.5,
     ) -> None:
         if not registers:
             raise ValueError("Telemetry poller requires at least one register")
-        if poll_interval <= 0:
+        if poll_interval is not None and poll_interval <= 0:
             raise ValueError("Telemetry poll interval must be positive")
         self._telemetry = telemetry
         self._registers = tuple(registers)
-        self._poll_interval = poll_interval
+        self._poll_interval = (
+            poll_interval
+            if poll_interval is not None
+            else telemetry.recommended_poll_interval(buffer_fill_ratio)
+        )
 
         layout: list[tuple[Register, int, int]] = []
         offset = 0
@@ -402,6 +412,11 @@ class TelemetryPoller:
         self._decoder_thread = Thread(
             target=self._decode_loop, name="TelemetryPoller-decoder", daemon=True
         )
+
+    @property
+    def poll_interval(self) -> float:
+        """Interval used between empty telemetry polls."""
+        return self._poll_interval
 
     def start(self) -> None:
         """Start the reader and decoder threads."""
@@ -685,15 +700,13 @@ class TelemetryRecorder:
             })
             self._writer = self._pq.ParquetWriter(self._path, schema)
         assert self._achieved_frequency is not None
-        poll_interval = self._poll_interval
-        if poll_interval is None:
-            poll_interval = self._telemetry.recommended_poll_interval(
-                self._registers,
-                self._achieved_frequency,
-                self._buffer_fill_ratio,
-                self._telemetry.descriptor,
-            )
-        poller = TelemetryPoller(self._telemetry, self._registers, poll_interval)
+        poller = TelemetryPoller(
+            self._telemetry,
+            self._registers,
+            self._poll_interval,
+            self._buffer_fill_ratio,
+        )
+        self._poll_interval = poller.poll_interval
         self._poller = poller
         self._stop_drain.clear()
         self._telemetry.start()

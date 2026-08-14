@@ -19,7 +19,10 @@ from ingenialink.virtual.canopen.network import VirtualCanopenNetwork
 from ingenialink.virtual.ethercat.network import VirtualEthercatNetwork
 from ingenialink.virtual.ethercat.servo import VirtualEthercatServo
 from ingenialink.virtual.ethernet.network import VirtualEthernetNetwork
+<<<<<<< Updated upstream
 from ingenialink.virtual.ethernet.servo import VirtualEthernetServo
+=======
+>>>>>>> Stashed changes
 from ingenialink.virtual.sdcp.network import VirtualSDCPNetwork
 from tests.ethercat.mock import pysoem_mock_network  # noqa: F401
 from tests.resources.ethercat import TEST_DICT_ETHERCAT_TELEMETRY

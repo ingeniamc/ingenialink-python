@@ -365,18 +365,23 @@ def test_telemetry_supports_multiple_sampling_frequencies(
 
 def test_telemetry_recommends_polling_at_half_buffer_capacity(mocker) -> None:
     """Calculate polling from the number of frames that fit in the read buffer."""
+    servo = mocker.MagicMock(spec=EthercatServo)
     registers = [
         _fake_register(mocker, "FIRST", RegDtype.U32),
         _fake_register(mocker, "SECOND", RegDtype.U32),
     ]
+    for register in registers:
+        register.monitoring = mocker.MagicMock(subnode=0, address=1)
+    telemetry = EthercatTelemetry(servo)
+    telemetry.configure(registers, desired_frequency=1_000)
     frame_size = ETHERCAT_TELEMETRY.timestamp_size + 8
     frames_per_read = (
         EthercatTelemetry._buffer_size_for(frame_size) - ETHERCAT_TELEMETRY.frame_count_size
     ) // frame_size
 
-    assert EthercatTelemetry.recommended_poll_interval(registers, 1_000) == pytest.approx(
-        frames_per_read / 2 / 1_000
-    )
+    assert telemetry.recommended_poll_interval() == pytest.approx(frames_per_read / 2 / 1_000)
+    poller = TelemetryPoller(telemetry, registers)
+    assert poller.poll_interval == pytest.approx(frames_per_read / 2 / 1_000)
 
 
 @pytest.mark.parametrize("adaptive_rate", [False, True])
@@ -670,9 +675,7 @@ def test_telemetry_recorder_writes_samples_to_parquet(
     telemetry.configure.assert_called_once_with(
         (register,), desired_frequency=1_000, adaptive_rate=adaptive_rate
     )
-    telemetry.recommended_poll_interval.assert_called_once_with(
-        (register,), 1_000, 0.5, telemetry.descriptor
-    )
+    poller.assert_called_once_with(telemetry, (register,), None, 0.5)
     rows = pq.read_table(path).to_pylist()
     assert [{"timestamp": row["timestamp"], "REG": row["REG"]} for row in rows] == [
         {"timestamp": 0.0, "REG": 1.0},
