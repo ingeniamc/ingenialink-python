@@ -1,6 +1,9 @@
+from pathlib import Path
+
 import pytest
 
 import tests.resources.ethercat
+from ingenialink.constants import COCO_MOCO_PROJECT_NUMBER
 from ingenialink.dictionary import Interface, SubnodeType
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2, EthercatDictionaryV3
 
@@ -78,6 +81,24 @@ def test_read_dictionary_registers():
 
     for subnode in expected_regs_per_subnode:
         assert expected_regs_per_subnode[subnode] == list(ethercat_dict.registers(subnode))
+
+
+def test_coco_moco_monitoring_registers_are_not_converted(tmp_path: Path):
+    source = Path(tests.resources.ethercat.TEST_DICT_ETHERCAT)
+    dictionary_path = tmp_path / source.name
+    dictionary_path.write_text(
+        source.read_text(encoding="utf-8").replace(
+            'ProductCode="57745409"',
+            f'ProductCode="{COCO_MOCO_PROJECT_NUMBER << 20}"',
+        ),
+        encoding="utf-8",
+    )
+
+    ethercat_dict = EthercatDictionaryV2(dictionary_path.as_posix())
+
+    assert "DRV_DIAG_ERROR_LAST_COM" in ethercat_dict.registers(0)
+    assert "MON_CFG_EOC_TYPE" not in ethercat_dict.registers(0)
+    assert "DIST_CFG_REG0_MAP" not in ethercat_dict.registers(0)
 
 
 def test_pdo_maps_equivalence(den_net_e_2_9_1_xdf_v3: str):

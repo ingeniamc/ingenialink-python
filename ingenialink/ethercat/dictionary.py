@@ -10,6 +10,7 @@ from ingenialink.canopen.register import CanopenRegister
 from ingenialink.constants import (
     CANOPEN_ADDRESS_OFFSET,
     CANOPEN_SUBNODE_0_ADDRESS_OFFSET,
+    COCO_MOCO_PROJECT_NUMBER,
     MAP_ADDRESS_OFFSET,
 )
 from ingenialink.dictionary import (
@@ -475,6 +476,14 @@ class EthercatDictionaryV2(EthercatDictionary, DictionaryV2):
         )
 
     def _read_xdf_register(self, register: ElementTree.Element) -> Optional[EthercatRegister]:
+        # EoE dictionaries include monitoring registers that CoCoMoCo does not expose through CoE.
+        if (
+            self.product_code is not None
+            and self.product_code >> 20 == COCO_MOCO_PROJECT_NUMBER
+            and register.attrib.get("cat_id") == "MONITORING"
+        ):
+            return None
+
         current_read_register = super()._read_xdf_register(register)
         if current_read_register is None:
             return None

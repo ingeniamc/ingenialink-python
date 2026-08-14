@@ -50,6 +50,7 @@ def _build_decoder(dtype: RegDtype) -> Callable[[BytesLike], REG_VALUE]:
 
 
 dtypes_ranges: dict[RegDtype, dict[str, Union[int, float]]] = {
+    RegDtype.BOOL: {"max": 1, "min": 0},
     RegDtype.U8: {"max": 255, "min": 0},
     RegDtype.S8: {"max": 127, "min": -128},
     RegDtype.U16: {"max": 65535, "min": 0},

@@ -27,6 +27,7 @@ from ingenialink.ethercat.dictionary import EthercatDictionaryV2, EthercatDictio
 from ingenialink.ethernet.dictionary import (
     EoEDictionaryV3,
     EthernetDictionaryV2,
+    SDCPDictionaryV3,
 )
 from ingenialink.servo import DictionaryFactory
 
@@ -231,6 +232,7 @@ def test_dictionary_v2_image_none(dictionary_class, dictionary_path):
         (tests.resources.TEST_DICT_ECAT_EOE_v3, Interface.EoE, EoEDictionaryV3),
         (tests.resources.TEST_DICT_ECAT_EOE_SAFE_v3, Interface.ECAT, EthercatDictionaryV3),
         (tests.resources.TEST_DICT_ECAT_EOE_SAFE_v3, Interface.EoE, EoEDictionaryV3),
+        (tests.resources.ethernet.TEST_DICT_SDCP_v3, Interface.SDCP, SDCPDictionaryV3),
     ],
 )
 def test_dictionary_factory(dict_path, interface, dict_class):

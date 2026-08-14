@@ -9,7 +9,7 @@ from ingenialink.ethernet.tsn.servo import TSNServoBase
 from ingenialink.exceptions import ILIOError
 from ingenialink.servo import Servo
 
-from .connection import SDCPConnection
+from .connection import DEFAULT_SDCP_PORT, SDCPConnection
 from .messages import (
     SDCPReadRequest,
     SDCPReadResponse,
@@ -35,8 +35,7 @@ class SDCPServo(TSNServoBase):
 
     """
 
-    # Temporary use of the CAN interface until TSN dictionary support is available (INGK-1279).
-    interface = Interface.CAN
+    interface = Interface.SDCP
 
     _CONNECTION_TIMEOUT_S = 1.0
     _INITIAL_TRANSACTION_ID = 0x0000
@@ -54,10 +53,23 @@ class SDCPServo(TSNServoBase):
         super().__init__(
             target, dictionary_path, servo_status_listener, disconnect_callback=disconnect_callback
         )
-        self._connection = SDCPConnection(target, interface, connection_timeout)
+        self._connection = self._create_connection(target, interface, connection_timeout)
         self._transaction_id = self._INITIAL_TRANSACTION_ID
         self._request_lock = Lock()
         self._disconnected = False
+
+    def _create_connection(
+        self,
+        target: str,
+        interface: str,
+        connection_timeout: float,
+    ) -> SDCPConnection:
+        """Create the fixed-port connection used by physical SDCP servos.
+
+        Returns:
+            Connection to the physical SDCP servo.
+        """
+        return SDCPConnection(target, interface, connection_timeout, DEFAULT_SDCP_PORT)
 
     def disconnect(self) -> None:
         """Close the SDCP connection and publish the disconnection event."""

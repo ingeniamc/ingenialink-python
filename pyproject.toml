@@ -24,12 +24,12 @@ classifiers = [
 
 requires-python = ">=3.9"
 dependencies = [
-    "canopen==2.2.0",
+    "canopen==2.4.1",
     "python-can==4.6.1",
     "ingenialogger>=0.2.1",
     "ping3==5.1.5",
     "pysoem>=1.1.13, <1.2.0",
-    "bitarray==3.9.0",
+    "bitarray==3.10.1",
     "multiping==1.1.2",
     "numpy>=1.26.0",
     "cypcap>=0.6.2,<0.7.0 ; sys_platform == 'win32'",
@@ -45,7 +45,7 @@ Documentation = "https://distext.ingeniamc.com/doc/ingenialink-python/latest/"
 Source = "https://github.com/ingeniamc/ingenialink-python"
 
 [tool.poetry]
-version = "7.6.1"  # base version
+version = "7.6.2"  # base version
 
 [[tool.poetry.source]]
 name = "PyPI"
@@ -88,7 +88,7 @@ optional = true
 [tool.poetry.group.dev.dependencies]
 poethepoet = {extras = ["poetry-plugin"], version = "^0.35.0"}
 Cython  = "==3.2.4"
-setuptools = "==75.6.0"
+setuptools = "==75.9.1"
 
 # Dependencies for build wheel tasks
 [tool.poetry.group.build]
@@ -139,8 +139,8 @@ pytest-mock = "==3.15.1"
 pytest-repeat = "==0.9.4"
 pytest-console-scripts = "==1.4.1"
 twisted = "==25.5.0"
-summit-testing-framework = {version = "0.3.0.post485+develop.eeac7c1"}
-virtual_drive = {version = "0.1.1.post162+develop.5f8b4fd"}
+summit-testing-framework = {version = "0.3.0.post529+develop.f2ad726"}
+virtual_drive = {version = "0.1.1.post181+develop.a07ec8b"}
 xmlschema = ">=3.0.0"
 
 # -----------------------------------------------------------------------
