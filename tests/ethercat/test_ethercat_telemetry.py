@@ -660,7 +660,8 @@ def test_telemetry_recorder_writes_samples_to_parquet(
     register = _fake_register(mocker, "REG", RegDtype.FLOAT)
     telemetry = mocker.patch("ingenialink.ethercat.telemetry.EthercatTelemetry").return_value
     telemetry.configure.return_value = 1_000
-    poller = mocker.patch("ingenialink.ethercat.telemetry.TelemetryPoller").return_value
+    poller_cls = mocker.patch("ingenialink.ethercat.telemetry.TelemetryPoller")
+    poller = poller_cls.return_value
     _queue_samples(
         poller,
         [
@@ -679,7 +680,7 @@ def test_telemetry_recorder_writes_samples_to_parquet(
     telemetry.configure.assert_called_once_with(
         (register,), desired_frequency=1_000, adaptive_rate=adaptive_rate
     )
-    poller.assert_called_once_with(telemetry, (register,), None, 0.5)
+    poller_cls.assert_called_once_with(telemetry, (register,), None, 0.5)
     rows = pq.read_table(path).to_pylist()
     assert [{"timestamp": row["timestamp"], "REG": row["REG"]} for row in rows] == [
         {"timestamp": 0.0, "REG": 1.0},
