@@ -276,6 +276,19 @@ pipeline {
                                         }
                                     }
                                 }
+                                stage('Generate Rust stubs') {
+                                    steps {
+                                        script {
+                                            withEnv(["PATH=C:\\Users\\ContainerAdministrator\\.cargo\\bin;${env.PATH}"]) {
+                                                ensureRustToolchain()
+                                                bat 'cargo install pyo3-introspection --version 0.29.2 --locked --force'
+                                                venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                    venv.run("poetry run poe generate-stubs")
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                                 stage('Build wheels') {
                                     steps {
                                         script {
@@ -401,6 +414,7 @@ pipeline {
                                                 "RUSTC=/root/.cargo/bin/rustc",
                                                 "CARGO=/root/.cargo/bin/cargo",
                                             ]) {
+                                                ensureRustToolchain()
                                                 sh 'cargo install pyo3-introspection --version 0.29.2 --locked --force'
                                                 venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
                                                     venv.run("poetry run poe generate-stubs")
