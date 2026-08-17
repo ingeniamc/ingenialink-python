@@ -28,6 +28,13 @@ logger = logging.getLogger(__name__)
 
 VIRTUAL_TELEMETRY_DESCRIPTOR = replace(ETHERCAT_TELEMETRY, data_buffer_size=512)
 
+# Only implemented on capitan ethercat
+pytestmark = [
+    pytest.mark.not_valid_for_product(part_number="EVE-*"),
+    pytest.mark.not_valid_for_product(part_number="DEN-*"),
+    pytest.mark.not_valid_for_product(part_number="*-C-*"),
+]
+
 
 def _skip_virtual_generator_test(servo) -> None:
     """Skip generator waveform tests when only the generic virtual drive is available."""
