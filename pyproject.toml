@@ -80,7 +80,7 @@ include-package-data = true
 include = ["ingenialink", "virtual_drive_telemetry"]
 
 [tool.setuptools.package-data]
-ingenialink = ["py.typed", "*.pyd"]
+ingenialink = ["py.typed", "*.pyd", "_rust/*.pyi"]
 
 # Dependencies to run poe tasks
 [tool.poetry.group.dev]
@@ -159,6 +159,10 @@ cmd = "twine check dist/*"
 [tool.poe.tasks.build-cython]
 help = "Build Cython"
 cmd = "python setup.py build_ext --inplace"
+
+[tool.poe.tasks.generate-stubs]
+help = "Generate PyO3 type stubs"
+cmd = "python scripts/generate_stubs.py"
 
 # ----------------------------- Ruff format -----------------------------
 [tool.poe.tasks.ruff-format-check]

@@ -14,8 +14,6 @@ from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.exceptions import ILError
 from ingenialink.servo import Servo
 from ingenialink.utils._utils import (
-    convert_bytes_to_dtype,
-    convert_dtype_to_bytes,
     dtype_length_bits,
 )
 
@@ -80,7 +78,14 @@ class PDOMapItem:
                 access=RegAccess.RW,
             )
         self.register = register
-        self.size_bits = dtype_length_bits[register.dtype] if size_bits is None else size_bits
+        if size_bits is None:
+            # BOOL registers occupy one bit in PDO process data, despite being
+            # represented by one byte when read from or written to a register.
+            self.size_bits = (
+                1 if register.dtype == RegDtype.BOOL else dtype_length_bits[register.dtype]
+            )
+        else:
+            self.size_bits = size_bits
         self._raw_data_bits: Optional[bitarray.bitarray] = None
         self._check_if_mappable()
 
@@ -173,7 +178,7 @@ class PDOMapItem:
         if self.register.dtype == RegDtype.BOOL:
             value = self.raw_data_bits.any()
         else:
-            value = convert_bytes_to_dtype(self.raw_data_bytes, self.register.dtype)
+            value = self.register.bytes_to_value(self.raw_data_bytes)
         if not isinstance(value, (int, float, bool)):
             raise ILError("Wrong register value type")
         return value
@@ -274,7 +279,7 @@ class RPDOMapItem(PDOMapItem):
             raw_data_bits.append(value)
             self.raw_data_bits = raw_data_bits
         else:
-            raw_data_bytes = convert_dtype_to_bytes(value, self.register.dtype)
+            raw_data_bytes = self.register.value_to_bytes(value)
             self.raw_data_bytes = raw_data_bytes
 
 

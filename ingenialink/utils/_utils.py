@@ -1,6 +1,5 @@
 import functools
 import logging
-import struct
 import warnings
 import weakref
 from typing import Any, Callable, Optional, TypeVar, Union, cast
@@ -8,8 +7,8 @@ from xml.etree import ElementTree
 
 import ingenialogger
 
+from ingenialink._rust import data_type as _rust_data_type
 from ingenialink.enums.register import ByteOrder, RegDtype
-from ingenialink.exceptions import ILValueError
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -39,7 +38,7 @@ dtype_length_bits: dict[RegDtype, int] = {
     RegDtype.U64: 64,
     RegDtype.S64: 64,
     RegDtype.FLOAT: 32,
-    RegDtype.BOOL: 1,
+    RegDtype.BOOL: 8,
     RegDtype.BYTE_ARRAY_512: 512 * 8,
 }
 
@@ -156,35 +155,6 @@ def pop_element(dictionary: dict[str, Any], element: str) -> None:
         dictionary.pop(element)
 
 
-def cleanup_register(register: ElementTree.Element) -> None:
-    """Clean a register element.
-
-    Cleans a ElementTree register to remove all
-    unnecessary fields for a configuration file.
-
-    Args:
-        register: Register to be cleaned.
-    """
-    labels = register.find("./Labels")
-    reg_range = register.find("./Range")
-    enums = register.find("./Enumerations")
-
-    if labels:
-        remove_xml_subelement(register, labels)
-    if enums:
-        remove_xml_subelement(register, enums)
-    if reg_range:
-        remove_xml_subelement(register, reg_range)
-
-    pop_element(register.attrib, "desc")
-    pop_element(register.attrib, "cat_id")
-    pop_element(register.attrib, "pdo_access")
-    pop_element(register.attrib, "units")
-    pop_element(register.attrib, "address_type")
-
-    register.text = ""
-
-
 def convert_ip_to_int(ip: str) -> int:
     """Converts a string type IP to its integer value.
 
@@ -221,6 +191,29 @@ def convert_int_to_ip(int_ip: int) -> str:
 REG_VALUE = Union[float, int, str, bytes]
 
 
+@functools.cache
+def get_configured_codec(
+    dtype: RegDtype, byte_order: ByteOrder
+) -> _rust_data_type.ConfiguredDataType:
+    """Return the cached native codec for a data type and byte order.
+
+    Args:
+        dtype: Register data type to convert.
+        byte_order: Byte order used by the register protocol.
+
+    Returns:
+        A Rust-backed codec configured for the requested data type and byte order.
+
+    Raises:
+        RuntimeError: If the installed native extension lacks a built-in register data type.
+    """
+    rust_data_type = _rust_data_type.DataType.from_name(dtype.name)
+    if rust_data_type is None:
+        raise RuntimeError(f"Native codec does not support register data type {dtype.name}")
+    return rust_data_type.with_byte_order(byte_order.value)
+
+
+@deprecated(new_func_name="Register.bytes_to_value")
 def convert_bytes_to_dtype(
     data: bytes, dtype: RegDtype, byte_order: ByteOrder = ByteOrder.LITTLE
 ) -> REG_VALUE:
@@ -238,35 +231,20 @@ def convert_bytes_to_dtype(
 
     Raises:
         ILValueError: If data can't be decoded in utf-8
+
+    Notes:
+        Fixed-width payloads may contain trailing transport padding. Such
+        padding is removed before strict native decoding; short payloads are
+        still rejected.
     """
-    signed = False
-    if dtype in dtype_value:
-        bytes_length, signed = dtype_value[dtype]
-        data = data[:bytes_length]
-
-    if dtype == RegDtype.FLOAT:
-        [value] = struct.unpack(
-            f"{_struct_byte_order(byte_order)}f",
-            data,
-        )
-        if not isinstance(value, float):
-            raise ILValueError(f"Data could not be converted to float. Obtained: {value}")
-    elif dtype == RegDtype.STR:
-        try:
-            value = data.split(b"\x00")[0].decode("utf-8")
-        except UnicodeDecodeError as e:
-            raise ILValueError(f"Can't decode {e.object!r} to utf-8 string") from e
-    elif dtype == RegDtype.BYTE_ARRAY_512:
-        return data
-    else:
-        value = int.from_bytes(data, byte_order.value, signed=signed)
-    if dtype == RegDtype.BOOL:
-        value = bool(value)
-    if not isinstance(value, (int, float, str)):
-        raise ILValueError(f"Bad data type: {type(value)}")
-    return value
+    codec = get_configured_codec(dtype, byte_order)
+    payload = bytes(data)
+    if dtype != RegDtype.BYTE_ARRAY_512 and (byte_length := codec.byte_length()) is not None:
+        payload = payload[:byte_length]
+    return codec.bytes_to_value(payload)
 
 
+@deprecated(new_func_name="Register.value_to_bytes")
 def convert_dtype_to_bytes(
     data: REG_VALUE, dtype: RegDtype, byte_order: ByteOrder = ByteOrder.LITTLE
 ) -> bytes:
@@ -285,49 +263,4 @@ def convert_dtype_to_bytes(
     Raises:
         ValueError: if the data has an invalid value.
     """
-    if (
-        dtype == RegDtype.BOOL
-        and data not in VALID_BIT_REGISTER_VALUES
-        and not isinstance(data, bytes)
-    ):
-        raise ValueError(f"Invalid value. Expected values: {VALID_BIT_REGISTER_VALUES}, got {data}")
-    if dtype == RegDtype.BYTE_ARRAY_512:
-        if not isinstance(data, bytes):
-            raise ValueError(f"Expected data of type bytes, but got {type(data)}")
-        return data
-    if dtype == RegDtype.FLOAT:
-        if not isinstance(data, (float, int)):
-            raise ValueError(f"Expected data of type float, but got {type(data)}")
-        return struct.pack(
-            f"{_struct_byte_order(byte_order)}f",
-            float(data),
-        )
-    if dtype == RegDtype.STR:
-        if not isinstance(data, str):
-            raise ValueError(f"Expected data of type string, but  got {type(data)}")
-        return data.encode("utf_8")
-    if not isinstance(data, int):
-        raise ValueError(f"Expected data of type int, but {type(data)}")
-    bytes_length, signed = dtype_value[dtype]
-    data_bytes = data.to_bytes(bytes_length, byteorder=byte_order.value, signed=signed)
-    return data_bytes
-
-
-def _struct_byte_order(byte_order: ByteOrder) -> str:
-    """Return the struct format prefix for a byte order.
-
-    Args:
-        byte_order: Byte order to convert.
-
-    Returns:
-        Struct format prefix for the given byte order.
-
-    Raises:
-        ValueError: If the byte order is unsupported.
-
-    """
-    if byte_order == ByteOrder.LITTLE:
-        return "<"
-    if byte_order == ByteOrder.BIG:
-        return ">"
-    raise ValueError(f"Unsupported byte order: {byte_order}")
+    return get_configured_codec(dtype, byte_order).value_to_bytes(data)

@@ -12,7 +12,9 @@ from ingenialink.csv_configuration_file import CSVConfigurationFile
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.ethercat.dictionary import EthercatDictionary
 from ingenialink.ethercat.state import SlaveState
+from ingenialink.ethercat.telemetry_descriptor import ETHERCAT_TELEMETRY
 from ingenialink.table import Table
+from ingenialink.telemetry import Telemetry
 from ingenialink.utils.event import create_event
 
 try:
@@ -62,6 +64,16 @@ class EthercatEmergencyMessage(EmergencyMessage):
 
 class EthercatServoBase(PDOServo, Servo, ABC):
     """Declaration of the base EtherCAT servo behavior."""
+
+    _TELEMETRY_DESCRIPTOR = ETHERCAT_TELEMETRY
+
+    def telemetry(self) -> "Telemetry":
+        """Create the EtherCAT telemetry service.
+
+        Returns:
+            The telemetry service configured for EtherCAT.
+        """
+        return Telemetry(self, self._TELEMETRY_DESCRIPTOR)
 
 
 class EthercatServo(EthercatServoBase):

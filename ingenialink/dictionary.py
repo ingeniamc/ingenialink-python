@@ -4,6 +4,7 @@ import math
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
+from contextlib import suppress
 from dataclasses import dataclass, field
 from fnmatch import fnmatch
 from functools import cached_property
@@ -507,14 +508,85 @@ class Dictionary(XMLBase, ABC):
             raise ValueError(
                 "Cannot merge dictionaries. One of the dictionaries must be a COM-KIT dictionary."
             )
-        self_dict_copy = copy.deepcopy(self)
-        other_dict_copy = copy.deepcopy(other_dict)
+        self_dict_copy = self._copy_for_merge(self)
+        other_dict_copy = self._copy_for_merge(other_dict)
         self_dict_copy._merge_registers(other_dict_copy)
         self_dict_copy._merge_errors(other_dict_copy)
         self_dict_copy._merge_tables(other_dict_copy)
         self_dict_copy._merge_attributes(other_dict_copy)
         self_dict_copy._set_image(other_dict_copy)
         return self_dict_copy
+
+    @staticmethod
+    def _copy_for_merge(dictionary: "Dictionary") -> "Dictionary":
+        """Copy the mutable dictionary structures needed by a merge.
+
+        Args:
+            dictionary: Dictionary to copy.
+
+        Returns:
+            A copy of the dictionary with independent registers and containers.
+        """
+        register_copies = {
+            id(register): Dictionary._copy_register(register)
+            for register in dictionary.all_registers()
+        }
+        dictionary_copy = copy.copy(dictionary)
+        dictionary_copy._registers = {
+            subnode: {uid: register_copies[id(register)] for uid, register in registers.items()}
+            for subnode, registers in dictionary._registers.items()
+        }
+        dictionary_copy._tables = {
+            axis: {uid: copy.copy(table) for uid, table in tables.items()}
+            for axis, tables in dictionary._tables.items()
+        }
+        dictionary_copy.errors = dictionary.errors.copy()
+        dictionary_copy.items = Dictionary._copy_canopen_objects(dictionary, register_copies)
+        dictionary_copy.safety_rpdos = copy.copy(dictionary.safety_rpdos)
+        dictionary_copy.safety_tpdos = copy.copy(dictionary.safety_tpdos)
+        dictionary_copy.safety_modules = copy.copy(dictionary.safety_modules)
+        return dictionary_copy
+
+    @staticmethod
+    def _copy_register(register: Register) -> Register:
+        """Copy register metadata while retaining its immutable codec.
+
+        Returns:
+            A register copy with the original immutable codec.
+        """
+        register_copy = copy.copy(register)
+        register_copy.__dict__ = register.__dict__.copy()
+        register_copy._labels = register.labels.copy()
+        register_copy._enums = register.enums.copy()
+        if register.bitfields is not None:
+            register_copy.__dict__["_Register__bitfields"] = dict(register.bitfields)
+        return register_copy
+
+    @staticmethod
+    def _copy_canopen_objects(
+        dictionary: "Dictionary", register_copies: dict[int, Register]
+    ) -> dict[int, dict[str, CanOpenObject]]:
+        """Copy CANopen objects and reconnect them to copied registers.
+
+        Returns:
+            Copied CANopen objects grouped by subnode and UID.
+        """
+        object_copies: dict[int, CanOpenObject] = {}
+        for subnode, objects in dictionary.items.items():
+            for obj in objects.values():
+                object_copy = copy.copy(obj)
+                object_copy.registers = [
+                    register_copies[id(register)] for register in obj.registers
+                ]
+                object_copies[id(obj)] = object_copy
+                for register in obj.registers:
+                    register_copy = register_copies[id(register)]
+                    with suppress(AttributeError):
+                        register_copy.obj = object_copy
+        copied_items: dict[int, dict[str, CanOpenObject]] = {}
+        for subnode, objects in dictionary.items.items():
+            copied_items[subnode] = {uid: object_copies[id(obj)] for uid, obj in objects.items()}
+        return copied_items
 
     def registers(self, subnode: int) -> dict[str, Register]:
         """Gets the register dictionary to the targeted subnode.

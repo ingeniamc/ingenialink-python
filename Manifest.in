@@ -5,3 +5,5 @@ include virtual_drive_telemetry/Cargo.toml virtual_drive_telemetry/Cargo.lock vi
 recursive-include virtual_drive_telemetry/c *.c *.h
 recursive-include virtual_drive_telemetry/src *.rs
 recursive-include virtual_drive_telemetry/tests *.rs
+include Cargo.toml Cargo.lock
+recursive-include _rust *.rs

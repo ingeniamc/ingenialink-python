@@ -1,4 +1,5 @@
 import socket
+from dataclasses import replace
 from typing import Any, Callable, Optional
 
 from typing_extensions import override
@@ -7,6 +8,7 @@ from ingenialink import Servo
 from ingenialink.dictionary import Interface
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethercat.servo import EthercatServoBase
+from ingenialink.ethercat.telemetry_descriptor import ETHERCAT_TELEMETRY
 from ingenialink.exceptions import ILIOError
 from ingenialink.register import Register
 from ingenialink.virtual.servo import VirtualServoBase
@@ -14,6 +16,9 @@ from ingenialink.virtual.servo import VirtualServoBase
 
 class VirtualEthercatServo(EthercatServoBase):
     """Virtual EtherCAT servo implementation using serialized object frames."""
+
+    # Virtual servo transport does not support long frames well
+    _TELEMETRY_DESCRIPTOR = replace(ETHERCAT_TELEMETRY, data_buffer_size=512)
 
     interface = Interface.ECAT
 

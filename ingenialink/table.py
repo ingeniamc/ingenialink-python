@@ -4,7 +4,7 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Optional
 
 from ingenialink.configuration_file import ConfigTable, TableElement
-from ingenialink.utils._utils import REG_VALUE, convert_bytes_to_dtype
+from ingenialink.utils._utils import REG_VALUE
 
 if TYPE_CHECKING:
     from ingenialink import Register, Servo
@@ -494,8 +494,8 @@ class TableContext:
                 mismatches.append(f"Table {uid} address {element.address} -- {e}")
                 continue
 
-            expected = convert_bytes_to_dtype(element.data, self.value_register.dtype)
-            found = convert_bytes_to_dtype(drive_raw, self.value_register.dtype)
+            expected = self.value_register.bytes_to_value(element.data)
+            found = self.value_register.bytes_to_value(drive_raw)
             if expected != found:
                 mismatches.append(
                     f"Table {uid} address {element.address} --- Expected: {expected!r} "

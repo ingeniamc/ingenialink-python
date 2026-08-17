@@ -17,7 +17,6 @@ from ingenialink.emcy import EmergencyMessage
 from ingenialink.exceptions import ILRegisterAccessError
 from ingenialink.register import Register
 from ingenialink.servo import Servo
-from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -247,7 +246,7 @@ class CanopenServo(CanopenServoBase):
             and target_register.is_node_id_dependent
         ):
             # Convert bytes to value
-            value = convert_bytes_to_dtype(data, reg_dtype)
+            value = target_register.bytes_to_value(data)
             if not isinstance(value, (int, float)):
                 raise ValueError(
                     f"Illegal value for register with ID {config_register.uid}"
@@ -257,10 +256,7 @@ class CanopenServo(CanopenServoBase):
             # Adjust value according to node ID
             value = value - configuration_file.device.node_id + int(self.target)
             # Convert value back to bytes
-            data = convert_dtype_to_bytes(
-                value,
-                reg_dtype,
-            )
+            data = target_register.value_to_bytes(value)
 
         return data
 

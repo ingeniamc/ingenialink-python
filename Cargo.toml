@@ -1,0 +1,50 @@
+[package]
+name = "ingenialink"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "_rust"
+path = "_rust/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+arrow-array = "59.2"
+arrow-ipc = "59.2"
+arrow-schema = "59.2"
+arrow-select = "59.2"
+pyo3 = { workspace = true, features = ["extension-module"] }
+parquet = { version = "59.2", features = ["arrow"] }
+serde_json = "1"
+thiserror = { workspace = true }
+
+[features]
+default = ["abi3"]
+abi3 = ["pyo3/abi3-py39"]
+inspect = ["pyo3/experimental-inspect"]
+
+[lints]
+workspace = true
+
+[workspace]
+members = ["telemetry"]
+exclude = ["virtual_drive_telemetry"]
+
+[workspace.dependencies]
+pyo3 = "0.29.2"
+thiserror = "2"
+
+[workspace.lints.rust]
+missing_docs = "deny"
+
+[workspace.lints.clippy]
+doc_markdown = "warn"
+missing_docs_in_private_items = "deny"
+missing_errors_doc = "deny"
+missing_panics_doc = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+unwrap_used = "deny"

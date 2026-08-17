@@ -36,13 +36,6 @@ from .ethercat.dictionary import EthercatDictionary, EthercatDictionaryV2, Ether
 from .ethercat.network import EthercatNetwork, EthercatNetworkBase, GilReleaseConfig
 from .ethercat.register import EthercatRegister
 from .ethercat.servo import EthercatServo
-from .ethercat.telemetry import (
-    EthercatTelemetry,
-    TelemetryFrame,
-    TelemetryPoller,
-    TelemetryRecorder,
-    TelemetrySample,
-)
 
 # Ethernet
 from .ethernet.dictionary import EthernetDictionary, EthernetDictionaryV2, EthernetDictionaryV3
@@ -53,6 +46,15 @@ from .ethernet.servo import EthernetServo
 # Generic
 from .network import NetDevEvt, NetProt, NetState, Network
 from .register import Register
+from .telemetry import (
+    Telemetry,
+    TelemetryArrowIpcSink,
+    TelemetryDecoder,
+    TelemetryParquetRecorder,
+    TelemetryReader,
+    TelemetrySession,
+)
+from .telemetry_remote import TelemetryRemoteSession
 
 try:
     from ._version import __version__  # noqa: F401 # type: ignore[import-not-found]
@@ -83,11 +85,13 @@ __all__ = [
     "EthercatNetwork",
     "EthercatNetworkBase",
     "EthercatServo",
-    "EthercatTelemetry",
-    "TelemetryFrame",
-    "TelemetryPoller",
-    "TelemetryRecorder",
-    "TelemetrySample",
+    "Telemetry",
+    "TelemetryReader",
+    "TelemetryDecoder",
+    "TelemetryArrowIpcSink",
+    "TelemetryParquetRecorder",
+    "TelemetrySession",
+    "TelemetryRemoteSession",
     "EthercatDictionary",
     "EthercatDictionaryV2",
     "EthercatDictionaryV3",

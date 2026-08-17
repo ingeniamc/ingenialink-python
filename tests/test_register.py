@@ -1,7 +1,30 @@
 import pytest
 
+from ingenialink.enums.register import ByteOrder
 from ingenialink.exceptions import ILAccessError, ILValueError
 from ingenialink.register import RegAccess, RegDtype, Register, RegPhy
+from ingenialink.servo import Servo
+
+
+class BigEndianServo(Servo):
+    """Minimal servo exposing the protocol byte order used by TSN servos."""
+
+    _REGISTER_BYTE_ORDER = ByteOrder.BIG
+
+    def _get_reg(self, reg, _subnode):
+        """Return the supplied register without dictionary lookup."""
+        return reg
+
+    def _read_raw(self, _reg):
+        """Return the configured raw payload."""
+        return self.raw_data
+
+    def _write_raw(self, _reg, data):
+        """Store the raw payload written by the codec."""
+        self.raw_data = data
+
+    def _notify_register_update(self, reg, data):
+        """Suppress observer handling in this codec-focused test double."""
 
 
 def test_getters_register():
@@ -100,10 +123,48 @@ def test_register_set_storage():
     storage = 20.0
     register = Register(dtype, access, storage=storage, identifier="MOCK")
     assert register.storage == storage
-
     storage = 1.1
     register.storage = storage
     assert register.storage == storage
+
+
+@pytest.mark.parametrize(
+    "dtype, value, expected",
+    [
+        (RegDtype.U32, 0x12345678, b"\x78\x56\x34\x12"),
+        (RegDtype.FLOAT, 34.5, b"\x00\x00\x0a\x42"),
+        (RegDtype.STR, "hello", b"hello"),
+        (RegDtype.BYTE_ARRAY_512, bytes(512), bytes(512)),
+    ],
+)
+def test_register_value_to_bytes(dtype, value, expected):
+    register = Register(dtype, RegAccess.RW, identifier="MOCK")
+
+    assert register.value_to_bytes(value) == expected
+
+
+def test_servo_uses_its_protocol_byte_order_for_register_conversion():
+    servo = BigEndianServo.__new__(BigEndianServo)
+    register = Register(RegDtype.U16, RegAccess.RW, identifier="MOCK")
+    servo.raw_data = b"\x12\x34"
+
+    assert servo.read(register) == 0x1234
+
+    servo.write(register, 0x5678)
+
+    assert servo.raw_data == b"\x56\x78"
+
+
+def test_register_resolves_codecs_on_construction():
+    register = Register(RegDtype.U16, RegAccess.RW, identifier="MOCK")
+
+    little_codec = register._codec_little
+    big_codec = register._codec_big
+
+    assert little_codec is register._codec_little
+    assert big_codec is register._codec_big
+    assert little_codec.value_to_bytes(0x1234) == b"\x34\x12"
+    assert big_codec.value_to_bytes(0x1234) == b"\x12\x34"
 
 
 @pytest.mark.parametrize(

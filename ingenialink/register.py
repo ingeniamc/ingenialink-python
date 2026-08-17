@@ -1,11 +1,11 @@
-import struct
 from abc import ABC
 from dataclasses import dataclass
-from typing import Any, Callable, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from ingenialink import exceptions as exc
 from ingenialink.bitfield import BitField
 from ingenialink.enums.register import (
+    ByteOrder,
     RegAccess,
     RegAddressType,
     RegCyclicType,
@@ -14,40 +14,16 @@ from ingenialink.enums.register import (
 )
 from ingenialink.utils._utils import (
     REG_VALUE,
-    convert_bytes_to_dtype,
-    convert_dtype_to_bytes,
     dtype_length_bits,
-    dtype_value,
+    get_configured_codec,
 )
 
+if TYPE_CHECKING:
+    from ingenialink._rust.data_type import ConfiguredDataType
+else:
+    ConfiguredDataType = Any
+
 BytesLike = Union[bytes, memoryview]
-
-
-def _build_decoder(dtype: RegDtype) -> Callable[[BytesLike], REG_VALUE]:
-    if dtype == RegDtype.FLOAT:
-        unpack = struct.Struct("<f").unpack
-
-        def decode_float(data: BytesLike) -> REG_VALUE:
-            return unpack(data[:4])[0]  # type: ignore[no-any-return]
-
-        return decode_float
-    if dtype == RegDtype.BOOL:
-
-        def decode_bool(data: BytesLike) -> REG_VALUE:
-            return bool(int.from_bytes(data[:1], "little"))
-
-        return decode_bool
-    if dtype == RegDtype.BYTE_ARRAY_512:
-        return bytes
-    if dtype in dtype_value:
-        bytes_length, signed = dtype_value[dtype]
-
-        def decode_int(data: BytesLike) -> REG_VALUE:
-            return int.from_bytes(data[:bytes_length], "little", signed=signed)
-
-        return decode_int
-    return lambda data: convert_bytes_to_dtype(bytes(data), dtype)
-
 
 dtypes_ranges: dict[RegDtype, dict[str, Union[int, float]]] = {
     RegDtype.BOOL: {"max": 1, "min": 0},
@@ -136,7 +112,8 @@ class Register(ABC):
         self.__type_errors(dtype, access, phy)
 
         self._dtype = dtype.value
-        self._decoder: Callable[[BytesLike], REG_VALUE] = _build_decoder(dtype)
+        self._codec_little: ConfiguredDataType = get_configured_codec(dtype, ByteOrder.LITTLE)
+        self._codec_big: ConfiguredDataType = get_configured_codec(dtype, ByteOrder.BIG)
         self._access = access.value
         self._identifier = identifier
         self._units = units
@@ -350,7 +327,7 @@ class Register(ABC):
         """Register default value."""
         if self._default is None:
             return self._default
-        return convert_bytes_to_dtype(self._default, self.dtype)
+        return self.bytes_to_value(self._default)
 
     @property
     def bitfields(self) -> Optional[dict[str, BitField]]:
@@ -383,7 +360,7 @@ class Register(ABC):
         Returns:
             The value converted to bytes.
         """
-        return convert_dtype_to_bytes(value, self.dtype)
+        return self._codec_little.value_to_bytes(value)
 
     def bytes_to_value(self, data: BytesLike) -> REG_VALUE:
         """Convert bytes to a value according to the register's data type.
@@ -394,4 +371,4 @@ class Register(ABC):
         Returns:
             The bytes converted to a value.
         """
-        return self._decoder(data)
+        return self._codec_little.bytes_to_value(bytes(data))

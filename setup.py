@@ -26,6 +26,12 @@ setuptools.setup(
             "telemetry",
             path="virtual_drive_telemetry/Cargo.toml",
             binding=Binding.PyO3,
-        )
+        ),
+        RustExtension(
+            "ingenialink._rust",
+            path="Cargo.toml",
+            binding=Binding.PyO3,
+            features=["abi3", "inspect"],
+        ),
     ],
 )

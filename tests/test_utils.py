@@ -4,7 +4,12 @@ import pytest
 
 from ingenialink.enums.register import ByteOrder, RegDtype
 from ingenialink.exceptions import ILValueError
-from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, weak_lru
+from ingenialink.utils._utils import (
+    convert_bytes_to_dtype,
+    convert_dtype_to_bytes,
+    get_configured_codec,
+    weak_lru,
+)
 from ingenialink.utils.event import create_event
 from ingenialink.utils.timeout import Timeout
 
@@ -26,9 +31,11 @@ from ingenialink.utils.timeout import Timeout
     ],
 )
 def test_bytes_dtype_conversions(byts, value, dtype):
-    assert convert_bytes_to_dtype(byts, dtype) == value
+    with pytest.warns(DeprecationWarning, match="Register.bytes_to_value"):
+        assert convert_bytes_to_dtype(byts, dtype) == value
 
-    assert convert_dtype_to_bytes(value, dtype) == byts
+    with pytest.warns(DeprecationWarning, match="Register.value_to_bytes"):
+        assert convert_dtype_to_bytes(value, dtype) == byts
 
 
 def test_float_conversion_uses_big_endian_byte_order():
@@ -48,6 +55,26 @@ def test_float_conversion_uses_big_endian_byte_order():
             ByteOrder.BIG,
         )
         == data
+    )
+
+
+def test_byte_array_conversion_preserves_identity():
+    payload = bytes(range(256)) * 2
+
+    assert convert_bytes_to_dtype(payload, RegDtype.BYTE_ARRAY_512) is payload
+    assert convert_dtype_to_bytes(payload, RegDtype.BYTE_ARRAY_512) is payload
+
+
+def test_conversion_accepts_bytearray_input():
+    assert convert_bytes_to_dtype(bytearray(b"\x01"), RegDtype.U8) == 1
+
+
+def test_configured_codec_is_cached_by_dtype_and_byte_order():
+    assert get_configured_codec(RegDtype.U16, ByteOrder.LITTLE) is get_configured_codec(
+        RegDtype.U16, ByteOrder.LITTLE
+    )
+    assert get_configured_codec(RegDtype.U16, ByteOrder.LITTLE) is not get_configured_codec(
+        RegDtype.U16, ByteOrder.BIG
     )
 
 

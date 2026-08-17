@@ -387,6 +387,9 @@ def test_merge_dictionaries_new_instance():
     assert id(dict_a_reg_subnode_0) != id(dict_c_reg_subnode_0)
     assert id(dict_b_reg_subnode_1) != id(dict_c_reg_subnode_1)
 
+    assert dict_c_reg_subnode_0._codec_little is dict_a_reg_subnode_0._codec_little
+    assert dict_c_reg_subnode_1._codec_little is dict_b_reg_subnode_1._codec_little
+
     # Enum attributes should have the same reference
     assert id(dict_a.interface) == id(dict_c.interface)
     assert id(dict_b.interface) == id(dict_c.interface)

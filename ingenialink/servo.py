@@ -4,7 +4,7 @@ import time
 from abc import abstractmethod
 from collections.abc import Iterator
 from enum import Enum, auto
-from typing import Any, Callable, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 from xml.etree import ElementTree
 
 import ingenialogger
@@ -60,9 +60,15 @@ from ingenialink.exceptions import (
 )
 from ingenialink.register import Register
 from ingenialink.table import Table
-from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, weak_lru
+from ingenialink.utils._utils import get_configured_codec, weak_lru
 from ingenialink.utils.event import create_event
 from ingenialink.utils.timeout import Timeout
+
+if TYPE_CHECKING:
+    from ingenialink._rust.data_type import ConfiguredDataType
+    from ingenialink.telemetry import Telemetry
+else:
+    ConfiguredDataType = Any
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -574,12 +580,10 @@ class Servo:
                 registers_errored.append(il_error)
             else:
                 compare_conf: Union[int, float, str, bytes, bool, np.float32] = (
-                    convert_bytes_to_dtype(
+                    self._register_codec(target_reg).bytes_to_value(
                         self._adapt_configuration_file_storage_value(
                             xcf_instance, config_reg, target_reg
-                        ),
-                        target_reg.dtype,
-                        self._REGISTER_BYTE_ORDER,
+                        )
                     )
                 )
                 compare_drive: Union[int, float, str, bytes, bool, np.float32] = stored_data
@@ -647,10 +651,7 @@ class Servo:
         """
         if config_register.data is not None:
             return config_register.data
-        else:
-            return convert_dtype_to_bytes(
-                config_register.storage, target_register.dtype, self._REGISTER_BYTE_ORDER
-            )
+        return self._register_codec(target_register).value_to_bytes(config_register.storage)
 
     def load_configuration(
         self,
@@ -1503,11 +1504,9 @@ class Servo:
             ]
             for channel in range(number_of_channels):
                 channel_data_size = self.__monitoring_size[channel]
-                val = convert_bytes_to_dtype(
-                    block_data[:channel_data_size],
-                    self.__monitoring_dtype[channel],
-                    self._REGISTER_BYTE_ORDER,
-                )
+                val = get_configured_codec(
+                    self.__monitoring_dtype[channel], self._REGISTER_BYTE_ORDER
+                ).bytes_to_value(block_data[:channel_data_size])
                 if not isinstance(val, (int, float)):
                     continue
                 self.__monitoring_data[channel].append(val)
@@ -1565,12 +1564,18 @@ class Servo:
         data = b""
         for sample_idx in range(num_samples):
             for channel in range(len(data_arr_aux)):
-                val = convert_dtype_to_bytes(
-                    data_arr_aux[channel][sample_idx], dtypes[channel], self._REGISTER_BYTE_ORDER
-                )
+                val = get_configured_codec(
+                    dtypes[channel], self._REGISTER_BYTE_ORDER
+                ).value_to_bytes(data_arr_aux[channel][sample_idx])
                 data += val
         chunks = [data[i : i + max_size] for i in range(0, len(data), max_size)]
         return data, chunks
+
+    def _register_codec(self, register: Register) -> ConfiguredDataType:
+        """Return the register codec for this servo's byte order."""
+        if self._REGISTER_BYTE_ORDER == ByteOrder.BIG:
+            return register._codec_big
+        return register._codec_little
 
     def write(
         self,
@@ -1593,9 +1598,7 @@ class Servo:
         if _reg.access == RegAccess.RO:
             raise ILAccessError("Register is Read-only")
         data_bytes = (
-            data
-            if isinstance(data, bytes)
-            else convert_dtype_to_bytes(data, _reg.dtype, self._REGISTER_BYTE_ORDER)
+            data if isinstance(data, bytes) else self._register_codec(_reg).value_to_bytes(data)
         )
         self._write_raw(_reg, data_bytes)
         self._notify_register_update(_reg, data)
@@ -1624,7 +1627,13 @@ class Servo:
 
         raw_read = self._read_raw(_reg)
 
-        value = convert_bytes_to_dtype(raw_read, _reg.dtype, self._REGISTER_BYTE_ORDER)
+        codec = self._register_codec(_reg)
+        if (
+            _reg.dtype != RegDtype.BYTE_ARRAY_512
+            and (byte_length := codec.byte_length()) is not None
+        ):
+            raw_read = raw_read[:byte_length]
+        value = codec.bytes_to_value(raw_read)
         self._notify_register_update(_reg, value)
         return value
 
@@ -2142,3 +2151,7 @@ class Servo:
     def disturbance_number_mapped_registers(self) -> int:
         """The number of mapped disturbance registers."""
         return int(self.read(self.DISTURBANCE_NUMBER_MAPPED_REGISTERS, subnode=0))
+
+    def telemetry(self) -> "Telemetry":
+        """Create the telemetry service for this transport."""
+        raise NotImplementedError(f"Telemetry is not supported by {type(self).__name__}")

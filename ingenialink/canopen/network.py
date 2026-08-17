@@ -21,7 +21,7 @@ from typing_extensions import Any, TypeVar, override
 
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.canopen.servo import CanopenServo, CanopenServoBase
-from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
+from ingenialink.enums.register import ByteOrder, RegAccess, RegCyclicType, RegDtype
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
 from ingenialink.network import (
     NetDevEvt,
@@ -32,7 +32,7 @@ from ingenialink.network import (
     SlaveInfo,
 )
 from ingenialink.servo import Servo
-from ingenialink.utils._utils import DisableLogger, convert_bytes_to_dtype
+from ingenialink.utils._utils import DisableLogger, get_configured_codec
 from ingenialink.utils.mcb import MCB
 
 if platform.system() == "Windows":
@@ -392,12 +392,12 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
                     node = self._connection.add_node(slave_id)
                 else:
                     node = connected_slaves[slave_id]
-                product_code = convert_bytes_to_dtype(
-                    node.sdo.upload(self.DRIVE_INFO_INDEX, self.PRODUCT_CODE_SUB_IX), RegDtype.U32
+                codec = get_configured_codec(RegDtype.U32, ByteOrder.LITTLE)
+                product_code = codec.bytes_to_value(
+                    node.sdo.upload(self.DRIVE_INFO_INDEX, self.PRODUCT_CODE_SUB_IX)
                 )
-                revision_number = convert_bytes_to_dtype(
-                    node.sdo.upload(self.DRIVE_INFO_INDEX, self.REVISION_NUMBER_SUB_IX),
-                    RegDtype.U32,
+                revision_number = codec.bytes_to_value(
+                    node.sdo.upload(self.DRIVE_INFO_INDEX, self.REVISION_NUMBER_SUB_IX)
                 )
             except canopen.sdo.exceptions.SdoError as e:  # noqa: PERF203
                 logger.warning(
