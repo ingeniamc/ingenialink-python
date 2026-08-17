@@ -14,7 +14,7 @@ def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
 def LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.6"
-def WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.7"
+def WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.9"
 def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
 
 def DEFAULT_PYTHON_VERSION = "3.9"
