@@ -23,7 +23,7 @@ from ingenialink.virtual.ethernet.servo import VirtualEthernetServo
 from ingenialink.virtual.sdcp.network import VirtualSDCPNetwork
 from tests.ethercat.mock import pysoem_mock_network  # noqa: F401
 from tests.resources.ethercat import TEST_DICT_ETHERCAT_TELEMETRY
-from tests.resources.ethercat.virtual_telemetry import install_telemetry_module
+from virtual_drive_telemetry import install_telemetry_module
 
 pytest_plugins = [
     "summit_testing_framework.pytest_addoptions",
@@ -93,6 +93,7 @@ def _create_virtual_drive_connection(
         if dictionary is None
         else VirtualDrive(dictionary_path=dictionary, protocol=protocol)
     )
+    install_telemetry_module(server)
     server.start()
     try:
         net, servo = connect_to_server(server)
@@ -231,21 +232,21 @@ def virtual_drive_ethercat_custom_dict():
 
 @pytest.fixture()
 def virtual_drive_ethercat_telemetry():
-    server = VirtualDrive(dictionary_path=TEST_DICT_ETHERCAT_TELEMETRY, protocol=Interface.ECAT)
-    install_telemetry_module(server.register_service._dictionary, server.register_service)
-    server.start()
+    server, net, servo = _create_virtual_drive_connection(
+        _connect_virtual_ethercat,
+        Interface.ECAT,
+        TEST_DICT_ETHERCAT_TELEMETRY,
+    )
     try:
-        net, servo = _connect_virtual_ethercat(server)
+        yield server, net, servo
     except Exception:
         if server.is_alive():
             server.stop()
         raise
-
-    yield server, net, servo
-
-    net.disconnect_from_slave(servo)
-    if server.is_alive():
-        server.stop()
+    finally:
+        net.disconnect_from_slave(servo)
+        if server.is_alive():
+            server.stop()
 
 
 @pytest.fixture()

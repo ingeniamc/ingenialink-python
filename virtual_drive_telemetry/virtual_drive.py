@@ -11,15 +11,16 @@ import time
 from threading import Event, Thread
 from typing import TYPE_CHECKING, Callable, Optional
 
+from telemetry import TelemetryEngine
 from virtual_drive.register_service.modules import BaseModule
 from virtual_drive.register_service.modules.capture.base import VirtualMonitoringMappedRegister
 from virtual_drive.register_service.virtual_register import VirtualRegister
 
 from ingenialink.enums.register import RegDtype
 from ingenialink.utils._utils import convert_dtype_to_bytes
-from telemetry import TelemetryEngine
 
 if TYPE_CHECKING:
+    from virtual_drive.core import VirtualDrive
     from virtual_drive.register_service.register_value import RegisterValue
     from virtual_drive.register_service.service import RegisterService
 
@@ -50,6 +51,15 @@ class TelemetryModule(BaseModule):
     FRAME_COUNT_SIZE = 2
     ENGINE_QUEUE_CAPACITY = 256
     MIN_PROCESS_INTERVAL_S = 0.00005
+    REQUIRED_REGISTERS = (
+        STATUS_REGISTER,
+        ENABLE_REGISTER,
+        FREQUENCY_DIVIDER_REGISTER,
+        ADAPTIVE_RATE_REGISTER,
+        MAPPED_REGISTER_COUNT_REGISTER,
+        SAMPLE_SIZE_REGISTER,
+        DATA_REGISTER,
+    )
 
     def __init__(
         self,
@@ -239,13 +249,23 @@ class TelemetryModule(BaseModule):
 
 
 def install_telemetry_module(
-    dictionary: "Dictionary", register_service: "RegisterService", max_channels: int = 2
+    server: "VirtualDrive", max_channels: int = 2
 ) -> Optional[TelemetryModule]:
-    """Install the telemetry module on a virtual drive.
+    """Install the telemetry module when the dictionary supports it.
+
+    Args:
+        server: Virtual drive that will host the telemetry module.
+        max_channels: Maximum number of telemetry mapping channels to expose.
 
     Returns:
-        The installed module, or ``None`` if the dictionary lacks a required
-        TEL_* register.
+        The installed module, or ``None`` if the dictionary lacks the required
+        TEL_* registers.
     """
+    register_service = server.register_service
+    dictionary = register_service._dictionary  # noqa: SLF001
+    if not all(
+        register_id in dictionary.registers(0) for register_id in TelemetryModule.REQUIRED_REGISTERS
+    ):
+        return None
     module = TelemetryModule(dictionary, register_service, max_channels=max_channels)
     return register_service.register_module(module)
