@@ -77,7 +77,7 @@ write_to = "ingenialink/_version.py"
 include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["ingenialink"]
+include = ["ingenialink", "virtual_drive_telemetry"]
 
 [tool.setuptools.package-data]
 ingenialink = ["py.typed", "*.pyd"]

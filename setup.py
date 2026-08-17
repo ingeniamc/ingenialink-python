@@ -24,7 +24,7 @@ setuptools.setup(
     rust_extensions=[
         RustExtension(
             "telemetry",
-            path="telemetry/Cargo.toml",
+            path="virtual_drive_telemetry/Cargo.toml",
             binding=Binding.PyO3,
         )
     ],

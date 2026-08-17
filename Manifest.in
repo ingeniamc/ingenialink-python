@@ -1,7 +1,7 @@
 recursive-include ingenialink *.py
 recursive-include ingenialink/cython_files *.pxd *.pyx *.cpp *.pyd
 recursive-include ingenialink *.pyd
-include telemetry/Cargo.toml telemetry/Cargo.lock telemetry/build.rs
-recursive-include telemetry/c *.c *.h
-recursive-include telemetry/src *.rs
-recursive-include telemetry/tests *.rs
+include virtual_drive_telemetry/Cargo.toml virtual_drive_telemetry/Cargo.lock virtual_drive_telemetry/build.rs
+recursive-include virtual_drive_telemetry/c *.c *.h
+recursive-include virtual_drive_telemetry/src *.rs
+recursive-include virtual_drive_telemetry/tests *.rs
