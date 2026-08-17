@@ -393,6 +393,22 @@ pipeline {
                                         }
                                     }
                                 }
+                                stage('Generate Rust stubs') {
+                                    steps {
+                                        script {
+                                            withEnv([
+                                                "PATH=/root/.cargo/bin:${env.PATH}",
+                                                "RUSTC=/root/.cargo/bin/rustc",
+                                                "CARGO=/root/.cargo/bin/cargo",
+                                            ]) {
+                                                sh 'cargo install pyo3-introspection --version 0.29.2 --locked --force'
+                                                venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                    venv.run("poetry run poe generate-stubs")
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                                 stage('Make a static type analysis') {
                                     steps {
                                         script {

@@ -15,6 +15,7 @@ dist*/
 _deps
 _install
 _build
+target/
 *.c
 *.o
 *.pyd
@@ -38,6 +39,7 @@ out.txt
 
 # Cython compilation
 /ingenialink/cython_files/*.cpp
+/ingenialink/_rust/*.pyi
 /telemetry/target/
 # Vendored telemetry C sources are build inputs, not generated Cython output.
 !telemetry/c/*.c
