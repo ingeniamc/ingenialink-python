@@ -288,6 +288,16 @@ pipeline {
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
+                                            stage('Validate Python environments') {
+                                                venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
+                                                    echo("Validating Python ${venv.version} environment ${venv.name}")
+                                                    venv.run("where python")
+                                                    venv.run("python -VV")
+                                                    venv.run("python -c \"import sys; print(sys.executable); print(sys.version)\"")
+                                                    venv.run("poetry run python -VV")
+                                                    venv.run("poetry run python -X faulthandler -c \"import ingenialink; import summit_testing_framework; import virtual_drive; print('startup imports OK')\"")
+                                                }
+                                            }
                                             WIN_DOCKER_TESTS.runTestStages()
                                         }
                                     }
