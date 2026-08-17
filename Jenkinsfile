@@ -1,5 +1,4 @@
-// https://novantamotion.atlassian.net/browse/CIT-707
-@Library('cicd-lib@646e931') _
+@Library('cicd-lib@1bdeb9fabedbcd1fca95def835ad87298ee81b9b') _
 
 import python.VirtualEnvironment
 import python.VEnvManager
@@ -50,7 +49,6 @@ PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvM
 /* Define default base test sessions to be used/overridden in stages */
 TestSession TEST_SESSIONS = new TestSession(
     covPackageName: "ingenialink",
-    wiresharkScope: null, // Set later based on parameter
     startWiresharkTimeoutS: 10.0,
     importMode: "importlib",
     setAttApiToken: true
@@ -166,13 +164,7 @@ pipeline {
                     // Set dynamic properties according to job and parameters
                     TEST_SESSIONS.setAttributeInCascade(
                         runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames(pythonVersions),
-                        jobName: "${env.JOB_NAME}-#${env.BUILD_NUMBER}",
-                        wiresharkScope: PyTestParams.readValue(params, 'wiresharkLoggingScope'),
-                        clearSuccessfulWiresharkLogs: PyTestParams.readValue(params, 'clearSuccessfulWiresharkLogs', env, currentBuild),
-                        checkStateScope: PyTestParams.readValue(params, 'checkStateScope'),
-                        archiveData: "*",
-                        testSelectionRepeatCount: PyTestParams.readValue(params, 'pytestRepeatCounts'),
-                        logLevel: PyTestParams.readValue(params, 'pytestLoggingLevel')
+                        jobName: "${env.JOB_NAME}-#${env.BUILD_NUMBER}"
                     )
 
                     // Configure if ECAT and ETH sessions use Wireshark logging based on parameter
