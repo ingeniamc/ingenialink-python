@@ -164,7 +164,9 @@ pipeline {
                     // Set dynamic properties according to job and parameters
                     TEST_SESSIONS.setAttributeInCascade(
                         runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames(pythonVersions),
-                        jobName: "${env.JOB_NAME}-#${env.BUILD_NUMBER}"
+                        jobName: "${env.JOB_NAME}-#${env.BUILD_NUMBER}",
+                        archiveData: "*",
+                        logLevel: PyTestParams.readValue(params, 'pytestLoggingLevel')
                     )
 
                     // Configure if ECAT and ETH sessions use Wireshark logging based on parameter
