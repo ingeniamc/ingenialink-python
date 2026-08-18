@@ -131,9 +131,7 @@ class TestTelemetry:
     ) -> None:
         """Verify sampling frequencies map to the expected firmware dividers."""
         assert Telemetry._frequency_to_divider(frequency, ETHERCAT_TELEMETRY) == expected_divider
-        assert (
-            Telemetry._divider_to_frequency(expected_divider, ETHERCAT_TELEMETRY) == frequency
-        )
+        assert Telemetry._divider_to_frequency(expected_divider, ETHERCAT_TELEMETRY) == frequency
 
     def test_telemetry_recommends_polling_at_half_buffer_capacity(self, mocker) -> None:
         """Calculate polling from the number of frames that fit in the read buffer."""
