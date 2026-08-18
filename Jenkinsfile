@@ -449,11 +449,9 @@ pipeline {
                                             // Install wheel first (needed for summit_testing_framework to import ingenialink)
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
+                                                venv.run("python -c \"import shutil, sysconfig; shutil.rmtree(sysconfig.get_paths()['purelib'] + '/ingenialink/_rust', ignore_errors=True)\"")
                                             }
                                             sh 'mv ingenialink /tmp/ingenialink-source'
-                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
-                                                venv.run("ln -s .venv3.9/lib/python3.9/site-packages/ingenialink ingenialink")
-                                            }
 
                                             // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here).
                                             testManager.buildTestSessions("tests.setups.rack_specifiers")
@@ -487,7 +485,7 @@ pipeline {
                                         script {
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
-                                                venv.run("rm -rf ingenialink; ln -s .venv3.9/lib/python3.9/site-packages/ingenialink ingenialink")
+                                                venv.run("python -c \"import shutil, sysconfig; shutil.rmtree(sysconfig.get_paths()['purelib'] + '/ingenialink/_rust', ignore_errors=True)\"")
                                             }
                                             LINUX_DOCKER_TESTS.runTestStages()
                                         }
