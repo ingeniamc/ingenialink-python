@@ -448,11 +448,6 @@ pipeline {
                                 stage('Prepare test sessions') {
                                     steps {
                                         script {
-                                            // Install wheel first (needed for summit_testing_framework to import ingenialink)
-                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
-                                                venv.run("poetry run poe install-wheel")
-                                            }
-
                                             // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here).
                                             testManager.buildTestSessions("tests.setups.rack_specifiers")
                                             testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
@@ -483,9 +478,6 @@ pipeline {
                                     }
                                     steps {
                                         script {
-                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
-                                                venv.run("poetry run poe install-wheel")
-                                            }
                                             LINUX_DOCKER_TESTS.runTestStages()
                                         }
                                     }
