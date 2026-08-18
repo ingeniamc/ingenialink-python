@@ -394,6 +394,10 @@ pipeline {
                                                     venv.run("export PATH=/root/.cargo/bin:\$PATH; export RUSTC=/root/.cargo/bin/rustc; export CARGO=/root/.cargo/bin/cargo; poetry run poe check-wheels")
                                                 }
                                             }
+                                            sh '''
+                                                python -c "import glob, zipfile; wheel = glob.glob('dist/*linux*.whl')[0]; archive = zipfile.ZipFile(wheel); entry = next(name for name in archive.namelist() if name.startswith('ingenialink/_rust') and name.endswith('.so')); archive.extract(entry, '.')"
+                                                rm -rf ingenialink/_rust
+                                            '''
                                             venvManager.copyFromWorkingFolder("dist/")
                                         }
                                     }
