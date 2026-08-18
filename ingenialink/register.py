@@ -322,6 +322,24 @@ class Register(ABC):
         """Register description."""
         return self._description
 
+    def get_codec(self, byte_order: ByteOrder) -> ConfiguredDataType:
+        """Return the codec configured for the requested byte order.
+
+        Args:
+            byte_order: Byte order used to encode or decode register data.
+
+        Returns:
+            Codec configured for the requested byte order.
+
+        Raises:
+            ValueError: If the byte order is unsupported.
+        """
+        if byte_order == ByteOrder.LITTLE:
+            return self._codec_little
+        if byte_order == ByteOrder.BIG:
+            return self._codec_big
+        raise ValueError(f"Unsupported byte order: {byte_order}")
+
     @property
     def default(self) -> Union[None, int, float, str, bytes]:
         """Register default value."""

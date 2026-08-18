@@ -65,10 +65,7 @@ from ingenialink.utils.event import create_event
 from ingenialink.utils.timeout import Timeout
 
 if TYPE_CHECKING:
-    from ingenialink._rust.data_type import ConfiguredDataType
     from ingenialink.telemetry import Telemetry
-else:
-    ConfiguredDataType = Any
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -580,7 +577,7 @@ class Servo:
                 registers_errored.append(il_error)
             else:
                 compare_conf: Union[int, float, str, bytes, bool, np.float32] = (
-                    self._register_codec(target_reg).bytes_to_value(
+                    target_reg.get_codec(self._REGISTER_BYTE_ORDER).bytes_to_value(
                         self._adapt_configuration_file_storage_value(
                             xcf_instance, config_reg, target_reg
                         )
@@ -651,7 +648,9 @@ class Servo:
         """
         if config_register.data is not None:
             return config_register.data
-        return self._register_codec(target_register).value_to_bytes(config_register.storage)
+        return target_register.get_codec(self._REGISTER_BYTE_ORDER).value_to_bytes(
+            config_register.storage
+        )
 
     def load_configuration(
         self,
@@ -1571,10 +1570,6 @@ class Servo:
         chunks = [data[i : i + max_size] for i in range(0, len(data), max_size)]
         return data, chunks
 
-    def _register_codec(self, register: Register) -> ConfiguredDataType:
-        """Return the register codec for this servo's byte order."""
-        return get_configured_codec(register.dtype, self._REGISTER_BYTE_ORDER)
-
     def write(
         self,
         reg: Union[str, Register],
@@ -1596,7 +1591,9 @@ class Servo:
         if _reg.access == RegAccess.RO:
             raise ILAccessError("Register is Read-only")
         data_bytes = (
-            data if isinstance(data, bytes) else self._register_codec(_reg).value_to_bytes(data)
+            data
+            if isinstance(data, bytes)
+            else _reg.get_codec(self._REGISTER_BYTE_ORDER).value_to_bytes(data)
         )
         self._write_raw(_reg, data_bytes)
         self._notify_register_update(_reg, data)
@@ -1625,7 +1622,7 @@ class Servo:
 
         raw_read = self._read_raw(_reg)
 
-        codec = self._register_codec(_reg)
+        codec = _reg.get_codec(self._REGISTER_BYTE_ORDER)
         if (
             _reg.dtype != RegDtype.BYTE_ARRAY_512
             and (byte_length := codec.byte_length()) is not None

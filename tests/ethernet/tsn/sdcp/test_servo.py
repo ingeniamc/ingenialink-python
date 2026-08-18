@@ -17,6 +17,7 @@ from ingenialink.ethernet.tsn.sdcp.messages import (
 from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
 from ingenialink.ethernet.tsn.servo import TSNServoBase
 from ingenialink.exceptions import ILIOError
+from ingenialink.utils._utils import get_configured_codec
 
 TARGET = "fe80::1"
 INTERFACE = "test-interface"
@@ -62,6 +63,9 @@ def register() -> CanopenRegister:
     register_mock.dtype = RegDtype.U16
     register_mock.access = RegAccess.RW
     register_mock.identifier = "TEST_REGISTER"
+    register_mock.get_codec.side_effect = lambda byte_order: get_configured_codec(
+        register_mock.dtype, byte_order
+    )
     return register_mock
 
 

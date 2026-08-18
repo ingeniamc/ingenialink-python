@@ -161,6 +161,8 @@ def test_register_resolves_codecs_on_construction():
     little_codec = register._codec_little
     big_codec = register._codec_big
 
+    assert register.get_codec(ByteOrder.LITTLE) is little_codec
+    assert register.get_codec(ByteOrder.BIG) is big_codec
     assert little_codec is register._codec_little
     assert big_codec is register._codec_big
     assert little_codec.value_to_bytes(0x1234) == b"\x34\x12"
