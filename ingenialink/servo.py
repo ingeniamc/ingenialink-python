@@ -1573,9 +1573,7 @@ class Servo:
 
     def _register_codec(self, register: Register) -> ConfiguredDataType:
         """Return the register codec for this servo's byte order."""
-        if self._REGISTER_BYTE_ORDER == ByteOrder.BIG:
-            return register._codec_big
-        return register._codec_little
+        return get_configured_codec(register.dtype, self._REGISTER_BYTE_ORDER)
 
     def write(
         self,

@@ -327,7 +327,10 @@ class Register(ABC):
         """Register default value."""
         if self._default is None:
             return self._default
-        return self.bytes_to_value(self._default)
+        default = self._default
+        if (byte_length := self._codec_little.byte_length()) is not None:
+            default = default[:byte_length]
+        return self.bytes_to_value(default)
 
     @property
     def bitfields(self) -> Optional[dict[str, BitField]]:
