@@ -451,6 +451,9 @@ pipeline {
                                                 venv.run("poetry run poe install-wheel")
                                             }
                                             sh 'mv ingenialink /tmp/ingenialink-source'
+                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
+                                                venv.run("ln -s .venv3.9/lib/python3.9/site-packages/ingenialink ingenialink")
+                                            }
 
                                             // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here).
                                             testManager.buildTestSessions("tests.setups.rack_specifiers")
@@ -484,6 +487,7 @@ pipeline {
                                         script {
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
+                                                venv.run("rm -rf ingenialink; ln -s .venv3.9/lib/python3.9/site-packages/ingenialink ingenialink")
                                             }
                                             LINUX_DOCKER_TESTS.runTestStages()
                                         }
@@ -492,7 +496,7 @@ pipeline {
                             }
                             post {
                                 always {
-                                    sh 'if [ -d /tmp/ingenialink-source ]; then mv /tmp/ingenialink-source ingenialink; fi'
+                                    sh 'rm -rf ingenialink; if [ -d /tmp/ingenialink-source ]; then mv /tmp/ingenialink-source ingenialink; fi'
                                     reassignFilePermissions()
                                 }
                             }
