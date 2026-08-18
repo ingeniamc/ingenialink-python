@@ -451,7 +451,7 @@ pipeline {
                                                 venv.run("poetry run poe install-wheel")
                                                 venv.run("python -c \"import shutil, sysconfig; shutil.rmtree(sysconfig.get_paths()['purelib'] + '/ingenialink/_rust', ignore_errors=True)\"")
                                             }
-                                            sh 'mv ingenialink /tmp/ingenialink-source'
+                                            sh 'mv /tmp/ingenialink_python/ingenialink /tmp/ingenialink-source'
 
                                             // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here).
                                             testManager.buildTestSessions("tests.setups.rack_specifiers")
@@ -494,7 +494,7 @@ pipeline {
                             }
                             post {
                                 always {
-                                    sh 'rm -rf ingenialink; if [ -d /tmp/ingenialink-source ]; then mv /tmp/ingenialink-source ingenialink; fi'
+                                    sh 'rm -rf /tmp/ingenialink_python/ingenialink; if [ -d /tmp/ingenialink-source ]; then mv /tmp/ingenialink-source /tmp/ingenialink_python/ingenialink; fi'
                                     reassignFilePermissions()
                                 }
                             }
