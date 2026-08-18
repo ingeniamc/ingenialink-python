@@ -77,7 +77,7 @@ def deprecated(
             warnings.simplefilter("ignore", DeprecationWarning)  # Reset filter
             return func(*args, **kwargs)
 
-        return cast(_F, wrapped_method)
+        return cast("_F", wrapped_method)
 
     return wrap
 
