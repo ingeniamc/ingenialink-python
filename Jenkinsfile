@@ -110,9 +110,6 @@ def pipelineParams = PyTestParams.pytestParams(this, currentBuild, [
     wiresharkLoggingConfig: [
         default: false,
     ],
-    clearSuccessfulWiresharkLogsConfig: [
-        default: true,
-    ],
     checkStateScopeConfig: [
         default: 'session',
     ],
