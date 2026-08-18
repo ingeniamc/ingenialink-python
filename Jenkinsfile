@@ -388,6 +388,8 @@ pipeline {
                                             ]) {
                                                 ensureRustToolchain()
                                                 venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                    sh 'export PATH=/root/.cargo/bin:$PATH; export RUSTC=/root/.cargo/bin/rustc; export CARGO=/root/.cargo/bin/cargo; cargo install pyo3-introspection --version 0.29.2 --locked --force'
+                                                    venv.run("export PATH=/root/.cargo/bin:\$PATH; export RUSTC=/root/.cargo/bin/rustc; export CARGO=/root/.cargo/bin/cargo; poetry run poe generate-stubs")
                                                     venv.run("export PATH=/root/.cargo/bin:\$PATH; export RUSTC=/root/.cargo/bin/rustc; export CARGO=/root/.cargo/bin/cargo; poetry run poe build-wheel")
                                                     venv.run("export PATH=/root/.cargo/bin:\$PATH; export RUSTC=/root/.cargo/bin/rustc; export CARGO=/root/.cargo/bin/cargo; poetry run poe check-wheels")
                                                 }
@@ -403,23 +405,6 @@ pipeline {
                                             stash_name = "publish_wheels-linux"
                                             wheel_stashes.add(stash_name)
                                             stash includes: "dist/*", name: stash_name
-                                        }
-                                    }
-                                }
-                                stage('Generate Rust stubs') {
-                                    steps {
-                                        script {
-                                            withEnv([
-                                                "PATH=/root/.cargo/bin:${env.PATH}",
-                                                "RUSTC=/root/.cargo/bin/rustc",
-                                                "CARGO=/root/.cargo/bin/cargo",
-                                            ]) {
-                                                ensureRustToolchain()
-                                                sh 'export PATH=/root/.cargo/bin:$PATH; export RUSTC=/root/.cargo/bin/rustc; export CARGO=/root/.cargo/bin/cargo; cargo install pyo3-introspection --version 0.29.2 --locked --force'
-                                                venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                                                    venv.run("export PATH=/root/.cargo/bin:\$PATH; export RUSTC=/root/.cargo/bin/rustc; export CARGO=/root/.cargo/bin/cargo; poetry run poe generate-stubs")
-                                                }
-                                            }
                                         }
                                     }
                                 }
