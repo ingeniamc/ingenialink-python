@@ -45,9 +45,12 @@ dtype_length_bits: dict[RegDtype, int] = {
 VALID_BIT_REGISTER_VALUES = [0, 1, True, False]
 
 
+_F = TypeVar("_F", bound=Callable[..., Any])
+
+
 def deprecated(
     custom_msg: Optional[str] = None, new_func_name: Optional[str] = None
-) -> Callable[..., Any]:
+) -> Callable[[_F], _F]:
     """Deprecated decorator.
 
     This is a decorator which can be used to mark functions as deprecated.
@@ -61,7 +64,7 @@ def deprecated(
         wrapped method.
     """
 
-    def wrap(func: Callable[..., Any]) -> Callable[..., Any]:
+    def wrap(func: _F) -> _F:
         @functools.wraps(func)
         def wrapped_method(*args: Any, **kwargs: Any) -> Any:
             warnings.simplefilter("always", DeprecationWarning)  # Turn off filter
@@ -74,7 +77,7 @@ def deprecated(
             warnings.simplefilter("ignore", DeprecationWarning)  # Reset filter
             return func(*args, **kwargs)
 
-        return wrapped_method
+        return cast(_F, wrapped_method)
 
     return wrap
 
