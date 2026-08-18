@@ -107,7 +107,7 @@ class TelemetryPlot(QtWidgets.QMainWindow):
         if self._follow_checkbox.isChecked():
             self._plot.setXRange(max(0.0, elapsed - self._window), max(self._window, elapsed))
 
-    def closeEvent(self, event: QtGui.QCloseEvent) -> None:  # noqa: N802, D102
+    def closeEvent(self, event: Optional[QtGui.QCloseEvent]) -> None:  # noqa: N802, D102
         self._timer.stop()
         self._poller.stop()
         super().closeEvent(event)
