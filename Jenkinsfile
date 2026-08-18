@@ -1,5 +1,4 @@
-// https://novantamotion.atlassian.net/browse/CIT-707
-@Library('cicd-lib@646e931') _
+@Library('cicd-lib@7a69e3ee8d3a9b269d593b5ec58c83507da1ead6') _
 
 import python.VirtualEnvironment
 import python.VEnvManager
@@ -15,7 +14,7 @@ def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
 def LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.6"
-def WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.7"
+def WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.9"
 def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
 
 def DEFAULT_PYTHON_VERSION = "3.9"
@@ -50,7 +49,6 @@ PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvM
 /* Define default base test sessions to be used/overridden in stages */
 TestSession TEST_SESSIONS = new TestSession(
     covPackageName: "ingenialink",
-    wiresharkScope: null, // Set later based on parameter
     startWiresharkTimeoutS: 10.0,
     importMode: "importlib",
     setAttApiToken: true
@@ -112,9 +110,6 @@ def pipelineParams = PyTestParams.pytestParams(this, currentBuild, [
     wiresharkLoggingConfig: [
         default: false,
     ],
-    clearSuccessfulWiresharkLogsConfig: [
-        default: true,
-    ],
     checkStateScopeConfig: [
         default: 'session',
     ],
@@ -167,8 +162,6 @@ pipeline {
                     TEST_SESSIONS.setAttributeInCascade(
                         runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames(pythonVersions),
                         jobName: "${env.JOB_NAME}-#${env.BUILD_NUMBER}",
-                        wiresharkScope: PyTestParams.readValue(params, 'wiresharkLoggingScope'),
-                        clearSuccessfulWiresharkLogs: PyTestParams.readValue(params, 'clearSuccessfulWiresharkLogs', env, currentBuild),
                         checkStateScope: PyTestParams.readValue(params, 'checkStateScope'),
                         archiveData: "*",
                         testSelectionRepeatCount: PyTestParams.readValue(params, 'pytestRepeatCounts'),
