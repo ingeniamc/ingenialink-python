@@ -165,7 +165,9 @@ pipeline {
                     TEST_SESSIONS.setAttributeInCascade(
                         runInVirtualEnvs: venvManager.pythonVersionsToDefaultVenvNames(pythonVersions),
                         jobName: "${env.JOB_NAME}-#${env.BUILD_NUMBER}",
+                        checkStateScope: PyTestParams.readValue(params, 'checkStateScope'),
                         archiveData: "*",
+                        testSelectionRepeatCount: PyTestParams.readValue(params, 'pytestRepeatCounts'),
                         logLevel: PyTestParams.readValue(params, 'pytestLoggingLevel')
                     )
 
