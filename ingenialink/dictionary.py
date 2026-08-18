@@ -576,12 +576,12 @@ class Dictionary(XMLBase, ABC):
             for obj in objects.values():
                 object_copy = copy.copy(obj)
                 object_copy.registers = [
-                    cast(CanopenRegister, register_copies[id(register)])
+                    cast("CanopenRegister", register_copies[id(register)])
                     for register in obj.registers
                 ]
                 object_copies[id(obj)] = object_copy
                 for register in obj.registers:
-                    register_copy = cast(CanopenRegister, register_copies[id(register)])
+                    register_copy = cast("CanopenRegister", register_copies[id(register)])
                     with suppress(AttributeError):
                         register_copy.obj = object_copy
         copied_items: dict[int, dict[str, CanOpenObject]] = {}

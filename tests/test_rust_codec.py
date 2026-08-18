@@ -3,6 +3,7 @@ import pickle
 import struct
 
 import pytest
+
 from ingenialink._rust import data_type as _rust_data_type
 
 from ingenialink.enums.register import ByteOrder, RegDtype
