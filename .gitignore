@@ -59,3 +59,6 @@ tests/outputs/
 # Config files from examples
 can_config*.xcf
 eth_config*.xcf
+
+# Offline deployment bundles
+/deployment_evk/offline_bundle/
