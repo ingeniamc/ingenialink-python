@@ -450,6 +450,7 @@ pipeline {
                                             venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
                                                 venv.run("poetry run poe install-wheel")
                                             }
+                                            sh 'mv ingenialink ingenialink-source'
 
                                             // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here).
                                             testManager.buildTestSessions("tests.setups.rack_specifiers")
@@ -491,6 +492,7 @@ pipeline {
                             }
                             post {
                                 always {
+                                    sh 'if [ -d ingenialink-source ]; then mv ingenialink-source ingenialink; fi'
                                     reassignFilePermissions()
                                 }
                             }
