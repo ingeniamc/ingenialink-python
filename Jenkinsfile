@@ -415,9 +415,9 @@ pipeline {
                                                 "CARGO=/root/.cargo/bin/cargo",
                                             ]) {
                                                 ensureRustToolchain()
-                                                sh 'cargo install pyo3-introspection --version 0.29.2 --locked --force'
+                                                sh 'export PATH=/root/.cargo/bin:$PATH; export RUSTC=/root/.cargo/bin/rustc; export CARGO=/root/.cargo/bin/cargo; cargo install pyo3-introspection --version 0.29.2 --locked --force'
                                                 venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                                                    venv.run("poetry run poe generate-stubs")
+                                                    venv.run("export PATH=/root/.cargo/bin:\$PATH; export RUSTC=/root/.cargo/bin/rustc; export CARGO=/root/.cargo/bin/cargo; poetry run poe generate-stubs")
                                                 }
                                             }
                                         }
