@@ -392,10 +392,8 @@ pipeline {
                                                     venv.run("export PATH=/root/.cargo/bin:\$PATH; export RUSTC=/root/.cargo/bin/rustc; export CARGO=/root/.cargo/bin/cargo; poetry run poe generate-stubs")
                                                     venv.run("export PATH=/root/.cargo/bin:\$PATH; export RUSTC=/root/.cargo/bin/rustc; export CARGO=/root/.cargo/bin/cargo; poetry run poe build-wheel")
                                                     venv.run("export PATH=/root/.cargo/bin:\$PATH; export RUSTC=/root/.cargo/bin/rustc; export CARGO=/root/.cargo/bin/cargo; poetry run poe check-wheels")
-                                                    venv.run("python -c \"import glob, zipfile; wheel = glob.glob('dist/*linux*.whl')[0]; archive = zipfile.ZipFile(wheel); entry = next(name for name in archive.namelist() if name.startswith('ingenialink/_rust') and name.endswith('.so')); archive.extract(entry, '.')\"")
                                                 }
                                             }
-                                            sh 'rm -rf ingenialink/_rust'
                                             venvManager.copyFromWorkingFolder("dist/")
                                         }
                                     }
@@ -448,6 +446,11 @@ pipeline {
                                 stage('Prepare test sessions') {
                                     steps {
                                         script {
+                                            // Install wheel first (needed for summit_testing_framework to import ingenialink)
+                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
+                                                venv.run("poetry run poe install-wheel")
+                                            }
+
                                             // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here).
                                             testManager.buildTestSessions("tests.setups.rack_specifiers")
                                             testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
@@ -478,6 +481,9 @@ pipeline {
                                     }
                                     steps {
                                         script {
+                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
+                                                venv.run("poetry run poe install-wheel")
+                                            }
                                             LINUX_DOCKER_TESTS.runTestStages()
                                         }
                                     }
