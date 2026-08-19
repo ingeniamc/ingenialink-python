@@ -97,11 +97,8 @@ def test_virtual_ethernet_servo_and_network_status_listeners(mocker):
             servo_status_listener=True,
             net_status_listener=True,
         )
-
-        servo_events = []
-        net_events = []
-        servo.subscribe_to_status(lambda state, subnode: servo_events.append((state, subnode)))
-        net.subscribe_to_status(server.ip, net_events.append)
+        # Prevent the listener from consuming states before the mock and subscriptions are ready.
+        servo.stop_status_listener()
 
         state_sequence = iter([ServoState.DISABLED, ServoState.ENABLED, ServoState.ENABLED])
 
@@ -109,6 +106,13 @@ def test_virtual_ethernet_servo_and_network_status_listeners(mocker):
             return next(state_sequence)
 
         mocker.patch.object(servo, "get_state", side_effect=mocked_get_state)
+
+        servo_events = []
+        net_events = []
+        servo.subscribe_to_status(lambda state, subnode: servo_events.append((state, subnode)))
+        net.subscribe_to_status(server.ip, net_events.append)
+        # Start state polling only after the status observers have been registered.
+        servo.start_status_listener()
 
         timeout = time.time() + 4
         while len(servo_events) < 2 and time.time() < timeout:
