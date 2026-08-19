@@ -34,11 +34,9 @@ def test_virtual_canopen_servo_and_network_status_listeners(mocker):
             1,
             VIRTUAL_DRIVE_CAN_V2_XDF,
             server.port,
-            servo_status_listener=True,
+            servo_status_listener=False,
             net_status_listener=True,
         )
-        # Prevent the listener from consuming states before the mock and subscriptions are ready.
-        servo.stop_status_listener()
 
         state_sequence = iter([ServoState.DISABLED, ServoState.ENABLED, ServoState.ENABLED])
 
