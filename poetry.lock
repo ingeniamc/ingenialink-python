@@ -3960,6 +3960,38 @@ docs = ["furo (>=2025.12.19)", "sphinx (>=9.1)", "sphinx-autodoc-typehints (>=3.
 testing = ["covdefaults (>=2.3)", "coverage (>=7.5.4)", "pytest (>=8.3.5)", "pytest-mock (>=3.14)", "setuptools (>=75.1)"]
 
 [[package]]
+name = "python-dotenv"
+version = "1.2.1"
+description = "Read key-value pairs from a .env file and set them as environment variables"
+optional = false
+python-versions = ">=3.9"
+groups = ["tests"]
+markers = "python_version == \"3.9\""
+files = [
+    {file = "python_dotenv-1.2.1-py3-none-any.whl", hash = "sha256:b81ee9561e9ca4004139c6cbba3a238c32b03e4894671e181b671e8cb8425d61"},
+    {file = "python_dotenv-1.2.1.tar.gz", hash = "sha256:42667e897e16ab0d66954af0e60a9caa94f0fd4ecf3aaf6d2d260eec1aa36ad6"},
+]
+
+[package.extras]
+cli = ["click (>=5.0)"]
+
+[[package]]
+name = "python-dotenv"
+version = "1.2.3"
+description = "Read key-value pairs from a .env file and set them as environment variables"
+optional = false
+python-versions = ">=3.10"
+groups = ["tests"]
+markers = "python_version >= \"3.10\""
+files = [
+    {file = "python_dotenv-1.2.3-py3-none-any.whl", hash = "sha256:904552145e8bfed22162c09dab1c2b9b54fefa7b23ba780f4f26ca0316b0f0d9"},
+    {file = "python_dotenv-1.2.3.tar.gz", hash = "sha256:a20a594dabeaa385725aa239d5244871c143ecb356add8a20fcf23773a6c3a35"},
+]
+
+[package.extras]
+cli = ["click (>=5.0)"]
+
+[[package]]
 name = "pywin32"
 version = "311"
 description = "Python for Window Extensions"
@@ -5349,21 +5381,23 @@ test = ["pytest"]
 
 [[package]]
 name = "summit-testing-framework"
-version = "0.3.0.post529+develop.f2ad726"
+version = "0.3.1.post301+pr.100.b1"
 description = "Testing framework for Novanta drives"
 optional = false
 python-versions = ">=3.9"
 groups = ["tests"]
 files = [
-    {file = "summit_testing_framework-0.3.0.post529+develop.f2ad726-py3-none-any.whl", hash = "sha256:7fba8029967d48f3e1367d66669fd81766539616edfe35f4df5a646743c247e6"},
+    {file = "summit_testing_framework-0.3.1.post301+pr.100.b1-py3-none-any.whl", hash = "sha256:d1481dee25e6eb2423de64965eb43d8e0f33837738f2cf68cc08648e53803b5d"},
 ]
 
 [package.dependencies]
 ingenia-att-api = "2.3.1"
 ingenialogger = ">=0.2.1"
 jinja2 = ">=3.1.0"
-pytest = ">=8.4.1,<9.0.0"
+pydantic = ">=1.10,<2.0"
+pytest = ">=8.4.1"
 pytest-env = ">=1.1.5"
+python-dotenv = ">=1.0.0,<2.0.0"
 rpyc = "6.0.0"
 typing_extensions = ">=4.16.0"
 virtual_drive = ">=0.1.1"
@@ -6173,4 +6207,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "935070972ba1b1f1de13dfb8c88ceedf1c07b8064cba72490485fb4423e86868"
+content-hash = "b5746de3bc6a978ea0624d294f4a6cbeef382ec7c81bb9c1bab07907774f68ff"
