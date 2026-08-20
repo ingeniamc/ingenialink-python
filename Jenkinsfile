@@ -390,6 +390,7 @@ pipeline {
                     stages {
                         stage('Unstash Linux wheel') {
                             steps {
+                                sh "git clean -fdx"
                                 unstash 'publish_wheels-linux'
                             }
                         }
@@ -519,6 +520,7 @@ pipeline {
                     stages {
                         stage('Unstash') {
                             steps {
+                                sh "git clean -fdx"
                                 unstash 'publish_wheels-linux'
                                 script {
                                     venvManager.copyToWorkingFolder()
