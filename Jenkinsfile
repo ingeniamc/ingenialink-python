@@ -1,5 +1,4 @@
-// https://novantamotion.atlassian.net/browse/CIT-707
-@Library('cicd-lib@173ddb4ffc75557c611d227efe9f47e5cc5250e5') _
+@Library('cicd-lib@7a69e3ee8d3a9b269d593b5ec58c83507da1ead6') _
 
 import python.VirtualEnvironment
 import python.VEnvManager
@@ -132,7 +131,7 @@ def pipelineParams = PyTestParams.pytestParams(this, currentBuild, [
         default: DEFAULT_LOGGING_LEVEL,
     ],
     wiresharkLoggingConfig: [
-        default: true,
+        default: false,
     ],
     checkStateScopeConfig: [
         default: 'session',
