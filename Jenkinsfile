@@ -269,28 +269,6 @@ pipeline {
                                         }
                                     }
                                 }
-                                stage('Resolve Test Session') {
-                                    steps {
-                                        script {
-                                            testManager.resolveSession(WIN_DOCKER_TESTS)
-                                        }
-                                    }
-                                }
-                                stage('Run unit tests (no-pcap) tests on docker') {
-                                    when {
-                                        expression {
-                                            WIN_DOCKER_TESTS.anyShouldRun()
-                                        }
-                                    }
-                                    steps {
-                                        script {
-                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
-                                                venv.run("poetry run poe install-wheel")
-                                            }
-                                            WIN_DOCKER_TESTS.runTestStages()
-                                        }
-                                    }
-                                }
                             }
                         }
                         stage('Build Linux') {
@@ -388,57 +366,84 @@ pipeline {
                                         }
                                     }
                                 }
-                                stage('Prepare test sessions') {
-                                    steps {
-                                        script {
-                                            // Install wheel first (needed for summit_testing_framework to import ingenialink)
-                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
-                                                venv.run("poetry run poe install-wheel")
-                                            }
-
-                                            // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here).
-                                            testManager.buildTestSessions("tests.setups.rack_specifiers")
-                                            testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
-
-                                            if (env.BRANCH_NAME == 'develop' && testManager.runPolicyTags.isEmpty()) {
-                                                HW_TEST_SESSIONS.setAttributeInCascade(
-                                                    shouldRun: false,
-                                                    skipReason: 'Develop builds without nightly/weekend policy do not run hardware tests',
-                                                )
-                                            }
-
-                                            testManager.echoTestGroupsSummary()
-                                            testManager.collectTestsForDashboard()
-                                            testManager.generateTestDashboard()
-                                        }
-                                    }
-                                }
-                                stage('Resolve Test Sessions') {
-                                    steps {
-                                        script {
-                                            testManager.resolveSessions(excludeGroups: [WIN_DOCKER_TESTS])
-                                        }
-                                    }
-                                }
-                                stage('Run Linux Docker tests') {
-                                    when {
-                                        expression { LINUX_DOCKER_TESTS.anyShouldRun() }
-                                    }
-                                    steps {
-                                        script {
-                                            venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
-                                                venv.run("poetry run poe install-wheel")
-                                            }
-                                            LINUX_DOCKER_TESTS.runTestStages()
-                                        }
-                                    }
-                                }
                             }
                             post {
                                 always {
                                     reassignFilePermissions()
                                 }
                             }
+                        }
+                    }
+                }
+                stage('Prepare and resolve test sessions') {
+                    agent {
+                        docker {
+                            label 'lin-worker'
+                            image LIN_DOCKER_IMAGE
+                            args '-u root:root'
+                        }
+                    }
+                    environment {
+                        VENV_WORKING_FOLDER = "/tmp/ingenialink_python"
+                    }
+                    stages {
+                        stage('Unstash Linux wheel') {
+                            steps {
+                                sh "git clean -fdx"
+                                unstash 'publish_wheels-linux'
+                            }
+                        }
+                        stage('Move workspace') {
+                            steps {
+                                script {
+                                    venvManager.copyToWorkingFolder()
+                                }
+                            }
+                        }
+                        stage('Create virtual environments') {
+                            steps {
+                                script {
+                                    venvManager.createPoetryEnvironments(
+                                        pythonVersions: ([DEFAULT_PYTHON_VERSION] as Set) + venvManager.defaultVenvNamesToVersion(TEST_SESSIONS.runInVirtualEnvs)
+                                    )
+                                }
+                            }
+                        }
+                        stage('Prepare test sessions') {
+                            steps {
+                                script {
+                                    venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
+                                        venv.run("poetry run poe install-wheel")
+                                    }
+
+                                    // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here).
+                                    testManager.buildTestSessions("tests.setups.rack_specifiers")
+                                    testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
+
+                                    if (env.BRANCH_NAME == 'develop' && testManager.runPolicyTags.isEmpty()) {
+                                        HW_TEST_SESSIONS.setAttributeInCascade(
+                                            shouldRun: false,
+                                            skipReason: 'Develop builds without nightly/weekend policy do not run hardware tests',
+                                        )
+                                    }
+
+                                    testManager.echoTestGroupsSummary()
+                                    testManager.collectTestsForDashboard()
+                                    testManager.generateTestDashboard()
+                                }
+                            }
+                        }
+                        stage('Resolve test sessions') {
+                            steps {
+                                script {
+                                    testManager.resolveSessions(excludeGroups: [])
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        always {
+                            reassignFilePermissions()
                         }
                     }
                 }
@@ -494,6 +499,102 @@ pipeline {
 
         stage('Tests') {
             parallel {
+                stage('Linux Docker tests') {
+                    when {
+                        beforeAgent true
+                        expression {
+                            LINUX_DOCKER_TESTS.anyShouldRun()
+                        }
+                    }
+                    agent {
+                        docker {
+                            label 'lin-worker'
+                            image LIN_DOCKER_IMAGE
+                            args '-u root:root'
+                        }
+                    }
+                    environment {
+                        VENV_WORKING_FOLDER = "/tmp/ingenialink_python"
+                    }
+                    stages {
+                        stage('Unstash') {
+                            steps {
+                                sh "git clean -fdx"
+                                unstash 'publish_wheels-linux'
+                                script {
+                                    venvManager.copyToWorkingFolder()
+                                }
+                            }
+                        }
+                        stage('Create virtual environments') {
+                            steps {
+                                script {
+                                    venvManager.createPoetryEnvironments(
+                                        pythonVersions: ([DEFAULT_PYTHON_VERSION] as Set) + venvManager.defaultVenvNamesToVersion(TEST_SESSIONS.runInVirtualEnvs),
+                                        additionalCommands: ["poetry run poe install-wheel"]
+                                    )
+                                }
+                            }
+                        }
+                        stage('Run tests') {
+                            steps {
+                                script {
+                                    LINUX_DOCKER_TESTS.runTestStages()
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        always {
+                            reassignFilePermissions()
+                        }
+                    }
+                }
+                stage('Windows Docker tests') {
+                    when {
+                        beforeAgent true
+                        expression {
+                            WIN_DOCKER_TESTS.anyShouldRun()
+                        }
+                    }
+                    agent {
+                        docker {
+                            label SW_NODE
+                            image WIN_DOCKER_IMAGE
+                        }
+                    }
+                    environment {
+                        VENV_WORKING_FOLDER = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
+                    }
+                    stages {
+                        stage('Unstash') {
+                            steps {
+                                script {
+                                    bat "git clean -fdx"
+                                    unstash 'publish_wheels-windows'
+                                    venvManager.copyToWorkingFolder()
+                                }
+                            }
+                        }
+                        stage('Create virtual environments') {
+                            steps {
+                                script {
+                                    venvManager.createPoetryEnvironments(
+                                        pythonVersions: venvManager.defaultVenvNamesToVersion(TEST_SESSIONS.runInVirtualEnvs),
+                                        additionalCommands: ["poetry run poe install-wheel"]
+                                    )
+                                }
+                            }
+                        }
+                        stage('Run tests') {
+                            steps {
+                                script {
+                                    WIN_DOCKER_TESTS.runTestStages()
+                                }
+                            }
+                        }
+                    }
+                }
                 stage('EtherCAT/No Connection - Tests') {
                     when {
                         beforeOptions true
