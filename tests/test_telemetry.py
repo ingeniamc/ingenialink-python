@@ -490,16 +490,15 @@ class TestEthercatTelemetryHardware:
                     access = telemetry.read_access()
                     frame_count_size = telemetry.descriptor.frame_count_size
                     frame_size = telemetry._frame_size  # noqa: SLF001
+                    frame_count = int.from_bytes(access[:frame_count_size], "little")
+                    expected_access_size = frame_count_size + frame_count * frame_size
+                    assert len(access) >= expected_access_size
                     timestamps.extend(
                         int.from_bytes(
                             access[offset : offset + telemetry.descriptor.timestamp_size],
                             "little",
                         )
-                        for offset in range(
-                            frame_count_size,
-                            len(access),
-                            frame_size,
-                        )
+                        for offset in range(frame_count_size, expected_access_size, frame_size)
                     )
                 if len(timestamps) < 100:
                     time.sleep(0.01)
