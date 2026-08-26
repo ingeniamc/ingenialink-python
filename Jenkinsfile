@@ -1,4 +1,4 @@
-@Library('cicd-lib@f2b16c55480c72c81405301d04980bac0909d69d') _
+@Library('cicd-lib@8b41c0c4f9419abdb1bfad2a51ff911ef583aa3c') _
 
 import python.VirtualEnvironment
 import python.VEnvManager
