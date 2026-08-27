@@ -1,4 +1,4 @@
-@Library('cicd-lib@7a69e3ee8d3a9b269d593b5ec58c83507da1ead6') _
+@Library('cicd-lib@8b41c0c4f9419abdb1bfad2a51ff911ef583aa3c') _
 
 import python.VirtualEnvironment
 import python.VEnvManager
@@ -108,7 +108,7 @@ def pipelineParams = PyTestParams.pytestParams(this, currentBuild, [
         default: DEFAULT_LOGGING_LEVEL,
     ],
     wiresharkLoggingConfig: [
-        default: false,
+        default: true,
     ],
     checkStateScopeConfig: [
         default: 'session',
@@ -134,6 +134,11 @@ pipeline {
         timestamps()
     }
     stages {
+        stage('Inspect pipeline parameters') {
+            steps {
+                echo("${PyTestParams.configSummary(params, env, currentBuild)}")
+            }
+        }
         stage("Set env") {
             steps {
                 script {
