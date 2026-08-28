@@ -5,6 +5,7 @@ from pytest_mock import MockerFixture
 
 from ingenialink.drive_context_manager import (
     DriveContextManager,
+    DriveContextRestoreError,
     DriveRegistersSession,
     DriveRegistersValue,
     FailedEntry,
@@ -1064,6 +1065,43 @@ class TestContextManagerReset:
         assert id(context._baseline) == baseline_id
 
         context.__exit__(None, None, None)
+
+    def test_reset_returns_failed_result_and_keeps_pending_change(self, mocker: MockerFixture):
+        """A failed restore is returned and remains pending for a later retry."""
+        servo_mock = mocker.MagicMock(spec=Servo)
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
+
+        context = DriveContextManager(servo_mock, baseline=baseline, track_objects=False)
+        context.__enter__()
+        context._session._changes[reg] = 99.0
+
+        result = RestoreResult()
+        result.failed.append(FailedEntry(reg, 42.0, RuntimeError("persistent error")))
+        restore_spy = mocker.patch.object(context._session, "restore", return_value=result)
+
+        actual_result = context.reset(rearm=False)
+
+        assert actual_result is result
+        assert actual_result.failed == [result.failed[0]]
+        assert reg in context.changes
+        assert context.pending_changes
+        restore_spy.assert_called_once_with()
+
+    def test_exit_raises_for_failed_restore(self, mocker: MockerFixture):
+        """The context-manager boundary must not hide a failed register restore."""
+        servo_mock = mocker.MagicMock(spec=Servo)
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
+
+        context = DriveContextManager(servo_mock, baseline=baseline, track_objects=False)
+        context.__enter__()
+        result = RestoreResult()
+        result.failed.append(FailedEntry(reg, 42.0, RuntimeError("persistent error")))
+        mocker.patch.object(context._session, "restore", return_value=result)
+
+        with pytest.raises(DriveContextRestoreError, match="TEST_REG"):
+            context.__exit__(None, None, None)
 
     def test_force_restore_skips_session_when_registers_disabled(self, mocker: MockerFixture):
         """force_restore(restore_registers=False) does not touch the session."""
