@@ -102,12 +102,21 @@ def test_drive_context_manager_nested_contexts(servo: "Servo"):
 def test_drive_context_manager_skips_default_do_not_restore_registers(servo: "Servo"):
     context = DriveContextManager(servo)
 
+    table_value_registers = [
+        table.id_value for table in servo.dictionary.all_tables() if table.id_value is not None
+    ]
+
     expected = set(
         servo.dictionary.find_registers(
-            servo.STORE_COCO_ALL,
-            servo.STORE_MOCO_ALL_REGISTERS,
-            servo.RESTORE_COCO_ALL,
-            servo.RESTORE_MOCO_ALL_REGISTERS,
+            "*STORE_COCO*",
+            "*STORE_MOCO*",
+            "*RESTORE_COCO*",
+            "*RESTORE_MOCO*",
+            "ETG_STORE_*",
+            "ETG_RESTORE_*",
+            "CIA301_COMMS_STORE*",
+            "CIA301_COMMS_RESTORE*",
+            *table_value_registers,
             "COMMS_ETH_MAC",
             "ETG_ERROR_FIELD",
             "CIA301_COMMS_ERROR_FIELD",
@@ -133,12 +142,21 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(servo: "Se
 def test_drive_context_manager_with_do_not_restore_registers(servo: "Servo"):
     context = DriveContextManager(servo, do_not_restore_registers=[_USER_OVER_VOLTAGE_UID])
 
+    table_value_registers = [
+        table.id_value for table in servo.dictionary.all_tables() if table.id_value is not None
+    ]
+
     expected = set(
         servo.dictionary.find_registers(
-            servo.STORE_COCO_ALL,
-            servo.STORE_MOCO_ALL_REGISTERS,
-            servo.RESTORE_COCO_ALL,
-            servo.RESTORE_MOCO_ALL_REGISTERS,
+            "*STORE_COCO*",
+            "*STORE_MOCO*",
+            "*RESTORE_COCO*",
+            "*RESTORE_MOCO*",
+            "ETG_STORE_*",
+            "ETG_RESTORE_*",
+            "CIA301_COMMS_STORE*",
+            "CIA301_COMMS_RESTORE*",
+            *table_value_registers,
             "COMMS_ETH_MAC",
             "ETG_ERROR_FIELD",
             "CIA301_COMMS_ERROR_FIELD",

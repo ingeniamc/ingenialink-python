@@ -644,15 +644,25 @@ class DriveContextManager:
         self._drive = servo
         self._axis = axis
 
+        table_value_registers = [
+            table.id_value for table in servo.dictionary.all_tables() if table.id_value is not None
+        ]
+
         self._do_not_restore_registers: set[Register] = set(
             servo.dictionary.find_registers(
                 # User-provided UIDs
                 *(do_not_restore_registers or []),
                 # Default registers that should never be restored
-                servo.STORE_COCO_ALL,
-                servo.STORE_MOCO_ALL_REGISTERS,
-                servo.RESTORE_COCO_ALL,
-                servo.RESTORE_MOCO_ALL_REGISTERS,
+                "*STORE_COCO*",
+                "*STORE_MOCO*",
+                "*RESTORE_COCO*",
+                "*RESTORE_MOCO*",
+                "ETG_STORE_*",
+                "ETG_RESTORE_*",
+                "CIA301_COMMS_STORE*",
+                "CIA301_COMMS_RESTORE*",
+                # Table value registers that cannot be restored as flat scalar registers
+                *table_value_registers,
                 # Mac address should not be restored, in certain FW versions the reading of MAC
                 # address provides different values each time
                 "COMMS_ETH_MAC",
