@@ -572,8 +572,10 @@ class TestDriveRegistersSession:
     @pytest.mark.ethercat
     @pytest.mark.canopen
     @pytest.mark.virtual
-    def test_set_dirty_register_marks_only_baseline_registers(self, servo: "Servo") -> None:
-        """set_dirty_register() marks known registers dirty and ignores unknown ones."""
+    def test_set_dirty_register_marks_only_writable_baseline_registers(
+        self, servo: "Servo"
+    ) -> None:
+        """set_dirty_register() marks writable baseline registers and ignores others."""
 
         tracked_register = servo.dictionary.get_register(_USER_OVER_VOLTAGE_UID, axis=1)
         baseline = DriveRegistersValue.from_hardware(servo)
@@ -595,6 +597,21 @@ class TestDriveRegistersSession:
         session.set_dirty_register(ignored_register)
 
         assert ignored_register not in session.changes
+
+        read_only_register = Register(
+            dtype=RegDtype.FLOAT,
+            access=RegAccess.RO,
+            identifier="READ_ONLY_REG",
+        )
+        read_only_baseline = DriveRegistersValue(OrderedDict([(read_only_register, 42.0)]))
+        read_only_session = DriveRegistersSession(
+            servo=servo,
+            baseline=read_only_baseline,
+            do_not_restore_registers=set(),
+        )
+        read_only_session.set_dirty_register(read_only_register)
+
+        assert read_only_register not in read_only_session.changes
 
     @pytest.mark.ethernet
     @pytest.mark.ethercat
