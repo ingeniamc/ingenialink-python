@@ -654,21 +654,13 @@ def test_is_alive(servo):
     assert servo.is_alive()
 
 
-@pytest.mark.canopen
-@pytest.mark.ethernet
-@pytest.mark.ethercat
 @pytest.mark.virtual
 def test_status_word_wait_change(servo):
     subnode = 1
     timeout = 0.5
     current_status_word = servo.read(servo.STATUS_WORD_REGISTERS, subnode=subnode)
-    try:
+    with pytest.raises(ILTimeoutError):
         servo.status_word_wait_change(current_status_word, timeout, subnode)
-    except ILTimeoutError:
-        # Success. The status word did not change
-        return
-    new_status_word = servo.read(servo.STATUS_WORD_REGISTERS, subnode=subnode)
-    pytest.fail(f"The status word changed from {current_status_word} to {new_status_word}.")
 
 
 @pytest.mark.ethernet
