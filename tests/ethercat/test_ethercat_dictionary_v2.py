@@ -5,6 +5,7 @@ import pytest
 import tests.resources.ethercat
 from ingenialink.constants import COCO_MOCO_PROJECT_NUMBER
 from ingenialink.dictionary import Interface, SubnodeType
+from ingenialink.enums.register import RegAccess
 from ingenialink.ethercat.dictionary import EthercatDictionaryV2, EthercatDictionaryV3
 
 SINGLE_AXIS_BASE_SUBNODES = {0: SubnodeType.COMMUNICATION, 1: SubnodeType.MOTION}
@@ -99,6 +100,14 @@ def test_coco_moco_monitoring_registers_are_not_converted(tmp_path: Path):
     assert "DRV_DIAG_ERROR_LAST_COM" in ethercat_dict.registers(0)
     assert "MON_CFG_EOC_TYPE" not in ethercat_dict.registers(0)
     assert "DIST_CFG_REG0_MAP" not in ethercat_dict.registers(0)
+
+
+def test_monitoring_disturbance_subindex_registers_are_read_only():
+    """This test checks that the monitoring and disturbance subindex 0 registers are read-only."""
+    ethercat_dict = EthercatDictionaryV2(tests.resources.ethercat.TEST_DICT_ETHERCAT_OLD_DIST)
+
+    for identifier in ("MON_DATA_SUBINDEX_0", "DIST_DATA_SUBINDEX_0"):
+        assert ethercat_dict.get_register(identifier).access == RegAccess.RO
 
 
 def test_pdo_maps_equivalence(den_net_e_2_9_1_xdf_v3: str):
