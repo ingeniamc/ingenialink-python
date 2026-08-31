@@ -661,6 +661,9 @@ class DriveContextManager:
                 "ETG_RESTORE_*",
                 "CIA301_COMMS_STORE*",
                 "CIA301_COMMS_RESTORE*",
+                # CiA 302 bootloader program control registers (non-restorable during runtime)
+                "CIA302_BL_*",
+                "DRV_BOOT_*",
                 # Table value registers that cannot be restored as flat scalar registers
                 *table_value_registers,
                 # Mac address should not be restored, in certain FW versions the reading of MAC
