@@ -6,6 +6,7 @@ import pytest.TestSession
 import pytest.TestGroup
 import pytest.PyTestManager
 import pytest.PyTestParams
+import utils.BuildParamUtils
 
 def SW_NODE = "windows-slave"
 def ECAT_NODE = "ecat-test"
@@ -425,10 +426,10 @@ pipeline {
                                     testManager.buildTestSessions("tests.setups.rack_specifiers")
                                     testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
 
-                                    if (env.BRANCH_NAME == 'develop' && testManager.runPolicyTags.isEmpty()) {
+                                    if (env.BRANCH_NAME == 'develop' && BuildParamUtils.isBranchEventBuild(currentBuild?.rawBuild)) {
                                         HW_TEST_SESSIONS.setAttributeInCascade(
                                             shouldRun: false,
-                                            skipReason: 'Develop builds without nightly/weekend policy do not run hardware tests',
+                                            skipReason: 'Develop webhook/indexing builds do not run hardware tests',
                                         )
                                     }
 
