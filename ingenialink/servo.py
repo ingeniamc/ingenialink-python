@@ -60,7 +60,12 @@ from ingenialink.exceptions import (
 )
 from ingenialink.register import Register
 from ingenialink.table import Table
-from ingenialink.utils._utils import convert_bytes_to_dtype, convert_dtype_to_bytes, weak_lru
+from ingenialink.utils._utils import (
+    convert_bytes_to_dtype,
+    convert_dtype_to_bytes,
+    deprecated,
+    weak_lru,
+)
 from ingenialink.utils.event import create_event
 from ingenialink.utils.timeout import Timeout
 
@@ -1047,6 +1052,12 @@ class Servo:
             # Wait until status word changes
             self.state_wait_change(state, timeout, subnode=subnode)
 
+    @deprecated(
+        custom_msg=(
+            "The status_word_wait_change method is deprecated; "
+            "wait for the appropriate status bits instead."
+        )
+    )
     def status_word_wait_change(self, status_word: int, timeout: int, subnode: int = 1) -> None:
         """Waits for a status word change.
 
