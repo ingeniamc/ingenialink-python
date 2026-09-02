@@ -3,6 +3,7 @@ from collections import OrderedDict
 import pytest
 from pytest_mock import MockerFixture
 
+from ingenialink.dictionary import DictionaryTable
 from ingenialink.drive_context_manager import (
     DriveContextManager,
     DriveContextRestoreError,
@@ -103,7 +104,7 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(servo: "Se
     context = DriveContextManager(servo)
 
     table_value_registers = [
-        table.id_value for table in servo.dictionary.all_tables() if table.id_value is not None
+        table.id_value for table in servo.dictionary.all_tables() if table.id_value != "None"
     ]
 
     expected = set(
@@ -137,6 +138,34 @@ def test_drive_context_manager_skips_default_do_not_restore_registers(servo: "Se
     assert context._do_not_restore_registers == expected
 
 
+def test_drive_context_manager_skips_missing_table_value_register(mocker: MockerFixture):
+    """A missing table value attribute must not become a register pattern."""
+    dictionary = mocker.Mock()
+    dictionary.all_tables.return_value = [
+        DictionaryTable(
+            id="MISSING_VALUE",
+            axis=None,
+            id_index="MISSING_INDEX",
+            id_value="None",
+        ),
+        DictionaryTable(
+            id="VALID_VALUE",
+            axis=None,
+            id_index="VALID_INDEX",
+            id_value="VALID_VALUE_REGISTER",
+        ),
+    ]
+    dictionary.find_registers.return_value = []
+    servo = mocker.MagicMock()
+    servo.dictionary = dictionary
+
+    DriveContextManager(servo)
+
+    patterns = dictionary.find_registers.call_args.args
+    assert "None" not in patterns
+    assert "VALID_VALUE_REGISTER" in patterns
+
+
 @pytest.mark.ethernet
 @pytest.mark.ethercat
 @pytest.mark.canopen
@@ -145,7 +174,7 @@ def test_drive_context_manager_with_do_not_restore_registers(servo: "Servo"):
     context = DriveContextManager(servo, do_not_restore_registers=[_USER_OVER_VOLTAGE_UID])
 
     table_value_registers = [
-        table.id_value for table in servo.dictionary.all_tables() if table.id_value is not None
+        table.id_value for table in servo.dictionary.all_tables() if table.id_value != "None"
     ]
 
     expected = set(
@@ -1141,6 +1170,24 @@ class TestContextManagerReset:
 
         with pytest.raises(DriveContextRestoreError, match="TEST_REG"):
             context.__exit__(None, None, None)
+
+    def test_exit_chains_restore_failure_to_body_exception(self, mocker: MockerFixture):
+        """A restore failure is chained to an exception raised by the context body."""
+        servo_mock = mocker.MagicMock(spec=Servo)
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="TEST_REG")
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
+
+        context = DriveContextManager(servo_mock, baseline=baseline, track_objects=False)
+        context.__enter__()
+        result = RestoreResult()
+        result.failed.append(FailedEntry(reg, 42.0, RuntimeError("persistent error")))
+        mocker.patch.object(context._session, "restore", return_value=result)
+        body_error = ValueError("body error")
+
+        with pytest.raises(DriveContextRestoreError, match="TEST_REG") as error_info:
+            context.__exit__(ValueError, body_error, None)
+
+        assert error_info.value.__cause__ is body_error
 
     def test_force_restore_skips_session_when_registers_disabled(self, mocker: MockerFixture):
         """force_restore(restore_registers=False) does not touch the session."""

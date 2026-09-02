@@ -647,7 +647,7 @@ class DriveContextManager:
         self._axis = axis
 
         table_value_registers = [
-            table.id_value for table in servo.dictionary.all_tables() if table.id_value is not None
+            table.id_value for table in servo.dictionary.all_tables() if table.id_value != "None"
         ]
 
         self._do_not_restore_registers: set[Register] = set(
@@ -1045,4 +1045,7 @@ class DriveContextManager:
         """
         result = self.reset(rearm=False)
         if result.failed:
-            raise DriveContextRestoreError(result)
+            restore_error = DriveContextRestoreError(result)
+            if exc_value is not None:
+                raise restore_error from exc_value
+            raise restore_error
