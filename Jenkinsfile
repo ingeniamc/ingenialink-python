@@ -1,4 +1,4 @@
-@Library('cicd-lib@8b41c0c4f9419abdb1bfad2a51ff911ef583aa3c') _
+@Library('cicd-lib@a30b3e0') _
 
 import python.VirtualEnvironment
 import python.VEnvManager
@@ -426,7 +426,7 @@ pipeline {
                                     testManager.buildTestSessions("tests.setups.rack_specifiers")
                                     testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
 
-                                    if (env.BRANCH_NAME == 'develop' && BuildParamUtils.isBranchEventBuild(currentBuild?.rawBuild)) {
+                                    if (env.BRANCH_NAME == 'develop' && BuildParamUtils.isBranchEventBuild(currentBuild)) {
                                         HW_TEST_SESSIONS.setAttributeInCascade(
                                             shouldRun: false,
                                             skipReason: 'Develop webhook/indexing builds do not run hardware tests',
