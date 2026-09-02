@@ -426,7 +426,7 @@ pipeline {
                                     testManager.buildTestSessions("tests.setups.rack_specifiers")
                                     testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
 
-                                    if (env.BRANCH_NAME == 'develop' && BuildParamUtils.isBranchEventBuild(currentBuild?.rawBuild)) {
+                                    if (env.BRANCH_NAME == 'develop' && BuildParamUtils.isBranchEventBuild(currentBuild)) {
                                         HW_TEST_SESSIONS.setAttributeInCascade(
                                             shouldRun: false,
                                             skipReason: 'Develop webhook/indexing builds do not run hardware tests',
