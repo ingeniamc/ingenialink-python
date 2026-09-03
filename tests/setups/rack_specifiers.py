@@ -174,7 +174,7 @@ CAN_SETUP = SpecifierContainer({
                 config_file=config_files.EVE_XCR_C_2_1_0_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "never",
+                    __EXECUTION_POLICY_KEY: "weekends",
                     __TEST_CONFIGS_KEY: {
                         "CAN_TEST_SESSIONS": PyTestConfig(
                             markers="canopen",
@@ -189,7 +189,7 @@ CAN_SETUP = SpecifierContainer({
                 config_file=config_files.EVE_XCR_C_2_8_1_CONFIG,
                 dictionary_type=DictionaryType.XDF_V2,
                 extra_data={
-                    __EXECUTION_POLICY_KEY: "never",
+                    __EXECUTION_POLICY_KEY: "always",
                     __TEST_CONFIGS_KEY: {
                         "CAN_TEST_SESSIONS": PyTestConfig(
                             markers="canopen",
