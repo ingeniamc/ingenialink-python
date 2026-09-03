@@ -125,6 +125,7 @@ pytest-cov = "==7.1.0"
 pytest-mock = "==3.15.1"
 pytest-repeat = "==0.9.4"
 pytest-console-scripts = "==1.4.1"
+pytest-timeout = "==2.4.0"
 twisted = "==25.5.0"
 summit-testing-framework = {version = "0.3.1.post356+develop.4747c03"}
 virtual_drive = {version = "0.1.1.post229+develop.5935e81"}

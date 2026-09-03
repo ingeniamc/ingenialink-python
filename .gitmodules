@@ -1,6 +1,6 @@
 [submodule "xcf-specification"]
 	path = xcf-specification
-	url = https://github.com/ingeniamc/xcf-specification.git
+	url = git@github.com:ingeniamc/xcf-specification.git
 [submodule "summit_drives_ci_configs"]
 	path = summit_drives_ci_configs
 	url = git@github.com:CeleraMotion/summit_drives_ci_configs.git
