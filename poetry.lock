@@ -3887,6 +3887,21 @@ files = [
 pytest = "*"
 
 [[package]]
+name = "pytest-timeout"
+version = "2.4.0"
+description = "pytest plugin to abort hanging tests"
+optional = false
+python-versions = ">=3.7"
+groups = ["tests"]
+files = [
+    {file = "pytest_timeout-2.4.0-py3-none-any.whl", hash = "sha256:c42667e5cdadb151aeb5b26d114aff6bdf5a907f176a007a30b940d3d865b5c2"},
+    {file = "pytest_timeout-2.4.0.tar.gz", hash = "sha256:7e68e90b01f9eff71332b25001f85c75495fc4e3a836701876183c4bcfd0540a"},
+]
+
+[package.dependencies]
+pytest = ">=7.0.0"
+
+[[package]]
 name = "python-can"
 version = "4.6.1"
 description = "Controller Area Network interface module for Python"
@@ -6207,4 +6222,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "4aa9f0d4fcc8d25a0b4311af1a3177a660d7070fae4a96018390cc92ca4ac1a5"
+content-hash = "6856c05fbf8afae86f9526ee7c7571e419f2236840220cbad449b5d641c63a3f"
