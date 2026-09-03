@@ -23,6 +23,7 @@ from tests.ethercat.mock import pysoem_mock_network  # noqa: F401
 
 pytest_plugins = [
     "summit_testing_framework.pytest_addoptions",
+    "summit_testing_framework.pytest_markers",
     "summit_testing_framework.setup_fixtures",
     "tests.dictionaries.fixtures",
 ]
