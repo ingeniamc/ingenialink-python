@@ -23,6 +23,7 @@ from .dictionary import Dictionary, DictionaryV2, DictionaryV3
 # Drive context manager
 from .drive_context_manager import (
     DriveContextManager,
+    DriveContextRestoreError,
     DriveRegistersSession,
     DriveRegistersValue,
     FailedEntry,
@@ -98,6 +99,7 @@ __all__ = [
     "CanopenRegister",
     "Poller",
     "DriveContextManager",
+    "DriveContextRestoreError",
     "DriveRegistersSession",
     "DriveRegistersValue",
     "FailedEntry",

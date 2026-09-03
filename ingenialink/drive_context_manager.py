@@ -192,6 +192,17 @@ class RestoreResult:
         return ", ".join(parts)
 
 
+class DriveContextRestoreError(RuntimeError):
+    """Raised when a drive context cannot restore all register changes."""
+
+    def __init__(self, result: RestoreResult) -> None:
+        self.result = result
+        failed_registers = ", ".join(entry.register.identifier for entry in result.failed)
+        super().__init__(
+            f"Failed to restore drive registers ({result.summary()}): {failed_registers}"
+        )
+
+
 # PDO registers
 _PDO_RPDO_MAP_REGISTER_UID = "ETG_COMMS_RPDO_"
 _PDO_TPDO_MAP_REGISTER_UID = "ETG_COMMS_TPDO_"
@@ -466,6 +477,8 @@ class DriveRegistersSession:
         Args:
             register: The register to mark as dirty.
         """
+        if register.access in [RegAccess.WO, RegAccess.RO]:
+            return
         if register in self._do_not_restore_registers:
             return
         if register not in self.baseline._values:
@@ -633,15 +646,28 @@ class DriveContextManager:
         self._drive = servo
         self._axis = axis
 
+        table_value_registers = [
+            table.id_value for table in servo.dictionary.all_tables() if table.id_value != "None"
+        ]
+
         self._do_not_restore_registers: set[Register] = set(
             servo.dictionary.find_registers(
                 # User-provided UIDs
                 *(do_not_restore_registers or []),
                 # Default registers that should never be restored
-                servo.STORE_COCO_ALL,
-                servo.STORE_MOCO_ALL_REGISTERS,
-                servo.RESTORE_COCO_ALL,
-                servo.RESTORE_MOCO_ALL_REGISTERS,
+                "*STORE_COCO*",
+                "*STORE_MOCO*",
+                "*RESTORE_COCO*",
+                "*RESTORE_MOCO*",
+                "ETG_STORE_*",
+                "ETG_RESTORE_*",
+                "CIA301_COMMS_STORE*",
+                "CIA301_COMMS_RESTORE*",
+                # CiA 302 bootloader program control registers (non-restorable during runtime)
+                "CIA302_BL_*",
+                "DRV_BOOT_*",
+                # Table value registers that cannot be restored as flat scalar registers
+                *table_value_registers,
                 # Mac address should not be restored, in certain FW versions the reading of MAC
                 # address provides different values each time
                 "COMMS_ETH_MAC",
@@ -948,7 +974,7 @@ class DriveContextManager:
             # Re-subscribe to callbacks
             self.start()
 
-    def reset(self, *, force: bool = False, rearm: bool = True) -> None:
+    def reset(self, *, force: bool = False, rearm: bool = True) -> RestoreResult:
         """Reset the drive to its baseline state.
 
         Restores the drive to the baseline captured during ``__enter__``, without
@@ -960,25 +986,23 @@ class DriveContextManager:
                 only the tracked changes and clears the tracked sets (default).
             rearm: If True, resume tracking after restoring (default). If False, leave
                 tracking stopped.
+
+        Returns:
+            A ``RestoreResult`` describing register restoration attempts. Failed entries
+            remain tracked for a later recovery attempt.
+
+        Raises:
+            ILIOError: If a drive write fails outside the per-register retry result.
         """
         if self._session is None or self._baseline is None:
-            return
+            return RestoreResult()
 
         self.stop()
 
         try:
-            if force:
-                self._session.force_restore()
-            else:
-                self._session.restore()
-        except ILIOError as e:
-            logger.warning(
-                f"{id(self)}: Restore failed during register write: {e}. "
-                f"Drive may have disconnected."
-            )
+            result = self._session.force_restore() if force else self._session.restore()
 
-        if self._track_objects:
-            try:
+            if self._track_objects:
                 # In force mode reconcile against the current hardware state; otherwise
                 # restore only the object changes that tracking recorded.
                 changed_values = self._store_objects_data() if force else self._objects_changed
@@ -989,14 +1013,16 @@ class DriveContextManager:
                 # Clear only after the writes have actually gone through, so an
                 # interrupted object restore is retried rather than silently dropped.
                 self._objects_changed.clear()
-            except ILIOError as e:
-                logger.warning(
-                    f"{id(self)}: Restore failed during object write: {e}. "
-                    f"Drive may have disconnected."
-                )
+        except ILIOError as e:
+            logger.warning(
+                f"{id(self)}: Restore failed during drive write: {e}. Drive may have disconnected."
+            )
+            raise
+        finally:
+            if rearm:
+                self.start()
 
-        if rearm:
-            self.start()
+        return result
 
     def reconcile(self) -> dict[Register, tuple[REG_VALUE, REG_VALUE]]:
         """Reconcile tracked changes by re-reading their current values.
@@ -1011,5 +1037,15 @@ class DriveContextManager:
         return self._session.reconcile_registers()
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:  # type: ignore [no-untyped-def]
-        """Unsubscribes from register updates and restores the drive values."""
-        self.reset(rearm=False)
+        """Unsubscribes from register updates and restores the drive values.
+
+        Raises:
+            DriveContextRestoreError: If register restoration reports failed entries.
+            ILIOError: If a drive write fails outside the per-register retry result.
+        """
+        result = self.reset(rearm=False)
+        if result.failed:
+            restore_error = DriveContextRestoreError(result)
+            if exc_value is not None:
+                raise restore_error from exc_value
+            raise restore_error
