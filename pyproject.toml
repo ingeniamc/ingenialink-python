@@ -126,7 +126,7 @@ pytest-mock = "==3.15.1"
 pytest-repeat = "==0.9.4"
 pytest-console-scripts = "==1.4.1"
 twisted = "==25.5.0"
-summit-testing-framework = {version = "0.3.1.post385+pr.114.b1"}
+summit-testing-framework = {version = "0.3.1.post407+pr.114.b4"}
 virtual_drive = {version = "0.1.1.post229+develop.5935e81"}
 xmlschema = ">=3.0.0"
 
