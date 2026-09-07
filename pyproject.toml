@@ -127,7 +127,7 @@ pytest-repeat = "==0.9.4"
 pytest-console-scripts = "==1.4.1"
 pytest-timeout = "==2.4.0"
 twisted = "==25.5.0"
-summit-testing-framework = {version = "0.3.1.post356+develop.4747c03"}
+summit-testing-framework = {version = "0.3.1.post394+pr.107.b25"}
 virtual_drive = {version = "0.1.1.post229+develop.5935e81"}
 xmlschema = ">=3.0.0"
 
