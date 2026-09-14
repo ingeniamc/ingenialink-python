@@ -209,6 +209,45 @@ def test_recover_from_disconnection(net: "CanopenNetwork", servo: "CanopenServo"
     assert new_fw_version == fw_version, "Firmware version should remain the same after recovery"
 
 
+def test_reset_connection_recreates_transport_and_preserves_node_dictionary(
+    virtual_network,
+) -> None:
+    """Test that resetting the connection recreates the transport and
+    preserves the node dictionary."""
+    old_node = SimpleNamespace(
+        object_dictionary=object(),
+        nmt=SimpleNamespace(stop_node_guarding=Mock()),
+    )
+    new_node = SimpleNamespace(nmt=SimpleNamespace(start_node_guarding=Mock()))
+    old_connection = SimpleNamespace(nodes={20: old_node}, disconnect=Mock())
+    new_connection = SimpleNamespace(add_node=Mock(return_value=new_node))
+    servo = SimpleNamespace(target=20, node=old_node)
+    virtual_network.servos.append(servo)
+    virtual_network._connection = old_connection
+    virtual_network._setup_connection = lambda: setattr(
+        virtual_network, "_connection", new_connection
+    )
+
+    virtual_network._reset_connection()
+
+    old_node.nmt.stop_node_guarding.assert_called_once_with()
+    old_connection.disconnect.assert_called_once_with()
+    new_connection.add_node.assert_called_once_with(
+        20, object_dictionary=old_node.object_dictionary
+    )
+    new_node.nmt.start_node_guarding.assert_called_once_with(virtual_network.NODE_GUARDING_PERIOD_S)
+    assert servo.node is new_node
+
+
+def test_recover_from_disconnection_does_not_reenter(virtual_network) -> None:
+    recovery_lock = virtual_network._CanopenNetwork__recovery_lock
+    assert recovery_lock.acquire(blocking=False)
+    try:
+        assert virtual_network.recover_from_disconnection() is False
+    finally:
+        recovery_lock.release()
+
+
 def test_scan_slaves_info_handles_bus_off_with_empty_slave_info(virtual_network) -> None:
     """scan_slaves_info should not raise on PCAN bus-off and should reset the bus."""
     # Arrange: one discovered slave whose SDO upload always fails with bus-off.
