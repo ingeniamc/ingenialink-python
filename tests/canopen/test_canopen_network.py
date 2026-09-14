@@ -240,6 +240,8 @@ def test_reset_connection_recreates_transport_and_preserves_node_dictionary(
 
 
 def test_recover_from_disconnection_does_not_reenter(virtual_network) -> None:
+    """Test that recover_from_disconnection does not reenter if the
+    recovery lock is already held."""
     recovery_lock = virtual_network._CanopenNetwork__recovery_lock
     assert recovery_lock.acquire(blocking=False)
     try:
