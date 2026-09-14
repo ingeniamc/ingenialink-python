@@ -578,6 +578,15 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
                 cast("canopen.RemoteNode", node_obj).nmt.stop_node_guarding()  # type: ignore[no-untyped-call]
         except Exception as e:
             logger.error("Could not stop node guarding. Exception: %s", str(e))
+        old_bus = getattr(old_connection, "bus", None)
+        if old_bus is not None:
+            try:
+                old_bus.flush_tx_buffer()
+                logger.info("Bus transmit buffer flushed")
+            except NotImplementedError:
+                logger.info("Bus transmit buffer flushing is not supported")
+            except Exception as e:
+                logger.warning("Could not flush bus transmit buffer. Exception: %s", str(e))
         try:
             old_connection.disconnect()
         except BaseException as e:

@@ -214,12 +214,22 @@ def test_reset_connection_recreates_transport_and_preserves_node_dictionary(
 ) -> None:
     """Test that resetting the connection recreates the transport and
     preserves the node dictionary."""
+    call_order = []
     old_node = SimpleNamespace(
         object_dictionary=object(),
-        nmt=SimpleNamespace(stop_node_guarding=Mock()),
+        nmt=SimpleNamespace(
+            stop_node_guarding=Mock(side_effect=lambda: call_order.append("stop_guarding"))
+        ),
+    )
+    old_bus = SimpleNamespace(
+        flush_tx_buffer=Mock(side_effect=lambda: call_order.append("flush_tx_buffer"))
     )
     new_node = SimpleNamespace(nmt=SimpleNamespace(start_node_guarding=Mock()))
-    old_connection = SimpleNamespace(nodes={20: old_node}, disconnect=Mock())
+    old_connection = SimpleNamespace(
+        nodes={20: old_node},
+        bus=old_bus,
+        disconnect=Mock(side_effect=lambda: call_order.append("disconnect")),
+    )
     new_connection = SimpleNamespace(add_node=Mock(return_value=new_node))
     servo = SimpleNamespace(target=20, node=old_node)
     virtual_network.servos.append(servo)
@@ -230,13 +240,40 @@ def test_reset_connection_recreates_transport_and_preserves_node_dictionary(
 
     virtual_network._reset_connection()
 
+    assert call_order == ["stop_guarding", "flush_tx_buffer", "disconnect"]
     old_node.nmt.stop_node_guarding.assert_called_once_with()
+    old_bus.flush_tx_buffer.assert_called_once_with()
     old_connection.disconnect.assert_called_once_with()
     new_connection.add_node.assert_called_once_with(
         20, object_dictionary=old_node.object_dictionary
     )
     new_node.nmt.start_node_guarding.assert_called_once_with(virtual_network.NODE_GUARDING_PERIOD_S)
     assert servo.node is new_node
+
+
+def test_reset_connection_continues_when_bus_flush_is_unsupported(virtual_network) -> None:
+    """Test that resetting the connection continues even if the bus flush is unsupported."""
+    old_node = SimpleNamespace(
+        object_dictionary=object(),
+        nmt=SimpleNamespace(stop_node_guarding=Mock()),
+    )
+    old_connection = SimpleNamespace(
+        nodes={20: old_node},
+        bus=SimpleNamespace(flush_tx_buffer=Mock(side_effect=NotImplementedError)),
+        disconnect=Mock(),
+    )
+    new_connection = SimpleNamespace(
+        add_node=Mock(return_value=SimpleNamespace(nmt=SimpleNamespace(start_node_guarding=Mock())))
+    )
+    virtual_network.servos.append(SimpleNamespace(target=20, node=old_node))
+    virtual_network._connection = old_connection
+    virtual_network._setup_connection = lambda: setattr(
+        virtual_network, "_connection", new_connection
+    )
+
+    virtual_network._reset_connection()
+
+    old_connection.disconnect.assert_called_once_with()
 
 
 def test_recover_from_disconnection_does_not_reenter(virtual_network) -> None:
