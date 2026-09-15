@@ -1,5 +1,6 @@
 import threading
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 from can.interfaces.pcan.pcan import PcanCanOperationError
@@ -20,6 +21,18 @@ def test_canopen_getters(servo, net):
     assert servo is not None and net is not None
 
     assert isinstance(servo.node, RemoteNode)
+
+
+def test_node_setter_rebinds_emcy_callback() -> None:
+    """Test that setting the node rebinds the EMCY callback."""
+    old_node = SimpleNamespace(emcy=SimpleNamespace(add_callback=Mock()))
+    new_node = SimpleNamespace(emcy=SimpleNamespace(add_callback=Mock()))
+    servo = CanopenServo.__new__(CanopenServo)
+    servo._CanopenServo__node = old_node
+
+    servo.node = new_node
+
+    new_node.emcy.add_callback.assert_called_once_with(servo._on_emcy)
 
 
 class TestMinimumSdoTimeout:
