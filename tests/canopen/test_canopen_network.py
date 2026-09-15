@@ -287,6 +287,39 @@ def test_recover_from_disconnection_does_not_reenter(virtual_network) -> None:
         recovery_lock.release()
 
 
+def test_recover_from_disconnection_does_not_restart_listener_when_reset_fails(
+    virtual_network,
+) -> None:
+    """Do not restart the listener when connection reset fails."""
+    virtual_network._connection = SimpleNamespace()
+    virtual_network.is_listener_started = lambda: True
+    virtual_network.stop_status_listener = Mock()
+    virtual_network._reset_connection = Mock(side_effect=RuntimeError("reset failed"))
+    virtual_network.start_status_listener = Mock()
+
+    assert virtual_network.recover_from_disconnection() is False
+
+    virtual_network.start_status_listener.assert_not_called()
+
+
+def test_recover_from_disconnection_does_not_restart_listener_when_servo_stays_down(
+    virtual_network, monkeypatch
+) -> None:
+    """Do not restart the listener when a recovered servo remains disconnected."""
+    virtual_network._connection = SimpleNamespace()
+    virtual_network.servos.append(SimpleNamespace(is_alive=lambda: False))
+    virtual_network.MAX_NUMBER_SERVO_ALIVE_ATTEMPTS = 1
+    virtual_network.is_listener_started = lambda: True
+    virtual_network.stop_status_listener = Mock()
+    virtual_network._reset_connection = Mock()
+    virtual_network.start_status_listener = Mock()
+    monkeypatch.setattr("ingenialink.canopen.network.sleep", lambda _seconds: None)
+
+    assert virtual_network.recover_from_disconnection() is False
+
+    virtual_network.start_status_listener.assert_not_called()
+
+
 def test_scan_slaves_info_handles_bus_off_with_empty_slave_info(virtual_network) -> None:
     """scan_slaves_info should not raise on PCAN bus-off and should reset the bus."""
     # Arrange: one discovered slave whose SDO upload always fails with bus-off.

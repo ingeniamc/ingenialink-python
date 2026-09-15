@@ -1175,12 +1175,14 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
             return False
 
         listener_was_started = self.is_listener_started()
+        recovery_succeeded = False
         try:
             self.stop_status_listener()
             self._reset_connection()
             for attempt in range(self.MAX_NUMBER_SERVO_ALIVE_ATTEMPTS):
                 all_servos_alive = all(s.is_alive() for s in self.servos)
                 if all_servos_alive:
+                    recovery_succeeded = True
                     break
                 sleep(0.1)
                 if attempt == self.MAX_NUMBER_SERVO_ALIVE_ATTEMPTS - 1:
@@ -1195,7 +1197,7 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
             return False
         finally:
             try:
-                if listener_was_started and self._connection is not None:
+                if listener_was_started and recovery_succeeded and self._connection is not None:
                     self.start_status_listener()
             finally:
                 self.__recovery_lock.release()
