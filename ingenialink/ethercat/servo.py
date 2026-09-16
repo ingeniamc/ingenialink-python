@@ -1,4 +1,6 @@
 import os
+import threading
+import time
 from abc import ABC
 from enum import Enum
 from typing import TYPE_CHECKING, Callable, Optional, Union, cast
@@ -205,10 +207,28 @@ class EthercatServo(EthercatServoBase):
     ) -> bytes:
         if release_gil is None:
             release_gil = self.__sdo_read_write_release_gil
+        operation_start = time.perf_counter()
+        logger.info(
+            f"[ECAT_TRACE] SDO_READ_START reg={reg.identifier} idx=0x{reg.idx:04x} "
+            f"sub={reg.subidx} thread={threading.current_thread().name}"
+        )
+        lock_start = time.perf_counter()
         self._lock.acquire()
+        logger.info(
+            f"[ECAT_TRACE] SDO_READ_LOCK reg={reg.identifier} "
+            f"wait={time.perf_counter() - lock_start:.6f}s "
+            f"thread={threading.current_thread().name}"
+        )
+        sdo_start = time.perf_counter()
         try:
             value: bytes = self.slave.sdo_read(
                 reg.idx, reg.subidx, buffer_size, complete_access, release_gil=release_gil
+            )
+            logger.info(
+                f"[ECAT_TRACE] SDO_READ_OK reg={reg.identifier} idx=0x{reg.idx:04x} "
+                f"sdo={time.perf_counter() - sdo_start:.6f}s "
+                f"total={time.perf_counter() - operation_start:.6f}s "
+                f"thread={threading.current_thread().name}"
             )
         except (
             pysoem.SdoError,
@@ -217,6 +237,12 @@ class EthercatServo(EthercatServoBase):
             pysoem.WkcError,
             ILIOError,
         ) as e:
+            logger.warning(
+                f"[ECAT_TRACE] SDO_READ_ERROR reg={reg.identifier} idx=0x{reg.idx:04x} "
+                f"sdo={time.perf_counter() - sdo_start:.6f}s "
+                f"total={time.perf_counter() - operation_start:.6f}s "
+                f"error={e!r} thread={threading.current_thread().name}"
+            )
             self._handle_sdo_exception(reg, SdoOperationMsg.READ, e)
         except (AttributeError, ILError) as e:
             raise ILIOError(

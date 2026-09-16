@@ -172,8 +172,22 @@ class NetStatusListener(Thread):
             return
 
         # Phase 3: network-wide recovery attempt
+        logger.warning(
+            f"[ECAT_TRACE] NET_STATUS_RECOVERY_TRIGGER thread={threading.current_thread().name}"
+        )
+        recovery_start = time.perf_counter()
         if not self.__network.recover_from_disconnection():
+            logger.warning(
+                f"[ECAT_TRACE] NET_STATUS_RECOVERY_FAILED "
+                f"duration={time.perf_counter() - recovery_start:.6f}s "
+                f"thread={threading.current_thread().name}"
+            )
             return
+        logger.warning(
+            f"[ECAT_TRACE] NET_STATUS_RECOVERY_OK "
+            f"duration={time.perf_counter() - recovery_start:.6f}s "
+            f"thread={threading.current_thread().name}"
+        )
 
         # Phase 4: emit ADDED only for slaves that are actually alive after recovery
         for servo in self.__network.servos:
@@ -1064,9 +1078,21 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             True if all the connected slaves reach the PreOp state.
 
         """
+        recovery_start = time.perf_counter()
+        logger.warning(f"[ECAT_TRACE] RECOVERY_START thread={threading.current_thread().name}")
         self._ecat_master.read_state()
+        logger.warning(
+            f"[ECAT_TRACE] RECOVERY_READ_STATE "
+            f"duration={time.perf_counter() - recovery_start:.6f}s "
+            f"state={self._ecat_master.state} thread={threading.current_thread().name}"
+        )
         all_servos_have_refs = all(s.slave_exists for s in self.servos)
         if self._ecat_master.state == pysoem.PREOP_STATE and all_servos_have_refs:
+            logger.warning(
+                f"[ECAT_TRACE] RECOVERY_ALREADY_PREOP "
+                f"duration={time.perf_counter() - recovery_start:.6f}s "
+                f"thread={threading.current_thread().name}"
+            )
             return True
 
         # Acquire all servo locks to wait for any in-flight SDO operations to
@@ -1074,19 +1100,44 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         # when sdo_read/sdo_write is running with release_gil=True.
         ecat_servos = [s for s in self.servos if isinstance(s, EthercatServo)]
         for s in ecat_servos:
+            lock_start = time.perf_counter()
+            logger.info(
+                f"[ECAT_TRACE] RECOVERY_SERVO_LOCK_WAIT slave={s.slave_id} "
+                f"thread={threading.current_thread().name}"
+            )
             s._lock.acquire()
+            logger.info(
+                f"[ECAT_TRACE] RECOVERY_SERVO_LOCK_ACQUIRED slave={s.slave_id} "
+                f"wait={time.perf_counter() - lock_start:.6f}s "
+                f"thread={threading.current_thread().name}"
+            )
         try:
             # Clean start the master to try to recover the CoE communication.
             # This is needed to avoid the master state machine to be stuck in a wrong
             # state after a disconnection.
             self._lock.acquire()
             try:
+                logger.warning(
+                    f"[ECAT_TRACE] RECOVERY_MASTER_RESTART_START "
+                    f"duration={time.perf_counter() - recovery_start:.6f}s "
+                    f"thread={threading.current_thread().name}"
+                )
                 self._ecat_master.close()
                 self._ecat_master.open(self.interface_name)
+                logger.warning(
+                    f"[ECAT_TRACE] RECOVERY_MASTER_RESTART_END "
+                    f"duration={time.perf_counter() - recovery_start:.6f}s "
+                    f"thread={threading.current_thread().name}"
+                )
             finally:
                 self._lock.release()
 
             self.__init_nodes()
+            logger.warning(
+                f"[ECAT_TRACE] RECOVERY_CONFIG_INIT_END "
+                f"duration={time.perf_counter() - recovery_start:.6f}s "
+                f"thread={threading.current_thread().name}"
+            )
         finally:
             for s in ecat_servos:
                 s._lock.release()
@@ -1103,4 +1154,9 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
                 "The CoE communication cannot be recovered. Not all slaves reached the PreOp state"
             )
         logger.warning(log_message)
+        logger.warning(
+            f"[ECAT_TRACE] RECOVERY_END success={all_drives_in_preop} "
+            f"duration={time.perf_counter() - recovery_start:.6f}s "
+            f"thread={threading.current_thread().name}"
+        )
         return all_drives_in_preop
