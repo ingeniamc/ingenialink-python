@@ -215,7 +215,7 @@ class Poller(Thread):
 
     @property
     def timestamp_origin(self) -> float:
-        """Return the wall-clock timestamp from which sample times are measured.
+        """Wall-clock timestamp from which sample times are measured.
 
         Raises:
             RuntimeError: If the poller has not been started yet.
