@@ -160,7 +160,7 @@ class Poller(Thread):
         time_diff = time.time()
 
         # Obtain current time
-        t = time_diff - self.__time_start
+        t = time_diff - self.timestamp_origin
 
         self.__lock.acquire()
         # Acquire all configured channels
