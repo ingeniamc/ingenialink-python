@@ -208,28 +208,31 @@ class EthercatServo(EthercatServoBase):
         if release_gil is None:
             release_gil = self.__sdo_read_write_release_gil
         operation_start = time.perf_counter()
-        logger.info(
+        logger.debug(
             f"[ECAT_TRACE] SDO_READ_START reg={reg.identifier} idx=0x{reg.idx:04x} "
             f"sub={reg.subidx} thread={threading.current_thread().name}"
         )
         lock_start = time.perf_counter()
         self._lock.acquire()
-        logger.info(
-            f"[ECAT_TRACE] SDO_READ_LOCK reg={reg.identifier} "
-            f"wait={time.perf_counter() - lock_start:.6f}s "
-            f"thread={threading.current_thread().name}"
-        )
+        lock_wait = time.perf_counter() - lock_start
+        if lock_wait >= 0.1:
+            logger.warning(
+                f"[ECAT_TRACE] SDO_READ_LOCK_SLOW reg={reg.identifier} "
+                f"wait={lock_wait:.6f}s thread={threading.current_thread().name}"
+            )
         sdo_start = time.perf_counter()
         try:
             value: bytes = self.slave.sdo_read(
                 reg.idx, reg.subidx, buffer_size, complete_access, release_gil=release_gil
             )
-            logger.info(
-                f"[ECAT_TRACE] SDO_READ_OK reg={reg.identifier} idx=0x{reg.idx:04x} "
-                f"sdo={time.perf_counter() - sdo_start:.6f}s "
-                f"total={time.perf_counter() - operation_start:.6f}s "
-                f"thread={threading.current_thread().name}"
-            )
+            sdo_duration = time.perf_counter() - sdo_start
+            if sdo_duration >= 0.5:
+                logger.warning(
+                    f"[ECAT_TRACE] SDO_READ_SLOW reg={reg.identifier} idx=0x{reg.idx:04x} "
+                    f"sdo={sdo_duration:.6f}s "
+                    f"total={time.perf_counter() - operation_start:.6f}s "
+                    f"thread={threading.current_thread().name}"
+                )
         except (
             pysoem.SdoError,
             pysoem.MailboxError,

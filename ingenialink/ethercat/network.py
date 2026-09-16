@@ -1101,16 +1101,13 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         ecat_servos = [s for s in self.servos if isinstance(s, EthercatServo)]
         for s in ecat_servos:
             lock_start = time.perf_counter()
-            logger.info(
-                f"[ECAT_TRACE] RECOVERY_SERVO_LOCK_WAIT slave={s.slave_id} "
-                f"thread={threading.current_thread().name}"
-            )
             s._lock.acquire()
-            logger.info(
-                f"[ECAT_TRACE] RECOVERY_SERVO_LOCK_ACQUIRED slave={s.slave_id} "
-                f"wait={time.perf_counter() - lock_start:.6f}s "
-                f"thread={threading.current_thread().name}"
-            )
+            lock_wait = time.perf_counter() - lock_start
+            if lock_wait >= 0.1:
+                logger.warning(
+                    f"[ECAT_TRACE] RECOVERY_SERVO_LOCK_SLOW slave={s.slave_id} "
+                    f"wait={lock_wait:.6f}s thread={threading.current_thread().name}"
+                )
         try:
             # Clean start the master to try to recover the CoE communication.
             # This is needed to avoid the master state machine to be stuck in a wrong
