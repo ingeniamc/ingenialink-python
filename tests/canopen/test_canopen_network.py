@@ -1,4 +1,5 @@
 import platform
+from threading import Event, Thread
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import Mock
@@ -10,7 +11,12 @@ from summit_testing_framework.setups import (
     RackServiceConfigSpecifier,
 )
 
-from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
+from ingenialink.canopen.network import (
+    CanBaudrate,
+    CanDevice,
+    CanopenNetwork,
+    NetStatusListener,
+)
 from ingenialink.exceptions import ILError
 from ingenialink.network import NetState
 from tests.net_status_helpers import NetStatusRecorder
@@ -299,6 +305,7 @@ def test_recover_from_disconnection_does_not_restart_listener_when_reset_fails(
 
     assert virtual_network.recover_from_disconnection() is False
 
+    virtual_network.stop_status_listener.assert_not_called()
     virtual_network.start_status_listener.assert_not_called()
 
 
@@ -317,7 +324,59 @@ def test_recover_from_disconnection_does_not_restart_listener_when_servo_stays_d
 
     assert virtual_network.recover_from_disconnection() is False
 
+    virtual_network.stop_status_listener.assert_not_called()
     virtual_network.start_status_listener.assert_not_called()
+
+
+def test_net_status_listener_releases_connection_lock_before_recovery(
+    virtual_network, monkeypatch
+) -> None:
+    """Recovery must run after status polling releases the connection lock."""
+    node = SimpleNamespace(nmt=SimpleNamespace(timestamp=1.0))
+    virtual_network._connection = SimpleNamespace(nodes={20: node})
+    virtual_network.servos.append(SimpleNamespace(target=20, _net_state=NetState.DISCONNECTED))
+    listener = NetStatusListener(virtual_network)
+    monkeypatch.setattr("ingenialink.canopen.network.sleep", lambda _seconds: None)
+
+    timestamps = listener.process({})
+    lock_acquired = Event()
+
+    def recover() -> bool:
+        def acquire_connection_lock() -> None:
+            with virtual_network._connection_lock:
+                lock_acquired.set()
+
+        worker = Thread(target=acquire_connection_lock)
+        worker.start()
+        try:
+            assert lock_acquired.wait(timeout=1.0)
+        finally:
+            worker.join(timeout=1.0)
+        return False
+
+    virtual_network.recover_from_disconnection = recover
+
+    assert listener.process(timestamps) == {}
+
+
+def test_net_status_listener_discards_timestamps_after_connection_replacement(
+    virtual_network, monkeypatch
+) -> None:
+    """A new transport must start heartbeat tracking with a fresh timestamp map."""
+    old_node = SimpleNamespace(nmt=SimpleNamespace(timestamp=1.0))
+    new_node = SimpleNamespace(nmt=SimpleNamespace(timestamp=1.0))
+    virtual_network._connection = SimpleNamespace(nodes={20: old_node})
+    virtual_network.servos.append(SimpleNamespace(target=20, _net_state=NetState.CONNECTED))
+    virtual_network._notify_status = Mock()
+    listener = NetStatusListener(virtual_network)
+    monkeypatch.setattr("ingenialink.canopen.network.sleep", lambda _seconds: None)
+
+    timestamps = listener.process({})
+    with virtual_network._connection_lock:
+        virtual_network._connection = SimpleNamespace(nodes={20: new_node})
+
+    assert listener.process(timestamps) == {20: 1.0}
+    virtual_network._notify_status.assert_not_called()
 
 
 def test_scan_slaves_info_handles_bus_off_with_empty_slave_info(virtual_network) -> None:

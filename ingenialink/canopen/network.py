@@ -7,7 +7,7 @@ import tempfile
 import warnings
 from collections import OrderedDict
 from enum import Enum
-from threading import Lock, Thread, current_thread
+from threading import Lock, RLock, Thread, current_thread
 from time import sleep
 from typing import TYPE_CHECKING, Callable, Generic, Optional, Union, cast
 
@@ -198,6 +198,7 @@ class NetStatusListener(Thread):
         super().__init__()
         self.__network = network
         self.__stop = False
+        self.__connection: Optional[NetworkLib] = None
 
     def process(self, timestamps: dict[int, float]) -> dict[int, float]:
         """Process network status for all servos.
@@ -211,37 +212,55 @@ class NetStatusListener(Thread):
         Returns:
             Updated timestamps dictionary.
         """
-        if self.__network._connection is None:
-            return timestamps
-        for node_id, node in list(self.__network._connection.nodes.items()):
-            sleep(1.5)
-            nmt_master = cast("NmtMaster", node.nmt)
-            current_timestamp = nmt_master.timestamp
-            if current_timestamp is None:
-                continue
-            if node_id not in timestamps:
-                timestamps[node_id] = current_timestamp
-                continue
-            is_alive = current_timestamp != timestamps[node_id]
-            servo_state = self.__network.get_servo_state(node_id)
-            if is_alive:
-                if servo_state != NetState.CONNECTED:
-                    self.__network._transition_servo_state(node_id, NetDevEvt.ADDED)
-                new_timestamp = nmt_master.timestamp
-                #  NmtMaster.timestamp is None until the first heartbeat is received
-                if new_timestamp is not None:
-                    timestamps[node_id] = new_timestamp
-            elif servo_state == NetState.DISCONNECTED:
-                self.__network.recover_from_disconnection()
+        status_events: list[tuple[int, NetDevEvt]] = []
+        recovery_requested = False
+        with self.__network._connection_lock:
+            connection = self.__network._connection
+            if connection is None:
+                self.__connection = None
                 return {}
-            else:
-                self.__network._transition_servo_state(node_id, NetDevEvt.REMOVED)
+            if self.__connection is not connection:
+                self.__connection = connection
+                timestamps = {}
+
+            for node_id, node in list(connection.nodes.items()):
+                sleep(1.5)
+                nmt_master = cast("NmtMaster", node.nmt)
+                current_timestamp = nmt_master.timestamp
+                if current_timestamp is None:
+                    continue
+                if node_id not in timestamps:
+                    timestamps[node_id] = current_timestamp
+                    continue
+                is_alive = current_timestamp != timestamps[node_id]
+                servo_state = self.__network.get_servo_state(node_id)
+                if is_alive:
+                    if servo_state != NetState.CONNECTED:
+                        self.__network._set_servo_state(node_id, NetState.CONNECTED)
+                        status_events.append((node_id, NetDevEvt.ADDED))
+                    new_timestamp = nmt_master.timestamp
+                    #  NmtMaster.timestamp is None until the first heartbeat is received
+                    if new_timestamp is not None:
+                        timestamps[node_id] = new_timestamp
+                elif servo_state == NetState.DISCONNECTED:
+                    recovery_requested = True
+                    break
+                else:
+                    self.__network._set_servo_state(node_id, NetState.DISCONNECTED)
+                    status_events.append((node_id, NetDevEvt.REMOVED))
+
+        for node_id, event in status_events:
+            self.__network._notify_status(node_id, event)
+        if recovery_requested:
+            self.__network.recover_from_disconnection()
+            return {}
         return timestamps
 
     def run(self) -> None:
         """Check the network status."""
-        if self.__network._connection is None:
-            return
+        with self.__network._connection_lock:
+            if self.__network._connection is None:
+                return
         timestamps: dict[int, float] = {}
         while not self.__stop:
             try:
@@ -304,7 +323,9 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
         self.__channel: Union[int, str] = CAN_CHANNELS[self.__device][channel]
         self.__baudrate = baudrate.value
         self._connection: Optional[NetworkLib] = None
+        self._connection_lock = RLock()
         self.__listener_net_status: Optional[NetStatusListener] = None
+        self.__listener_lock = Lock()
         self.__recovery_lock = Lock()
 
         self.__connection_args = {
@@ -519,30 +540,33 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
             ILError: if the connection fails.
 
         """
-        if self._connection is None:
-            self._connection = canopen.Network()
-            if self.__device in [CanDevice.IXXAT.value, CanDevice.KVASER.value]:
-                self._connection.listeners.append(CustomListener())
-            try:
-                self._connection.connect(**self.__connection_args)
-            except CanError as e:
-                logger.error(f"Transceiver not found in network. Exception: {e}")
-                raise ILError(
-                    "Error connecting to the transceiver. "
-                    "Please verify the transceiver "
-                    "is properly connected."
-                )
-            except OSError as e:
-                logger.error(f"Transceiver drivers not properly installed. Exception: {e}")
-                if hasattr(e, "winerror") and e.winerror == 126:
-                    e.strerror = "Driver module not found. Drivers might not be properly installed."
-                raise ILError(e)
-            except Exception as e:
-                error_message = f"Failed trying to connect. Exception: {e}"
-                logger.error(error_message)
-                raise ILError(error_message)
-        else:
-            logger.info("Connection already established")
+        with self._connection_lock:
+            if self._connection is None:
+                self._connection = canopen.Network()
+                if self.__device in [CanDevice.IXXAT.value, CanDevice.KVASER.value]:
+                    self._connection.listeners.append(CustomListener())
+                try:
+                    self._connection.connect(**self.__connection_args)
+                except CanError as e:
+                    logger.error(f"Transceiver not found in network. Exception: {e}")
+                    raise ILError(
+                        "Error connecting to the transceiver. "
+                        "Please verify the transceiver "
+                        "is properly connected."
+                    )
+                except OSError as e:
+                    logger.error(f"Transceiver drivers not properly installed. Exception: {e}")
+                    if hasattr(e, "winerror") and e.winerror == 126:
+                        e.strerror = (
+                            "Driver module not found. Drivers might not be properly installed."
+                        )
+                    raise ILError(e)
+                except Exception as e:
+                    error_message = f"Failed trying to connect. Exception: {e}"
+                    logger.error(error_message)
+                    raise ILError(error_message)
+            else:
+                logger.info("Connection already established")
 
     def _teardown_connection(self) -> None:
         """Tears down a connection.
@@ -551,15 +575,18 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
         the network interface.
 
         """
-        if self._connection is None:
-            logger.warning("Can not disconnect. The connection is not established yet.")
-            return
-        try:
-            self._connection.disconnect()
-        except (VCIError, CANLIBOperationError, PcanCanOperationError) as e:
-            logger.error(f"An exception occurred during the teardown connection. Exception: {e}")
-        self._connection = None
-        logger.info("Tear down connection.")
+        with self._connection_lock:
+            if self._connection is None:
+                logger.warning("Can not disconnect. The connection is not established yet.")
+                return
+            try:
+                self._connection.disconnect()
+            except (VCIError, CANLIBOperationError, PcanCanOperationError) as e:
+                logger.error(
+                    f"An exception occurred during the teardown connection. Exception: {e}"
+                )
+            self._connection = None
+            logger.info("Tear down connection.")
 
     def _reset_connection(self) -> None:
         """Resets the established CANopen network.
@@ -567,41 +594,44 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
         Raises:
             ILError: If the connection was not established yet.
         """
-        if self._connection is None:
-            raise ILError("Can not reset connection. The connection is not established yet.")
-        old_connection = self._connection
-        servo_nodes = [
-            (servo, getattr(servo.node, "object_dictionary", None)) for servo in self.servos
-        ]
-        try:
-            for node_obj in old_connection.nodes.values():
-                cast("canopen.RemoteNode", node_obj).nmt.stop_node_guarding()  # type: ignore[no-untyped-call]
-        except Exception as e:
-            logger.error("Could not stop node guarding. Exception: %s", str(e))
-        old_bus = getattr(old_connection, "bus", None)
-        if old_bus is not None:
+        with self._connection_lock:
+            if self._connection is None:
+                raise ILError("Can not reset connection. The connection is not established yet.")
+            old_connection = self._connection
+            servo_nodes = [
+                (servo, getattr(servo.node, "object_dictionary", None)) for servo in self.servos
+            ]
             try:
-                old_bus.flush_tx_buffer()
-                logger.info("Bus transmit buffer flushed")
-            except NotImplementedError:
-                logger.info("Bus transmit buffer flushing is not supported")
+                for node_obj in old_connection.nodes.values():
+                    cast("canopen.RemoteNode", node_obj).nmt.stop_node_guarding()  # type: ignore[no-untyped-call]
             except Exception as e:
-                logger.warning("Could not flush bus transmit buffer. Exception: %s", str(e))
-        try:
-            old_connection.disconnect()
-        except BaseException as e:
-            logger.error(f"Disconnection failed. Exception: {e}")
-        finally:
-            self._connection = None
+                logger.error("Could not stop node guarding. Exception: %s", str(e))
+            old_bus = getattr(old_connection, "bus", None)
+            if old_bus is not None:
+                try:
+                    old_bus.flush_tx_buffer()
+                    logger.info("Bus transmit buffer flushed")
+                except NotImplementedError:
+                    logger.info("Bus transmit buffer flushing is not supported")
+                except Exception as e:
+                    logger.warning("Could not flush bus transmit buffer. Exception: %s", str(e))
+            try:
+                old_connection.disconnect()
+            except BaseException as e:
+                logger.error(f"Disconnection failed. Exception: {e}")
+            finally:
+                self._connection = None
 
-        self._setup_connection()
-        if self._connection is None:
-            raise ILError("Connection has not been established")
+            self._setup_connection()
+            if self._connection is None:
+                raise ILError("Connection has not been established")
 
-        for servo, object_dictionary in servo_nodes:
-            node = self._connection.add_node(int(servo.target), object_dictionary=object_dictionary)
-            servo.node = node
-            node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
+            for servo, object_dictionary in servo_nodes:
+                node = self._connection.add_node(
+                    int(servo.target), object_dictionary=object_dictionary
+                )
+                servo.node = node
+                node.nmt.start_node_guarding(self.NODE_GUARDING_PERIOD_S)
 
     def load_firmware(
         self,
@@ -1108,29 +1138,39 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
         Returns:
             true if the listener has been started, False otherwise.
         """
-        return self.__listener_net_status is not None
+        with self.__listener_lock:
+            return self.__listener_net_status is not None
 
     def start_status_listener(self) -> None:
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""
-        if self.__listener_net_status is None:
+        with self.__listener_lock:
+            if self.__listener_net_status is not None:
+                return
             listener = NetStatusListener(self)
-            listener.start()
             self.__listener_net_status = listener
+            try:
+                listener.start()
+            except Exception:
+                self.__listener_net_status = None
+                raise
 
     def stop_status_listener(self) -> None:
         """Stops the NetStatusListener from listening to the drive."""
-        if self._connection is not None:
-            try:
-                for node_obj in self._connection.nodes.values():
-                    cast("canopen.RemoteNode", node_obj).nmt.stop_node_guarding()  # type: ignore[no-untyped-call]
-            except Exception as e:
-                logger.error("Could not stop node guarding. Exception: %s", str(e))
-        listener = self.__listener_net_status
-        if listener is not None:
-            listener.stop()
-            if listener is not current_thread():
-                listener.join()
-        self.__listener_net_status = None
+        with self.__listener_lock:
+            listener = self.__listener_net_status
+            if listener is not None:
+                listener.stop()
+                if listener is not current_thread():
+                    listener.join()
+                self.__listener_net_status = None
+
+        with self._connection_lock:
+            if self._connection is not None:
+                try:
+                    for node_obj in self._connection.nodes.values():
+                        cast("canopen.RemoteNode", node_obj).nmt.stop_node_guarding()  # type: ignore[no-untyped-call]
+                except Exception as e:
+                    logger.error("Could not stop node guarding. Exception: %s", str(e))
 
     @property
     def device(self) -> str:
@@ -1174,33 +1214,27 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
             logger.info("CANopen recovery is already in progress")
             return False
 
-        listener_was_started = self.is_listener_started()
-        recovery_succeeded = False
         try:
-            self.stop_status_listener()
-            self._reset_connection()
-            for attempt in range(self.MAX_NUMBER_SERVO_ALIVE_ATTEMPTS):
-                all_servos_alive = all(s.is_alive() for s in self.servos)
-                if all_servos_alive:
-                    recovery_succeeded = True
-                    break
-                sleep(0.1)
-                if attempt == self.MAX_NUMBER_SERVO_ALIVE_ATTEMPTS - 1:
-                    logger.warning(
-                        "CANopen communication recovered, but some servos are still disconnected."
-                    )
-                    return False
+            with self._connection_lock:
+                self._reset_connection()
+                for attempt in range(self.MAX_NUMBER_SERVO_ALIVE_ATTEMPTS):
+                    all_servos_alive = all(s.is_alive() for s in self.servos)
+                    if all_servos_alive:
+                        break
+                    sleep(0.1)
+                    if attempt == self.MAX_NUMBER_SERVO_ALIVE_ATTEMPTS - 1:
+                        logger.warning(
+                            "CANopen communication recovered, but some servos are still "
+                            "disconnected."
+                        )
+                        return False
             logger.info("CANopen communication recovered.")
             return True
         except Exception as e:
             logger.warning(f"Failed to recover CANopen communication: {e}")
             return False
         finally:
-            try:
-                if listener_was_started and recovery_succeeded and self._connection is not None:
-                    self.start_status_listener()
-            finally:
-                self.__recovery_lock.release()
+            self.__recovery_lock.release()
 
     def get_available_devices(self) -> list[tuple[str, Union[str, int]]]:
         """Get the available CAN devices and their channels.
