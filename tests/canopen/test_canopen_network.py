@@ -1,4 +1,5 @@
 import platform
+from threading import Event, Thread
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from unittest.mock import Mock
@@ -10,7 +11,12 @@ from summit_testing_framework.setups import (
     RackServiceConfigSpecifier,
 )
 
-from ingenialink.canopen.network import CanBaudrate, CanDevice, CanopenNetwork
+from ingenialink.canopen.network import (
+    CanBaudrate,
+    CanDevice,
+    CanopenNetwork,
+    NetStatusListener,
+)
 from ingenialink.exceptions import ILError
 from ingenialink.network import NetState
 from tests.net_status_helpers import NetStatusRecorder
@@ -207,6 +213,170 @@ def test_recover_from_disconnection(net: "CanopenNetwork", servo: "CanopenServo"
     # Verify we can still communicate with the servo after recovery
     new_fw_version = servo.read("DRV_ID_SOFTWARE_VERSION")
     assert new_fw_version == fw_version, "Firmware version should remain the same after recovery"
+
+
+def test_reset_connection_recreates_transport_and_preserves_node_dictionary(
+    virtual_network,
+) -> None:
+    """Test that resetting the connection recreates the transport and
+    preserves the node dictionary."""
+    call_order = []
+    old_node = SimpleNamespace(
+        object_dictionary=object(),
+        nmt=SimpleNamespace(
+            stop_node_guarding=Mock(side_effect=lambda: call_order.append("stop_guarding"))
+        ),
+    )
+    old_bus = SimpleNamespace(
+        flush_tx_buffer=Mock(side_effect=lambda: call_order.append("flush_tx_buffer"))
+    )
+    new_node = SimpleNamespace(nmt=SimpleNamespace(start_node_guarding=Mock()))
+    old_connection = SimpleNamespace(
+        nodes={20: old_node},
+        bus=old_bus,
+        disconnect=Mock(side_effect=lambda: call_order.append("disconnect")),
+    )
+    new_connection = SimpleNamespace(add_node=Mock(return_value=new_node))
+    servo = SimpleNamespace(target=20, node=old_node)
+    virtual_network.servos.append(servo)
+    virtual_network._connection = old_connection
+    virtual_network._setup_connection = lambda: setattr(
+        virtual_network, "_connection", new_connection
+    )
+
+    virtual_network._reset_connection()
+
+    assert call_order == ["stop_guarding", "flush_tx_buffer", "disconnect"]
+    old_node.nmt.stop_node_guarding.assert_called_once_with()
+    old_bus.flush_tx_buffer.assert_called_once_with()
+    old_connection.disconnect.assert_called_once_with()
+    new_connection.add_node.assert_called_once_with(
+        20, object_dictionary=old_node.object_dictionary
+    )
+    new_node.nmt.start_node_guarding.assert_called_once_with(virtual_network.NODE_GUARDING_PERIOD_S)
+    assert servo.node is new_node
+
+
+def test_reset_connection_continues_when_bus_flush_is_unsupported(virtual_network) -> None:
+    """Test that resetting the connection continues even if the bus flush is unsupported."""
+    old_node = SimpleNamespace(
+        object_dictionary=object(),
+        nmt=SimpleNamespace(stop_node_guarding=Mock()),
+    )
+    old_connection = SimpleNamespace(
+        nodes={20: old_node},
+        bus=SimpleNamespace(flush_tx_buffer=Mock(side_effect=NotImplementedError)),
+        disconnect=Mock(),
+    )
+    new_connection = SimpleNamespace(
+        add_node=Mock(return_value=SimpleNamespace(nmt=SimpleNamespace(start_node_guarding=Mock())))
+    )
+    virtual_network.servos.append(SimpleNamespace(target=20, node=old_node))
+    virtual_network._connection = old_connection
+    virtual_network._setup_connection = lambda: setattr(
+        virtual_network, "_connection", new_connection
+    )
+
+    virtual_network._reset_connection()
+
+    old_connection.disconnect.assert_called_once_with()
+
+
+def test_recover_from_disconnection_does_not_reenter(virtual_network) -> None:
+    """Test that recover_from_disconnection does not reenter if the
+    recovery lock is already held."""
+    recovery_lock = virtual_network._CanopenNetwork__recovery_lock
+    assert recovery_lock.acquire(blocking=False)
+    try:
+        assert virtual_network.recover_from_disconnection() is False
+    finally:
+        recovery_lock.release()
+
+
+def test_recover_from_disconnection_does_not_restart_listener_when_reset_fails(
+    virtual_network,
+) -> None:
+    """Do not restart the listener when connection reset fails."""
+    virtual_network._connection = SimpleNamespace()
+    virtual_network.is_listener_started = lambda: True
+    virtual_network.stop_status_listener = Mock()
+    virtual_network._reset_connection = Mock(side_effect=RuntimeError("reset failed"))
+    virtual_network.start_status_listener = Mock()
+
+    assert virtual_network.recover_from_disconnection() is False
+
+    virtual_network.stop_status_listener.assert_not_called()
+    virtual_network.start_status_listener.assert_not_called()
+
+
+def test_recover_from_disconnection_does_not_restart_listener_when_servo_stays_down(
+    virtual_network, monkeypatch
+) -> None:
+    """Do not restart the listener when a recovered servo remains disconnected."""
+    virtual_network._connection = SimpleNamespace()
+    virtual_network.servos.append(SimpleNamespace(is_alive=lambda: False))
+    virtual_network.MAX_NUMBER_SERVO_ALIVE_ATTEMPTS = 1
+    virtual_network.is_listener_started = lambda: True
+    virtual_network.stop_status_listener = Mock()
+    virtual_network._reset_connection = Mock()
+    virtual_network.start_status_listener = Mock()
+    monkeypatch.setattr("ingenialink.canopen.network.sleep", lambda _seconds: None)
+
+    assert virtual_network.recover_from_disconnection() is False
+
+    virtual_network.stop_status_listener.assert_not_called()
+    virtual_network.start_status_listener.assert_not_called()
+
+
+def test_net_status_listener_releases_connection_lock_before_recovery(
+    virtual_network, monkeypatch
+) -> None:
+    """Recovery must run after status polling releases the connection lock."""
+    node = SimpleNamespace(nmt=SimpleNamespace(timestamp=1.0))
+    virtual_network._connection = SimpleNamespace(nodes={20: node})
+    virtual_network.servos.append(SimpleNamespace(target=20, _net_state=NetState.DISCONNECTED))
+    listener = NetStatusListener(virtual_network)
+    monkeypatch.setattr("ingenialink.canopen.network.sleep", lambda _seconds: None)
+
+    timestamps = listener.process({})
+    lock_acquired = Event()
+
+    def recover() -> bool:
+        def acquire_connection_lock() -> None:
+            with virtual_network._connection_lock:
+                lock_acquired.set()
+
+        worker = Thread(target=acquire_connection_lock)
+        worker.start()
+        try:
+            assert lock_acquired.wait(timeout=1.0)
+        finally:
+            worker.join(timeout=1.0)
+        return False
+
+    virtual_network.recover_from_disconnection = recover
+
+    assert listener.process(timestamps) == {}
+
+
+def test_net_status_listener_discards_timestamps_after_connection_replacement(
+    virtual_network, monkeypatch
+) -> None:
+    """A new transport must start heartbeat tracking with a fresh timestamp map."""
+    old_node = SimpleNamespace(nmt=SimpleNamespace(timestamp=1.0))
+    new_node = SimpleNamespace(nmt=SimpleNamespace(timestamp=1.0))
+    virtual_network._connection = SimpleNamespace(nodes={20: old_node})
+    virtual_network.servos.append(SimpleNamespace(target=20, _net_state=NetState.CONNECTED))
+    virtual_network._notify_status = Mock()
+    listener = NetStatusListener(virtual_network)
+    monkeypatch.setattr("ingenialink.canopen.network.sleep", lambda _seconds: None)
+
+    timestamps = listener.process({})
+    with virtual_network._connection_lock:
+        virtual_network._connection = SimpleNamespace(nodes={20: new_node})
+
+    assert listener.process(timestamps) == {20: 1.0}
+    virtual_network._notify_status.assert_not_called()
 
 
 def test_scan_slaves_info_handles_bus_off_with_empty_slave_info(virtual_network) -> None:

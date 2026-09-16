@@ -272,4 +272,7 @@ class CanopenServo(CanopenServoBase):
     @node.setter
     def node(self, node: canopen.RemoteNode) -> None:
         """Remote node of the servo."""
+        if node is self.__node:
+            return
+        node.emcy.add_callback(self._on_emcy)
         self.__node = node
