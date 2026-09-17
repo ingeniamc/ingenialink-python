@@ -149,7 +149,22 @@ class NetStatusListener(Thread):
         (``slave_exists=False``), because the gate is ``servo_state==DISCONNECTED``
         rather than ``is_servo_alive``.
         """
-        self._ecat_master.read_state()
+        read_state_start = time.perf_counter()
+        try:
+            self._ecat_master.read_state()
+        except Exception as exception:
+            logger.warning(
+                f"[ECAT_TRACE] NET_STATUS_READ_STATE_ERROR "
+                f"duration={time.perf_counter() - read_state_start:.6f}s "
+                f"error={exception!r} thread={threading.current_thread().name}"
+            )
+            raise
+        read_state_duration = time.perf_counter() - read_state_start
+        if read_state_duration >= 0.5:
+            logger.warning(
+                f"[ECAT_TRACE] NET_STATUS_READ_STATE_SLOW "
+                f"duration={read_state_duration:.6f}s thread={threading.current_thread().name}"
+            )
 
         # Phase 1: per-slave disconnection detection
         for servo in self.__network.servos:
@@ -531,9 +546,28 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
 
         if release_gil is None:
             release_gil = self.__gil_release_config.config_init
+        config_start = time.perf_counter()
+        lock_start = time.perf_counter()
         self._lock.acquire()
-        nodes = self._ecat_master.config_init(release_gil=release_gil)
-        self._lock.release()
+        lock_wait = time.perf_counter() - lock_start
+        try:
+            nodes = self._ecat_master.config_init(release_gil=release_gil)
+        except Exception as exception:
+            logger.warning(
+                f"[ECAT_TRACE] CONFIG_INIT_ERROR "
+                f"duration={time.perf_counter() - config_start:.6f}s "
+                f"lock_wait={lock_wait:.6f}s error={exception!r} "
+                f"thread={threading.current_thread().name}"
+            )
+            raise
+        finally:
+            self._lock.release()
+        config_duration = time.perf_counter() - config_start
+        if config_duration >= 0.5:
+            logger.warning(
+                f"[ECAT_TRACE] CONFIG_INIT_SLOW duration={config_duration:.6f}s "
+                f"lock_wait={lock_wait:.6f}s thread={threading.current_thread().name}"
+            )
         if len(self.servos):
             self._change_nodes_state(
                 [servo for servo in self.servos if servo.slave_exists], SlaveState.PREOP_STATE
@@ -733,16 +767,36 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             release_gil = self.__gil_release_config.send_receive_processdata
         for servo in self.servos:
             servo.generate_pdo_outputs()
+        processdata_start = time.perf_counter()
+        lock_start = time.perf_counter()
         self._lock.acquire()
+        lock_wait = time.perf_counter() - lock_start
         if self._overlapping_io_map:
+            send_start = time.perf_counter()
             self._ecat_master.send_overlap_processdata(release_gil=release_gil)
         else:
+            send_start = time.perf_counter()
             self._ecat_master.send_processdata(release_gil=release_gil)
+        send_duration = time.perf_counter() - send_start
+        receive_start = time.perf_counter()
         processdata_wkc = self._ecat_master.receive_processdata(
             timeout=int(timeout * 1_000_000), release_gil=release_gil
         )
+        receive_duration = time.perf_counter() - receive_start
         self._lock.release()
+        processdata_duration = time.perf_counter() - processdata_start
+        if processdata_duration >= 0.5:
+            logger.warning(
+                f"[ECAT_TRACE] PROCESSDATA_SLOW duration={processdata_duration:.6f}s "
+                f"lock_wait={lock_wait:.6f}s send={send_duration:.6f}s "
+                f"receive={receive_duration:.6f}s thread={threading.current_thread().name}"
+            )
         if processdata_wkc != self.EXPECTED_WKC_PROCESS_DATA * (len(self.servos)):
+            logger.warning(
+                f"[ECAT_TRACE] PROCESSDATA_WKC_ERROR duration={processdata_duration:.6f}s "
+                f"expected={self.EXPECTED_WKC_PROCESS_DATA * len(self.servos)} "
+                f"actual={processdata_wkc} thread={threading.current_thread().name}"
+            )
             self._ecat_master.read_state()
             servos_state_msg = ""
             for servo in self.servos:
@@ -823,15 +877,39 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             return False
 
         node_list = nodes if isinstance(nodes, list) else [nodes]
+        read_state_start = time.perf_counter()
         self._ecat_master.read_state()
-
-        return all(
-            (drive.slave_exists)
-            and (
-                target_state == drive.slave.state_check(target_state, ECAT_STATE_CHANGE_TIMEOUT_US)
+        read_state_duration = time.perf_counter() - read_state_start
+        if read_state_duration >= 0.5:
+            logger.warning(
+                f"[ECAT_TRACE] READ_STATE_SLOW duration={read_state_duration:.6f}s "
+                f"thread={threading.current_thread().name}"
             )
-            for drive in node_list
-        )
+
+        for drive in node_list:
+            if not drive.slave_exists:
+                return False
+            state_check_start = time.perf_counter()
+            try:
+                state = drive.slave.state_check(target_state, ECAT_STATE_CHANGE_TIMEOUT_US)
+            except Exception as exception:
+                logger.warning(
+                    f"[ECAT_TRACE] STATE_CHECK_ERROR slave={drive.slave_id} "
+                    f"target={target_state} "
+                    f"duration={time.perf_counter() - state_check_start:.6f}s "
+                    f"error={exception!r} thread={threading.current_thread().name}"
+                )
+                raise
+            state_check_duration = time.perf_counter() - state_check_start
+            if state_check_duration >= 0.5:
+                logger.warning(
+                    f"[ECAT_TRACE] STATE_CHECK_SLOW slave={drive.slave_id} "
+                    f"target={target_state} result={state} duration={state_check_duration:.6f}s "
+                    f"thread={threading.current_thread().name}"
+                )
+            if target_state != state:
+                return False
+        return True
 
     def start_status_listener(self) -> None:
         """Start monitoring network events (CONNECTION/DISCONNECTION)."""

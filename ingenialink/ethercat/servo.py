@@ -140,7 +140,23 @@ class EthercatServo(EthercatServoBase):
 
         """
         self.slave.state = state.value
-        self.slave.write_state()
+        state_start = time.perf_counter()
+        try:
+            self.slave.write_state()
+        except Exception as exception:
+            logger.warning(
+                f"[ECAT_TRACE] WRITE_STATE_ERROR slave={self.slave_id} "
+                f"target={state.name} duration={time.perf_counter() - state_start:.6f}s "
+                f"error={exception!r} thread={threading.current_thread().name}"
+            )
+            raise
+        state_duration = time.perf_counter() - state_start
+        if state_duration >= 0.5:
+            logger.warning(
+                f"[ECAT_TRACE] WRITE_STATE_SLOW slave={self.slave_id} "
+                f"target={state.name} duration={state_duration:.6f}s "
+                f"thread={threading.current_thread().name}"
+            )
         self._state_requested_event_publisher.notify(state)
 
     @property  # type: ignore[misc]
@@ -265,11 +281,32 @@ class EthercatServo(EthercatServoBase):
     ) -> None:
         if release_gil is None:
             release_gil = self.__sdo_read_write_release_gil
+        operation_start = time.perf_counter()
+        logger.debug(
+            f"[ECAT_TRACE] SDO_WRITE_START reg={reg.identifier} idx=0x{reg.idx:04x} "
+            f"sub={reg.subidx} thread={threading.current_thread().name}"
+        )
+        lock_start = time.perf_counter()
         self._lock.acquire()
+        lock_wait = time.perf_counter() - lock_start
+        if lock_wait >= 0.1:
+            logger.warning(
+                f"[ECAT_TRACE] SDO_WRITE_LOCK_SLOW reg={reg.identifier} "
+                f"wait={lock_wait:.6f}s thread={threading.current_thread().name}"
+            )
+        sdo_start = time.perf_counter()
         try:
             self.slave.sdo_write(
                 reg.idx, reg.subidx, data, complete_access, release_gil=release_gil
             )
+            sdo_duration = time.perf_counter() - sdo_start
+            if sdo_duration >= 0.5:
+                logger.warning(
+                    f"[ECAT_TRACE] SDO_WRITE_SLOW reg={reg.identifier} idx=0x{reg.idx:04x} "
+                    f"sdo={sdo_duration:.6f}s "
+                    f"total={time.perf_counter() - operation_start:.6f}s "
+                    f"thread={threading.current_thread().name}"
+                )
         except (
             pysoem.SdoError,
             pysoem.MailboxError,
@@ -277,6 +314,12 @@ class EthercatServo(EthercatServoBase):
             pysoem.WkcError,
             ILIOError,
         ) as e:
+            logger.warning(
+                f"[ECAT_TRACE] SDO_WRITE_ERROR reg={reg.identifier} idx=0x{reg.idx:04x} "
+                f"sdo={time.perf_counter() - sdo_start:.6f}s "
+                f"total={time.perf_counter() - operation_start:.6f}s "
+                f"error={e!r} thread={threading.current_thread().name}"
+            )
             self._handle_sdo_exception(reg, SdoOperationMsg.WRITE, e)
         except (AttributeError, ILError) as e:
             raise ILIOError(
