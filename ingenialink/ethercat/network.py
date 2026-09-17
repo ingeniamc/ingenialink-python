@@ -865,13 +865,18 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         return self._check_node_state(nodes, target_state.value)
 
     def _check_node_state(
-        self, nodes: Union["EthercatServo", list["EthercatServo"]], target_state: int
+        self,
+        nodes: Union["EthercatServo", list["EthercatServo"]],
+        target_state: int,
+        *,
+        trace_id: Optional[str] = None,
     ) -> bool:
         """Check ECAT state for all nodes in list.
 
         Args:
             nodes: target node or list of nodes
             target_state: target ECAT state
+            trace_id: recovery trace identifier, when called from recovery.
 
         Returns:
             True if all nodes reached the target state, else False.
@@ -880,6 +885,14 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             return False
 
         node_list = nodes if isinstance(nodes, list) else [nodes]
+        state_check_start = time.perf_counter()
+        if trace_id is not None:
+            logger.warning(
+                f"[ECAT_TRACE] STATE_CHECK_START target={target_state} "
+                f"nodes={[drive.slave_id for drive in node_list]} "
+                f"trace_id={trace_id} wall_ns={time.time_ns()} "
+                f"thread={threading.current_thread().name}"
+            )
         read_state_start = time.perf_counter()
         self._ecat_master.read_state()
         read_state_duration = time.perf_counter() - read_state_start
@@ -888,30 +901,78 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
                 f"[ECAT_TRACE] READ_STATE_SLOW duration={read_state_duration:.6f}s "
                 f"thread={threading.current_thread().name}"
             )
+        if trace_id is not None:
+            logger.warning(
+                f"[ECAT_TRACE] STATE_CHECK_READ_STATE_END "
+                f"phase_duration={read_state_duration:.6f}s "
+                f"total={time.perf_counter() - state_check_start:.6f}s "
+                f"trace_id={trace_id} wall_ns={time.time_ns()} "
+                f"thread={threading.current_thread().name}"
+            )
 
         for drive in node_list:
             if not drive.slave_exists:
+                if trace_id is not None:
+                    logger.warning(
+                        f"[ECAT_TRACE] STATE_CHECK_END result=False reason=missing_slave "
+                        f"slave={drive.slave_id} "
+                        f"duration={time.perf_counter() - state_check_start:.6f}s "
+                        f"trace_id={trace_id} wall_ns={time.time_ns()} "
+                        f"thread={threading.current_thread().name}"
+                    )
                 return False
-            state_check_start = time.perf_counter()
+            node_state_check_start = time.perf_counter()
+            if trace_id is not None:
+                logger.warning(
+                    f"[ECAT_TRACE] STATE_CHECK_NODE_START slave={drive.slave_id} "
+                    f"target={target_state} total={time.perf_counter() - state_check_start:.6f}s "
+                    f"trace_id={trace_id} wall_ns={time.time_ns()} "
+                    f"thread={threading.current_thread().name}"
+                )
             try:
                 state = drive.slave.state_check(target_state, ECAT_STATE_CHANGE_TIMEOUT_US)
             except Exception as exception:
                 logger.warning(
                     f"[ECAT_TRACE] STATE_CHECK_ERROR slave={drive.slave_id} "
                     f"target={target_state} "
-                    f"duration={time.perf_counter() - state_check_start:.6f}s "
-                    f"error={exception!r} thread={threading.current_thread().name}"
+                    f"duration={time.perf_counter() - node_state_check_start:.6f}s "
+                    f"error={exception!r} trace_id={trace_id} wall_ns={time.time_ns()} "
+                    f"thread={threading.current_thread().name}"
                 )
                 raise
-            state_check_duration = time.perf_counter() - state_check_start
+            state_check_duration = time.perf_counter() - node_state_check_start
             if state_check_duration >= 0.5:
                 logger.warning(
                     f"[ECAT_TRACE] STATE_CHECK_SLOW slave={drive.slave_id} "
                     f"target={target_state} result={state} duration={state_check_duration:.6f}s "
+                    f"trace_id={trace_id} wall_ns={time.time_ns()} "
+                    f"thread={threading.current_thread().name}"
+                )
+            if trace_id is not None:
+                logger.warning(
+                    f"[ECAT_TRACE] STATE_CHECK_NODE_END slave={drive.slave_id} state={state} "
+                    f"phase_duration={state_check_duration:.6f}s "
+                    f"total={time.perf_counter() - state_check_start:.6f}s "
+                    f"trace_id={trace_id} wall_ns={time.time_ns()} "
                     f"thread={threading.current_thread().name}"
                 )
             if target_state != state:
+                if trace_id is not None:
+                    logger.warning(
+                        f"[ECAT_TRACE] STATE_CHECK_END result=False reason=wrong_state "
+                        f"slave={drive.slave_id} state={state} "
+                        f"duration={time.perf_counter() - state_check_start:.6f}s "
+                        f"trace_id={trace_id} wall_ns={time.time_ns()} "
+                        f"thread={threading.current_thread().name}"
+                    )
                 return False
+        if trace_id is not None:
+            logger.warning(
+                f"[ECAT_TRACE] STATE_CHECK_END result=True "
+                f"duration={time.perf_counter() - state_check_start:.6f}s "
+                f"trace_id={trace_id} wall_ns={time.time_ns()} "
+                f"thread={threading.current_thread().name}"
+            )
         return True
 
     def start_status_listener(self) -> None:
@@ -1201,23 +1262,38 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         ecat_servos = [s for s in self.servos if isinstance(s, EthercatServo)]
         for s in ecat_servos:
             lock_start = time.perf_counter()
+            logger.warning(
+                f"[ECAT_TRACE] RECOVERY_SERVO_LOCK_START slave={s.slave_id} "
+                f"total={time.perf_counter() - recovery_start:.6f}s "
+                f"trace_id={trace_id} wall_ns={time.time_ns()} "
+                f"thread={threading.current_thread().name}"
+            )
             s._lock.acquire()
             lock_wait = time.perf_counter() - lock_start
-            if lock_wait >= 0.1:
-                logger.warning(
-                    f"[ECAT_TRACE] RECOVERY_SERVO_LOCK_SLOW slave={s.slave_id} "
-                    f"wait={lock_wait:.6f}s trace_id={trace_id} wall_ns={time.time_ns()} "
-                    f"thread={threading.current_thread().name}"
-                )
+            logger.warning(
+                f"[ECAT_TRACE] RECOVERY_SERVO_LOCK_END slave={s.slave_id} "
+                f"wait={lock_wait:.6f}s total={time.perf_counter() - recovery_start:.6f}s "
+                f"trace_id={trace_id} wall_ns={time.time_ns()} "
+                f"thread={threading.current_thread().name}"
+            )
         try:
             # Clean start the master to try to recover the CoE communication.
             # This is needed to avoid the master state machine to be stuck in a wrong
             # state after a disconnection.
+            master_lock_start = time.perf_counter()
+            logger.warning(
+                f"[ECAT_TRACE] RECOVERY_MASTER_LOCK_START "
+                f"total={time.perf_counter() - recovery_start:.6f}s "
+                f"trace_id={trace_id} wall_ns={time.time_ns()} "
+                f"thread={threading.current_thread().name}"
+            )
             self._lock.acquire()
             try:
+                master_lock_wait = time.perf_counter() - master_lock_start
                 restart_start = time.perf_counter()
                 logger.warning(
                     f"[ECAT_TRACE] RECOVERY_MASTER_RESTART_START "
+                    f"lock_wait={master_lock_wait:.6f}s "
                     f"total={time.perf_counter() - recovery_start:.6f}s "
                     f"trace_id={trace_id} wall_ns={time.time_ns()} "
                     f"thread={threading.current_thread().name}"
@@ -1250,8 +1326,15 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             log_message = (
                 "The CoE communication cannot be recovered. No slaves where detected in the network"
             )
+            logger.warning(
+                f"[ECAT_TRACE] RECOVERY_END success=False reason=no_slaves "
+                f"duration={time.perf_counter() - recovery_start:.6f}s trace_id={trace_id} "
+                f"wall_ns={time.time_ns()} thread={threading.current_thread().name}"
+            )
             return False
-        all_drives_in_preop = self._check_node_state(self.servos, pysoem.PREOP_STATE)
+        all_drives_in_preop = self._check_node_state(
+            self.servos, pysoem.PREOP_STATE, trace_id=trace_id
+        )
         if all_drives_in_preop:
             log_message = "CoE communication recovered."
         else:
