@@ -547,6 +547,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         if release_gil is None:
             release_gil = self.__gil_release_config.config_init
         config_start = time.perf_counter()
+        trace_id = f"{threading.get_ident()}-{time.monotonic_ns()}"
         lock_start = time.perf_counter()
         self._lock.acquire()
         lock_wait = time.perf_counter() - lock_start
@@ -557,6 +558,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
                 f"[ECAT_TRACE] CONFIG_INIT_ERROR "
                 f"duration={time.perf_counter() - config_start:.6f}s "
                 f"lock_wait={lock_wait:.6f}s error={exception!r} "
+                f"trace_id={trace_id} wall_ns={time.time_ns()} "
                 f"thread={threading.current_thread().name}"
             )
             raise
@@ -566,7 +568,8 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         if config_duration >= 0.5:
             logger.warning(
                 f"[ECAT_TRACE] CONFIG_INIT_SLOW duration={config_duration:.6f}s "
-                f"lock_wait={lock_wait:.6f}s thread={threading.current_thread().name}"
+                f"lock_wait={lock_wait:.6f}s trace_id={trace_id} wall_ns={time.time_ns()} "
+                f"thread={threading.current_thread().name}"
             )
         if len(self.servos):
             self._change_nodes_state(
@@ -1157,18 +1160,37 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
 
         """
         recovery_start = time.perf_counter()
-        logger.warning(f"[ECAT_TRACE] RECOVERY_START thread={threading.current_thread().name}")
-        self._ecat_master.read_state()
+        trace_id = f"{threading.get_ident()}-{time.monotonic_ns()}"
+        logger.warning(
+            f"[ECAT_TRACE] RECOVERY_START trace_id={trace_id} wall_ns={time.time_ns()} "
+            f"thread={threading.current_thread().name}"
+        )
+        read_state_start = time.perf_counter()
+        try:
+            self._ecat_master.read_state()
+        except Exception as exception:
+            logger.warning(
+                f"[ECAT_TRACE] RECOVERY_READ_STATE_ERROR "
+                f"phase_duration={time.perf_counter() - read_state_start:.6f}s "
+                f"total={time.perf_counter() - recovery_start:.6f}s "
+                f"trace_id={trace_id} wall_ns={time.time_ns()} error={exception!r} "
+                f"thread={threading.current_thread().name}"
+            )
+            raise
+        read_state_duration = time.perf_counter() - read_state_start
         logger.warning(
             f"[ECAT_TRACE] RECOVERY_READ_STATE "
-            f"duration={time.perf_counter() - recovery_start:.6f}s "
-            f"state={self._ecat_master.state} thread={threading.current_thread().name}"
+            f"phase_duration={read_state_duration:.6f}s "
+            f"total={time.perf_counter() - recovery_start:.6f}s state={self._ecat_master.state} "
+            f"trace_id={trace_id} wall_ns={time.time_ns()} "
+            f"thread={threading.current_thread().name}"
         )
         all_servos_have_refs = all(s.slave_exists for s in self.servos)
         if self._ecat_master.state == pysoem.PREOP_STATE and all_servos_have_refs:
             logger.warning(
                 f"[ECAT_TRACE] RECOVERY_ALREADY_PREOP "
                 f"duration={time.perf_counter() - recovery_start:.6f}s "
+                f"trace_id={trace_id} wall_ns={time.time_ns()} "
                 f"thread={threading.current_thread().name}"
             )
             return True
@@ -1184,7 +1206,8 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             if lock_wait >= 0.1:
                 logger.warning(
                     f"[ECAT_TRACE] RECOVERY_SERVO_LOCK_SLOW slave={s.slave_id} "
-                    f"wait={lock_wait:.6f}s thread={threading.current_thread().name}"
+                    f"wait={lock_wait:.6f}s trace_id={trace_id} wall_ns={time.time_ns()} "
+                    f"thread={threading.current_thread().name}"
                 )
         try:
             # Clean start the master to try to recover the CoE communication.
@@ -1192,25 +1215,32 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             # state after a disconnection.
             self._lock.acquire()
             try:
+                restart_start = time.perf_counter()
                 logger.warning(
                     f"[ECAT_TRACE] RECOVERY_MASTER_RESTART_START "
-                    f"duration={time.perf_counter() - recovery_start:.6f}s "
+                    f"total={time.perf_counter() - recovery_start:.6f}s "
+                    f"trace_id={trace_id} wall_ns={time.time_ns()} "
                     f"thread={threading.current_thread().name}"
                 )
                 self._ecat_master.close()
                 self._ecat_master.open(self.interface_name)
                 logger.warning(
                     f"[ECAT_TRACE] RECOVERY_MASTER_RESTART_END "
-                    f"duration={time.perf_counter() - recovery_start:.6f}s "
+                    f"phase_duration={time.perf_counter() - restart_start:.6f}s "
+                    f"total={time.perf_counter() - recovery_start:.6f}s "
+                    f"trace_id={trace_id} wall_ns={time.time_ns()} "
                     f"thread={threading.current_thread().name}"
                 )
             finally:
                 self._lock.release()
 
+            config_init_start = time.perf_counter()
             self.__init_nodes()
             logger.warning(
                 f"[ECAT_TRACE] RECOVERY_CONFIG_INIT_END "
-                f"duration={time.perf_counter() - recovery_start:.6f}s "
+                f"phase_duration={time.perf_counter() - config_init_start:.6f}s "
+                f"total={time.perf_counter() - recovery_start:.6f}s "
+                f"trace_id={trace_id} wall_ns={time.time_ns()} "
                 f"thread={threading.current_thread().name}"
             )
         finally:
@@ -1231,7 +1261,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         logger.warning(log_message)
         logger.warning(
             f"[ECAT_TRACE] RECOVERY_END success={all_drives_in_preop} "
-            f"duration={time.perf_counter() - recovery_start:.6f}s "
-            f"thread={threading.current_thread().name}"
+            f"duration={time.perf_counter() - recovery_start:.6f}s trace_id={trace_id} "
+            f"wall_ns={time.time_ns()} thread={threading.current_thread().name}"
         )
         return all_drives_in_preop

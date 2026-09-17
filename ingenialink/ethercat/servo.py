@@ -224,9 +224,11 @@ class EthercatServo(EthercatServoBase):
         if release_gil is None:
             release_gil = self.__sdo_read_write_release_gil
         operation_start = time.perf_counter()
+        trace_id = f"{threading.get_ident()}-{time.monotonic_ns()}"
         logger.debug(
             f"[ECAT_TRACE] SDO_READ_START reg={reg.identifier} idx=0x{reg.idx:04x} "
-            f"sub={reg.subidx} thread={threading.current_thread().name}"
+            f"sub={reg.subidx} trace_id={trace_id} wall_ns={time.time_ns()} "
+            f"thread={threading.current_thread().name}"
         )
         lock_start = time.perf_counter()
         self._lock.acquire()
@@ -247,6 +249,7 @@ class EthercatServo(EthercatServoBase):
                     f"[ECAT_TRACE] SDO_READ_SLOW reg={reg.identifier} idx=0x{reg.idx:04x} "
                     f"sdo={sdo_duration:.6f}s "
                     f"total={time.perf_counter() - operation_start:.6f}s "
+                    f"trace_id={trace_id} wall_ns={time.time_ns()} "
                     f"thread={threading.current_thread().name}"
                 )
         except (
@@ -260,6 +263,7 @@ class EthercatServo(EthercatServoBase):
                 f"[ECAT_TRACE] SDO_READ_ERROR reg={reg.identifier} idx=0x{reg.idx:04x} "
                 f"sdo={time.perf_counter() - sdo_start:.6f}s "
                 f"total={time.perf_counter() - operation_start:.6f}s "
+                f"trace_id={trace_id} wall_ns={time.time_ns()} "
                 f"error={e!r} thread={threading.current_thread().name}"
             )
             self._handle_sdo_exception(reg, SdoOperationMsg.READ, e)
@@ -282,9 +286,11 @@ class EthercatServo(EthercatServoBase):
         if release_gil is None:
             release_gil = self.__sdo_read_write_release_gil
         operation_start = time.perf_counter()
+        trace_id = f"{threading.get_ident()}-{time.monotonic_ns()}"
         logger.debug(
             f"[ECAT_TRACE] SDO_WRITE_START reg={reg.identifier} idx=0x{reg.idx:04x} "
-            f"sub={reg.subidx} thread={threading.current_thread().name}"
+            f"sub={reg.subidx} trace_id={trace_id} wall_ns={time.time_ns()} "
+            f"thread={threading.current_thread().name}"
         )
         lock_start = time.perf_counter()
         self._lock.acquire()
@@ -305,6 +311,7 @@ class EthercatServo(EthercatServoBase):
                     f"[ECAT_TRACE] SDO_WRITE_SLOW reg={reg.identifier} idx=0x{reg.idx:04x} "
                     f"sdo={sdo_duration:.6f}s "
                     f"total={time.perf_counter() - operation_start:.6f}s "
+                    f"trace_id={trace_id} wall_ns={time.time_ns()} "
                     f"thread={threading.current_thread().name}"
                 )
         except (
@@ -318,6 +325,7 @@ class EthercatServo(EthercatServoBase):
                 f"[ECAT_TRACE] SDO_WRITE_ERROR reg={reg.identifier} idx=0x{reg.idx:04x} "
                 f"sdo={time.perf_counter() - sdo_start:.6f}s "
                 f"total={time.perf_counter() - operation_start:.6f}s "
+                f"trace_id={trace_id} wall_ns={time.time_ns()} "
                 f"error={e!r} thread={threading.current_thread().name}"
             )
             self._handle_sdo_exception(reg, SdoOperationMsg.WRITE, e)
