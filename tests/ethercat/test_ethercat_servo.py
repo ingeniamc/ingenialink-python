@@ -34,6 +34,7 @@ class _ServoForRawIO(EthercatServo):
     def __init__(self, slave: object, sdo_read_write_release_gil: Optional[bool] = None) -> None:
         self._EthercatServo__slave = slave
         self._EthercatServo__sdo_read_write_release_gil = sdo_read_write_release_gil
+        self._EthercatServo__master_lock = None
         self._EthercatServo__emcy_observers = []
         self._lock = threading.Lock()
 
