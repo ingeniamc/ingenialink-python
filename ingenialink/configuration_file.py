@@ -1,6 +1,7 @@
 import os
 import re
 from abc import ABC
+from copy import deepcopy
 from typing import Optional, Union, overload
 from xml.dom import minidom
 from xml.etree import ElementTree
@@ -748,3 +749,7 @@ class ConfigurationFile(XMLBase, ABC):
                     f"Table {new_table.uid!r} (subnode {new_table.subnode}) not in target; adding."
                 )
                 self.add_config_table(new_table)
+
+    def clone(self) -> "ConfigurationFile":
+        """Returns a deep copy of this ConfigurationFile."""
+        return deepcopy(self)

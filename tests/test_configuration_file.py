@@ -389,3 +389,35 @@ class TestOverrideValues:
             "TABLE_NEW" in record.message and record.levelno == logging.DEBUG
             for record in caplog.records
         )
+
+
+def test_clone_creates_deep_copy() -> None:
+    base = ConfigurationFile.create_empty_configuration(
+        interface=Interface.ETH,
+        part_number=None,
+        product_code=None,
+        revision_number=None,
+        firmware_version=None,
+    )
+    base.add_register(Register(RegDtype.U16, RegAccess.RW, "REG", subnode=0), 0)
+    base.add_config_table(
+        ConfigTable(uid="TABLE_A", subnode=0, elements=[TableElement(0, b"\x01")])
+    )
+
+    clone = base.clone()
+
+    # Ensure the clone is a different object
+    assert clone is not base
+    # Ensure the registers and tables are deep copied
+    assert clone.registers is not base.registers
+    assert clone.tables is not base.tables
+    assert clone.device is not base.device
+    assert clone.tables[0].elements is not base.tables[0].elements
+    # Ensure the content is the same
+    assert clone.registers[0].uid == base.registers[0].uid
+    assert clone.tables[0].uid == base.tables[0].uid
+
+    clone.registers[0].storage = 1
+    clone.tables[0].elements[0].data = b"\xff"
+    assert base.registers[0].storage == 0
+    assert base.tables[0].elements[0].data == b"\x01"
