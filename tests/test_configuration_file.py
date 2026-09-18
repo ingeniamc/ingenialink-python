@@ -293,8 +293,8 @@ def test_config_register_clone_with_storage():
     assert cloned_reg.data is None
 
 
-def test_register_read_value_with_data_and_storage():
-    """Test the read_value property when both data and storage are present.
+def test_register_effective_value_with_data_and_storage():
+    """Test the effective_value property when both data and storage are present.
 
     Data should take precedence over storage.
     """
@@ -306,11 +306,11 @@ def test_register_read_value_with_data_and_storage():
         storage=1234,
         data=bytes([0xAA, 0xBB, 0xCC]),
     )
-    assert reg.read_value == convert_bytes_to_dtype(reg.data, reg.dtype)
+    assert reg.effective_value == convert_bytes_to_dtype(reg.data, reg.dtype)
 
 
-def test_register_read_value_with_only_storage():
-    """Test the read_value property when only storage is present.
+def test_register_effective_value_with_only_storage():
+    """Test the effective_value property when only storage is present.
 
     Storage should be returned as the effective value.
     """
@@ -322,7 +322,7 @@ def test_register_read_value_with_only_storage():
         storage=1234,
         data=None,
     )
-    assert reg.read_value == reg.storage
+    assert reg.effective_value == reg.storage
 
 
 class TestFromDictionaryDefaults:

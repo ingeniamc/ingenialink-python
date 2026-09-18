@@ -351,7 +351,7 @@ class ConfigRegister:
         return self.clone(storage=storage, data=None)
 
     @cached_property
-    def read_value(self) -> Union[float, int, str, bytes]:
+    def effective_value(self) -> Union[float, int, str, bytes]:
         """The effective value of the register, preferring `data` over `storage`."""
         if self.data is not None:
             return convert_bytes_to_dtype(self.data, self.dtype)
