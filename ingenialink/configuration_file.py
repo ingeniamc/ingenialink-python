@@ -93,6 +93,13 @@ _INTERFACE_XCF_OPTIONS: dict[str, Interface] = {
 }
 
 
+class _CloneUnset:
+    """Sentinel for omitted clone arguments."""
+
+
+_CLONE_UNSET = _CloneUnset()
+
+
 class Device:
     """Device data for ConfigurationFile (XCF) class."""
 
@@ -288,6 +295,40 @@ class ConfigRegister:
             register_xml.set(self.__DATA_ATTR, self.data.hex())
 
         return register_xml
+
+    def clone(
+        self,
+        *,
+        uid: Optional[str] = None,
+        subnode: Optional[int] = None,
+        dtype: Optional[RegDtype] = None,
+        access: Optional[RegAccess] = None,
+        storage: Optional[Union[float, int, str, bool]] = None,
+        data: Optional[Union[bytes, _CloneUnset]] = _CLONE_UNSET,
+    ) -> "ConfigRegister":
+        """Creates a clone of the current ConfigRegister, with optional overrides.
+
+        Args:
+            uid: Optional new UID for the cloned register.
+            subnode: Optional new subnode for the cloned register.
+            dtype: Optional new data type for the cloned register.
+            access: Optional new access type for the cloned register.
+            storage: Optional new storage value for the cloned register.
+            data: Optional new data for the cloned register.
+
+        Returns:
+            A new ConfigRegister instance with the same data as
+            the current one, updated with any overrides.
+        """
+        clone_data = self.data if isinstance(data, _CloneUnset) else data
+        return ConfigRegister(
+            uid=self.uid if uid is None else uid,
+            subnode=self.subnode if subnode is None else subnode,
+            dtype=self.dtype if dtype is None else dtype,
+            access=self.access if access is None else access,
+            storage=self.storage if storage is None else storage,
+            data=clone_data,
+        )
 
 
 class TableElement:

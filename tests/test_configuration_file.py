@@ -213,6 +213,64 @@ def test_register_to_xcf_writes_data_as_hex():
     assert element.get("data") == "aabbcc"
 
 
+def test_config_register_clone_without_overrides():
+    """Test ConfigRegister.clone without any attribute overrides."""
+    reg = ConfigRegister(
+        uid="0x2000",
+        subnode=0,
+        dtype=RegDtype.U32,
+        access=RegAccess.RW,
+        storage=1234,
+        data=bytes([0xAA, 0xBB, 0xCC]),
+    )
+
+    cloned_reg = reg.clone()
+
+    assert cloned_reg.uid == reg.uid
+    assert cloned_reg.subnode == reg.subnode
+    assert cloned_reg.dtype == reg.dtype
+    assert cloned_reg.access == reg.access
+    assert cloned_reg.storage == reg.storage
+    assert cloned_reg.data == reg.data
+
+
+def test_config_register_clone_with_overrides():
+    """Test ConfigRegister.clone with attribute overrides."""
+    reg = ConfigRegister(
+        uid="0x2000",
+        subnode=0,
+        dtype=RegDtype.U32,
+        access=RegAccess.RW,
+        storage=1234,
+        data=bytes([0xAA, 0xBB, 0xCC]),
+    )
+
+    cloned_reg = reg.clone(storage=5678, data=bytes([0x11, 0x22, 0x33]))
+
+    assert cloned_reg.uid == reg.uid
+    assert cloned_reg.subnode == reg.subnode
+    assert cloned_reg.dtype == reg.dtype
+    assert cloned_reg.access == reg.access
+    assert cloned_reg.storage == 5678
+    assert cloned_reg.data == bytes([0x11, 0x22, 0x33])
+
+
+def test_config_register_clone_can_override_data_with_none() -> None:
+    register = ConfigRegister(
+        uid="REG",
+        subnode=0,
+        dtype=RegDtype.U16,
+        access=RegAccess.RW,
+        storage=0,
+        data=b"\x01",
+    )
+
+    clone = register.clone(data=None)
+
+    assert clone.data is None
+    assert register.data == b"\x01"
+
+
 class TestFromDictionaryDefaults:
     """Tests for ConfigurationFile.from_dictionary_defaults.
 
