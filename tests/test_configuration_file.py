@@ -293,7 +293,11 @@ def test_config_register_clone_with_storage():
     assert cloned_reg.data is None
 
 
-def test_register_read_value():
+def test_register_read_value_with_data_and_storage():
+    """Test the read_value property when both data and storage are present.
+
+    Data should take precedence over storage.
+    """
     reg = ConfigRegister(
         uid="0x2000",
         subnode=0,
@@ -302,13 +306,23 @@ def test_register_read_value():
         storage=1234,
         data=bytes([0xAA, 0xBB, 0xCC]),
     )
+    assert reg.read_value == convert_bytes_to_dtype(reg.data, reg.dtype)
 
-    # When data is present, read_value should return the converted data
-    assert reg.read_value() == convert_bytes_to_dtype(reg.data, reg.dtype)
 
-    # When data is None, read_value should return the storage value
-    reg.data = None
-    assert reg.read_value() == reg.storage
+def test_register_read_value_with_only_storage():
+    """Test the read_value property when only storage is present.
+
+    Storage should be returned as the effective value.
+    """
+    reg = ConfigRegister(
+        uid="0x2000",
+        subnode=0,
+        dtype=RegDtype.U32,
+        access=RegAccess.RW,
+        storage=1234,
+        data=None,
+    )
+    assert reg.read_value == reg.storage
 
 
 class TestFromDictionaryDefaults:

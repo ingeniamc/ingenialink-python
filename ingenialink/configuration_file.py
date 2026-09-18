@@ -2,6 +2,7 @@ import os
 import re
 from abc import ABC
 from copy import deepcopy
+from functools import cached_property
 from typing import TYPE_CHECKING, Optional, Union, overload
 from xml.dom import minidom
 from xml.etree import ElementTree
@@ -349,12 +350,9 @@ class ConfigRegister:
         """
         return self.clone(storage=storage, data=None)
 
+    @cached_property
     def read_value(self) -> Union[float, int, str, bytes]:
-        """Reads the effective value of the register.
-
-        Returns:
-            The value stored in the register, preferring `data` over `storage`.
-        """
+        """The effective value of the register, preferring `data` over `storage`."""
         if self.data is not None:
             return convert_bytes_to_dtype(self.data, self.dtype)
         return self.storage
