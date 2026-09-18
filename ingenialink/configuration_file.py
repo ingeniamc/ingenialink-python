@@ -333,6 +333,21 @@ class ConfigRegister:
             data=clone_data,
         )
 
+    def clone_with_storage(self, storage: Union[float, int, str, bool]) -> "ConfigRegister":
+        """Creates a clone of the current ConfigRegister with a new storage value.
+
+        If there was any value in data, it will be removed in the cloned register.
+        This is done because when reading the configuration, data value
+        is preferred over storage. Check `Servo.load_configuration`.
+
+        Args:
+            storage: New storage value for the cloned register.
+
+        Returns:
+            A new ConfigRegister instance with the updated storage value.
+        """
+        return self.clone(storage=storage, data=None)
+
 
 class TableElement:
     """Table element for ConfigTable class.

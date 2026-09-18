@@ -271,6 +271,27 @@ def test_config_register_clone_can_override_data_with_none() -> None:
     assert register.data == b"\x01"
 
 
+def test_config_register_clone_with_storage():
+    """Test ConfigRegister.clone_with_storage method."""
+    reg = ConfigRegister(
+        uid="0x2000",
+        subnode=0,
+        dtype=RegDtype.U32,
+        access=RegAccess.RW,
+        storage=1234,
+        data=bytes([0xAA, 0xBB, 0xCC]),
+    )
+
+    cloned_reg = reg.clone_with_storage(5678)
+
+    assert cloned_reg.uid == reg.uid
+    assert cloned_reg.subnode == reg.subnode
+    assert cloned_reg.dtype == reg.dtype
+    assert cloned_reg.access == reg.access
+    assert cloned_reg.storage == 5678
+    assert cloned_reg.data is None
+
+
 class TestFromDictionaryDefaults:
     """Tests for ConfigurationFile.from_dictionary_defaults.
 
