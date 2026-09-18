@@ -16,6 +16,7 @@ from ingenialink.dictionary import Interface
 from ingenialink.enums.register import RegAddressType
 from ingenialink.ethercat.dictionary import EthercatDictionaryV3
 from ingenialink.register import Register
+from ingenialink.utils._utils import convert_bytes_to_dtype
 
 
 class RegisterXCFElementFactory:
@@ -290,6 +291,24 @@ def test_config_register_clone_with_storage():
     assert cloned_reg.access == reg.access
     assert cloned_reg.storage == 5678
     assert cloned_reg.data is None
+
+
+def test_register_read_value():
+    reg = ConfigRegister(
+        uid="0x2000",
+        subnode=0,
+        dtype=RegDtype.U32,
+        access=RegAccess.RW,
+        storage=1234,
+        data=bytes([0xAA, 0xBB, 0xCC]),
+    )
+
+    # When data is present, read_value should return the converted data
+    assert reg.read_value() == convert_bytes_to_dtype(reg.data, reg.dtype)
+
+    # When data is None, read_value should return the storage value
+    reg.data = None
+    assert reg.read_value() == reg.storage
 
 
 class TestFromDictionaryDefaults:

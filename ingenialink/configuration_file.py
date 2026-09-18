@@ -21,6 +21,7 @@ from ingenialink.dictionary import (
 from ingenialink.enums.register import RegAddressType
 from ingenialink.exceptions import ILConfigurationFileParseError
 from ingenialink.register import Register
+from ingenialink.utils._utils import convert_bytes_to_dtype
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -347,6 +348,16 @@ class ConfigRegister:
             A new ConfigRegister instance with the updated storage value.
         """
         return self.clone(storage=storage, data=None)
+
+    def read_value(self) -> Union[float, int, str, bytes]:
+        """Reads the effective value of the register.
+
+        Returns:
+            The value stored in the register, preferring `data` over `storage`.
+        """
+        if self.data is not None:
+            return convert_bytes_to_dtype(self.data, self.dtype)
+        return self.storage
 
 
 class TableElement:
