@@ -2,7 +2,7 @@ import os
 import re
 from abc import ABC
 from copy import deepcopy
-from typing import Optional, Union, overload
+from typing import TYPE_CHECKING, Optional, Union, overload
 from xml.dom import minidom
 from xml.etree import ElementTree
 
@@ -21,6 +21,9 @@ from ingenialink.dictionary import (
 from ingenialink.enums.register import RegAddressType
 from ingenialink.exceptions import ILConfigurationFileParseError
 from ingenialink.register import Register
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 @overload
@@ -794,3 +797,47 @@ class ConfigurationFile(XMLBase, ABC):
     def clone(self) -> "ConfigurationFile":
         """Returns a deep copy of this ConfigurationFile."""
         return deepcopy(self)
+
+    def find_registers(self, uid: str) -> "Iterator[ConfigRegister]":
+        """Yield all registers with the targeted UID.
+
+        Args:
+            uid: Register UID.
+
+        Yields:
+            Configuration registers with the targeted UID.
+        """
+        for register in self.registers:
+            if register.uid == uid:
+                yield register
+
+    def find_register(self, uid: str, subnode: Optional[int] = None) -> "ConfigRegister":
+        """Find a register by UID and, optionally, subnode.
+
+        Args:
+            uid: Register UID.
+            subnode: Subnode. If omitted, the UID must identify one register.
+
+        Returns:
+            The matching configuration register.
+
+        Raises:
+            KeyError: If the register is not present in the specified subnode.
+            ValueError: If the register is not found or is present in multiple subnodes.
+        """
+        matching_registers = [
+            register
+            for register in self.find_registers(uid)
+            if subnode is None or register.subnode == subnode
+        ]
+
+        if not matching_registers:
+            if subnode is not None:
+                raise KeyError(f"Register {uid} not present in subnode={subnode}")
+            raise ValueError(f"Register {uid} not found.")
+        if len(matching_registers) > 1:
+            raise ValueError(
+                f"Register {uid} found in multiple subnodes. Subnode should be specified."
+            )
+
+        return matching_registers[0]

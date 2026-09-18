@@ -479,3 +479,65 @@ def test_clone_creates_deep_copy() -> None:
     clone.tables[0].elements[0].data = b"\xff"
     assert base.registers[0].storage == 0
     assert base.tables[0].elements[0].data == b"\x01"
+
+
+def test_find_registers_returns_registers_with_matching_uid() -> None:
+    """Test that find_registers returns all registers with the specified UID."""
+    configuration = ConfigurationFile.create_empty_configuration(
+        interface=Interface.ETH,
+        part_number=None,
+        product_code=None,
+        revision_number=None,
+        firmware_version=None,
+    )
+    configuration.add_config_register(
+        ConfigRegister("REG", 0, RegDtype.U16, RegAccess.RW, storage=0)
+    )
+    configuration.add_config_register(
+        ConfigRegister("REG", 1, RegDtype.U16, RegAccess.RW, storage=1)
+    )
+    configuration.add_config_register(
+        ConfigRegister("OTHER", 0, RegDtype.U16, RegAccess.RW, storage=2)
+    )
+
+    assert list(configuration.find_registers("REG")) == configuration.registers[:2]
+
+
+def test_find_register_returns_register_for_subnode() -> None:
+    """Test that find_register returns the correct register for a given subnode."""
+    configuration = ConfigurationFile.create_empty_configuration(
+        interface=Interface.ETH,
+        part_number=None,
+        product_code=None,
+        revision_number=None,
+        firmware_version=None,
+    )
+    register = ConfigRegister("REG", 1, RegDtype.U16, RegAccess.RW, storage=1)
+    configuration.add_config_register(register)
+
+    assert configuration.find_register("REG", subnode=1) is register
+    assert configuration.find_register("REG") is register
+
+
+def test_find_register_raises_for_missing_or_ambiguous_register() -> None:
+    """Test that find_register raises appropriate exceptions for missing or ambiguous registers."""
+    configuration = ConfigurationFile.create_empty_configuration(
+        interface=Interface.ETH,
+        part_number=None,
+        product_code=None,
+        revision_number=None,
+        firmware_version=None,
+    )
+    configuration.add_config_register(
+        ConfigRegister("REG", 0, RegDtype.U16, RegAccess.RW, storage=0)
+    )
+    configuration.add_config_register(
+        ConfigRegister("REG", 1, RegDtype.U16, RegAccess.RW, storage=1)
+    )
+
+    with pytest.raises(ValueError, match="multiple subnodes"):
+        configuration.find_register("REG")
+    with pytest.raises(KeyError, match="subnode=2"):
+        configuration.find_register("REG", subnode=2)
+    with pytest.raises(ValueError, match="not found"):
+        configuration.find_register("MISSING")
