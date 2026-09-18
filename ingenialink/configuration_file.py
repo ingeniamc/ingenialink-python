@@ -1,7 +1,9 @@
 import os
 import re
 from abc import ABC
-from typing import Optional, Union, overload
+from copy import deepcopy
+from functools import cached_property
+from typing import TYPE_CHECKING, Optional, Union, overload
 from xml.dom import minidom
 from xml.etree import ElementTree
 
@@ -20,6 +22,10 @@ from ingenialink.dictionary import (
 from ingenialink.enums.register import RegAddressType
 from ingenialink.exceptions import ILConfigurationFileParseError
 from ingenialink.register import Register
+from ingenialink.utils._utils import convert_bytes_to_dtype
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 @overload
@@ -90,6 +96,13 @@ _INTERFACE_XCF_OPTIONS: dict[str, Interface] = {
     "EoE": Interface.EoE,
     "ETH": Interface.ETH,
 }
+
+
+class _CloneUnset:
+    """Sentinel for omitted clone arguments."""
+
+
+_CLONE_UNSET = _CloneUnset()
 
 
 class Device:
@@ -287,6 +300,62 @@ class ConfigRegister:
             register_xml.set(self.__DATA_ATTR, self.data.hex())
 
         return register_xml
+
+    def clone(
+        self,
+        *,
+        uid: Optional[str] = None,
+        subnode: Optional[int] = None,
+        dtype: Optional[RegDtype] = None,
+        access: Optional[RegAccess] = None,
+        storage: Optional[Union[float, int, str, bool]] = None,
+        data: Optional[Union[bytes, _CloneUnset]] = _CLONE_UNSET,
+    ) -> "ConfigRegister":
+        """Creates a clone of the current ConfigRegister, with optional overrides.
+
+        Args:
+            uid: Optional new UID for the cloned register.
+            subnode: Optional new subnode for the cloned register.
+            dtype: Optional new data type for the cloned register.
+            access: Optional new access type for the cloned register.
+            storage: Optional new storage value for the cloned register.
+            data: Optional new data for the cloned register.
+
+        Returns:
+            A new ConfigRegister instance with the same data as
+            the current one, updated with any overrides.
+        """
+        clone_data = self.data if isinstance(data, _CloneUnset) else data
+        return ConfigRegister(
+            uid=self.uid if uid is None else uid,
+            subnode=self.subnode if subnode is None else subnode,
+            dtype=self.dtype if dtype is None else dtype,
+            access=self.access if access is None else access,
+            storage=self.storage if storage is None else storage,
+            data=clone_data,
+        )
+
+    def clone_with_storage(self, storage: Union[float, int, str, bool]) -> "ConfigRegister":
+        """Creates a clone of the current ConfigRegister with a new storage value.
+
+        If there was any value in data, it will be removed in the cloned register.
+        This is done because when reading the configuration, data value
+        is preferred over storage. Check `Servo.load_configuration`.
+
+        Args:
+            storage: New storage value for the cloned register.
+
+        Returns:
+            A new ConfigRegister instance with the updated storage value.
+        """
+        return self.clone(storage=storage, data=None)
+
+    @cached_property
+    def effective_value(self) -> Union[float, int, str, bytes]:
+        """The effective value of the register, preferring `data` over `storage`."""
+        if self.data is not None:
+            return convert_bytes_to_dtype(self.data, self.dtype)
+        return self.storage
 
 
 class TableElement:
@@ -748,3 +817,51 @@ class ConfigurationFile(XMLBase, ABC):
                     f"Table {new_table.uid!r} (subnode {new_table.subnode}) not in target; adding."
                 )
                 self.add_config_table(new_table)
+
+    def clone(self) -> "ConfigurationFile":
+        """Returns a deep copy of this ConfigurationFile."""
+        return deepcopy(self)
+
+    def find_registers(self, uid: str) -> "Iterator[ConfigRegister]":
+        """Yield all registers with the targeted UID.
+
+        Args:
+            uid: Register UID.
+
+        Yields:
+            Configuration registers with the targeted UID.
+        """
+        for register in self.registers:
+            if register.uid == uid:
+                yield register
+
+    def find_register(self, uid: str, subnode: Optional[int] = None) -> "ConfigRegister":
+        """Find a register by UID and, optionally, subnode.
+
+        Args:
+            uid: Register UID.
+            subnode: Subnode. If omitted, the UID must identify one register.
+
+        Returns:
+            The matching configuration register.
+
+        Raises:
+            KeyError: If the register is not present in the specified subnode.
+            ValueError: If the register is not found or is present in multiple subnodes.
+        """
+        matching_registers = [
+            register
+            for register in self.find_registers(uid)
+            if subnode is None or register.subnode == subnode
+        ]
+
+        if not matching_registers:
+            if subnode is not None:
+                raise KeyError(f"Register {uid} not present in subnode={subnode}")
+            raise ValueError(f"Register {uid} not found.")
+        if len(matching_registers) > 1:
+            raise ValueError(
+                f"Register {uid} found in multiple subnodes. Subnode should be specified."
+            )
+
+        return matching_registers[0]
