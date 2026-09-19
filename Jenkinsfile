@@ -282,7 +282,6 @@ pipeline {
                                 docker {
                                     label 'lin-worker'
                                     image LIN_DOCKER_IMAGE
-                                    args '-u root:root'
                                 }
                             }
                             environment {
@@ -386,7 +385,6 @@ pipeline {
                         docker {
                             label 'lin-worker'
                             image LIN_DOCKER_IMAGE
-                            args '-u root:root'
                         }
                     }
                     environment {
@@ -516,7 +514,6 @@ pipeline {
                         docker {
                             label 'lin-worker'
                             image LIN_DOCKER_IMAGE
-                            args '-u root:root'
                         }
                     }
                     environment {
