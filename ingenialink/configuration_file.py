@@ -350,7 +350,7 @@ class ConfigRegister:
         """
         return self.clone(storage=storage, data=None)
 
-    @cached_property
+@property
     def effective_value(self) -> Union[float, int, str, bytes]:
         """The effective value of the register, preferring `data` over `storage`."""
         if self.data is not None:
