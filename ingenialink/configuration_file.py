@@ -2,7 +2,6 @@ import os
 import re
 from abc import ABC
 from copy import deepcopy
-from functools import cached_property
 from typing import TYPE_CHECKING, Optional, Union, overload
 from xml.dom import minidom
 from xml.etree import ElementTree
@@ -350,7 +349,7 @@ class ConfigRegister:
         """
         return self.clone(storage=storage, data=None)
 
-@property
+    @property
     def effective_value(self) -> Union[float, int, str, bytes]:
         """The effective value of the register, preferring `data` over `storage`."""
         if self.data is not None:
