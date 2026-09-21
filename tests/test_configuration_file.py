@@ -16,6 +16,7 @@ from ingenialink.dictionary import Interface
 from ingenialink.enums.register import RegAddressType
 from ingenialink.ethercat.dictionary import EthercatDictionaryV3
 from ingenialink.register import Register
+from ingenialink.utils._utils import convert_bytes_to_dtype
 
 
 class RegisterXCFElementFactory:
@@ -213,6 +214,165 @@ def test_register_to_xcf_writes_data_as_hex():
     assert element.get("data") == "aabbcc"
 
 
+def test_config_register_clone_without_overrides():
+    """Test ConfigRegister.clone without any attribute overrides."""
+    reg = ConfigRegister(
+        uid="0x2000",
+        subnode=0,
+        dtype=RegDtype.U32,
+        access=RegAccess.RW,
+        storage=1234,
+        data=bytes([0xAA, 0xBB, 0xCC]),
+    )
+
+    cloned_reg = reg.clone()
+
+    assert cloned_reg.uid == reg.uid
+    assert cloned_reg.subnode == reg.subnode
+    assert cloned_reg.dtype == reg.dtype
+    assert cloned_reg.access == reg.access
+    assert cloned_reg.storage == reg.storage
+    assert cloned_reg.data == reg.data
+
+
+def test_config_register_clone_with_overrides():
+    """Test ConfigRegister.clone with attribute overrides."""
+    reg = ConfigRegister(
+        uid="0x2000",
+        subnode=0,
+        dtype=RegDtype.U32,
+        access=RegAccess.RW,
+        storage=1234,
+        data=bytes([0xAA, 0xBB, 0xCC]),
+    )
+
+    cloned_reg = reg.clone(storage=5678, data=bytes([0x11, 0x22, 0x33]))
+
+    assert cloned_reg.uid == reg.uid
+    assert cloned_reg.subnode == reg.subnode
+    assert cloned_reg.dtype == reg.dtype
+    assert cloned_reg.access == reg.access
+    assert cloned_reg.storage == 5678
+    assert cloned_reg.data == bytes([0x11, 0x22, 0x33])
+
+
+def test_config_register_clone_can_override_data_with_none() -> None:
+    register = ConfigRegister(
+        uid="REG",
+        subnode=0,
+        dtype=RegDtype.U16,
+        access=RegAccess.RW,
+        storage=0,
+        data=b"\x01",
+    )
+
+    clone = register.clone(data=None)
+
+    assert clone.data is None
+    assert register.data == b"\x01"
+
+
+def test_config_register_clone_with_storage():
+    """Test ConfigRegister.clone_with_storage method."""
+    reg = ConfigRegister(
+        uid="0x2000",
+        subnode=0,
+        dtype=RegDtype.U32,
+        access=RegAccess.RW,
+        storage=1234,
+        data=bytes([0xAA, 0xBB, 0xCC]),
+    )
+
+    cloned_reg = reg.clone_with_storage(5678)
+
+    assert cloned_reg.uid == reg.uid
+    assert cloned_reg.subnode == reg.subnode
+    assert cloned_reg.dtype == reg.dtype
+    assert cloned_reg.access == reg.access
+    assert cloned_reg.storage == 5678
+    assert cloned_reg.data is None
+
+
+def test_configuration_file_clone_copies_mutable_objects_and_reuses_immutable_values():
+    """Test ConfigurationFile.clone creates independent configuration objects."""
+    configuration = ConfigurationFile.create_empty_configuration(
+        Interface.ETH, "TEST-PART", 123, 456, "1.0.0"
+    )
+    register = ConfigRegister(
+        uid="TEST_REG",
+        subnode=0,
+        dtype=RegDtype.U32,
+        access=RegAccess.RW,
+        storage=100,
+        data=b"\x01\x02",
+    )
+    table = ConfigTable(
+        uid="TEST_TABLE",
+        subnode=0,
+        elements=[TableElement(address=0, data=b"\x03\x04")],
+    )
+    configuration.add_config_register(register)
+    configuration.add_config_table(table)
+
+    cloned_configuration = configuration.clone()
+
+    assert cloned_configuration is not configuration
+    assert cloned_configuration.device is not configuration.device
+    assert cloned_configuration.device.interface is configuration.device.interface
+    assert cloned_configuration.registers is not configuration.registers
+    assert cloned_configuration.registers[0] is not configuration.registers[0]
+    assert cloned_configuration.registers[0].dtype is configuration.registers[0].dtype
+    assert cloned_configuration.registers[0].access is configuration.registers[0].access
+    assert cloned_configuration.registers[0].data is configuration.registers[0].data
+    assert cloned_configuration.tables is not configuration.tables
+    assert cloned_configuration.tables[0] is not configuration.tables[0]
+    assert cloned_configuration.tables[0].elements is not configuration.tables[0].elements
+    assert cloned_configuration.tables[0].elements[0] is not configuration.tables[0].elements[0]
+    assert (
+        cloned_configuration.tables[0].elements[0].data is configuration.tables[0].elements[0].data
+    )
+
+    cloned_configuration.device.part_number = "CLONED-PART"
+    cloned_configuration.registers[0].storage = 200
+    cloned_configuration.tables[0].elements[0].address = 1
+
+    assert configuration.device.part_number == "TEST-PART"
+    assert configuration.registers[0].storage == 100
+    assert configuration.tables[0].elements[0].address == 0
+
+
+def test_register_effective_value_with_data_and_storage():
+    """Test the effective_value property when both data and storage are present.
+
+    Data should take precedence over storage.
+    """
+    reg = ConfigRegister(
+        uid="0x2000",
+        subnode=0,
+        dtype=RegDtype.U32,
+        access=RegAccess.RW,
+        storage=1234,
+        data=bytes([0xAA, 0xBB, 0xCC]),
+    )
+    assert reg.effective_value == convert_bytes_to_dtype(reg.data, reg.dtype)
+
+
+def test_register_effective_value_with_only_storage():
+    """Test the effective_value property when only storage is present.
+
+    Storage should be returned as the effective value.
+    """
+    reg = ConfigRegister(
+        uid="0x2000",
+        subnode=0,
+        dtype=RegDtype.U32,
+        access=RegAccess.RW,
+        storage=1234,
+        data=None,
+    )
+    assert reg.effective_value == reg.storage
+
+
 class TestFromDictionaryDefaults:
     """Tests for ConfigurationFile.from_dictionary_defaults.
 
@@ -389,3 +549,97 @@ class TestOverrideValues:
             "TABLE_NEW" in record.message and record.levelno == logging.DEBUG
             for record in caplog.records
         )
+
+
+def test_clone_copies_mutable_configuration_data() -> None:
+    base = ConfigurationFile.create_empty_configuration(
+        interface=Interface.ETH,
+        part_number=None,
+        product_code=None,
+        revision_number=None,
+        firmware_version=None,
+    )
+    base.add_register(Register(RegDtype.U16, RegAccess.RW, "REG", subnode=0), 0)
+    base.add_config_table(
+        ConfigTable(uid="TABLE_A", subnode=0, elements=[TableElement(0, b"\x01")])
+    )
+
+    clone = base.clone()
+
+    # Ensure the clone is a different object
+    assert clone is not base
+    # Ensure mutable configuration data is copied
+    assert clone.registers is not base.registers
+    assert clone.tables is not base.tables
+    assert clone.device is not base.device
+    assert clone.tables[0].elements is not base.tables[0].elements
+    # Ensure the content is the same
+    assert clone.registers[0].uid == base.registers[0].uid
+    assert clone.tables[0].uid == base.tables[0].uid
+
+    clone.registers[0].storage = 1
+    clone.tables[0].elements[0].data = b"\xff"
+    assert base.registers[0].storage == 0
+    assert base.tables[0].elements[0].data == b"\x01"
+
+
+def test_find_registers_returns_registers_with_matching_uid() -> None:
+    """Test that find_registers returns all registers with the specified UID."""
+    configuration = ConfigurationFile.create_empty_configuration(
+        interface=Interface.ETH,
+        part_number=None,
+        product_code=None,
+        revision_number=None,
+        firmware_version=None,
+    )
+    configuration.add_config_register(
+        ConfigRegister("REG", 0, RegDtype.U16, RegAccess.RW, storage=0)
+    )
+    configuration.add_config_register(
+        ConfigRegister("REG", 1, RegDtype.U16, RegAccess.RW, storage=1)
+    )
+    configuration.add_config_register(
+        ConfigRegister("OTHER", 0, RegDtype.U16, RegAccess.RW, storage=2)
+    )
+
+    assert list(configuration.find_registers("REG")) == configuration.registers[:2]
+
+
+def test_find_register_returns_register_for_subnode() -> None:
+    """Test that find_register returns the correct register for a given subnode."""
+    configuration = ConfigurationFile.create_empty_configuration(
+        interface=Interface.ETH,
+        part_number=None,
+        product_code=None,
+        revision_number=None,
+        firmware_version=None,
+    )
+    register = ConfigRegister("REG", 1, RegDtype.U16, RegAccess.RW, storage=1)
+    configuration.add_config_register(register)
+
+    assert configuration.find_register("REG", subnode=1) is register
+    assert configuration.find_register("REG") is register
+
+
+def test_find_register_raises_for_missing_or_ambiguous_register() -> None:
+    """Test that find_register raises appropriate exceptions for missing or ambiguous registers."""
+    configuration = ConfigurationFile.create_empty_configuration(
+        interface=Interface.ETH,
+        part_number=None,
+        product_code=None,
+        revision_number=None,
+        firmware_version=None,
+    )
+    configuration.add_config_register(
+        ConfigRegister("REG", 0, RegDtype.U16, RegAccess.RW, storage=0)
+    )
+    configuration.add_config_register(
+        ConfigRegister("REG", 1, RegDtype.U16, RegAccess.RW, storage=1)
+    )
+
+    with pytest.raises(ValueError, match="multiple subnodes"):
+        configuration.find_register("REG")
+    with pytest.raises(KeyError, match="subnode=2"):
+        configuration.find_register("REG", subnode=2)
+    with pytest.raises(ValueError, match="not found"):
+        configuration.find_register("MISSING")
