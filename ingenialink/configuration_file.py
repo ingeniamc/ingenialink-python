@@ -1,7 +1,6 @@
 import os
 import re
 from abc import ABC
-from copy import deepcopy
 from typing import TYPE_CHECKING, Optional, Union, overload
 from xml.dom import minidom
 from xml.etree import ElementTree
@@ -818,8 +817,31 @@ class ConfigurationFile(XMLBase, ABC):
                 self.add_config_table(new_table)
 
     def clone(self) -> "ConfigurationFile":
-        """Returns a deep copy of this ConfigurationFile."""
-        return deepcopy(self)
+        """Return a copy of this configuration with independent owned data."""
+        cloned_configuration = ConfigurationFile.create_empty_configuration(
+            interface=self.device.interface,
+            part_number=self.device.part_number,
+            product_code=self.device.product_code,
+            revision_number=self.device.revision_number,
+            firmware_version=self.device.firmware_version,
+            node_id=self.device.node_id,
+        )
+        cloned_configuration.major_version = self.major_version
+        cloned_configuration.minor_version = self.minor_version
+
+        for register in self.registers:
+            cloned_configuration.add_config_register(register.clone())
+
+        for table in self.tables:
+            cloned_elements = [
+                TableElement(address=element.address, data=element.data)
+                for element in table.elements
+            ]
+            cloned_configuration.add_config_table(
+                ConfigTable(uid=table.uid, subnode=table.subnode, elements=cloned_elements)
+            )
+
+        return cloned_configuration
 
     def find_registers(self, uid: str) -> "Iterator[ConfigRegister]":
         """Yield all registers with the targeted UID.
