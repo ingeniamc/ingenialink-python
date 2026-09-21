@@ -132,14 +132,13 @@ xmlschema = ">=3.0.0"
 #                                   TASKS
 # -----------------------------------------------------------------------
 
-# ----------------------------- Build wheel -----------------------------
-[tool.poe.tasks.build-wheel]
+# ----------------------------- Build package -----------------------------
+[tool.poe.tasks.build]
 help = "Build wheels"
-cmd = "poetry build"
-
-[tool.poe.tasks.check-wheels]
-help = "Check wheels"
-cmd = "twine check dist/*"
+sequence = [
+  { cmd = "poetry build" },
+  { cmd = "twine check dist/*" }
+]
 
 # ----------------------------- Ruff format -----------------------------
 [tool.poe.tasks.ruff-format-check]
@@ -176,10 +175,6 @@ cmd = "mypy ingenialink examples"
 [tool.poe.tasks.docs]
 help = "Build documentation"
 cmd = "python -I -m sphinx -E -W --keep-going -b html docs _docs"
-
-# ----------------------------- Install wheel -----------------------------
-[tool.poe.tasks.install-wheel]
-cmd = "pip install --force-reinstall --no-deps --no-index --find-links dist/ ingenialink"
 
 # ----------------------------- Run unit tests -----------------------------
 [tool.poe.tasks.tests]
