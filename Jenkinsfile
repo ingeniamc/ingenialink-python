@@ -285,8 +285,7 @@ pipeline {
                                     steps {
                                         script {
                                             venvManager.forEachEnvironment() { venv ->
-                                                venv.run("poetry run poe build-wheel")
-                                                venv.run("poetry run poe check-wheels")
+                                                venv.run("poetry run poe build")
                                             }
                                             venvManager.copyFromWorkingFolder("ingenialink/_version.py")
                                             venvManager.copyFromWorkingFolder("dist/")
@@ -348,8 +347,7 @@ pipeline {
                                             // Linux for now does not contain compiled code
                                             // so building on one python version is enough
                                             venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                                                venv.run("poetry run poe build-wheel")
-                                                venv.run("poetry run poe check-wheels")
+                                                venv.run("poetry run poe build")
                                             }
                                             venvManager.copyFromWorkingFolder("dist/")
                                         }
@@ -387,7 +385,6 @@ pipeline {
                                     steps {
                                         script {
                                             venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                                                venv.run("poetry run poe install-wheel")
                                                 venv.run("poetry run poe docs")
                                             }
                                             venvManager.copyFromWorkingFolder("_docs/")
