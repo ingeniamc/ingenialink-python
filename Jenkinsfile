@@ -529,6 +529,14 @@ pipeline {
                                 }
                             }
                         }
+                        stage('Publish documentation') {
+                            when {
+                                branch BRANCH_NAME_MASTER
+                            }
+                            steps {
+                                publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
+                            }
+                        }
                         stage('Publish Novanta PyPi') {
                             steps {
                                 publishNovantaPyPi('dist/*')
@@ -573,9 +581,6 @@ pipeline {
                                 script {
                                     venvManager.copyToWorkingFolder()
                                 }
-                            }
-                            steps {
-                                publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
                             }
                         }
                     }
