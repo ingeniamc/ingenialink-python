@@ -1,11 +1,11 @@
 @Library('cicd-lib@a30b3e0') _
 
-import python.VirtualEnvironment
 import python.VEnvManager
-import pytest.TestSession
-import pytest.TestGroup
+import python.VirtualEnvironment
 import pytest.PyTestManager
 import pytest.PyTestParams
+import pytest.TestGroup
+import pytest.TestSession
 import utils.BuildParamUtils
 
 def SW_NODE = "windows-slave"
@@ -14,9 +14,11 @@ def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
-def LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.6"
+def LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.7"
 def WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.9"
-def PUBLISHER_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/publisher:1.8"
+
+def WIN_DOCKER_TMP_PATH = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
+def LIN_DOCKER_TMP_PATH = "/tmp/ingenialink_python"
 
 def DEFAULT_PYTHON_VERSION = "3.9"
 def ALL_PYTHON_VERSIONS = ["3.9", "3.10", "3.11", "3.12"] as Set
@@ -26,9 +28,6 @@ def BRANCH_NAME_MASTER = "master"
 def DEFAULT_LOGGING_LEVEL = 'INFO'
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
 
-
-@groovy.transform.Field
-List wheel_stashes = []
 
 /* List of markers that require hardware */
 def HARDWARE_MARKERS = ["ethernet", "ethercat", "canopen", "multislave", "fsoe", "eoe"]
@@ -42,7 +41,7 @@ def reassignFilePermissions() {
 VEnvManager venvManager = new VEnvManager(
     pipeline: this,
     default_python_version: DEFAULT_PYTHON_VERSION,
-    poetry_default_install_command: "poetry sync --no-root --all-groups"
+    poetry_default_install_command: "poetry sync --all-groups"
 )
 
 PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvManager)
@@ -50,6 +49,7 @@ PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvM
 /* Define default base test sessions to be used/overridden in stages */
 TestSession TEST_SESSIONS = new TestSession(
     covPackageName: "ingenialink",
+    covFromSitePackages: false,
     startWiresharkTimeoutS: 10.0,
     importMode: "importlib",
     setAttApiToken: true
@@ -140,7 +140,17 @@ pipeline {
                 echo("${PyTestParams.configSummary(params, env, currentBuild)}")
             }
         }
-        stage("Set env") {
+        stage('Prepare test sessions') {
+            agent {
+                docker {
+                    label 'lin-worker'
+                    image LIN_DOCKER_IMAGE
+                    args '-u root:root'
+                }
+            }
+            environment {
+                VENV_WORKING_FOLDER = "${LIN_DOCKER_TMP_PATH}"
+            }
             steps {
                 script {
                     // Determine which Python versions to run tests against based on branch and parameters
@@ -189,216 +199,69 @@ pipeline {
                     testManager.runPolicyTags = runPolicyTags
 
                     echo("Test sessions have been configured to run with the following base configuration:\n${TEST_SESSIONS.configSummary()}")
-                }
-            }
-        }
 
-        stage('Register manual test sessions') {
-            steps {
-                script {
-                    // Pcap tests run on the EtherCAT machine — add manually since they're not in rack_specifiers
+                    // Create a minimal virtual environment for specifier export and test collection
+                    venvManager.copyToWorkingFolder()
+                    venvManager.createPoetryEnvironment()
+
+                    // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here).
+                    testManager.buildTestSessions("tests.setups.rack_specifiers")
+                    testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
+
+                    if (env.BRANCH_NAME == 'develop' && BuildParamUtils.isBranchEventBuild(currentBuild)) {
+                        HW_TEST_SESSIONS.setAttributeInCascade(
+                            shouldRun: false,
+                            skipReason: 'Develop webhook/indexing builds do not run hardware tests',
+                        )
+                    }
+
+                    // Pcap tests run on the EtherCAT machine since they are not in rack_specifiers.
                     ECAT_TESTS.addSession(uid: "pcap", markers: "pcap", stageName: "Pcap Tests")
 
-                    // Linux pcap tests: runs pcap-marked tests that don't need hardware
+                    // Linux pcap tests: runs pcap-marked tests that do not need hardware.
                     LINUX_DOCKER_TESTS.addSession(
                         uid: "pcap",
                         markers: "pcap",
                         stageName: "Pcap Tests (Linux)")
 
-                    // Linux unit tests: everything that does not have a marker
+                    // Linux unit tests: everything that does not have a marker.
                     LINUX_DOCKER_TESTS.addSession(
                         uid: "no_pcap",
                         markers: PyTestManager.markersExcludeString(HARDWARE_MARKERS + ["virtual", "pcap", "no_pcap"]),
                         stageName: "Unit Tests (Linux)")
 
-                    // Windows unit tests: mirrors the ad-hoc session in Build Windows for dashboard visibility
+                    // Windows unit tests: mirrors the ad-hoc session in Build Windows for dashboard visibility.
                     WIN_DOCKER_TESTS.addSession(
                         uid: "no_pcap",
                         markers: PyTestManager.markersExcludeString(["virtual", "pcap"] + HARDWARE_MARKERS),
                         stageName: "Unit Tests (Windows)")
+
+                    testManager.echoTestGroupsSummary()
+                    testManager.collectTestsForDashboard()
+                    testManager.generateTestDashboard()
+                    testManager.resolveSessions()
+                }
+            }
+            post {
+                always {
+                    reassignFilePermissions()
                 }
             }
         }
 
-        stage('Build and publish') {
-            stages {
-                stage('Build') {
-                    parallel {
-                        stage('Build Windows') {
-                            agent {
-                                docker {
-                                    label SW_NODE
-                                    image WIN_DOCKER_IMAGE
-                                }
-                            }
-                            environment {
-                                VENV_WORKING_FOLDER = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
-                            }
-                            stages {
-                                stage('Move workspace') {
-                                    steps {
-                                        script {
-                                            bat "git clean -fdx"
-                                            venvManager.copyToWorkingFolder()
-                                        }
-                                    }
-                                }
-                                stage('Create virtual environments') {
-                                    steps {
-                                        script {
-                                            venvManager.createPoetryEnvironments(
-                                                pythonVersions: ALL_PYTHON_VERSIONS
-                                            )
-                                        }
-                                    }
-                                }
-                                stage('Build wheels') {
-                                    steps {
-                                        script {
-                                            venvManager.forEachEnvironment() { venv ->
-                                                venv.run("poetry run poe build-wheel")
-                                                venv.run("poetry run poe check-wheels")
-                                            }
-                                            venvManager.copyFromWorkingFolder("ingenialink/_version.py")
-                                            venvManager.copyFromWorkingFolder("dist/")
-
-                                        }
-                                    }
-                                }
-                                stage('Archive artifacts') {
-                                    steps {
-                                        archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
-                                        script {
-                                            stash_name = "publish_wheels-windows"
-                                            wheel_stashes.add(stash_name)
-                                            stash includes: "dist\\*", name: stash_name
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        stage('Build Linux') {
-                            agent {
-                                docker {
-                                    label 'lin-worker'
-                                    image LIN_DOCKER_IMAGE
-                                    args '-u root:root'
-                                }
-                            }
-                            environment {
-                                VENV_WORKING_FOLDER = "/tmp/ingenialink_python"
-                            }
-                            stages {
-                                // Uncomment when CICD is released: https://novantamotion.atlassian.net/browse/CIT-707
-                                // stage('Check Dependencies') {
-                                //     steps {
-                                //         script {
-                                //             sh "git clean -fdx"
-                                //             checkDependencies(excludeManagers: ['poetry:tests'])
-                                //         }
-                                //     }
-                                // }
-                                stage('Move workspace') {
-                                    steps {
-                                        script {
-                                            venvManager.copyToWorkingFolder()
-                                        }
-                                    }
-                                }
-                                stage('Create virtual environments') {
-                                    steps {
-                                        script {
-                                            venvManager.createPoetryEnvironments(
-                                                pythonVersions: ([DEFAULT_PYTHON_VERSION] as Set) + venvManager.defaultVenvNamesToVersion(TEST_SESSIONS.runInVirtualEnvs)
-                                            )
-                                        }
-                                    }
-                                }
-                                stage('Build wheels') {
-                                    steps {
-                                        script {
-                                            // Linux for now does not contain compiled code
-                                            // so building on one python version is enough
-                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                                                venv.run("poetry run poe build-wheel")
-                                                venv.run("poetry run poe check-wheels")
-                                            }
-                                            venvManager.copyFromWorkingFolder("dist/")
-                                        }
-                                    }
-                                }
-                                stage('Archive artifacts') {
-                                    steps {
-                                        archiveArtifacts(artifacts: "dist/*", followSymlinks: false)
-                                        script {
-                                            stash_name = "publish_wheels-linux"
-                                            wheel_stashes.add(stash_name)
-                                            stash includes: "dist/*", name: stash_name
-                                        }
-                                    }
-                                }
-                                stage('Make a static type analysis') {
-                                    steps {
-                                        script {
-                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                                                venv.run("poetry run poe type")
-                                            }
-                                        }
-                                    }
-                                }
-                                stage('Check formatting') {
-                                    steps {
-                                        script {
-                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                                                venv.run("poetry run poe format")
-                                            }
-                                        }
-                                    }
-                                }
-                                stage('Generate documentation') {
-                                    steps {
-                                        script {
-                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
-                                                venv.run("poetry run poe install-wheel")
-                                                venv.run("poetry run poe docs")
-                                            }
-                                            venvManager.copyFromWorkingFolder("_docs/")
-                                        }
-                                    }
-                                    post {
-                                        success {
-                                            archiveArtifacts artifacts: '_docs/**'
-                                            stash includes: '_docs/**', name: 'docs'
-                                        }
-                                    }
-                                }
-                            }
-                            post {
-                                always {
-                                    reassignFilePermissions()
-                                }
-                            }
-                        }
-                    }
-                }
-                stage('Prepare and resolve test sessions') {
+        stage('Build and Tests') {
+            parallel {
+                stage('Build Windows') {
                     agent {
                         docker {
-                            label 'lin-worker'
-                            image LIN_DOCKER_IMAGE
-                            args '-u root:root'
+                            label SW_NODE
+                            image WIN_DOCKER_IMAGE
                         }
                     }
                     environment {
-                        VENV_WORKING_FOLDER = "/tmp/ingenialink_python"
+                        VENV_WORKING_FOLDER = "${WIN_DOCKER_TMP_PATH}"
                     }
                     stages {
-                        stage('Unstash Linux wheel') {
-                            steps {
-                                sh "git clean -fdx"
-                                unstash 'publish_wheels-linux'
-                            }
-                        }
                         stage('Move workspace') {
                             steps {
                                 script {
@@ -410,78 +273,101 @@ pipeline {
                             steps {
                                 script {
                                     venvManager.createPoetryEnvironments(
-                                        pythonVersions: ([DEFAULT_PYTHON_VERSION] as Set) + venvManager.defaultVenvNamesToVersion(TEST_SESSIONS.runInVirtualEnvs)
+                                        pythonVersions: venvManager.defaultVenvNamesToVersion(WIN_DOCKER_TESTS.baseTestSession.runInVirtualEnvs) + [DEFAULT_PYTHON_VERSION] as Set
                                     )
                                 }
                             }
                         }
-                        stage('Prepare test sessions') {
-                            steps {
-                                script {
-                                    venvManager.forVirtualEnvs(TEST_SESSIONS.runInVirtualEnvs) { venv ->
-                                        venv.run("poetry run poe install-wheel")
-                                    }
-
-                                    // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here).
-                                    testManager.buildTestSessions("tests.setups.rack_specifiers")
-                                    testManager.buildTestSessions("tests.setups.virtual_drive_specifier")
-
-                                    if (env.BRANCH_NAME == 'develop' && BuildParamUtils.isBranchEventBuild(currentBuild)) {
-                                        HW_TEST_SESSIONS.setAttributeInCascade(
-                                            shouldRun: false,
-                                            skipReason: 'Develop webhook/indexing builds do not run hardware tests',
-                                        )
-                                    }
-
-                                    testManager.echoTestGroupsSummary()
-                                    testManager.collectTestsForDashboard()
-                                    testManager.generateTestDashboard()
+                        stage('Run Docker tests (Windows)') {
+                            when {
+                                expression {
+                                    WIN_DOCKER_TESTS.anyShouldRun()
                                 }
                             }
-                        }
-                        stage('Resolve test sessions') {
                             steps {
                                 script {
-                                    testManager.resolveSessions(excludeGroups: [])
+                                    WIN_DOCKER_TESTS.runTestStages()
                                 }
                             }
                         }
                     }
-                    post {
-                        always {
-                            reassignFilePermissions()
-                        }
-                    }
                 }
-                stage('Publish documentation') {
-                    when {
-                        beforeAgent true
-                        branch BRANCH_NAME_MASTER
-                    }
-                    agent {
-                        label 'lin-worker'
-                    }
-                    steps {
-                        unstash 'docs'
-                        publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
-                    }
-                }
-                stage('Publish wheels') {
+                stage('Linux Docker Tests and Documentation') {
                     agent {
                         docker {
                             label 'lin-worker'
-                            image PUBLISHER_DOCKER_IMAGE
+                            image LIN_DOCKER_IMAGE
+                            args '-u root:root'
                         }
                     }
+                    environment {
+                        VENV_WORKING_FOLDER = "${LIN_DOCKER_TMP_PATH}"
+                    }
                     stages {
-                        stage('Unstash')
-                        {
+                        stage('Move workspace') {
                             steps {
-                                sh "git clean -fdx"
                                 script {
-                                    for (stash_name in wheel_stashes) {
-                                        unstash stash_name
+                                    venvManager.copyToWorkingFolder()
+                                }
+                            }
+                        }
+                        stage('Create virtual environments') {
+                            steps {
+                                script {
+                                    venvManager.createPoetryEnvironments(
+                                        pythonVersions: venvManager.defaultVenvNamesToVersion(LINUX_DOCKER_TESTS.baseTestSession.runInVirtualEnvs) + [DEFAULT_PYTHON_VERSION] as Set
+                                    )
+                                }
+                            }
+                        }
+                        stage('Build wheels') {
+                            steps {
+                                script {
+                                    venvManager.runInWorkingFolder("rm -rf dist")
+                                    venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                        venv.run("poetry run poe build")
                                     }
+                                    venvManager.copyFromWorkingFolder("dist/")
+                                }
+                                archiveArtifacts artifacts: "dist/*"
+                            }
+                        }
+                        stage('Make a static type analysis') {
+                            steps {
+                                script {
+                                    venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                        venv.run("poetry run poe type")
+                                    }
+                                }
+                            }
+                        }
+                        stage('Check formatting') {
+                            steps {
+                                script {
+                                    venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                        venv.run("poetry run poe format")
+                                    }
+                                }
+                            }
+                        }
+                        stage('Run Linux Docker tests') {
+                            when {
+                                expression { LINUX_DOCKER_TESTS.anyShouldRun() }
+                            }
+                            steps {
+                                script {
+                                    LINUX_DOCKER_TESTS.runTestStages()
+                                }
+                            }
+                        }
+                        stage('Generate documentation') {
+                            steps {
+                                script {
+                                    venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                        venv.run("poetry run poe docs")
+                                    }
+                                    venvManager.copyFromWorkingFolder("_docs/")
+                                    archiveArtifacts artifacts: '_docs/**'
                                 }
                             }
                         }
@@ -498,106 +384,18 @@ pipeline {
                                 publishPyPi('dist/*')
                             }
                         }
-                    }
-                }
-            }
-        }
-
-        stage('Tests') {
-            parallel {
-                stage('Linux Docker tests') {
-                    when {
-                        beforeAgent true
-                        expression {
-                            LINUX_DOCKER_TESTS.anyShouldRun()
-                        }
-                    }
-                    agent {
-                        docker {
-                            label 'lin-worker'
-                            image LIN_DOCKER_IMAGE
-                            args '-u root:root'
-                        }
-                    }
-                    environment {
-                        VENV_WORKING_FOLDER = "/tmp/ingenialink_python"
-                    }
-                    stages {
-                        stage('Unstash') {
-                            steps {
-                                sh "git clean -fdx"
-                                unstash 'publish_wheels-linux'
-                                script {
-                                    venvManager.copyToWorkingFolder()
-                                }
+                        stage('Publish documentation') {
+                            when {
+                                branch BRANCH_NAME_MASTER
                             }
-                        }
-                        stage('Create virtual environments') {
                             steps {
-                                script {
-                                    venvManager.createPoetryEnvironments(
-                                        pythonVersions: ([DEFAULT_PYTHON_VERSION] as Set) + venvManager.defaultVenvNamesToVersion(TEST_SESSIONS.runInVirtualEnvs),
-                                        additionalCommands: ["poetry run poe install-wheel"]
-                                    )
-                                }
-                            }
-                        }
-                        stage('Run tests') {
-                            steps {
-                                script {
-                                    LINUX_DOCKER_TESTS.runTestStages()
-                                }
+                                publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
                             }
                         }
                     }
                     post {
                         always {
                             reassignFilePermissions()
-                        }
-                    }
-                }
-                stage('Windows Docker tests') {
-                    when {
-                        beforeAgent true
-                        expression {
-                            WIN_DOCKER_TESTS.anyShouldRun()
-                        }
-                    }
-                    agent {
-                        docker {
-                            label SW_NODE
-                            image WIN_DOCKER_IMAGE
-                        }
-                    }
-                    environment {
-                        VENV_WORKING_FOLDER = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
-                    }
-                    stages {
-                        stage('Unstash') {
-                            steps {
-                                script {
-                                    bat "git clean -fdx"
-                                    unstash 'publish_wheels-windows'
-                                    venvManager.copyToWorkingFolder()
-                                }
-                            }
-                        }
-                        stage('Create virtual environments') {
-                            steps {
-                                script {
-                                    venvManager.createPoetryEnvironments(
-                                        pythonVersions: venvManager.defaultVenvNamesToVersion(TEST_SESSIONS.runInVirtualEnvs),
-                                        additionalCommands: ["poetry run poe install-wheel"]
-                                    )
-                                }
-                            }
-                        }
-                        stage('Run tests') {
-                            steps {
-                                script {
-                                    WIN_DOCKER_TESTS.runTestStages()
-                                }
-                            }
                         }
                     }
                 }
@@ -616,23 +414,11 @@ pipeline {
                         label ECAT_NODE
                     }
                     stages {
-                        stage('Unstash')
-                        {
-                            steps {
-                                bat "git clean -fdx"
-                                script {
-                                    for (stash_name in wheel_stashes) {
-                                        unstash stash_name
-                                    }
-                                }
-                            }
-                        }
                         stage('Create virtual environments') {
                             steps {
                                 script {
                                     venvManager.createPoetryEnvironments(
-                                        pythonVersions: venvManager.defaultVenvNamesToVersion(ECAT_TESTS.baseTestSession.runInVirtualEnvs),
-                                        additionalCommands: ["poetry run poe install-wheel"]
+                                        pythonVersions: venvManager.defaultVenvNamesToVersion(ECAT_TESTS.baseTestSession.runInVirtualEnvs)
                                     )
                                 }
                             }
@@ -661,23 +447,11 @@ pipeline {
                         label CAN_NODE
                     }
                     stages {
-                        stage('Unstash')
-                        {
-                            steps {
-                                bat "git clean -fdx"
-                                script {
-                                    for (stash_name in wheel_stashes) {
-                                        unstash stash_name
-                                    }
-                                }
-                            }
-                        }
                         stage('Create virtual environments') {
                             steps {
                                 script {
                                     venvManager.createPoetryEnvironments(
-                                        pythonVersions: venvManager.defaultVenvNamesToVersion(HW_TEST_SESSIONS.runInVirtualEnvs),
-                                        additionalCommands: ["poetry run poe install-wheel"]
+                                        pythonVersions: venvManager.defaultVenvNamesToVersion(HW_TEST_SESSIONS.runInVirtualEnvs)
                                     )
                                 }
                             }
@@ -706,14 +480,9 @@ pipeline {
             }
             steps {
                 script {
-                    for (stash_name in wheel_stashes) {
-                        unstash stash_name
-                    }
                     def coverage_files = testManager.getCoverageFiles()
                     venvManager.copyToWorkingFolder()
-                    venvManager.createPoetryEnvironment(
-                        additionalCommands: ["poetry run poe install-wheel"]
-                    )
+                    venvManager.createPoetryEnvironment()
 
                     if (coverage_files) {
                         venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->

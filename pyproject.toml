@@ -17,7 +17,6 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "Programming Language :: Cython",
   "Topic :: Communications",
   "Topic :: Software Development :: Libraries"
 ]
@@ -59,7 +58,6 @@ requires = [
   "setuptools==75.6.0",
   "setuptools_scm[toml]>=8",
   "wheel==0.42.0",
-  "Cython==3.0.11",
   "setuptools_scm_policies @ http://pypi.novanta.com/packages/setuptools_scm_policies-0.2.0-py3-none-any.whl"
 ]
 build-backend = "setuptools.build_meta"
@@ -76,14 +74,13 @@ include-package-data = true
 include = ["ingenialink"]
 
 [tool.setuptools.package-data]
-ingenialink = ["py.typed", "*.pyd"]
+ingenialink = ["py.typed"]
 
 # Dependencies to run poe tasks
 [tool.poetry.group.dev]
 optional = true
 [tool.poetry.group.dev.dependencies]
 poethepoet = {extras = ["poetry-plugin"], version = "^0.35.0"}
-Cython  = "==3.3.0"
 setuptools = "==75.9.1"
 
 # Dependencies for build wheel tasks
@@ -135,18 +132,13 @@ xmlschema = ">=3.0.0"
 #                                   TASKS
 # -----------------------------------------------------------------------
 
-# ----------------------------- Build wheel -----------------------------
-[tool.poe.tasks.build-wheel]
+# ----------------------------- Build package -----------------------------
+[tool.poe.tasks.build]
 help = "Build wheels"
-cmd = "poetry build"
-
-[tool.poe.tasks.check-wheels]
-help = "Check wheels"
-cmd = "twine check dist/*"
-
-[tool.poe.tasks.build-cython]
-help = "Build Cython"
-cmd = "python setup.py build_ext --inplace"
+sequence = [
+  { cmd = "poetry build" },
+  { cmd = "twine check dist/*" }
+]
 
 # ----------------------------- Ruff format -----------------------------
 [tool.poe.tasks.ruff-format-check]
@@ -183,10 +175,6 @@ cmd = "mypy ingenialink examples"
 [tool.poe.tasks.docs]
 help = "Build documentation"
 cmd = "python -I -m sphinx -E -W --keep-going -b html docs _docs"
-
-# ----------------------------- Install wheel -----------------------------
-[tool.poe.tasks.install-wheel]
-cmd = "pip install --force-reinstall --no-deps --no-index --find-links dist/ ingenialink"
 
 # ----------------------------- Run unit tests -----------------------------
 [tool.poe.tasks.tests]

@@ -6,6 +6,7 @@
 
 ### Changed
 - Fix race condition where network state is notified before being updated
+- Remove the Cython-based adapter address extension and its build configuration
 
 ## [7.6.2] - 2026-08-12
 ### Added
