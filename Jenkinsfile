@@ -297,8 +297,7 @@ pipeline {
                                     steps {
                                         archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
                                         script {
-                                            stash_name = "publish_wheels-windows"
-                                            wheel_stashes.add(stash_name)
+                                            def stash_name = "publish_wheels-windows"
                                             stash includes: "dist\\*", name: stash_name
                                         }
                                     }
@@ -357,8 +356,7 @@ pipeline {
                                     steps {
                                         archiveArtifacts(artifacts: "dist/*", followSymlinks: false)
                                         script {
-                                            stash_name = "publish_wheels-linux"
-                                            wheel_stashes.add(stash_name)
+                                            def stash_name = "publish_wheels-linux"
                                             stash includes: "dist/*", name: stash_name
                                         }
                                     }
