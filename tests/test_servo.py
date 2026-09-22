@@ -600,9 +600,6 @@ def test_disturbance_data_size(create_disturbance):
     servo.disturbance_remove_data()
 
 
-@pytest.mark.canopen
-@pytest.mark.ethernet
-@pytest.mark.ethercat
 @pytest.mark.virtual
 def test_enable_disable(servo):
     servo.enable()
