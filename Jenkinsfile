@@ -49,6 +49,7 @@ PyTestManager testManager = new PyTestManager(pipeline: this, venvManager: venvM
 /* Define default base test sessions to be used/overridden in stages */
 TestSession TEST_SESSIONS = new TestSession(
     covPackageName: "ingenialink",
+    covFromSitePackages: false,
     startWiresharkTimeoutS: 10.0,
     importMode: "importlib",
     setAttApiToken: true
