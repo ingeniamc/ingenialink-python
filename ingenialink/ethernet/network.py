@@ -56,6 +56,7 @@ CMD_CHANGE_CPU = 0x67E4
 MAX_NUM_UNSUCCESSFUL_PINGS = 3
 
 MAX_NUMBER_OF_SCAN_TRIES = 2
+MAX_NUMBER_OF_SCAN_INFO_TRIES = 2
 SCAN_CONNECTION_TIMEOUT = 0.5
 
 EthernetServoT = TypeVar("EthernetServoT", bound=EthernetServoBase, default=EthernetServoBase)
@@ -399,8 +400,13 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
         slave_info: OrderedDict[str, SlaveInfo] = OrderedDict()
         slaves = self._scan_slaves()
         for slave_id in slaves:
-            with contextlib.suppress(ILError):
-                slave_info[slave_id] = self._get_servo_info_for_scan(slave_id)
+            # Retry because retrieving the drive information may occasionally time out.
+            for _ in range(MAX_NUMBER_OF_SCAN_INFO_TRIES):
+                try:
+                    slave_info[slave_id] = self._get_servo_info_for_scan(slave_id)
+                    break
+                except ILError:
+                    continue
         return slave_info
 
     def _scan_slaves(self) -> list[str]:
