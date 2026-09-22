@@ -463,28 +463,23 @@ class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
 
         Raises:
             TypeError: if the product code type is not an integer.
+            ILError: if a register read fails.
         """
         servo = self.connect_to_slave(
             ip_address, BASIC_ETHERNET_V2_XDF, connection_timeout=SCAN_CONNECTION_TIMEOUT
         )
         try:
             product_code = servo.read("DRV_ID_PRODUCT_CODE_COCO", subnode=0)
-        except ILError:
-            logger.error(f"The product code cannot be read from the drive with IP: {ip_address}.")
-            product_code = None
-        if not isinstance(product_code, int):
-            raise TypeError(f"Expected product code type to be int, got {type(product_code)}")
-        try:
+            if not isinstance(product_code, int):
+                raise TypeError(f"Expected product code type to be int, got {type(product_code)}")
             revision_number = servo.read("DRV_ID_REVISION_NUMBER_COCO", subnode=0)
-        except ILError:
-            logger.error(
-                f"The revision number cannot be read from the drive with IP: {ip_address}."
-            )
-            revision_number = None
-        if not isinstance(revision_number, int):
-            raise TypeError(f"Expected revision number type to be int, got {type(revision_number)}")
-        self.disconnect_from_slave(servo)
-        return SlaveInfo(product_code, revision_number)
+            if not isinstance(revision_number, int):
+                raise TypeError(
+                    f"Expected revision number type to be int, got {type(revision_number)}"
+                )
+            return SlaveInfo(product_code, revision_number)
+        finally:
+            self.disconnect_from_slave(servo)
 
     @override
     def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:

@@ -6,6 +6,7 @@ import time
 from ftplib import error_temp
 from threading import Event, Thread
 from typing import TYPE_CHECKING
+from unittest.mock import Mock
 
 import pytest
 from summit_testing_framework.setups import (
@@ -27,6 +28,7 @@ from ingenialink.ethernet.network import (
     NetState,
 )
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
+from ingenialink.network import SlaveInfo
 from tests.net_status_helpers import NetStatusRecorder
 
 if TYPE_CHECKING:
@@ -269,6 +271,84 @@ def test_scan_slaves_info(setup_specifier, setup_descriptor, request):
     if isinstance(setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)):
         drive = request.getfixturevalue("get_drive_configuration_from_rack_service")
         assert slaves_info[drive_ip].product_code == drive.product_code
+
+
+def test_scan_slaves_info_retries_after_register_read_error(mocker) -> None:
+    net = EthernetNetwork("192.168.2.0/24")
+    expected_info = SlaveInfo(product_code=1, revision_number=2)
+    get_servo_info = mocker.patch.object(
+        net,
+        "_get_servo_info_for_scan",
+        side_effect=[ILError("timeout"), expected_info],
+    )
+    mocker.patch.object(net, "_scan_slaves", return_value=["192.168.2.10"])
+
+    assert net.scan_slaves_info() == {"192.168.2.10": expected_info}
+    assert get_servo_info.call_count == 2
+
+
+def test_scan_slaves_info_does_not_retry_success(mocker) -> None:
+    net = EthernetNetwork("192.168.2.0/24")
+    expected_info = SlaveInfo(product_code=1, revision_number=2)
+    get_servo_info = mocker.patch.object(
+        net,
+        "_get_servo_info_for_scan",
+        return_value=expected_info,
+    )
+    mocker.patch.object(net, "_scan_slaves", return_value=["192.168.2.10"])
+
+    assert net.scan_slaves_info() == {"192.168.2.10": expected_info}
+    get_servo_info.assert_called_once_with("192.168.2.10")
+
+
+def test_scan_slaves_info_does_not_retry_type_error(mocker) -> None:
+    net = EthernetNetwork("192.168.2.0/24")
+    get_servo_info = mocker.patch.object(
+        net,
+        "_get_servo_info_for_scan",
+        side_effect=TypeError("invalid register value"),
+    )
+    mocker.patch.object(net, "_scan_slaves", return_value=["192.168.2.10"])
+
+    with pytest.raises(TypeError, match="invalid register value"):
+        net.scan_slaves_info()
+
+    get_servo_info.assert_called_once_with("192.168.2.10")
+
+
+def test_get_servo_info_for_scan_disconnects_after_read_error(mocker) -> None:
+    net = EthernetNetwork("192.168.2.0/24")
+    servo = Mock()
+    servo.read.side_effect = ILError("timeout")
+    mocker.patch.object(net, "connect_to_slave", return_value=servo)
+    disconnect = mocker.patch.object(net, "disconnect_from_slave")
+
+    with pytest.raises(ILError, match="timeout"):
+        net._get_servo_info_for_scan("192.168.2.10")
+
+    disconnect.assert_called_once_with(servo)
+
+
+@pytest.mark.parametrize(
+    ("read_values", "error_match"),
+    [
+        (["invalid", 2], "Expected product code type"),
+        ([1, "invalid"], "Expected revision number type"),
+    ],
+)
+def test_get_servo_info_for_scan_disconnects_after_invalid_value(
+    mocker, read_values, error_match
+) -> None:
+    net = EthernetNetwork("192.168.2.0/24")
+    servo = Mock()
+    servo.read.side_effect = read_values
+    mocker.patch.object(net, "connect_to_slave", return_value=servo)
+    disconnect = mocker.patch.object(net, "disconnect_from_slave")
+
+    with pytest.raises(TypeError, match=error_match):
+        net._get_servo_info_for_scan("192.168.2.10")
+
+    disconnect.assert_called_once_with(servo)
 
 
 @pytest.mark.ethernet
