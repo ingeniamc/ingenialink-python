@@ -274,6 +274,7 @@ def test_scan_slaves_info(setup_specifier, setup_descriptor, request):
 
 
 def test_scan_slaves_info_retries_after_register_read_error(mocker) -> None:
+    """Retry servo information retrieval after a register read error."""
     net = EthernetNetwork("192.168.2.0/24")
     expected_info = SlaveInfo(product_code=1, revision_number=2)
     get_servo_info = mocker.patch.object(
@@ -288,6 +289,7 @@ def test_scan_slaves_info_retries_after_register_read_error(mocker) -> None:
 
 
 def test_scan_slaves_info_does_not_retry_success(mocker) -> None:
+    """Retrieve servo information only once when the first attempt succeeds."""
     net = EthernetNetwork("192.168.2.0/24")
     expected_info = SlaveInfo(product_code=1, revision_number=2)
     get_servo_info = mocker.patch.object(
@@ -302,6 +304,7 @@ def test_scan_slaves_info_does_not_retry_success(mocker) -> None:
 
 
 def test_scan_slaves_info_does_not_retry_type_error(mocker) -> None:
+    """Propagate invalid register value errors without retrying."""
     net = EthernetNetwork("192.168.2.0/24")
     get_servo_info = mocker.patch.object(
         net,
@@ -317,6 +320,7 @@ def test_scan_slaves_info_does_not_retry_type_error(mocker) -> None:
 
 
 def test_get_servo_info_for_scan_disconnects_after_read_error(mocker) -> None:
+    """Disconnect the servo when register retrieval raises an ILError."""
     net = EthernetNetwork("192.168.2.0/24")
     servo = Mock()
     servo.read.side_effect = ILError("timeout")
@@ -339,6 +343,7 @@ def test_get_servo_info_for_scan_disconnects_after_read_error(mocker) -> None:
 def test_get_servo_info_for_scan_disconnects_after_invalid_value(
     mocker, read_values, error_match
 ) -> None:
+    """Disconnect the servo when a product or revision value is invalid."""
     net = EthernetNetwork("192.168.2.0/24")
     servo = Mock()
     servo.read.side_effect = read_values
