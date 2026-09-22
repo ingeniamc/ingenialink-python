@@ -332,19 +332,6 @@ pipeline {
                                 archiveArtifacts artifacts: "dist/*"
                             }
                         }
-                        stage('Publish Novanta PyPi') {
-                            steps {
-                                publishNovantaPyPi('dist/*')
-                            }
-                        }
-                        stage('Publish PyPi') {
-                            when {
-                                branch 'master'
-                            }
-                            steps {
-                                publishPyPi('dist/*')
-                            }
-                        }
                         stage('Make a static type analysis') {
                             steps {
                                 script {
@@ -382,6 +369,19 @@ pipeline {
                                     venvManager.copyFromWorkingFolder("_docs/")
                                     archiveArtifacts artifacts: '_docs/**'
                                 }
+                            }
+                        }
+                        stage('Publish Novanta PyPi') {
+                            steps {
+                                publishNovantaPyPi('dist/*')
+                            }
+                        }
+                        stage('Publish PyPi') {
+                            when {
+                                branch 'master'
+                            }
+                            steps {
+                                publishPyPi('dist/*')
                             }
                         }
                         stage('Publish documentation') {
