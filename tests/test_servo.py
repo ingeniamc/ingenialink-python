@@ -600,7 +600,15 @@ def test_disturbance_data_size(create_disturbance):
     servo.disturbance_remove_data()
 
 
+@pytest.mark.canopen
+@pytest.mark.ethernet
+@pytest.mark.ethercat
 @pytest.mark.virtual
+@pytest.mark.not_valid_for_product(
+    part_number="CAP-*",
+    interfaces=[Interface.ETH],
+    skip_reason="Fails occasionally due to communication problems (packet loss).",
+)
 def test_enable_disable(servo):
     servo.enable()
     assert servo.status[1] == ServoState.ENABLED
