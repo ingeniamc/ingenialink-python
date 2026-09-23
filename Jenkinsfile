@@ -1,4 +1,4 @@
-@Library('cicd-lib@50d2c8c') _
+@Library('cicd-lib@0.23') _
 
 import python.VEnvManager
 import python.VirtualEnvironment
@@ -304,14 +304,13 @@ pipeline {
                         VENV_WORKING_FOLDER = "${LIN_DOCKER_TMP_PATH}"
                     }
                     stages {
-                        // Uncomment when CICD is released: https://novantamotion.atlassian.net/browse/CIT-707
-                        // stage('Check Dependencies') {
-                        //     steps {
-                        //         script {
-                        //             checkDependencies(excludeManagers: ['poetry:tests'])
-                        //         }
-                        //     }
-                        // }
+                        stage('Check Dependencies') {
+                            steps {
+                                script {
+                                    checkDependencies(excludeManagers: ['poetry:tests'])
+                                }
+                            }
+                        }
                         stage('Move workspace') {
                             steps {
                                 script {
