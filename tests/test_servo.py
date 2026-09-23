@@ -607,7 +607,7 @@ def test_disturbance_data_size(create_disturbance):
 @pytest.mark.not_valid_for_product(
     part_number="CAP-*",
     interfaces=[Interface.ETH],
-    skip_reason="Fails occasionally due to communication problems (packet loss).",
+    skip_reason="https://novantamotion.atlassian.net/browse/CAP-924",
 )
 def test_enable_disable(servo):
     servo.enable()
