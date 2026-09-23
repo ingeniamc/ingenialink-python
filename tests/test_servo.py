@@ -604,6 +604,11 @@ def test_disturbance_data_size(create_disturbance):
 @pytest.mark.ethernet
 @pytest.mark.ethercat
 @pytest.mark.virtual
+@pytest.mark.not_valid_for_product(
+    part_number="CAP-*",
+    interfaces=[Interface.ETH],
+    skip_reason="https://novantamotion.atlassian.net/browse/CAP-924",
+)
 def test_enable_disable(servo):
     servo.enable()
     assert servo.status[1] == ServoState.ENABLED
