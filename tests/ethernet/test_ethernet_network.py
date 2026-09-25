@@ -249,8 +249,8 @@ def test_scan_slaves_no_subnet():
 
 
 @pytest.mark.ethernet
-def test_scan_slaves(setup_descriptor):
-    drive_ip = setup_descriptor.ip
+def test_scan_slaves(servo):
+    drive_ip = servo.ip_address
     subnet = drive_ip + "/24"
     net = EthernetNetwork(subnet)
     detected_slaves = net.scan_slaves()
@@ -259,8 +259,8 @@ def test_scan_slaves(setup_descriptor):
 
 
 @pytest.mark.ethernet
-def test_scan_slaves_info(setup_specifier, setup_descriptor, request):
-    drive_ip = setup_descriptor.ip
+def test_scan_slaves_info(setup_specifier, servo, request):
+    drive_ip = servo.ip_address
     subnet = drive_ip + "/24"
     net = EthernetNetwork(subnet)
     slaves_info = net.scan_slaves_info()
@@ -369,28 +369,28 @@ def test_ethernet_connection(servo, net, setup_descriptor):
 
 
 @pytest.mark.ethernet
-def test_ethernet_disconnection(setup_descriptor):
+def test_ethernet_disconnection(servo):
     disconnected_servos = []
 
     def dummy_callback(servo):
         disconnected_servos.append(servo.target)
 
     net = EthernetNetwork()
-    servo = net.connect_to_slave(
-        setup_descriptor.ip,
-        setup_descriptor.dictionary,
-        setup_descriptor.port,
+    connected_servo = net.connect_to_slave(
+        servo.ip_address,
+        servo.dictionary.path,
+        servo.port,
         disconnect_callback=dummy_callback,
     )
-    assert servo.target == setup_descriptor.ip
+    assert connected_servo.target == servo.ip_address
 
     assert len(disconnected_servos) == 0
-    net.disconnect_from_slave(servo)
-    assert net.get_servo_state(setup_descriptor.ip) == NetState.DISCONNECTED
+    net.disconnect_from_slave(connected_servo)
+    assert net.get_servo_state(servo.ip_address) == NetState.DISCONNECTED
     assert len(net.servos) == 0
     assert servo.socket._closed
     assert len(disconnected_servos) == 1
-    assert disconnected_servos[0] == setup_descriptor.ip
+    assert disconnected_servos[0] == servo.ip_address
 
 
 def test_load_firmware_file_not_found():
