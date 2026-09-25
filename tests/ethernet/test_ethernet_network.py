@@ -388,7 +388,7 @@ def test_ethernet_disconnection(servo):
     net.disconnect_from_slave(connected_servo)
     assert net.get_servo_state(servo.ip_address) == NetState.DISCONNECTED
     assert len(net.servos) == 0
-    assert servo.socket._closed
+    assert connected_servo.socket._closed
     assert len(disconnected_servos) == 1
     assert disconnected_servos[0] == servo.ip_address
 
