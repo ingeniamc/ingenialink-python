@@ -1,6 +1,6 @@
 import time
 from threading import Lock, Thread
-from typing import Union
+from typing import Optional, Union
 
 import ingenialogger
 
@@ -34,6 +34,7 @@ class Poller(Thread):
         self.__lock = Lock()
         self.__acq_time: list[float] = []
         self.__acq_data: list[Union[list[float], list[int]]] = []
+        self.__time_start: Optional[float] = None
         self._reset_acq()
 
     def run(self) -> None:
@@ -159,7 +160,7 @@ class Poller(Thread):
         time_diff = time.time()
 
         # Obtain current time
-        t = time_diff - self.__time_start
+        t = time_diff - self.timestamp_origin
 
         self.__lock.acquire()
         # Acquire all configured channels
@@ -211,6 +212,17 @@ class Poller(Thread):
         self.__lock.release()
 
         return t, d, self.__samples_lost
+
+    @property
+    def timestamp_origin(self) -> float:
+        """Wall-clock timestamp from which sample times are measured.
+
+        Raises:
+            RuntimeError: If the poller has not been started yet.
+        """
+        if self.__time_start is None:
+            raise RuntimeError("The poller has not been started yet.")
+        return self.__time_start
 
     @property
     def servo(self) -> Servo:

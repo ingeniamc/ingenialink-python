@@ -249,13 +249,166 @@ pipeline {
             }
         }
 
-        stage('Build and Tests') {
-            parallel {
-                stage('Build Windows') {
+        stage('Build and publish') {
+            stages {
+                stage('Build') {
+                    parallel {
+                        stage('Build Windows') {
+                            agent {
+                                docker {
+                                    label SW_NODE
+                                    image WIN_DOCKER_IMAGE
+                                }
+                            }
+                            environment {
+                                VENV_WORKING_FOLDER = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
+                            }
+                            stages {
+                                stage('Move workspace') {
+                                    steps {
+                                        script {
+                                            bat "git clean -fdx"
+                                            venvManager.copyToWorkingFolder()
+                                        }
+                                    }
+                                }
+                                stage('Create virtual environments') {
+                                    steps {
+                                        script {
+                                            venvManager.createPoetryEnvironments(
+                                                pythonVersions: ALL_PYTHON_VERSIONS
+                                            )
+                                        }
+                                    }
+                                }
+                                stage('Build wheels') {
+                                    steps {
+                                        script {
+                                            venvManager.forEachEnvironment() { venv ->
+                                                venv.run("poetry run poe build")
+                                            }
+                                            venvManager.copyFromWorkingFolder("ingenialink/_version.py")
+                                            venvManager.copyFromWorkingFolder("dist/")
+
+                                        }
+                                    }
+                                }
+                                stage('Archive artifacts') {
+                                    steps {
+                                        archiveArtifacts(artifacts: "dist\\*", followSymlinks: false)
+                                        script {
+                                            def stash_name = "publish_wheels-windows"
+                                            stash includes: "dist\\*", name: stash_name
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        stage('Build Linux') {
+                            agent {
+                                docker {
+                                    label 'lin-worker'
+                                    image LIN_DOCKER_IMAGE
+                                }
+                            }
+                            environment {
+                                VENV_WORKING_FOLDER = "/tmp/ingenialink_python"
+                            }
+                            stages {
+                                // Uncomment when CICD is released: https://novantamotion.atlassian.net/browse/CIT-707
+                                // stage('Check Dependencies') {
+                                //     steps {
+                                //         script {
+                                //             sh "git clean -fdx"
+                                //             checkDependencies(excludeManagers: ['poetry:tests'])
+                                //         }
+                                //     }
+                                // }
+                                stage('Move workspace') {
+                                    steps {
+                                        script {
+                                            venvManager.copyToWorkingFolder()
+                                        }
+                                    }
+                                }
+                                stage('Create virtual environments') {
+                                    steps {
+                                        script {
+                                            venvManager.createPoetryEnvironments(
+                                                pythonVersions: ([DEFAULT_PYTHON_VERSION] as Set) + venvManager.defaultVenvNamesToVersion(TEST_SESSIONS.runInVirtualEnvs)
+                                            )
+                                        }
+                                    }
+                                }
+                                stage('Build wheels') {
+                                    steps {
+                                        script {
+                                            // Linux for now does not contain compiled code
+                                            // so building on one python version is enough
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                venv.run("poetry run poe build")
+                                            }
+                                            venvManager.copyFromWorkingFolder("dist/")
+                                        }
+                                    }
+                                }
+                                stage('Archive artifacts') {
+                                    steps {
+                                        archiveArtifacts(artifacts: "dist/*", followSymlinks: false)
+                                        script {
+                                            def stash_name = "publish_wheels-linux"
+                                            stash includes: "dist/*", name: stash_name
+                                        }
+                                    }
+                                }
+                                stage('Make a static type analysis') {
+                                    steps {
+                                        script {
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                venv.run("poetry run poe type")
+                                            }
+                                        }
+                                    }
+                                }
+                                stage('Check formatting') {
+                                    steps {
+                                        script {
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                venv.run("poetry run poe format")
+                                            }
+                                        }
+                                    }
+                                }
+                                stage('Generate documentation') {
+                                    steps {
+                                        script {
+                                            venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
+                                                venv.run("poetry run poe docs")
+                                            }
+                                            venvManager.copyFromWorkingFolder("_docs/")
+                                        }
+                                    }
+                                    post {
+                                        success {
+                                            archiveArtifacts artifacts: '_docs/**'
+                                            stash includes: '_docs/**', name: 'docs'
+                                        }
+                                    }
+                                }
+                            }
+                            post {
+                                always {
+                                    reassignFilePermissions()
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('Prepare and resolve test sessions') {
                     agent {
                         docker {
-                            label SW_NODE
-                            image WIN_DOCKER_IMAGE
+                            label 'lin-worker'
+                            image LIN_DOCKER_IMAGE
                         }
                     }
                     environment {
@@ -378,6 +531,14 @@ pipeline {
                                 }
                             }
                         }
+                        stage('Publish documentation') {
+                            when {
+                                branch BRANCH_NAME_MASTER
+                            }
+                            steps {
+                                publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
+                            }
+                        }
                         stage('Publish Novanta PyPi') {
                             steps {
                                 publishNovantaPyPi('dist/*')
@@ -391,12 +552,37 @@ pipeline {
                                 publishPyPi('dist/*')
                             }
                         }
-                        stage('Publish documentation') {
-                            when {
-                                branch BRANCH_NAME_MASTER
-                            }
+                    }
+                }
+            }
+        }
+
+        stage('Tests') {
+            parallel {
+                stage('Linux Docker tests') {
+                    when {
+                        beforeAgent true
+                        expression {
+                            LINUX_DOCKER_TESTS.anyShouldRun()
+                        }
+                    }
+                    agent {
+                        docker {
+                            label 'lin-worker'
+                            image LIN_DOCKER_IMAGE
+                        }
+                    }
+                    environment {
+                        VENV_WORKING_FOLDER = "/tmp/ingenialink_python"
+                    }
+                    stages {
+                        stage('Unstash') {
                             steps {
-                                publishDistExt('_docs', DISTEXT_PROJECT_DIR, true)
+                                sh "git clean -fdx"
+                                unstash 'publish_wheels-linux'
+                                script {
+                                    venvManager.copyToWorkingFolder()
+                                }
                             }
                         }
                     }
