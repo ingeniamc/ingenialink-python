@@ -556,6 +556,27 @@ class DriveRegistersSession:
                 result.skipped.append(SkippedEntry(register, "No baseline value"))
                 continue
 
+            if current_value is None:
+                live_value = _read_with_retry(self.servo, register)
+                logger.debug(
+                    f"Reconciling dirty register {register.identifier!s}: "
+                    f"baseline={baseline_value!r}, live={live_value!r}, "
+                    f"axis={register.subnode}"
+                )
+                if live_value is None:
+                    logger.debug(
+                        f"Could not determine the live value of {register.identifier!s} "
+                        f"on axis={register.subnode}; falling back to baseline write"
+                    )
+                if live_value == baseline_value:
+                    logger.debug(
+                        f"Skipping restore for {register.identifier!s} because live value "
+                        "already matches baseline"
+                    )
+                    del self._changes[register]
+                    continue
+                current_value = live_value
+
             if current_value == baseline_value:
                 del self._changes[register]
                 continue
