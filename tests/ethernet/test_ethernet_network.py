@@ -513,37 +513,14 @@ def test_recover_from_disconnection(net: "EthernetNetwork", servo: "EthernetServ
     assert net.recover_from_disconnection(servo) is True
 
 
-def test_recovery_reuses_recreated_socket_after_failed_probe(mocker) -> None:
-    """Reuse the recreated socket when a recovery probe initially fails."""
-    net = EthernetNetwork()
-    servo = EthernetServo.__new__(EthernetServo)
-    servo.target = "192.0.2.1"
-    servo._lock = Lock()
-    servo.socket = mocker.Mock()
-    events = []
-    probe_results = iter([False, True])
-
-    mocker.patch.object(servo, "recreate_socket", side_effect=lambda: events.append("recreate"))
-
-    def is_alive(**_kwargs):
-        events.append("probe")
-        return next(probe_results)
-
-    mocker.patch.object(servo, "is_alive", side_effect=is_alive)
-
-    assert net.recover_from_disconnection(servo) is False
-    assert net.recover_from_disconnection(servo) is True
-    assert events == ["recreate", "probe", "probe"]
-
-
 def test_recreate_socket_replaces_old_socket_and_preserves_configuration(mocker) -> None:
     """Replace the socket while preserving its connection configuration."""
     servo = EthernetServo.__new__(EthernetServo)
     servo.ip_address = "192.0.2.1"
     servo.port = 1061
-    servo.connection_timeout = 2.5
     servo._lock = Lock()
     old_socket = mocker.Mock()
+    old_socket.gettimeout.return_value = 2.5
     new_socket = mocker.Mock()
     servo.socket = old_socket
     mocker.patch("ingenialink.ethernet.servo.socket.socket", return_value=new_socket)
@@ -551,6 +528,7 @@ def test_recreate_socket_replaces_old_socket_and_preserves_configuration(mocker)
     servo.recreate_socket()
 
     assert servo.socket is new_socket
+    old_socket.gettimeout.assert_called_once_with()
     new_socket.settimeout.assert_called_once_with(2.5)
     new_socket.connect.assert_called_once_with(("192.0.2.1", 1061))
     old_socket.close.assert_called_once_with()
@@ -622,20 +600,21 @@ def test_disconnect_waits_for_active_servo_transaction() -> None:
     servo.socket.close.assert_called_once_with()
 
 
-def test_listener_uses_recovery_before_probing_disconnected_servo(mocker) -> None:
-    """Use recovery before probing a servo already marked as disconnected."""
+def test_listener_probes_before_recovering_disconnected_servo(mocker) -> None:
+    """Probe a disconnected servo before attempting communication recovery."""
     events = []
     servo = mocker.Mock()
     net = mocker.Mock()
     net.servos = [servo]
     net.get_servo_state.return_value = NetState.DISCONNECTED
+    servo.is_alive.side_effect = lambda **_kwargs: events.append("probe") or True
     net.recover_from_disconnection.side_effect = lambda _servo: events.append("recovery") or True
     net._transition_servo_state.side_effect = lambda *_args: events.append("connected")
 
     NetStatusListener(net).process()
 
-    servo.is_alive.assert_not_called()
-    assert events == ["recovery", "connected"]
+    servo.is_alive.assert_called_once_with(attemps=3)
+    assert events == ["probe", "recovery", "connected"]
 
 
 @pytest.mark.ethernet
