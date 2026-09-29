@@ -78,6 +78,20 @@ class EthernetServo(EthernetServoBase):
     COMMS_ETH_NET_GATEWAY = "COMMS_ETH_GW"
     COMMS_ETH_MAC = "COMMS_ETH_MAC"
 
+    def recreate_socket(self) -> None:
+        """Replace the UDP socket used for Ethernet communication."""
+        with self._lock:
+            new_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                new_socket.settimeout(self.socket.gettimeout())
+                new_socket.connect((self.ip_address, self.port))
+            except Exception:
+                new_socket.close()
+                raise
+            old_socket = self.socket
+            self.socket = new_socket
+            old_socket.close()
+
     def store_tcp_ip_parameters(self) -> None:
         """Stores the TCP/IP values.
 
