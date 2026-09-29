@@ -617,6 +617,30 @@ def test_listener_probes_before_recovering_disconnected_servo(mocker) -> None:
     assert events == ["probe", "recovery", "connected"]
 
 
+def test_listener_recreates_socket_after_ethernet_disconnection(mocker) -> None:
+    """Test that the listener recreates the socket after an Ethernet disconnection."""
+    events = []
+
+    servo = mocker.Mock(spec=EthernetServo)
+    servo.is_alive.side_effect = lambda **_kwargs: events.append("probe") or False
+    servo.recreate_socket.side_effect = lambda: events.append("recreate")
+
+    net = mocker.Mock()
+    net.servos = [servo]
+    net.get_servo_state.return_value = NetState.CONNECTED
+    net._transition_servo_state.side_effect = lambda *_args: events.append("disconnected")
+
+    NetStatusListener(net).process()
+
+    servo.is_alive.assert_called_once_with(attemps=3)
+    net._transition_servo_state.assert_called_once_with(
+        servo,
+        NetDevEvt.REMOVED,
+    )
+    servo.recreate_socket.assert_called_once_with()
+    assert events == ["probe", "disconnected", "recreate"]
+
+
 @pytest.mark.ethernet
 def test_net_status_listener_detects_power_cycle(
     net: "EthernetNetwork", servo: "EthernetServo", environment: "Environment"
