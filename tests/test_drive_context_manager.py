@@ -765,6 +765,7 @@ class TestDriveRegistersSession:
 
         result = session.restore()
 
+        servo_mock.read.assert_not_called()
         servo_mock.write.assert_not_called()
         assert len(result.skipped) == 1
         assert result.skipped[0] == (reg, "No baseline value")
@@ -781,9 +782,122 @@ class TestDriveRegistersSession:
 
         result = session.restore()
 
+        servo_mock.read.assert_not_called()
         servo_mock.write.assert_not_called()
         assert len(result.restored) == 0
         assert len(result.skipped) == 0
+
+    def test_restore_reconciles_dirty_value_matching_baseline(self, mocker: MockerFixture):
+        servo_mock = mocker.MagicMock(spec=Servo)
+        servo_mock.read.return_value = 42.0
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="DIRTY_MATCH")
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
+        session = DriveRegistersSession(
+            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
+        )
+        session._changes[reg] = None
+
+        result = session.restore()
+
+        servo_mock.read.assert_called_once_with(reg)
+        servo_mock.write.assert_not_called()
+        assert session._changes == {}
+        assert result.all_succeeded
+        assert result.restored == []
+
+    def test_restore_reconciles_dirty_value_different_from_baseline(self, mocker: MockerFixture):
+        servo_mock = mocker.MagicMock(spec=Servo)
+        servo_mock.read.return_value = 99.0
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="DIRTY_CHANGED")
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
+        session = DriveRegistersSession(
+            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
+        )
+        session._changes[reg] = None
+
+        result = session.restore()
+
+        servo_mock.read.assert_called_once_with(reg)
+        servo_mock.write.assert_called_once_with(reg, 42.0)
+        assert session._changes == {}
+        assert result.restored == [RestoredEntry(reg, 42.0)]
+        assert result.all_succeeded
+
+    def test_restore_attempts_write_when_dirty_value_cannot_be_read(self, mocker: MockerFixture):
+        servo_mock = mocker.MagicMock(spec=Servo)
+        servo_mock.read.side_effect = RuntimeError("read unavailable")
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="DIRTY_UNREADABLE")
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
+        session = DriveRegistersSession(
+            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
+        )
+        session._changes[reg] = None
+
+        result = session.restore()
+
+        assert servo_mock.read.call_count == 2
+        servo_mock.write.assert_called_once_with(reg, 42.0)
+        assert session._changes == {}
+        assert result.restored == [RestoredEntry(reg, 42.0)]
+        assert result.all_succeeded
+
+    def test_restore_keeps_dirty_register_when_read_and_write_fail(self, mocker: MockerFixture):
+        servo_mock = mocker.MagicMock(spec=Servo)
+        servo_mock.read.side_effect = RuntimeError("read unavailable")
+        servo_mock.write.side_effect = RuntimeError("write unavailable")
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="DIRTY_IO_FAIL")
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
+        session = DriveRegistersSession(
+            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
+        )
+        session._changes[reg] = None
+
+        result = session.restore(write_max_attempts=2)
+
+        assert servo_mock.read.call_count == 2
+        assert servo_mock.write.call_count == 2
+        assert session._changes[reg] is None
+        assert len(result.failed) == 1
+        assert result.failed[0].register is reg
+        assert result.failed[0].value == 42.0
+
+    def test_restore_keeps_dirty_register_when_write_fails_after_readback(
+        self, mocker: MockerFixture
+    ):
+        servo_mock = mocker.MagicMock(spec=Servo)
+        servo_mock.read.return_value = 99.0
+        servo_mock.write.side_effect = RuntimeError("persistent write error")
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="DIRTY_WRITE_FAIL")
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
+        session = DriveRegistersSession(
+            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
+        )
+        session._changes[reg] = None
+
+        result = session.restore(write_max_attempts=2)
+
+        servo_mock.read.assert_called_once_with(reg)
+        assert servo_mock.write.call_count == 2
+        assert session._changes[reg] is None
+        assert len(result.failed) == 1
+        assert result.failed[0].register is reg
+        assert result.failed[0].value == 42.0
+
+    def test_restore_does_not_read_known_changed_value(self, mocker: MockerFixture):
+        servo_mock = mocker.MagicMock(spec=Servo)
+        reg = Register(dtype=RegDtype.FLOAT, access=RegAccess.RW, identifier="KNOWN_CHANGED")
+        baseline = DriveRegistersValue(OrderedDict([(reg, 42.0)]))
+        session = DriveRegistersSession(
+            servo=servo_mock, baseline=baseline, do_not_restore_registers=set()
+        )
+        session._changes[reg] = 99.0
+
+        result = session.restore()
+
+        servo_mock.read.assert_not_called()
+        servo_mock.write.assert_called_once_with(reg, 42.0)
+        assert session._changes == {}
+        assert result.restored == [RestoredEntry(reg, 42.0)]
 
     def test_force_restore_no_differences(self, mocker: MockerFixture):
         """force_restore() returns empty result when hardware matches baseline."""
