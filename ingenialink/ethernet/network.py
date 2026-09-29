@@ -86,9 +86,11 @@ class NetStatusListener(Thread, Generic[ServoT]):
             servo_state = self.__network.get_servo_state(servo)
             is_servo_alive = servo.is_alive(attemps=MAX_NUM_UNSUCCESSFUL_PINGS)
             if servo_state == NetState.CONNECTED and not is_servo_alive:
-                self.__network._transition_servo_state(servo, NetDevEvt.REMOVED)
-                if isinstance(servo, EthernetServo):
-                    servo.recreate_socket()
+                try:
+                    if isinstance(servo, EthernetServo):
+                        servo.recreate_socket()
+                finally:
+                    self.__network._transition_servo_state(servo, NetDevEvt.REMOVED)
             if (
                 servo_state == NetState.DISCONNECTED
                 and is_servo_alive

@@ -618,7 +618,7 @@ def test_listener_probes_before_recovering_disconnected_servo(mocker) -> None:
 
 
 def test_listener_recreates_socket_after_ethernet_disconnection(mocker) -> None:
-    """Test that the listener recreates the socket after an Ethernet disconnection."""
+    """Recreate the socket before notifying subscribers of the disconnection."""
     events = []
 
     servo = mocker.Mock(spec=EthernetServo)
@@ -638,7 +638,7 @@ def test_listener_recreates_socket_after_ethernet_disconnection(mocker) -> None:
         NetDevEvt.REMOVED,
     )
     servo.recreate_socket.assert_called_once_with()
-    assert events == ["probe", "disconnected", "recreate"]
+    assert events == ["probe", "recreate", "disconnected"]
 
 
 @pytest.mark.ethernet
