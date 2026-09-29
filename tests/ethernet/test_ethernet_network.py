@@ -514,6 +514,7 @@ def test_recover_from_disconnection(net: "EthernetNetwork", servo: "EthernetServ
 
 
 def test_recovery_reuses_recreated_socket_after_failed_probe(mocker) -> None:
+    """Reuse the recreated socket when a recovery probe initially fails."""
     net = EthernetNetwork()
     servo = EthernetServo.__new__(EthernetServo)
     servo.target = "192.0.2.1"
@@ -536,6 +537,7 @@ def test_recovery_reuses_recreated_socket_after_failed_probe(mocker) -> None:
 
 
 def test_recreate_socket_replaces_old_socket_and_preserves_configuration(mocker) -> None:
+    """Replace the socket while preserving its connection configuration."""
     servo = EthernetServo.__new__(EthernetServo)
     servo.ip_address = "192.0.2.1"
     servo.port = 1061
@@ -559,6 +561,7 @@ def test_recreate_socket_replaces_old_socket_and_preserves_configuration(mocker)
 def test_recreate_socket_closes_new_socket_and_keeps_old_on_setup_failure(
     mocker, failing_method
 ) -> None:
+    """Close a replacement socket and retain the old one if setup fails."""
     servo = EthernetServo.__new__(EthernetServo)
     servo.ip_address = "192.0.2.1"
     servo.port = 1061
@@ -579,6 +582,8 @@ def test_recreate_socket_closes_new_socket_and_keeps_old_on_setup_failure(
 
 
 def test_disconnect_waits_for_active_servo_transaction() -> None:
+    """Wait for an active servo transaction before closing its socket."""
+
     class SignalingLock:
         def __init__(self) -> None:
             self.lock = Lock()
@@ -618,6 +623,7 @@ def test_disconnect_waits_for_active_servo_transaction() -> None:
 
 
 def test_listener_uses_recovery_before_probing_disconnected_servo(mocker) -> None:
+    """Use recovery before probing a servo already marked as disconnected."""
     events = []
     servo = mocker.Mock()
     net = mocker.Mock()
