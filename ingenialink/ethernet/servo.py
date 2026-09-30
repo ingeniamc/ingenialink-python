@@ -46,17 +46,34 @@ class EthernetServoBase(Servo, ABC):
     ) -> None:
         if is_eoe:
             self.interface = Interface.EoE
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.settimeout(connection_timeout)
-        self.socket.connect((target, port))
         self.ip_address = target
         self.port = port
+        self.connection_timeout = connection_timeout
+        self.socket = self._create_socket()
         super().__init__(
             self.ip_address,
             dictionary_path,
             servo_status_listener,
             disconnect_callback=disconnect_callback,
         )
+
+    def _create_socket(self) -> socket.socket:
+        """Create and configure the connected UDP socket.
+
+        Returns:
+            The configured UDP socket.
+        """
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.settimeout(self.connection_timeout)
+            sock.connect((self.ip_address, self.port))
+        except Exception:
+            try:
+                sock.close()
+            except Exception:
+                logger.exception("Failed to close UDP socket after setup failure.")
+            raise
+        return sock
 
 
 class EthernetServo(EthernetServoBase):
@@ -81,13 +98,7 @@ class EthernetServo(EthernetServoBase):
     def recreate_socket(self) -> None:
         """Replace the UDP socket used for Ethernet communication."""
         with self._lock:
-            new_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            try:
-                new_socket.settimeout(self.socket.gettimeout())
-                new_socket.connect((self.ip_address, self.port))
-            except Exception:
-                new_socket.close()
-                raise
+            new_socket = self._create_socket()
             old_socket = self.socket
             self.socket = new_socket
             old_socket.close()
