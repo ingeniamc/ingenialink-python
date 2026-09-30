@@ -48,7 +48,7 @@ class EthernetServoBase(Servo, ABC):
             self.interface = Interface.EoE
         self.ip_address = target
         self.port = port
-        self.connection_timeout = connection_timeout
+        self._connection_timeout = connection_timeout
         self.socket = self._create_socket()
         super().__init__(
             self.ip_address,
@@ -65,7 +65,7 @@ class EthernetServoBase(Servo, ABC):
         """
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
-            sock.settimeout(self.connection_timeout)
+            sock.settimeout(self._connection_timeout)
             sock.connect((self.ip_address, self.port))
         except Exception:
             try:

@@ -518,7 +518,7 @@ def test_recreate_socket_replaces_old_socket_and_preserves_configuration(mocker)
     servo = EthernetServo.__new__(EthernetServo)
     servo.ip_address = "192.0.2.1"
     servo.port = 1061
-    servo.connection_timeout = 2.5
+    servo._connection_timeout = 2.5
     servo._lock = Lock()
     old_socket = mocker.Mock()
     new_socket = mocker.Mock()
@@ -542,7 +542,7 @@ def test_recreate_socket_closes_new_socket_and_keeps_old_on_setup_failure(
     servo = EthernetServo.__new__(EthernetServo)
     servo.ip_address = "192.0.2.1"
     servo.port = 1061
-    servo.connection_timeout = 2.5
+    servo._connection_timeout = 2.5
     servo._lock = Lock()
     old_socket = mocker.Mock()
     new_socket = mocker.Mock()
