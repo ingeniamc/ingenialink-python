@@ -518,9 +518,9 @@ def test_recreate_socket_replaces_old_socket_and_preserves_configuration(mocker)
     servo = EthernetServo.__new__(EthernetServo)
     servo.ip_address = "192.0.2.1"
     servo.port = 1061
+    servo.connection_timeout = 2.5
     servo._lock = Lock()
     old_socket = mocker.Mock()
-    old_socket.gettimeout.return_value = 2.5
     new_socket = mocker.Mock()
     servo.socket = old_socket
     mocker.patch("ingenialink.ethernet.servo.socket.socket", return_value=new_socket)
@@ -528,7 +528,6 @@ def test_recreate_socket_replaces_old_socket_and_preserves_configuration(mocker)
     servo.recreate_socket()
 
     assert servo.socket is new_socket
-    old_socket.gettimeout.assert_called_once_with()
     new_socket.settimeout.assert_called_once_with(2.5)
     new_socket.connect.assert_called_once_with(("192.0.2.1", 1061))
     old_socket.close.assert_called_once_with()
