@@ -3808,6 +3808,22 @@ files = [
 pytest = "*"
 
 [[package]]
+name = "pytest-rerunfailures"
+version = "16.0.1"
+description = "pytest plugin to re-run tests to eliminate flaky failures"
+optional = false
+python-versions = ">=3.9"
+groups = ["tests"]
+files = [
+    {file = "pytest_rerunfailures-16.0.1-py3-none-any.whl", hash = "sha256:0bccc0e3b0e3388275c25a100f7077081318196569a121217688ed05e58984b9"},
+    {file = "pytest_rerunfailures-16.0.1.tar.gz", hash = "sha256:ed4b3a6e7badb0a720ddd93f9de1e124ba99a0cb13bc88561b3c168c16062559"},
+]
+
+[package.dependencies]
+packaging = ">=17.1"
+pytest = ">=7.4,<8.2.2 || >8.2.2"
+
+[[package]]
 name = "pytest-timeout"
 version = "2.4.0"
 description = "pytest plugin to abort hanging tests"
@@ -5317,13 +5333,13 @@ test = ["pytest"]
 
 [[package]]
 name = "summit-testing-framework"
-version = "0.3.1.post820+pr.159.b1"
+version = "0.3.1.post843+develop.7d58fec"
 description = "Testing framework for Novanta drives"
 optional = false
 python-versions = ">=3.9"
 groups = ["tests"]
 files = [
-    {file = "summit_testing_framework-0.3.1.post820+pr.159.b1-py3-none-any.whl", hash = "sha256:584798434228788cf966309e9b9b746c920819ee1ca0656b1fd288aa1cf112e7"},
+    {file = "summit_testing_framework-0.3.1.post843+develop.7d58fec-py3-none-any.whl", hash = "sha256:60fc37d9f53599229bdfbedaa0c45da76c0d52613dd1cb7b668d0f9e9a4a1e56"},
 ]
 
 [package.dependencies]
@@ -6264,4 +6280,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "d4645d68b283a7b1fa94a772381702b6682725bbb6df62899abae9ccace94465"
+content-hash = "79d20b8bd9bab98941def901a516c62c2379b0a67db7876fa6665f3d2633bb77"
