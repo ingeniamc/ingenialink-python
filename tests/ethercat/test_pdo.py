@@ -632,7 +632,11 @@ def test_selected_group_mapping_skips_uncommissioned_slave(
     assert net._pdo_map_size > 0
     assert net._ecat_master.get_expected_wkc(group=1) > 0
 
-    net.send_receive_processdata()
+    start_time = time.time()
+    timeout = 1
+    while time.time() < start_time + timeout:
+        net.send_receive_processdata()
+
     assert selected_servo._rpdo_maps[0x1600].items[0].value == selected_servo.read("DRV_OP_CMD")
     assert selected_servo._tpdo_maps[0x1A00].items[0].value == selected_servo.read("DRV_OP_VALUE")
     net._ecat_master.read_state()
