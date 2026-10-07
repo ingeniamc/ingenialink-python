@@ -25,7 +25,7 @@ from ingenialink.ethercat.network import (
     release_network_reference,
     set_network_reference,
 )
-from ingenialink.exceptions import ILError, ILFirmwareLoadError
+from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILWrongWorkingCountError
 from ingenialink.network import NetDevEvt, NetState
 from ingenialink.pdo import PDOMap, RPDOMap, TPDOMap
 from tests.conftest import refresh_registers_for_test_rollback
@@ -563,6 +563,37 @@ def test_send_receive_processdata_uses_active_group_and_group_wkc(
     expected_wkc_mock.assert_called_once_with(group=1)
     servo.generate_pdo_outputs.assert_called_once_with()
     servo.process_pdo_inputs.assert_called_once_with()
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.parametrize("overlapping_io_map", [False, True])
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_send_receive_processdata_raises_for_active_group_wkc_mismatch(
+    mocker: "MockerFixture", overlapping_io_map: bool
+) -> None:
+    """Compare the received WKC with the active group's expected WKC."""
+    net = EthercatNetwork("dummy_ifname", overlapping_io_map=overlapping_io_map)
+    servo = mocker.Mock()
+    servo.slave_id = 1
+    servo.slave.state = pysoem.OP_STATE
+    servo.slave.al_status = 0
+    net.servos = [servo]
+    net._active_pdo_group = 1
+    net._selected_pdo_slave_ids = {1}
+    send_method_name = "send_overlap_processdata" if overlapping_io_map else "send_processdata"
+    mocker.patch.object(net._ecat_master, send_method_name, create=True)
+    mocker.patch.object(net._ecat_master, "receive_processdata", create=True, return_value=3)
+    expected_wkc_mock = mocker.patch.object(
+        net._ecat_master, "get_expected_wkc", create=True, return_value=6
+    )
+    mocker.patch.object(net._ecat_master, "read_state")
+
+    with pytest.raises(ILWrongWorkingCountError, match="expected: 6, real: 3"):
+        net.send_receive_processdata()
+
+    expected_wkc_mock.assert_called_once_with(group=1)
+    servo.process_pdo_inputs.assert_not_called()
     net.close_ecat_master()
 
 
