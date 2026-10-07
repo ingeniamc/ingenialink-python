@@ -53,6 +53,7 @@ class PDONetworkManager:
             notify_send_process_data: Callable[[], None],
             notify_receive_process_data: Callable[[], None],
             notify_exceptions: Callable[[ILError], None],
+            selected_slave_ids: Optional[set[int]] = None,
         ) -> None:
             super().__init__()
 
@@ -68,6 +69,9 @@ class PDONetworkManager:
             self._notify_send_process_data = notify_send_process_data
             self._notify_receive_process_data = notify_receive_process_data
             self._notify_exceptions = notify_exceptions
+            self._selected_slave_ids = (
+                set(selected_slave_ids) if selected_slave_ids is not None else None
+            )
             self._pd_thread_stop_event = threading.Event()
 
         def run(self) -> None:
@@ -84,7 +88,9 @@ class PDONetworkManager:
                 self._notify_send_process_data()
                 try:
                     if first_iteration:
-                        self._net.pdo_manager._start_network_pdos()
+                        self._net.pdo_manager._start_network_pdos(
+                            selected_slave_ids=self._selected_slave_ids
+                        )
                         first_iteration = False
                     else:
                         self._net.send_receive_processdata(self._refresh_rate)
@@ -191,11 +197,14 @@ class PDONetworkManager:
         """Check whether the manager is performing its initial PDO setup."""
         return self._is_starting_pdos
 
-    def _start_network_pdos(self) -> None:
+    def _start_network_pdos(self, selected_slave_ids: Optional[set[int]] = None) -> None:
         """Start network PDOs while marking the manager's initial setup window."""
         self._is_starting_pdos = True
         try:
-            self._net.start_pdos()
+            if selected_slave_ids is None:
+                self._net.start_pdos()
+            else:
+                self._net.start_pdos(selected_slave_ids=selected_slave_ids)
         finally:
             self._is_starting_pdos = False
 
@@ -219,6 +228,7 @@ class PDONetworkManager:
         self,
         refresh_rate: Optional[float] = None,
         watchdog_timeout: Optional[float] = None,
+        selected_slave_ids: Optional[set[int]] = None,
     ) -> None:
         """Start the PDO exchange process.
 
@@ -226,6 +236,8 @@ class PDONetworkManager:
             refresh_rate: Determines how often (seconds) the PDO values will be updated.
             watchdog_timeout: The PDO watchdog time. If not provided it will be set proportional
              to the refresh rate.
+            selected_slave_ids: 1-based discovered slave IDs to include in the process image.
+                If omitted, all connected slaves with PDO maps are selected.
 
         Raises:
             ILError: If the PDOs are already active.
@@ -233,14 +245,25 @@ class PDONetworkManager:
         if self._pdo_thread is not None:
             self.stop_pdos()
             raise ILError("PDOs are already active.")
-        self._pdo_thread = self.ProcessDataThread(
-            net=self._net,
-            refresh_rate=refresh_rate,
-            watchdog_timeout=watchdog_timeout,
-            notify_send_process_data=self._notify_send_process_data,
-            notify_receive_process_data=self._notify_receive_process_data,
-            notify_exceptions=self._notify_exceptions,
-        )
+        if selected_slave_ids is None:
+            self._pdo_thread = self.ProcessDataThread(
+                net=self._net,
+                refresh_rate=refresh_rate,
+                watchdog_timeout=watchdog_timeout,
+                notify_send_process_data=self._notify_send_process_data,
+                notify_receive_process_data=self._notify_receive_process_data,
+                notify_exceptions=self._notify_exceptions,
+            )
+        else:
+            self._pdo_thread = self.ProcessDataThread(
+                net=self._net,
+                refresh_rate=refresh_rate,
+                watchdog_timeout=watchdog_timeout,
+                notify_send_process_data=self._notify_send_process_data,
+                notify_receive_process_data=self._notify_receive_process_data,
+                notify_exceptions=self._notify_exceptions,
+                selected_slave_ids=selected_slave_ids,
+            )
         self._pdo_thread.start()
 
     def stop_pdos(self) -> None:
