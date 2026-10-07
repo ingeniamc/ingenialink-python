@@ -463,6 +463,56 @@ def test_request_slave_change_writes_directly_for_unconnected_node(den_net_e_2_9
 
     net.close_ecat_master()
 
+@pytest.mark.pcap
+@pytest.mark.parametrize("overlapping_io_map", [False, True])
+def test_config_pdo_maps_assigns_group_to_selected_discovered_slaves(
+    mocker: "MockerFixture", pysoem_mock_network, overlapping_io_map: bool
+) -> None:
+    """Assign groups by discovered slave ID, even when slaves lack servo objects."""
+    pysoem_mock_network.set_num_slaves(3)
+    net = EthercatNetwork("dummy_ifname", overlapping_io_map=overlapping_io_map)
+    net._ecat_master.config_init()
+    map_mock = mocker.patch.object(
+        net._ecat_master,
+        "config_overlap_map" if overlapping_io_map else "config_map",
+        create=True,
+        return_value=24,
+    )
+
+    net.config_pdo_maps(selected_slave_ids={2}, active_group=1)
+
+    assert [slave.group for slave in net._ecat_master.slaves] == [0, 1, 0]
+    assert net._active_pdo_group == 1
+    assert net._selected_pdo_slave_ids == {2}
+    assert net._pdo_map_size == 24
+    map_mock.assert_called_once_with(group=1)
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.parametrize("overlapping_io_map", [False, True])
+def test_config_pdo_maps_defaults_to_full_network_group_zero(
+    mocker: "MockerFixture", pysoem_mock_network, overlapping_io_map: bool
+) -> None:
+    """Keep default PDO mapping on group 0 for every discovered slave."""
+    pysoem_mock_network.set_num_slaves(3)
+    net = EthercatNetwork("dummy_ifname", overlapping_io_map=overlapping_io_map)
+    net._ecat_master.config_init()
+    map_mock = mocker.patch.object(
+        net._ecat_master,
+        "config_overlap_map" if overlapping_io_map else "config_map",
+        create=True,
+        return_value=24,
+    )
+
+    net.config_pdo_maps()
+
+    assert [slave.group for slave in net._ecat_master.slaves] == [0, 0, 0]
+    assert net._active_pdo_group == 0
+    assert net._selected_pdo_slave_ids == {1, 2, 3}
+    assert net._pdo_map_size == 24
+    map_mock.assert_called_once_with(group=0)
+    net.close_ecat_master()
 
 @pytest.mark.pcap
 def test_disconnect_from_slave_with_non_existent_slave(
