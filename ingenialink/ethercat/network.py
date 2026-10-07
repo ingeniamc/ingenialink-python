@@ -691,10 +691,21 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             self._pdo_map_size = self._ecat_master.config_map(group=active_group)
         self._active_pdo_group = active_group
         self._selected_pdo_slave_ids = selected_slave_ids
+
+    def start_pdos(
+        self,
+        timeout: float = 2.0,
+        *,
+        selected_slave_ids: Optional[set[int]] = None,
+        active_group: int = 0,
+    ) -> None:
         """Set all slaves with mapped PDOs to Operational State.
 
         Args:
             timeout: timeout in seconds to reach Op state, 2.0 seconds by default.
+            selected_slave_ids: 1-based discovered slave IDs to include in the process image.
+                If omitted, all discovered slaves are selected.
+            active_group: Process-data group to map. PySOEM supports groups 0 and 1.
 
         Raises:
             ILStateError: If slaves can not reach SafeOp or Op state.
@@ -702,16 +713,23 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         """
         if not self.__is_master_running:
             raise RuntimeError("EtherCAT master is not running.")
-        op_servo_list = [servo for servo in self.servos if servo._rpdo_maps or servo._tpdo_maps]
-        if not op_servo_list:
+        pdo_servo_list = [servo for servo in self.servos if servo._rpdo_maps or servo._tpdo_maps]
+        if not pdo_servo_list:
             logger.warning("There are no PDOs assigned to any connected slave.")
             return
         # Configure the PDO maps
-        self.config_pdo_maps()
+        self.config_pdo_maps(
+            selected_slave_ids=selected_slave_ids,
+            active_group=active_group,
+        )
+        op_servo_list = [
+            servo for servo in pdo_servo_list if servo.slave_id in self._selected_pdo_slave_ids
+        ]
+        if not op_servo_list:
+            logger.warning("There are no PDOs assigned to any selected connected slave.")
+            return
 
         with Timeout(timeout) as t:
-            # Set all slaves to SafeOp state
-            self._ecat_master.state = pysoem.SAFEOP_STATE
             self._change_nodes_state(op_servo_list, SlaveState.SAFEOP_STATE)
             while not self._check_node_state(op_servo_list, pysoem.SAFEOP_STATE):
                 if t.has_expired:
