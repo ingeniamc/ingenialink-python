@@ -281,6 +281,9 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         self.update_sdo_timeout(timeout_us, timeout_us)
         self._ecat_master.manual_state_change = self.MANUAL_STATE_CHANGE
         self._overlapping_io_map = overlapping_io_map
+        self._active_pdo_group = 0
+        self._selected_pdo_slave_ids: set[int] = set()
+        self._pdo_map_size = 0
         self.__is_master_running = False
         self.__last_init_nodes: list[int] = []
 
@@ -634,18 +637,60 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         # Notify that disconnect_from_slave has been called
         servo._disconnect_event_publisher.notify(servo)
 
-    def config_pdo_maps(self) -> None:
+    def config_pdo_maps(
+        self,
+        selected_slave_ids: Optional[set[int]] = None,
+        active_group: int = 0,
+    ) -> None:
         """Configure the PDO maps.
 
-        It maps the PDO maps of each slave and sets its state to SafeOP.
+        Assign discovered slaves to process-data groups and map only the active group.
+        By default, all discovered slaves are mapped in group 0.
 
+        Args:
+            selected_slave_ids: 1-based discovered slave IDs to include in the process image.
+                If omitted, all discovered slaves are selected.
+            active_group: Process-data group to map. PySOEM supports groups 0 and 1.
+
+        Raises:
+            ValueError: If the selected group or slave IDs are invalid.
+            RuntimeError: If PDO exchange is active during reconfiguration.
         """
-        if self._overlapping_io_map:
-            self._ecat_master.config_overlap_map()
-        else:
-            self._ecat_master.config_map()
+        if (
+            isinstance(active_group, bool)
+            or not isinstance(active_group, int)
+            or active_group not in (0, 1)
+        ):
+            raise ValueError("active_group must be 0 or 1.")
+        if self._pdo_manager.is_active:
+            raise RuntimeError("Stop PDO exchange before reconfiguring the process-data group.")
 
-    def start_pdos(self, timeout: float = 2.0) -> None:
+        discovered_slave_ids = set(range(1, len(self._ecat_master.slaves) + 1))
+        if selected_slave_ids is None:
+            selected_slave_ids = discovered_slave_ids
+        else:
+            selected_slave_ids = set(selected_slave_ids)
+            if any(
+                isinstance(slave_id, bool) or not isinstance(slave_id, int) or slave_id < 1
+                for slave_id in selected_slave_ids
+            ):
+                raise ValueError("selected_slave_ids must contain positive integer slave IDs.")
+            unknown_slave_ids = selected_slave_ids - discovered_slave_ids
+            if unknown_slave_ids:
+                raise ValueError(
+                    f"Selected slave IDs were not discovered: {sorted(unknown_slave_ids)}"
+                )
+
+        other_group = 1 - active_group
+        for slave_id, slave in enumerate(self._ecat_master.slaves, start=1):
+            slave.group = active_group if slave_id in selected_slave_ids else other_group
+
+        if self._overlapping_io_map:
+            self._pdo_map_size = self._ecat_master.config_overlap_map(group=active_group)
+        else:
+            self._pdo_map_size = self._ecat_master.config_map(group=active_group)
+        self._active_pdo_group = active_group
+        self._selected_pdo_slave_ids = selected_slave_ids
         """Set all slaves with mapped PDOs to Operational State.
 
         Args:
