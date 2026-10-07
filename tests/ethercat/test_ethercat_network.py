@@ -586,6 +586,36 @@ def test_start_pdos_forwards_group_configuration_without_master_state_request(
 
 
 @pytest.mark.pcap
+def test_start_pdos_defaults_to_mapped_servos_and_reuses_active_mapping(
+    mocker: "MockerFixture", pysoem_mock_network
+) -> None:
+    """The manager maps connected PDO servos, and repeated identical mapping is harmless."""
+    pysoem_mock_network.set_num_slaves(2)
+    net = EthercatNetwork("dummy_ifname", overlapping_io_map=False)
+    net._ecat_master.config_init()
+    servo = mocker.Mock(slave_id=1, _rpdo_maps=[object()], _tpdo_maps=[])
+    net.servos = [servo]
+    net._EthercatNetwork__is_master_running = True
+    net._pdo_exchange_active = True
+    net._pdo_manager._pdo_thread = mocker.Mock(is_alive=mocker.Mock(return_value=True))
+    map_mock = mocker.patch.object(net._ecat_master, "config_map", create=True, return_value=8)
+    mocker.patch.object(net, "_change_nodes_state", return_value=True)
+    mocker.patch.object(net, "_check_node_state", return_value=True)
+
+    net._pdo_manager._start_network_pdos()
+
+    map_mock.assert_called_once_with(group=0)
+    assert [slave.group for slave in net._ecat_master.slaves] == [0, 1]
+    assert net._selected_pdo_slave_ids == {1}
+    assert net._pdo_exchange_active
+    net.config_pdo_maps(selected_slave_ids={1}, active_group=0)
+    map_mock.assert_called_once_with(group=0)
+    with pytest.raises(RuntimeError, match="Stop PDO exchange"):
+        net.config_pdo_maps(selected_slave_ids={2}, active_group=1)
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
 def test_start_pdos_only_changes_state_of_selected_slaves(
     mocker: "MockerFixture",
