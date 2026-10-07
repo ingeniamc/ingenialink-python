@@ -248,6 +248,9 @@ def test_scan_slaves_no_subnet():
     assert len(net.scan_slaves()) == 0
 
 
+# Rerun once after 5 seconds if the test fails.
+# https://novantamotion.atlassian.net/browse/CAP-924
+@pytest.mark.flaky(reruns=1, reruns_delay=5)
 @pytest.mark.ethernet
 def test_scan_slaves(servo):
     drive_ip = servo.ip_address
