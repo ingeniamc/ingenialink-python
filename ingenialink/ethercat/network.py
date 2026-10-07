@@ -642,7 +642,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
     def config_pdo_maps(
         self,
         selected_slave_ids: Optional[set[int]] = None,
-        active_group: int = 0,
+        active_group: Optional[int] = None,
     ) -> None:
         """Configure the PDO maps.
 
@@ -652,18 +652,13 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         Args:
             selected_slave_ids: 1-based discovered slave IDs to include in the process image.
                 If omitted, all discovered slaves are selected.
-            active_group: Process-data group to map. PySOEM supports groups 0 and 1.
+            active_group: Process-data group to map. Defaults to group 0 for all slaves
+                or group 1 for a subset. PySOEM supports groups 0 and 1.
 
         Raises:
             ValueError: If the selected group or slave IDs are invalid.
             RuntimeError: If the active mapping is changed during PDO exchange.
         """
-        if (
-            isinstance(active_group, bool)
-            or not isinstance(active_group, int)
-            or active_group not in (0, 1)
-        ):
-            raise ValueError("active_group must be 0 or 1.")
         discovered_slave_ids = set(range(1, len(self._ecat_master.slaves) + 1))
         if selected_slave_ids is None:
             selected_slave_ids = discovered_slave_ids
@@ -679,6 +674,16 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
                 raise ValueError(
                     f"Selected slave IDs were not discovered: {sorted(unknown_slave_ids)}"
                 )
+        if active_group is None:
+            active_group = 0 if selected_slave_ids == discovered_slave_ids else 1
+        elif (
+            isinstance(active_group, bool)
+            or not isinstance(active_group, int)
+            or active_group not in (0, 1)
+        ):
+            raise ValueError("active_group must be 0 or 1.")
+        if active_group == 0 and selected_slave_ids != discovered_slave_ids:
+            raise ValueError("PySOEM group 0 maps all discovered slaves; use group 1 for a subset.")
 
         if self._pdo_exchange_active:
             if (
@@ -705,7 +710,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         timeout: float = 2.0,
         *,
         selected_slave_ids: Optional[set[int]] = None,
-        active_group: int = 0,
+        active_group: Optional[int] = None,
     ) -> None:
         """Set all slaves with mapped PDOs to Operational State.
 
@@ -713,7 +718,8 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             timeout: timeout in seconds to reach Op state, 2.0 seconds by default.
             selected_slave_ids: 1-based discovered slave IDs to include in the process image.
                 If omitted, connected servos with PDO maps are selected.
-            active_group: Process-data group to map. PySOEM supports groups 0 and 1.
+            active_group: Process-data group to map. Defaults to group 0 for all slaves
+                or group 1 for a subset. PySOEM supports groups 0 and 1.
 
         Raises:
             ILStateError: If slaves can not reach SafeOp or Op state.

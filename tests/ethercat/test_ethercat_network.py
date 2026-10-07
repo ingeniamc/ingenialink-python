@@ -517,6 +517,23 @@ def test_config_pdo_maps_defaults_to_full_network_group_zero(
 
 
 @pytest.mark.pcap
+def test_config_pdo_maps_rejects_group_zero_for_subset(
+    mocker: "MockerFixture", pysoem_mock_network
+) -> None:
+    """SOEM group zero always maps all discovered slaves."""
+    pysoem_mock_network.set_num_slaves(2)
+    net = EthercatNetwork("dummy_ifname")
+    net._ecat_master.config_init()
+    map_mock = mocker.patch.object(net._ecat_master, "config_map", create=True)
+
+    with pytest.raises(ValueError, match="group 0 maps all discovered slaves"):
+        net.config_pdo_maps(selected_slave_ids={1}, active_group=0)
+
+    map_mock.assert_not_called()
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
 @pytest.mark.parametrize("overlapping_io_map", [False, True])
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
 def test_send_receive_processdata_uses_active_group_and_group_wkc(
@@ -604,12 +621,13 @@ def test_start_pdos_defaults_to_mapped_servos_and_reuses_active_mapping(
 
     net._pdo_manager._start_network_pdos()
 
-    map_mock.assert_called_once_with(group=0)
-    assert [slave.group for slave in net._ecat_master.slaves] == [0, 1]
+    map_mock.assert_called_once_with(group=1)
+    assert [slave.group for slave in net._ecat_master.slaves] == [1, 0]
+    assert net._active_pdo_group == 1
     assert net._selected_pdo_slave_ids == {1}
     assert net._pdo_exchange_active
-    net.config_pdo_maps(selected_slave_ids={1}, active_group=0)
-    map_mock.assert_called_once_with(group=0)
+    net.config_pdo_maps(selected_slave_ids={1}, active_group=1)
+    map_mock.assert_called_once_with(group=1)
     with pytest.raises(RuntimeError, match="Stop PDO exchange"):
         net.config_pdo_maps(selected_slave_ids={2}, active_group=1)
     net.close_ecat_master()
