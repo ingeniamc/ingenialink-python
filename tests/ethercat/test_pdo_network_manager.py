@@ -16,6 +16,31 @@ if TYPE_CHECKING:
     from ingenialink.ethercat.servo import EthercatServo
 
 
+@pytest.mark.virtual
+def test_start_pdos_forwards_selected_slave_ids_to_worker(mocker) -> None:
+    """Test that start_pdos forwards the selected slave IDs to the worker thread."""
+    manager = PDONetworkManager(mocker.Mock())
+    thread_mock = mocker.patch.object(manager, "ProcessDataThread")
+
+    manager.start_pdos(refresh_rate=0.5, watchdog_timeout=1.0, selected_slave_ids={2})
+
+    thread_mock.assert_called_once()
+    assert thread_mock.call_args.kwargs["selected_slave_ids"] == {2}
+    thread_mock.return_value.start.assert_called_once_with()
+
+
+@pytest.mark.virtual
+def test_start_network_pdos_forwards_selected_slave_ids(mocker) -> None:
+    """Test that _start_network_pdos forwards the selected slave IDs to the network."""
+    net = mocker.Mock()
+    manager = PDONetworkManager(net)
+
+    manager._start_network_pdos(selected_slave_ids={2})
+
+    net.start_pdos.assert_called_once_with(selected_slave_ids={2})
+    assert not manager.is_starting_pdos
+
+
 @pytest.mark.ethercat
 def test_pdos_min_refresh_rate(net: "EthercatNetwork"):
     refresh_rate = 0.0001
