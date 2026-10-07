@@ -358,7 +358,10 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             self._pdo_thread_status_observers.remove(callback)
 
     def activate_pdos(
-        self, refresh_rate: Optional[float] = None, watchdog_timeout: Optional[float] = None
+        self,
+        refresh_rate: Optional[float] = None,
+        watchdog_timeout: Optional[float] = None,
+        selected_slave_ids: Optional[set[int]] = None,
     ) -> None:
         """Start PDOs and notify the status to the observers.
 
@@ -366,9 +369,21 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             refresh_rate: Determines how often (seconds) the PDO values will be updated.
             watchdog_timeout: The PDO watchdog time. If not provided it will be set proportional
              to the refresh rate.
+            selected_slave_ids: 1-based discovered slave IDs to include in the process image.
+                If omitted, all connected slaves with PDO maps are selected.
         """
+        self.validate_selected_slave_ids(selected_slave_ids)
         n_exceptions = self.__exceptions_in_thread
-        self.pdo_manager.start_pdos(refresh_rate=refresh_rate, watchdog_timeout=watchdog_timeout)
+        if selected_slave_ids is None:
+            self.pdo_manager.start_pdos(
+                refresh_rate=refresh_rate, watchdog_timeout=watchdog_timeout
+            )
+        else:
+            self.pdo_manager.start_pdos(
+                refresh_rate=refresh_rate,
+                watchdog_timeout=watchdog_timeout,
+                selected_slave_ids=selected_slave_ids,
+            )
         # Make sure that there were no exceptions while starting the PDOs to notify activation
         if self.__exceptions_in_thread == n_exceptions:
             self._notify_pdo_thread_status(True)
