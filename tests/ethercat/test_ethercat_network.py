@@ -515,6 +515,40 @@ def test_config_pdo_maps_defaults_to_full_network_group_zero(
     map_mock.assert_called_once_with(group=0)
     net.close_ecat_master()
 
+
+@pytest.mark.pcap
+@pytest.mark.parametrize("overlapping_io_map", [False, True])
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_send_receive_processdata_uses_active_group_and_group_wkc(
+    mocker: "MockerFixture", overlapping_io_map: bool
+) -> None:
+    """Exchange process data and validate WKC for the configured group."""
+    net = EthercatNetwork("dummy_ifname", overlapping_io_map=overlapping_io_map)
+    servo = mocker.Mock()
+    servo.slave_id = 1
+    net.servos = [servo]
+    net._active_pdo_group = 1
+    net._selected_pdo_slave_ids = {1}
+    net._ecat_master.expected_wkc = 3
+    send_method_name = "send_overlap_processdata" if overlapping_io_map else "send_processdata"
+    send_mock = mocker.patch.object(net._ecat_master, send_method_name, create=True)
+    receive_mock = mocker.patch.object(
+        net._ecat_master, "receive_processdata", create=True, return_value=3
+    )
+    expected_wkc_mock = mocker.patch.object(
+        net._ecat_master, "get_expected_wkc", create=True, return_value=3
+    )
+
+    net.send_receive_processdata()
+
+    send_mock.assert_called_once_with(group=1, release_gil=None)
+    receive_mock.assert_called_once_with(timeout=100_000, group=1, release_gil=None)
+    expected_wkc_mock.assert_called_once_with(group=1)
+    servo.generate_pdo_outputs.assert_called_once_with()
+    servo.process_pdo_inputs.assert_called_once_with()
+    net.close_ecat_master()
+
+
 @pytest.mark.pcap
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
 def test_start_pdos_forwards_group_configuration_without_master_state_request(

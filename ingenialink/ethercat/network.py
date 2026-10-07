@@ -780,21 +780,31 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
 
         if release_gil is None:
             release_gil = self.__gil_release_config.send_receive_processdata
-        for servo in self.servos:
+        active_servos = [
+            servo for servo in self.servos if servo.slave_id in self._selected_pdo_slave_ids
+        ]
+        for servo in active_servos:
             servo.generate_pdo_outputs()
         self._lock.acquire()
         if self._overlapping_io_map:
-            self._ecat_master.send_overlap_processdata(release_gil=release_gil)
+            self._ecat_master.send_overlap_processdata(
+                group=self._active_pdo_group, release_gil=release_gil
+            )
         else:
-            self._ecat_master.send_processdata(release_gil=release_gil)
+            self._ecat_master.send_processdata(
+                group=self._active_pdo_group, release_gil=release_gil
+            )
         processdata_wkc = self._ecat_master.receive_processdata(
-            timeout=int(timeout * 1_000_000), release_gil=release_gil
+            timeout=int(timeout * 1_000_000),
+            group=self._active_pdo_group,
+            release_gil=release_gil,
         )
         self._lock.release()
-        if processdata_wkc != self.EXPECTED_WKC_PROCESS_DATA * (len(self.servos)):
+        expected_wkc = self._ecat_master.get_expected_wkc(group=self._active_pdo_group)
+        if processdata_wkc != expected_wkc:
             self._ecat_master.read_state()
             servos_state_msg = ""
-            for servo in self.servos:
+            for servo in active_servos:
                 servos_state_msg += (
                     f"Slave {servo.slave_id}: state {SlaveState(servo.slave.state).name}"
                 )
@@ -804,10 +814,10 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
                 else:
                     servos_state_msg += ". "
             raise ILWrongWorkingCountError(
-                f"Processdata working count is wrong, expected: {self._ecat_master.expected_wkc},"
+                f"Processdata working count is wrong, expected: {expected_wkc},"
                 f" real: {processdata_wkc}. {servos_state_msg}"
             )
-        for servo in self.servos:
+        for servo in active_servos:
             servo.process_pdo_inputs()
 
     @lru_cache
