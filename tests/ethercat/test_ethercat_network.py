@@ -537,16 +537,25 @@ def test_config_pdo_maps_rejects_group_zero_for_subset(
 @pytest.mark.parametrize("overlapping_io_map", [False, True])
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
 def test_send_receive_processdata_uses_active_group_and_group_wkc(
-    mocker: "MockerFixture", overlapping_io_map: bool
+    mocker: "MockerFixture", pysoem_mock_network, overlapping_io_map: bool
 ) -> None:
-    """Exchange process data and validate WKC for the configured group."""
+    """Exclude unselected discovered slaves from the active process-data group."""
+    pysoem_mock_network.set_num_slaves(2)
     net = EthercatNetwork("dummy_ifname", overlapping_io_map=overlapping_io_map)
+    net._ecat_master.config_init()
+    unselected_slave = net._ecat_master.slaves[1]
+    unselected_state = unselected_slave.state
     servo = mocker.Mock()
     servo.slave_id = 1
     net.servos = [servo]
-    net._active_pdo_group = 1
-    net._selected_pdo_slave_ids = {1}
-    net._ecat_master.expected_wkc = 3
+    map_method_name = "config_overlap_map" if overlapping_io_map else "config_map"
+    map_mock = mocker.patch.object(net._ecat_master, map_method_name, create=True, return_value=24)
+    net.config_pdo_maps(selected_slave_ids={1}, active_group=1)
+    assert [slave.group for slave in net._ecat_master.slaves] == [1, 0]
+    assert net._active_pdo_group == 1
+    assert net._selected_pdo_slave_ids == {1}
+    map_mock.assert_called_once_with(group=1)
+
     send_method_name = "send_overlap_processdata" if overlapping_io_map else "send_processdata"
     send_mock = mocker.patch.object(net._ecat_master, send_method_name, create=True)
     receive_mock = mocker.patch.object(
@@ -563,6 +572,7 @@ def test_send_receive_processdata_uses_active_group_and_group_wkc(
     expected_wkc_mock.assert_called_once_with(group=1)
     servo.generate_pdo_outputs.assert_called_once_with()
     servo.process_pdo_inputs.assert_called_once_with()
+    assert unselected_slave.state == unselected_state
     net.close_ecat_master()
 
 
