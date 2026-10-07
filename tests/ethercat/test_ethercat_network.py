@@ -465,6 +465,41 @@ def test_request_slave_change_writes_directly_for_unconnected_node(den_net_e_2_9
 
 
 @pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_activate_pdos_forwards_selected_slave_ids(mocker: "MockerFixture") -> None:
+    """Test that activate_pdos forwards the selected slave IDs to the PDO manager."""
+    net = EthercatNetwork("dummy_ifname")
+    start_mock = mocker.patch.object(net.pdo_manager, "start_pdos")
+    mocker.patch.object(net, "validate_selected_slave_ids")
+    mocker.patch.object(net, "_notify_pdo_thread_status")
+
+    net.activate_pdos(refresh_rate=0.5, watchdog_timeout=1.0, selected_slave_ids={2})
+
+    start_mock.assert_called_once_with(
+        refresh_rate=0.5, watchdog_timeout=1.0, selected_slave_ids={2}
+    )
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_activate_pdos_rejects_undiscovered_selected_slave_before_start(
+    mocker: "MockerFixture", pysoem_mock_network
+) -> None:
+    """Test that activate_pdos raises an error if selected slave IDs were not discovered."""
+    pysoem_mock_network.set_num_slaves(2)
+    net = EthercatNetwork("dummy_ifname")
+    net._ecat_master.config_init()
+    start_mock = mocker.patch.object(net.pdo_manager, "start_pdos")
+
+    with pytest.raises(ValueError, match=r"Selected slave IDs were not discovered: \[3\]"):
+        net.activate_pdos(selected_slave_ids={3})
+
+    start_mock.assert_not_called()
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
 @pytest.mark.parametrize("overlapping_io_map", [False, True])
 def test_config_pdo_maps_assigns_group_to_selected_discovered_slaves(
     mocker: "MockerFixture", pysoem_mock_network, overlapping_io_map: bool
