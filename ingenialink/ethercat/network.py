@@ -679,16 +679,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             selected_slave_ids = discovered_slave_ids
         else:
             selected_slave_ids = set(selected_slave_ids)
-            if any(
-                isinstance(slave_id, bool) or not isinstance(slave_id, int) or slave_id < 1
-                for slave_id in selected_slave_ids
-            ):
-                raise ValueError("selected_slave_ids must contain positive integer slave IDs.")
-            unknown_slave_ids = selected_slave_ids - discovered_slave_ids
-            if unknown_slave_ids:
-                raise ValueError(
-                    f"Selected slave IDs were not discovered: {sorted(unknown_slave_ids)}"
-                )
+            self.validate_selected_slave_ids(selected_slave_ids)
         if active_group is None:
             active_group = 0 if selected_slave_ids == discovered_slave_ids else 1
         elif (
@@ -720,6 +711,28 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         self._active_pdo_group = active_group
         self._selected_pdo_slave_ids = selected_slave_ids
 
+    def validate_selected_slave_ids(self, selected_slave_ids: Optional[set[int]]) -> None:
+        """Validate that selected IDs identify discovered EtherCAT slaves.
+
+        Args:
+            selected_slave_ids: 1-based discovered slave IDs, or ``None`` for the default.
+
+        Raises:
+            ValueError: If an ID is invalid or was not discovered on this network.
+        """
+        if selected_slave_ids is None:
+            return
+        selected_slave_ids = set(selected_slave_ids)
+        if any(
+            isinstance(slave_id, bool) or not isinstance(slave_id, int) or slave_id < 1
+            for slave_id in selected_slave_ids
+        ):
+            raise ValueError("selected_slave_ids must contain positive integer slave IDs.")
+        discovered_slave_ids = set(range(1, len(self._ecat_master.slaves) + 1))
+        unknown_slave_ids = selected_slave_ids - discovered_slave_ids
+        if unknown_slave_ids:
+            raise ValueError(f"Selected slave IDs were not discovered: {sorted(unknown_slave_ids)}")
+
     def start_pdos(
         self,
         timeout: float = 2.0,
@@ -749,10 +762,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         if selected_slave_ids is None:
             selected_slave_ids = {servo.slave_id for servo in pdo_servo_list}
         # Configure the PDO maps
-        self.config_pdo_maps(
-            selected_slave_ids=selected_slave_ids,
-            active_group=active_group,
-        )
+        self.config_pdo_maps(selected_slave_ids=selected_slave_ids, active_group=active_group)
         op_servo_list = [
             servo for servo in pdo_servo_list if servo.slave_id in self._selected_pdo_slave_ids
         ]
