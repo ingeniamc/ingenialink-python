@@ -641,6 +641,8 @@ def test_selected_group_mapping_skips_uncommissioned_slave(
     assert selected_servo._tpdo_maps[0x1A00].items[0].value == selected_servo.read("DRV_OP_VALUE")
     net._ecat_master.read_state()
     assert unselected_slave.state == unselected_state
+    net.stop_pdos()
+    net._EthercatNetwork__init_nodes()
 
 
 @pytest.mark.ethercat
