@@ -789,16 +789,21 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             raise
 
     def stop_pdos(self) -> None:
-        """For all slaves not in PreOp state, set state to PreOp."""
+        """Set the selected PDO group to PreOp, preserving excluded servos' states."""
         if not self.__is_master_running:
             self._pdo_exchange_active = False
             logger.warning("EtherCAT master is not running, no PDOs to stop.")
             return
         self._ecat_master.read_state()
+        has_excluded_servos = bool(self._selected_pdo_slave_ids) and any(
+            servo.slave_exists and servo.slave_id not in self._selected_pdo_slave_ids
+            for servo in self.servos
+        )
         restore_servos_list = [
             servo
             for servo in self.servos
             if servo.slave_exists
+            and (not has_excluded_servos or servo.slave_id in self._selected_pdo_slave_ids)
             and servo.slave.state not in (pysoem.PREOP_STATE, pysoem.NONE_STATE)
         ]
         if len(restore_servos_list) == 0:
@@ -806,7 +811,11 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             return
         if not self._change_nodes_state(restore_servos_list, SlaveState.INIT_STATE):
             logger.warning("Not all drives could reach the Init state")
-        self.__init_nodes()
+        if has_excluded_servos:
+            if not self._change_nodes_state(restore_servos_list, SlaveState.PREOP_STATE):
+                logger.warning("Not all selected drives could reach the PreOp state")
+        else:
+            self.__init_nodes()
         self._pdo_exchange_active = False
 
     def send_receive_processdata(

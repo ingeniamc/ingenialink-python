@@ -808,6 +808,66 @@ def test_disconnect_from_slave_with_non_existent_slave(
 
 @pytest.mark.pcap
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_stop_pdos_only_changes_state_of_selected_slaves(mocker: "MockerFixture") -> None:
+    """Stop the selected group without changing excluded connected servos."""
+    net = EthercatNetwork("dummy_ifname")
+    net._ecat_master.config_init()
+    selected_servo = mocker.Mock(slave_id=1, slave_exists=True)
+    excluded_servo = mocker.Mock(slave_id=2, slave_exists=True)
+    selected_servo.slave.state = pysoem.OP_STATE
+    excluded_servo.slave.state = pysoem.OP_STATE
+    net.servos = [selected_servo, excluded_servo]
+    net._selected_pdo_slave_ids = {1}
+    net._pdo_exchange_active = True
+    net._EthercatNetwork__is_master_running = True
+    init_nodes_mock = mocker.patch.object(net, "_EthercatNetwork__init_nodes")
+
+    def change_state(servos, state):
+        for servo in servos:
+            servo.slave.state = state.value
+        return True
+
+    change_state_mock = mocker.patch.object(net, "_change_nodes_state", side_effect=change_state)
+
+    net.stop_pdos()
+
+    assert change_state_mock.call_args_list == [
+        call([selected_servo], SlaveState.INIT_STATE),
+        call([selected_servo], SlaveState.PREOP_STATE),
+    ]
+    assert selected_servo.slave.state == pysoem.PREOP_STATE
+    assert excluded_servo.slave.state == pysoem.OP_STATE
+    assert net._pdo_exchange_active is False
+    init_nodes_mock.assert_not_called()
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_stop_pdos_reinitializes_full_selected_network(mocker: "MockerFixture") -> None:
+    """Keep the existing network reinitialization when every connected servo is selected."""
+    net = EthercatNetwork("dummy_ifname")
+    net._ecat_master.config_init()
+    servos = [mocker.Mock(slave_id=slave_id, slave_exists=True) for slave_id in (1, 2)]
+    for servo in servos:
+        servo.slave.state = pysoem.OP_STATE
+    net.servos = servos
+    net._selected_pdo_slave_ids = {1, 2}
+    net._pdo_exchange_active = True
+    net._EthercatNetwork__is_master_running = True
+    change_state_mock = mocker.patch.object(net, "_change_nodes_state", return_value=True)
+    init_nodes_mock = mocker.patch.object(net, "_EthercatNetwork__init_nodes")
+
+    net.stop_pdos()
+
+    change_state_mock.assert_called_once_with(servos, SlaveState.INIT_STATE)
+    init_nodes_mock.assert_called_once_with()
+    assert net._pdo_exchange_active is False
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
 def test_stop_pdos_skips_disconnected_slaves(mocker, den_net_e_2_9_1_xdf_v3: str):
     """Test that stop_pdos() skips slaves in NONE_STATE and does not call __init_nodes().
 
