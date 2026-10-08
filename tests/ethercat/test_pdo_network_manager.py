@@ -75,6 +75,7 @@ def test_start_pdos(
     initial_operation_modes = {}
     rpdo_values = {}
     tpdo_values = {}
+    receive_counts = dict.fromkeys(alias, 0)
     rpdo_maps: dict[str, PDOMap] = {}
     tpdo_maps: dict[str, PDOMap] = {}
     for s, a in zip(servo, alias):
@@ -84,13 +85,13 @@ def test_start_pdos(
         operation_mode = PDOMap.create_item_from_register_uid(
             "DRV_OP_CMD", dictionary=s.dictionary, value=initial_operation_mode, axis=1
         )
-        actual_position = PDOMap.create_item_from_register_uid(
-            "CL_POS_FBK_VALUE", dictionary=s.dictionary, axis=1
+        operation_mode_display = PDOMap.create_item_from_register_uid(
+            "DRV_OP_VALUE", dictionary=s.dictionary, axis=1
         )
         rpdo_maps[a].add_item(operation_mode)
-        tpdo_maps[a].add_item(actual_position)
+        tpdo_maps[a].add_item(operation_mode_display)
         s.set_pdo_map_to_slave([rpdo_maps[a]], [tpdo_maps[a]])
-        pdo_map_items[a] = (operation_mode, actual_position)
+        pdo_map_items[a] = (operation_mode, operation_mode_display)
         # Choose a random operation mode: [voltage, current, velocity, position]
         random_op_mode = random.choice([
             op_mode for op_mode in [0x00, 0x02, 0x03, 0x04] if op_mode != initial_operation_mode
@@ -105,6 +106,7 @@ def test_start_pdos(
     def receive_callback(alias_arg: str) -> None:
         _, tpdo_map_item = pdo_map_items[alias_arg]
         tpdo_values[alias_arg] = tpdo_map_item.value
+        receive_counts[alias_arg] += 1
 
     for a in alias:
         rpdo_maps[a].subscribe_to_process_data_event(partial(send_callback, a))
@@ -114,14 +116,23 @@ def test_start_pdos(
     refresh_rate = 0.5
     net.activate_pdos(refresh_rate=refresh_rate)
     assert net.pdo_manager.is_active
-    time.sleep(2 * refresh_rate)
+    # The worker notifies once during startup before receiving process data.
+    with Timeout(5) as timeout:
+        while not all(receive_counts[a] >= 2 for a in alias) and not timeout.has_expired:
+            time.sleep(0.01)
+    received_process_data = all(receive_counts[a] >= 2 for a in alias)
     net.deactivate_pdos()
     assert not net.pdo_manager.is_active
+    assert received_process_data, f"PDO receive counts by servo: {receive_counts}"
     for s, a in zip(servo, alias):
         # Check that RPDO are being sent
         assert rpdo_values[a] == s.read("DRV_OP_CMD")
         # Check that TPDO are being received
-        assert pytest.approx(tpdo_values[a], abs=2) == s.read("CL_POS_FBK_VALUE")
+        operation_mode_value = s.read("DRV_OP_VALUE")
+        assert tpdo_values[a] == operation_mode_value, (
+            f"TPDO/SDO operation-mode mismatch for servo {a!r} (slave ID {s.slave_id}): "
+            f"TPDO={tpdo_values[a]}, SDO={operation_mode_value}"
+        )
         # Restore the initial operation mode
         s.write("DRV_OP_CMD", initial_operation_modes[a])
         s.reset_pdo_mapping()
