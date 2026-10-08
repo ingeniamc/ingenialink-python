@@ -84,13 +84,13 @@ def test_start_pdos(
         operation_mode = PDOMap.create_item_from_register_uid(
             "DRV_OP_CMD", dictionary=s.dictionary, value=initial_operation_mode, axis=1
         )
-        operation_mode_display = PDOMap.create_item_from_register_uid(
-            "DRV_OP_VALUE", dictionary=s.dictionary, axis=1
+        actual_position = PDOMap.create_item_from_register_uid(
+            "CL_POS_FBK_VALUE", dictionary=s.dictionary, axis=1
         )
         rpdo_maps[a].add_item(operation_mode)
-        tpdo_maps[a].add_item(operation_mode_display)
+        tpdo_maps[a].add_item(actual_position)
         s.set_pdo_map_to_slave([rpdo_maps[a]], [tpdo_maps[a]])
-        pdo_map_items[a] = (operation_mode, operation_mode_display)
+        pdo_map_items[a] = (operation_mode, actual_position)
         # Choose a random operation mode: [voltage, current, velocity, position]
         random_op_mode = random.choice([
             op_mode for op_mode in [0x00, 0x02, 0x03, 0x04] if op_mode != initial_operation_mode
@@ -110,22 +110,25 @@ def test_start_pdos(
         rpdo_maps[a].subscribe_to_process_data_event(partial(send_callback, a))
         tpdo_maps[a].subscribe_to_process_data_event(partial(receive_callback, a))
 
+    cycles: list[None] = []
+    net.pdo_manager.subscribe_to_receive_process_data(partial(cycles.append, None))
+
     assert not net.pdo_manager.is_active
     refresh_rate = 0.5
     net.activate_pdos(refresh_rate=refresh_rate)
     assert net.pdo_manager.is_active
-    time.sleep(3 * refresh_rate)
+    # The first notification is sent on startup, before any process data is received.
+    with Timeout(5) as timeout:
+        while len(cycles) < 2 and not timeout.has_expired:
+            time.sleep(0.01)
+    assert len(cycles) >= 2
     net.deactivate_pdos()
     assert not net.pdo_manager.is_active
     for s, a in zip(servo, alias):
         # Check that RPDO are being sent
         assert rpdo_values[a] == s.read("DRV_OP_CMD")
         # Check that TPDO are being received
-        operation_mode_value = s.read("DRV_OP_VALUE")
-        assert tpdo_values[a] == operation_mode_value, (
-            f"TPDO/SDO operation-mode mismatch for servo {a!r} (slave ID {s.slave_id}): "
-            f"TPDO={tpdo_values[a]}, SDO={operation_mode_value}"
-        )
+        assert pytest.approx(tpdo_values[a], abs=2) == s.read("CL_POS_FBK_VALUE")
         # Restore the initial operation mode
         s.write("DRV_OP_CMD", initial_operation_modes[a])
         s.reset_pdo_mapping()
