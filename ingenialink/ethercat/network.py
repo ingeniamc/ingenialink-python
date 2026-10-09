@@ -357,7 +357,10 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             self._pdo_thread_status_observers.remove(callback)
 
     def activate_pdos(
-        self, refresh_rate: Optional[float] = None, watchdog_timeout: Optional[float] = None
+        self,
+        refresh_rate: Optional[float] = None,
+        watchdog_timeout: Optional[float] = None,
+        selected_slave_ids: Optional[set[int]] = None,
     ) -> None:
         """Start PDOs and notify the status to the observers.
 
@@ -365,9 +368,21 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             refresh_rate: Determines how often (seconds) the PDO values will be updated.
             watchdog_timeout: The PDO watchdog time. If not provided it will be set proportional
              to the refresh rate.
+            selected_slave_ids: 1-based discovered slave IDs to include in the process image.
+                If omitted, all connected slaves with PDO maps are selected.
         """
+        self.validate_selected_slave_ids(selected_slave_ids)
         n_exceptions = self.__exceptions_in_thread
-        self.pdo_manager.start_pdos(refresh_rate=refresh_rate, watchdog_timeout=watchdog_timeout)
+        if selected_slave_ids is None:
+            self.pdo_manager.start_pdos(
+                refresh_rate=refresh_rate, watchdog_timeout=watchdog_timeout
+            )
+        else:
+            self.pdo_manager.start_pdos(
+                refresh_rate=refresh_rate,
+                watchdog_timeout=watchdog_timeout,
+                selected_slave_ids=selected_slave_ids,
+            )
         # Make sure that there were no exceptions while starting the PDOs to notify activation
         if self.__exceptions_in_thread == n_exceptions:
             self._notify_pdo_thread_status(True)
@@ -663,16 +678,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             selected_slave_ids = discovered_slave_ids
         else:
             selected_slave_ids = set(selected_slave_ids)
-            if any(
-                isinstance(slave_id, bool) or not isinstance(slave_id, int) or slave_id < 1
-                for slave_id in selected_slave_ids
-            ):
-                raise ValueError("selected_slave_ids must contain positive integer slave IDs.")
-            unknown_slave_ids = selected_slave_ids - discovered_slave_ids
-            if unknown_slave_ids:
-                raise ValueError(
-                    f"Selected slave IDs were not discovered: {sorted(unknown_slave_ids)}"
-                )
+            self.validate_selected_slave_ids(selected_slave_ids)
         if active_group is None:
             active_group = 0 if selected_slave_ids == discovered_slave_ids else 1
         elif (
@@ -736,6 +742,28 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         self._active_pdo_group = active_group
         self._selected_pdo_slave_ids = selected_slave_ids
 
+    def validate_selected_slave_ids(self, selected_slave_ids: Optional[set[int]]) -> None:
+        """Validate that selected IDs identify discovered EtherCAT slaves.
+
+        Args:
+            selected_slave_ids: 1-based discovered slave IDs, or ``None`` for the default.
+
+        Raises:
+            ValueError: If an ID is invalid or was not discovered on this network.
+        """
+        if selected_slave_ids is None:
+            return
+        selected_slave_ids = set(selected_slave_ids)
+        if any(
+            isinstance(slave_id, bool) or not isinstance(slave_id, int) or slave_id < 1
+            for slave_id in selected_slave_ids
+        ):
+            raise ValueError("selected_slave_ids must contain positive integer slave IDs.")
+        discovered_slave_ids = set(range(1, len(self._ecat_master.slaves) + 1))
+        unknown_slave_ids = selected_slave_ids - discovered_slave_ids
+        if unknown_slave_ids:
+            raise ValueError(f"Selected slave IDs were not discovered: {sorted(unknown_slave_ids)}")
+
     def start_pdos(
         self,
         timeout: float = 2.0,
@@ -798,16 +826,21 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             raise
 
     def stop_pdos(self) -> None:
-        """For all slaves not in PreOp state, set state to PreOp."""
+        """Set the selected PDO group to PreOp, preserving excluded servos' states."""
         if not self.__is_master_running:
             self._pdo_exchange_active = False
             logger.warning("EtherCAT master is not running, no PDOs to stop.")
             return
         self._ecat_master.read_state()
+        has_excluded_servos = bool(self._selected_pdo_slave_ids) and any(
+            servo.slave_exists and servo.slave_id not in self._selected_pdo_slave_ids
+            for servo in self.servos
+        )
         restore_servos_list = [
             servo
             for servo in self.servos
             if servo.slave_exists
+            and (not has_excluded_servos or servo.slave_id in self._selected_pdo_slave_ids)
             and servo.slave.state not in (pysoem.PREOP_STATE, pysoem.NONE_STATE)
         ]
         if len(restore_servos_list) == 0:
@@ -815,7 +848,11 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             return
         if not self._change_nodes_state(restore_servos_list, SlaveState.INIT_STATE):
             logger.warning("Not all drives could reach the Init state")
-        self.__init_nodes()
+        if has_excluded_servos:
+            if not self._change_nodes_state(restore_servos_list, SlaveState.PREOP_STATE):
+                logger.warning("Not all selected drives could reach the PreOp state")
+        else:
+            self.__init_nodes()
         self._pdo_exchange_active = False
 
     def send_receive_processdata(
