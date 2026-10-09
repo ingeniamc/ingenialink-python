@@ -6,11 +6,14 @@ import pytest
 
 from ingenialink.enums.node import NodeMode
 from ingenialink.ethernet.tsn.sdcp import (
+    SDCPDeserializer,
     SDCPDeviceMode,
     SDCPIdentificationRequest,
     SDCPIdentificationResponse,
     SDCPIdentificationResponseError,
     SDCPProfileFlags,
+    SDCPReadResponse,
+    SDCPReadResponseError,
     SDCPWriteResponse,
 )
 from ingenialink.ethernet.tsn.sdcp.discovery import SDCPNodeDiscovery
@@ -122,13 +125,20 @@ def test_identify_tsn_node_raises_identification_error(
         identify_sdcp_node(TARGET, INTERFACE)
 
 
+@pytest.mark.parametrize(
+    "response",
+    [
+        pytest.param(bytes(SDCPReadResponse(0x0000, b"\x12\x34")), id="read-response"),
+        pytest.param(bytes(SDCPWriteResponse(0x0000)), id="write-response"),
+        pytest.param(bytes(SDCPReadResponseError(0x0000, 0x0001)), id="read-error-response"),
+        pytest.param(bytes(SDCPIdentificationRequest(0x0000)), id="request-without-reply"),
+    ],
+)
 def test_identify_tsn_node_rejects_unexpected_identification_response(
-    connection_mock: MagicMock,
+    connection_mock: MagicMock, response: bytes
 ) -> None:
-    """Reject a valid non-Identification response."""
-    connection_mock.request.return_value = SDCPWriteResponse(
-        transaction_id=0x0000,
-    )
+    """Reject mismatched opcodes, errors, and request-form Identify frames."""
+    connection_mock.request.return_value = SDCPDeserializer.deserialize(response)
     context = _connection_context(connection_mock)
 
     with (

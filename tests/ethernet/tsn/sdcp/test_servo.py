@@ -7,6 +7,10 @@ import pytest
 from ingenialink import RegAccess, RegDtype
 from ingenialink.canopen.register import CanopenRegister
 from ingenialink.ethernet.tsn.sdcp.messages import (
+    SDCPDeserializer,
+    SDCPDeviceMode,
+    SDCPIdentificationResponse,
+    SDCPProfileFlags,
     SDCPReadRequest,
     SDCPReadResponse,
     SDCPReadResponseError,
@@ -63,6 +67,19 @@ def register() -> CanopenRegister:
     register_mock.access = RegAccess.RW
     register_mock.identifier = "TEST_REGISTER"
     return register_mock
+
+
+def _identification_response() -> SDCPIdentificationResponse:
+    """Return an Identify response for mismatched-operation tests."""
+    return SDCPIdentificationResponse(
+        transaction_id=0x0000,
+        protocol_version=1,
+        profile_flags=SDCPProfileFlags(0),
+        device_mode=SDCPDeviceMode.APPLICATION,
+        serial_number=0x12345678,
+        product_code=0x90ABCDEF,
+        revision_number=0x00010002,
+    )
 
 
 def test_read_decodes_big_endian_value(
@@ -189,15 +206,23 @@ def test_write_error_response_raises_il_io_error(
         servo._write_raw(register, b"\x12\x34")
 
 
+@pytest.mark.parametrize(
+    "response_frame",
+    [
+        pytest.param(bytes(_identification_response()), id="identification-response"),
+        pytest.param(bytes(SDCPWriteResponse(0x0000)), id="write-response"),
+        pytest.param(bytes(SDCPWriteResponseError(0x0000, 0x0001)), id="write-error-response"),
+        pytest.param(bytes(SDCPReadRequest(0x0000, 0x1000, 0x00)), id="request-without-reply"),
+    ],
+)
 def test_read_rejects_unexpected_response_type(
     servo: SDCPServo,
     register: CanopenRegister,
     connection_mock: MagicMock,
+    response_frame: bytes,
 ) -> None:
-    """Reject a valid non-Read response for a Read request."""
-    connection_mock.request.return_value = SDCPWriteResponse(
-        transaction_id=0x0000,
-    )
+    """Reject mismatched opcodes, errors, and request-form Read frames."""
+    connection_mock.request.return_value = SDCPDeserializer.deserialize(response_frame)
 
     with pytest.raises(
         ILIOError,
@@ -206,16 +231,26 @@ def test_read_rejects_unexpected_response_type(
         servo._read_raw(register)
 
 
+@pytest.mark.parametrize(
+    "response_frame",
+    [
+        pytest.param(bytes(_identification_response()), id="identification-response"),
+        pytest.param(bytes(SDCPReadResponse(0x0000, b"\x12\x34")), id="read-response"),
+        pytest.param(bytes(SDCPReadResponseError(0x0000, 0x0001)), id="read-error-response"),
+        pytest.param(
+            bytes(SDCPWriteRequest(0x0000, 0x1000, 0x00, b"\x12\x34")),
+            id="request-without-reply",
+        ),
+    ],
+)
 def test_write_rejects_unexpected_response_type(
     servo: SDCPServo,
     register: CanopenRegister,
     connection_mock: MagicMock,
+    response_frame: bytes,
 ) -> None:
-    """Reject a valid non-Write response for a Write request."""
-    connection_mock.request.return_value = SDCPReadResponse(
-        transaction_id=0x0000,
-        value=b"\x12\x34",
-    )
+    """Reject mismatched opcodes, errors, and request-form Write frames."""
+    connection_mock.request.return_value = SDCPDeserializer.deserialize(response_frame)
 
     with pytest.raises(
         ILIOError,
