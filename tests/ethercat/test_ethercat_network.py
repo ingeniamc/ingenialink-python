@@ -485,7 +485,6 @@ def test_config_pdo_maps_assigns_group_to_selected_discovered_slaves(
     assert [slave.group for slave in net._ecat_master.slaves] == [0, 1, 0]
     assert net._active_pdo_group == 1
     assert net._selected_pdo_slave_ids == {2}
-    assert net._pdo_map_size == 24
     map_mock.assert_called_once_with(group=1)
     net.close_ecat_master()
 
@@ -511,7 +510,6 @@ def test_config_pdo_maps_defaults_to_full_network_group_zero(
     assert [slave.group for slave in net._ecat_master.slaves] == [0, 0, 0]
     assert net._active_pdo_group == 0
     assert net._selected_pdo_slave_ids == {1, 2, 3}
-    assert net._pdo_map_size == 24
     map_mock.assert_called_once_with(group=0)
     net.close_ecat_master()
 

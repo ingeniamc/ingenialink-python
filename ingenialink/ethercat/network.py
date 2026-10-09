@@ -283,7 +283,6 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         self._overlapping_io_map = overlapping_io_map
         self._active_pdo_group = 0
         self._selected_pdo_slave_ids: set[int] = set()
-        self._pdo_map_size = 0
         self._pdo_exchange_active = False
         self.__is_master_running = False
         self.__last_init_nodes: list[int] = []
@@ -699,9 +698,9 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             slave.group = active_group if slave_id in selected_slave_ids else other_group
 
         if self._overlapping_io_map:
-            self._pdo_map_size = self._ecat_master.config_overlap_map(group=active_group)
+            self._ecat_master.config_overlap_map(group=active_group)
         else:
-            self._pdo_map_size = self._ecat_master.config_map(group=active_group)
+            self._ecat_master.config_map(group=active_group)
         self._active_pdo_group = active_group
         self._selected_pdo_slave_ids = selected_slave_ids
 
