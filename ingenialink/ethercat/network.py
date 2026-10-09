@@ -660,6 +660,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             RuntimeError: If the active mapping is changed during PDO exchange.
         """
         discovered_slave_ids = set(range(1, len(self._ecat_master.slaves) + 1))
+        # Normalize the caller's selection and reject IDs outside the discovered bus.
         if selected_slave_ids is None:
             selected_slave_ids = discovered_slave_ids
         else:
@@ -674,6 +675,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
                 raise ValueError(
                     f"Selected slave IDs were not discovered: {sorted(unknown_slave_ids)}"
                 )
+        # Use group 0 for the full network and group 1 for a subset by default.
         if active_group is None:
             active_group = 0 if selected_slave_ids == discovered_slave_ids else 1
         elif (
@@ -682,9 +684,11 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             or active_group not in (0, 1)
         ):
             raise ValueError("active_group must be 0 or 1.")
+        # PySOEM reserves group 0 for all discovered slaves.
         if active_group == 0 and selected_slave_ids != discovered_slave_ids:
             raise ValueError("PySOEM group 0 maps all discovered slaves; use group 1 for a subset.")
 
+        # Do not change the process image during exchange, except during PDO startup.
         if self._pdo_exchange_active:
             same_configuration = (
                 active_group == self._active_pdo_group
