@@ -281,6 +281,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         self.update_sdo_timeout(timeout_us, timeout_us)
         self._ecat_master.manual_state_change = self.MANUAL_STATE_CHANGE
         self._overlapping_io_map = overlapping_io_map
+        # Default to group 0 for all slaves; group 1 is used for selected subsets.
         self._active_pdo_group = 0
         self._selected_pdo_slave_ids: set[int] = set()
         self._pdo_exchange_active = False
