@@ -281,6 +281,10 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         self.update_sdo_timeout(timeout_us, timeout_us)
         self._ecat_master.manual_state_change = self.MANUAL_STATE_CHANGE
         self._overlapping_io_map = overlapping_io_map
+        # Default to group 0 for all slaves; group 1 is used for selected subsets.
+        self._active_pdo_group = 0
+        self._selected_pdo_slave_ids: set[int] = set()
+        self._pdo_exchange_active = False
         self.__is_master_running = False
         self.__last_init_nodes: list[int] = []
 
@@ -611,6 +615,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         self._lock.acquire()
         self._ecat_master.close()
         self._lock.release()
+        self._pdo_exchange_active = False
         self.__is_master_running = False
         self.__last_init_nodes = []
         if release_reference:
@@ -634,54 +639,181 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         # Notify that disconnect_from_slave has been called
         servo._disconnect_event_publisher.notify(servo)
 
-    def config_pdo_maps(self) -> None:
+    def _resolve_pdo_map_configuration(
+        self,
+        selected_slave_ids: Optional[set[int]] = None,
+        active_group: Optional[int] = None,
+    ) -> tuple[set[int], int]:
+        """Normalize and validate the requested PDO map configuration.
+
+        Args:
+            selected_slave_ids: 1-based discovered slave IDs to include in the process image.
+                If omitted, all discovered slaves are selected.
+            active_group: Process-data group to map. Defaults to group 0 for all slaves
+                or group 1 for a subset. PySOEM supports groups 0 and 1.
+
+        Returns:
+            The selected slave IDs and active process-data group.
+
+        Raises:
+            ValueError: If the selected group or slave IDs are invalid.
+            RuntimeError: If the active mapping is changed during PDO exchange.
+        """
+        discovered_slave_ids = set(range(1, len(self._ecat_master.slaves) + 1))
+        # Normalize the caller's selection and reject IDs outside the discovered bus.
+        if selected_slave_ids is None:
+            selected_slave_ids = discovered_slave_ids
+        else:
+            selected_slave_ids = set(selected_slave_ids)
+            if any(
+                isinstance(slave_id, bool) or not isinstance(slave_id, int) or slave_id < 1
+                for slave_id in selected_slave_ids
+            ):
+                raise ValueError("selected_slave_ids must contain positive integer slave IDs.")
+            unknown_slave_ids = selected_slave_ids - discovered_slave_ids
+            if unknown_slave_ids:
+                raise ValueError(
+                    f"Selected slave IDs were not discovered: {sorted(unknown_slave_ids)}"
+                )
+        # Use group 0 for the full network and group 1 for a subset by default.
+        if active_group is None:
+            active_group = 0 if selected_slave_ids == discovered_slave_ids else 1
+        elif (
+            isinstance(active_group, bool)
+            or not isinstance(active_group, int)
+            or active_group not in (0, 1)
+        ):
+            raise ValueError("active_group must be 0 or 1.")
+        # PySOEM reserves group 0 for all discovered slaves.
+        if active_group == 0 and selected_slave_ids != discovered_slave_ids:
+            raise ValueError("PySOEM group 0 maps all discovered slaves; use group 1 for a subset.")
+
+        # Do not change the process image during exchange, except during PDO startup.
+        if self._pdo_exchange_active:
+            same_configuration = (
+                active_group == self._active_pdo_group
+                and selected_slave_ids == self._selected_pdo_slave_ids
+            )
+            if not same_configuration and not self._pdo_manager.is_starting_pdos:
+                raise RuntimeError("Stop PDO exchange before reconfiguring the process-data group.")
+
+        return selected_slave_ids, active_group
+
+    def config_pdo_maps(
+        self,
+        selected_slave_ids: Optional[set[int]] = None,
+        active_group: Optional[int] = None,
+    ) -> None:
         """Configure the PDO maps.
 
-        It maps the PDO maps of each slave and sets its state to SafeOP.
+        Assign discovered slaves to process-data groups and map only the active group.
+        By default, all discovered slaves are mapped in group 0.
 
+        Args:
+            selected_slave_ids: 1-based discovered slave IDs to include in the process image.
+                If omitted, all discovered slaves are selected.
+            active_group: Process-data group to map. Defaults to group 0 for all slaves
+                or group 1 for a subset. PySOEM supports groups 0 and 1.
+
+        Raises:
+            ValueError: If the selected group or slave IDs are invalid.
+            RuntimeError: If the active mapping is changed during PDO exchange.
         """
-        if self._overlapping_io_map:
-            self._ecat_master.config_overlap_map()
-        else:
-            self._ecat_master.config_map()
+        selected_slave_ids, active_group = self._resolve_pdo_map_configuration(
+            selected_slave_ids=selected_slave_ids,
+            active_group=active_group,
+        )
+        if (
+            self._pdo_exchange_active
+            and active_group == self._active_pdo_group
+            and selected_slave_ids == self._selected_pdo_slave_ids
+        ):
+            return
 
-    def start_pdos(self, timeout: float = 2.0) -> None:
+        other_group = 1 - active_group
+        for slave_id, slave in enumerate(self._ecat_master.slaves, start=1):
+            slave.group = active_group if slave_id in selected_slave_ids else other_group
+
+        if self._overlapping_io_map:
+            self._ecat_master.config_overlap_map(group=active_group)
+        else:
+            self._ecat_master.config_map(group=active_group)
+        self._active_pdo_group = active_group
+        self._selected_pdo_slave_ids = selected_slave_ids
+
+    def start_pdos(
+        self,
+        timeout: float = 2.0,
+        *,
+        selected_slave_ids: Optional[set[int]] = None,
+        active_group: Optional[int] = None,
+    ) -> None:
         """Set all slaves with mapped PDOs to Operational State.
 
         Args:
             timeout: timeout in seconds to reach Op state, 2.0 seconds by default.
+            selected_slave_ids: 1-based discovered slave IDs to include in the process image.
+                Each selected slave must have configured PDO maps. If omitted, connected servos
+                with PDO maps are selected.
+            active_group: Process-data group to map. Defaults to group 0 for all slaves
+                or group 1 for a subset. PySOEM supports groups 0 and 1.
 
         Raises:
             ILStateError: If slaves can not reach SafeOp or Op state.
             RuntimeError: If EtherCAT master is not running.
+            ValueError: If a selected slave does not have configured PDO maps.
         """
         if not self.__is_master_running:
             raise RuntimeError("EtherCAT master is not running.")
-        op_servo_list = [servo for servo in self.servos if servo._rpdo_maps or servo._tpdo_maps]
+        pdo_servo_list = [servo for servo in self.servos if servo._rpdo_maps or servo._tpdo_maps]
+        if selected_slave_ids is None:
+            if not pdo_servo_list:
+                logger.warning("There are no PDOs assigned to any connected slave.")
+                return
+            selected_slave_ids = {servo.slave_id for servo in pdo_servo_list}
+
+        selected_slave_ids, active_group = self._resolve_pdo_map_configuration(
+            selected_slave_ids=selected_slave_ids,
+            active_group=active_group,
+        )
+        pdo_slave_ids = {servo.slave_id for servo in pdo_servo_list}
+        missing_pdo_slave_ids = selected_slave_ids - pdo_slave_ids
+        if missing_pdo_slave_ids:
+            raise ValueError(
+                f"Selected slave IDs have no configured PDO maps: {sorted(missing_pdo_slave_ids)}"
+            )
+        op_servo_list = [servo for servo in pdo_servo_list if servo.slave_id in selected_slave_ids]
         if not op_servo_list:
-            logger.warning("There are no PDOs assigned to any connected slave.")
+            logger.warning("There are no PDOs assigned to any selected connected slave.")
             return
-        # Configure the PDO maps
-        self.config_pdo_maps()
 
-        with Timeout(timeout) as t:
-            # Set all slaves to SafeOp state
-            self._ecat_master.state = pysoem.SAFEOP_STATE
-            self._change_nodes_state(op_servo_list, SlaveState.SAFEOP_STATE)
-            while not self._check_node_state(op_servo_list, pysoem.SAFEOP_STATE):
-                if t.has_expired:
-                    raise ILStateError("Drives can not reach SafeOp state")
+        self.config_pdo_maps(
+            selected_slave_ids=selected_slave_ids,
+            active_group=active_group,
+        )
 
-            # Set all slaves to Op state
-            self._change_nodes_state(op_servo_list, SlaveState.OP_STATE)
-            while not self._check_node_state(op_servo_list, pysoem.OP_STATE):
-                self.send_receive_processdata()
-                if t.has_expired:
-                    raise ILStateError("Drives can not reach Op state")
+        self._pdo_exchange_active = True
+        try:
+            with Timeout(timeout) as t:
+                self._change_nodes_state(op_servo_list, SlaveState.SAFEOP_STATE)
+                while not self._check_node_state(op_servo_list, pysoem.SAFEOP_STATE):
+                    if t.has_expired:
+                        raise ILStateError("Drives can not reach SafeOp state")
+
+                # Set all slaves to Op state
+                self._change_nodes_state(op_servo_list, SlaveState.OP_STATE)
+                while not self._check_node_state(op_servo_list, pysoem.OP_STATE):
+                    self.send_receive_processdata()
+                    if t.has_expired:
+                        raise ILStateError("Drives can not reach Op state")
+        except Exception:
+            self._pdo_exchange_active = False
+            raise
 
     def stop_pdos(self) -> None:
         """For all slaves not in PreOp state, set state to PreOp."""
         if not self.__is_master_running:
+            self._pdo_exchange_active = False
             logger.warning("EtherCAT master is not running, no PDOs to stop.")
             return
         self._ecat_master.read_state()
@@ -692,10 +824,12 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             and servo.slave.state not in (pysoem.PREOP_STATE, pysoem.NONE_STATE)
         ]
         if len(restore_servos_list) == 0:
+            self._pdo_exchange_active = False
             return
         if not self._change_nodes_state(restore_servos_list, SlaveState.INIT_STATE):
             logger.warning("Not all drives could reach the Init state")
         self.__init_nodes()
+        self._pdo_exchange_active = False
 
     def send_receive_processdata(
         self, timeout: float = ECAT_PROCESSDATA_TIMEOUT_S, *, release_gil: Optional[bool] = None
@@ -717,21 +851,31 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
 
         if release_gil is None:
             release_gil = self.__gil_release_config.send_receive_processdata
-        for servo in self.servos:
+        active_servos = [
+            servo for servo in self.servos if servo.slave_id in self._selected_pdo_slave_ids
+        ]
+        for servo in active_servos:
             servo.generate_pdo_outputs()
         self._lock.acquire()
         if self._overlapping_io_map:
-            self._ecat_master.send_overlap_processdata(release_gil=release_gil)
+            self._ecat_master.send_overlap_processdata(
+                group=self._active_pdo_group, release_gil=release_gil
+            )
         else:
-            self._ecat_master.send_processdata(release_gil=release_gil)
+            self._ecat_master.send_processdata(
+                group=self._active_pdo_group, release_gil=release_gil
+            )
         processdata_wkc = self._ecat_master.receive_processdata(
-            timeout=int(timeout * 1_000_000), release_gil=release_gil
+            timeout=int(timeout * 1_000_000),
+            group=self._active_pdo_group,
+            release_gil=release_gil,
         )
         self._lock.release()
-        if processdata_wkc != self.EXPECTED_WKC_PROCESS_DATA * (len(self.servos)):
+        expected_wkc = self._ecat_master.get_expected_wkc(group=self._active_pdo_group)
+        if processdata_wkc != expected_wkc:
             self._ecat_master.read_state()
             servos_state_msg = ""
-            for servo in self.servos:
+            for servo in active_servos:
                 servos_state_msg += (
                     f"Slave {servo.slave_id}: state {SlaveState(servo.slave.state).name}"
                 )
@@ -741,10 +885,10 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
                 else:
                     servos_state_msg += ". "
             raise ILWrongWorkingCountError(
-                f"Processdata working count is wrong, expected: {self._ecat_master.expected_wkc},"
+                f"Processdata working count is wrong, expected: {expected_wkc},"
                 f" real: {processdata_wkc}. {servos_state_msg}"
             )
-        for servo in self.servos:
+        for servo in active_servos:
             servo.process_pdo_inputs()
 
     @lru_cache

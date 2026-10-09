@@ -110,11 +110,18 @@ def test_start_pdos(
         rpdo_maps[a].subscribe_to_process_data_event(partial(send_callback, a))
         tpdo_maps[a].subscribe_to_process_data_event(partial(receive_callback, a))
 
+    cycles: list[None] = []
+    net.pdo_manager.subscribe_to_receive_process_data(partial(cycles.append, None))
+
     assert not net.pdo_manager.is_active
     refresh_rate = 0.5
     net.activate_pdos(refresh_rate=refresh_rate)
     assert net.pdo_manager.is_active
-    time.sleep(2 * refresh_rate)
+    # The first notification is sent on startup, before any process data is received.
+    with Timeout(5) as timeout:
+        while len(cycles) < 2 and not timeout.has_expired:
+            time.sleep(0.01)
+    assert len(cycles) >= 2
     net.deactivate_pdos()
     assert not net.pdo_manager.is_active
     for s, a in zip(servo, alias):

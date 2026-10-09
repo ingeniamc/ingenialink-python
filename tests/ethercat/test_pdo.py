@@ -10,6 +10,7 @@ from tests.conftest import refresh_registers_for_test_rollback
 with contextlib.suppress(ImportError):
     import pysoem
 import pytest
+from summit_testing_framework.setups.descriptors import EthercatMultiSlaveSetup
 
 from ingenialink.dictionary import CanOpenObject, CanOpenObjectType, Interface
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
@@ -597,6 +598,48 @@ def test_start_stop_pdo(servo, net):
             item.value = 0
         s.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
     start_stop_pdos(net)
+
+
+@pytest.mark.multislave
+def test_selected_group_mapping_skips_uncommissioned_slave(
+    servo: "EthercatServo", net: "EthercatNetwork", setup_descriptor: "EthercatMultiSlaveSetup"
+) -> None:
+    """Map only the selected rack slave and leave an uncommissioned slave untouched."""
+    if not isinstance(setup_descriptor, EthercatMultiSlaveSetup):
+        pytest.skip("Requires the multislave EtherCAT rack setup.")
+    selected_servo, unselected_servo = servo[:2]
+    unselected_slave_id = unselected_servo.slave_id
+    unselected_slave = net._ecat_master.slaves[unselected_slave_id - 1]
+    unselected_state = unselected_slave.state
+    assert not unselected_servo._rpdo_maps
+    assert not unselected_servo._tpdo_maps
+
+    def fail_if_mapped(_slave_id: int) -> None:
+        raise AssertionError("The unselected slave PDO configuration must not run.")
+
+    unselected_slave.config_func = fail_if_mapped
+    rpdo_map, tpdo_map = create_pdo_maps(selected_servo, ["DRV_OP_CMD"], ["DRV_OP_VALUE"])
+    rpdo_map.items[0].value = selected_servo.read("DRV_OP_CMD")
+    selected_servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+
+    net.start_pdos(selected_slave_ids={selected_servo.slave_id}, active_group=1)
+
+    assert selected_servo.slave.group == 1
+    assert unselected_slave.group == 0
+    assert unselected_slave.state == unselected_state
+    assert net._active_pdo_group == 1
+    assert net._selected_pdo_slave_ids == {selected_servo.slave_id}
+    assert net._ecat_master.get_expected_wkc(group=1) > 0
+
+    start_time = time.time()
+    timeout = 1
+    while time.time() < start_time + timeout:
+        net.send_receive_processdata()
+
+    assert selected_servo._rpdo_maps[0x1600].items[0].value == selected_servo.read("DRV_OP_CMD")
+    assert selected_servo._tpdo_maps[0x1A00].items[0].value == selected_servo.read("DRV_OP_VALUE")
+    net._ecat_master.read_state()
+    assert unselected_slave.state == unselected_state
 
 
 @pytest.mark.ethercat

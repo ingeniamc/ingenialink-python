@@ -84,7 +84,7 @@ class PDONetworkManager:
                 self._notify_send_process_data()
                 try:
                     if first_iteration:
-                        self._net.start_pdos()
+                        self._net.pdo_manager._start_network_pdos()
                         first_iteration = False
                     else:
                         self._net.send_receive_processdata(self._refresh_rate)
@@ -181,9 +181,23 @@ class PDONetworkManager:
         self._net = net
         self.logger = ingenialogger.get_logger(__name__)
         self._pdo_thread: Optional[PDONetworkManager.ProcessDataThread] = None
+        self._is_starting_pdos = False
         self._pdo_send_observers: list[Callable[[], None]] = []
         self._pdo_receive_observers: list[Callable[[], None]] = []
         self._pdo_exceptions_observers, self._pdo_exception_publisher = create_event(ILError)
+
+    @property
+    def is_starting_pdos(self) -> bool:
+        """Check whether the manager is performing its initial PDO setup."""
+        return self._is_starting_pdos
+
+    def _start_network_pdos(self) -> None:
+        """Start network PDOs while marking the manager's initial setup window."""
+        self._is_starting_pdos = True
+        try:
+            self._net.start_pdos()
+        finally:
+            self._is_starting_pdos = False
 
     def check_safe_pdo_configuration(self) -> bool:
         """Returns True if safe drives have their safe PDOs configured.
