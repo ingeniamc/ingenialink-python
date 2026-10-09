@@ -4,40 +4,14 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, fields
-from enum import IntEnum, IntFlag
 from typing import Literal, Union
 
-
-class SDCPOpcode(IntEnum):
-    """Opcodes defined by the SDCP Core acyclic protocol."""
-
-    IDENTIFICATION = 0x01
-    READ = 0x02
-    WRITE = 0x03
-
-
-class SDCPFlag(IntFlag):
-    """Flags defined by the SDCP acyclic communication protocol."""
-
-    NONE = 0x00
-    REPLY = 0x01
-    ERROR = 0x02
-
-
-class SDCPDeviceMode(IntEnum):
-    """Device modes defined by the SDCP Identification response."""
-
-    APPLICATION = 0x00
-    BOOTLOADER = 0x01
-
-
-class SDCPProfileFlags(IntFlag):
-    """Profile flags defined by the SDCP Identification response."""
-
-    SECURITY = 0x0001
-    REALTIME = 0x0002
-    SAFETY = 0x0004
-
+from ingenialink.ethernet.tsn.sdcp.enums import (
+    SDCPDeviceMode,
+    SDCPFlag,
+    SDCPOpcode,
+    SDCPProfileFlags,
+)
 
 _SDCP_BYTE_ORDER: Literal["big"] = "big"
 _SDCP_PROFILE_FLAGS_RESERVED_MASK = 0xFFF8

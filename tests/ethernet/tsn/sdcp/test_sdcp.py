@@ -4,16 +4,18 @@ from __future__ import annotations
 
 import pytest
 
+from ingenialink.ethernet.tsn.sdcp.enums import (
+    SDCPDeviceMode,
+    SDCPFlag,
+    SDCPOpcode,
+    SDCPProfileFlags,
+)
 from ingenialink.ethernet.tsn.sdcp.messages import (
     SDCPDeserializer,
-    SDCPDeviceMode,
     SDCPErrorResponse,
-    SDCPFlag,
     SDCPIdentificationRequest,
     SDCPIdentificationResponse,
     SDCPIdentificationResponseError,
-    SDCPOpcode,
-    SDCPProfileFlags,
     SDCPReadRequest,
     SDCPReadResponse,
     SDCPReadResponseError,

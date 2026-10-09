@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from ingenialink.enums.node import NodeMode
+from ingenialink.ethernet.tsn.sdcp.enums import SDCPProfileFlags
 
 
 @dataclass(frozen=True)
@@ -16,3 +17,4 @@ class SDCPNodeDiscovery:
     product_code: int
     revision_number: int
     mode: NodeMode
+    profile_flags: SDCPProfileFlags

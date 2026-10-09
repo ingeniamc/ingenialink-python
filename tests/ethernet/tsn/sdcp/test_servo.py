@@ -6,11 +6,10 @@ import pytest
 
 from ingenialink import RegAccess, RegDtype
 from ingenialink.canopen.register import CanopenRegister
+from ingenialink.ethernet.tsn.sdcp.enums import SDCPDeviceMode, SDCPProfileFlags
 from ingenialink.ethernet.tsn.sdcp.messages import (
     SDCPDeserializer,
-    SDCPDeviceMode,
     SDCPIdentificationResponse,
-    SDCPProfileFlags,
     SDCPReadRequest,
     SDCPReadResponse,
     SDCPReadResponseError,

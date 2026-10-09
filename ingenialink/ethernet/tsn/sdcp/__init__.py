@@ -2,18 +2,20 @@
 
 from ingenialink.ethernet.tsn.sdcp.connection import DEFAULT_SDCP_TIMEOUT_S, SDCPConnection
 from ingenialink.ethernet.tsn.sdcp.discovery import SDCPNodeDiscovery
+from ingenialink.ethernet.tsn.sdcp.enums import (
+    SDCPDeviceMode,
+    SDCPFlag,
+    SDCPOpcode,
+    SDCPProfileFlags,
+)
 from ingenialink.ethernet.tsn.sdcp.identification import identify_sdcp_node
 from ingenialink.ethernet.tsn.sdcp.messages import (
     SDCPDeserializer,
-    SDCPDeviceMode,
     SDCPErrorResponse,
-    SDCPFlag,
     SDCPIdentificationRequest,
     SDCPIdentificationResponse,
     SDCPIdentificationResponseError,
     SDCPMessage,
-    SDCPOpcode,
-    SDCPProfileFlags,
     SDCPReadRequest,
     SDCPReadResponse,
     SDCPReadResponseError,

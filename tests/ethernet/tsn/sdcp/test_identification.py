@@ -7,16 +7,15 @@ import pytest
 from ingenialink.enums.node import NodeMode
 from ingenialink.ethernet.tsn.sdcp import (
     SDCPDeserializer,
-    SDCPDeviceMode,
     SDCPIdentificationRequest,
     SDCPIdentificationResponse,
     SDCPIdentificationResponseError,
-    SDCPProfileFlags,
     SDCPReadResponse,
     SDCPReadResponseError,
     SDCPWriteResponse,
 )
 from ingenialink.ethernet.tsn.sdcp.discovery import SDCPNodeDiscovery
+from ingenialink.ethernet.tsn.sdcp.enums import SDCPDeviceMode, SDCPProfileFlags
 from ingenialink.ethernet.tsn.sdcp.identification import identify_sdcp_node
 from ingenialink.exceptions import ILIOError
 
@@ -45,12 +44,13 @@ def _connection_context(connection_mock: MagicMock) -> MagicMock:
 
 def _identification_response(
     device_mode: SDCPDeviceMode = SDCPDeviceMode.APPLICATION,
+    profile_flags: SDCPProfileFlags = SDCPProfileFlags.SECURITY | SDCPProfileFlags.REALTIME,
 ) -> SDCPIdentificationResponse:
     """Return a representative SDCP Identification response."""
     return SDCPIdentificationResponse(
         transaction_id=0x0000,
         protocol_version=PROTOCOL_VERSION,
-        profile_flags=SDCPProfileFlags.SECURITY | SDCPProfileFlags.REALTIME,
+        profile_flags=profile_flags,
         device_mode=device_mode,
         serial_number=SERIAL_NUMBER,
         product_code=PRODUCT_CODE,
@@ -65,11 +65,22 @@ def _identification_response(
         (SDCPDeviceMode.BOOTLOADER, NodeMode.BOOTLOADER),
     ],
 )
+@pytest.mark.parametrize(
+    "profile_flags",
+    [
+        SDCPProfileFlags(0),
+        SDCPProfileFlags.SECURITY,
+        SDCPProfileFlags.REALTIME | SDCPProfileFlags.SAFETY,
+    ],
+)
 def test_identify_tsn_node_returns_discovery_information(
-    connection_mock: MagicMock, device_mode: SDCPDeviceMode, expected_mode: NodeMode
+    connection_mock: MagicMock,
+    device_mode: SDCPDeviceMode,
+    expected_mode: NodeMode,
+    profile_flags: SDCPProfileFlags,
 ) -> None:
     """Return node discovery information from SDCP responses."""
-    connection_mock.request.return_value = _identification_response(device_mode)
+    connection_mock.request.return_value = _identification_response(device_mode, profile_flags)
     context = _connection_context(connection_mock)
 
     with patch(
@@ -90,6 +101,7 @@ def test_identify_tsn_node_returns_discovery_information(
         product_code=PRODUCT_CODE,
         revision_number=REVISION_NUMBER,
         mode=expected_mode,
+        profile_flags=profile_flags,
     )
     connection_class_mock.assert_called_once_with(
         TARGET,

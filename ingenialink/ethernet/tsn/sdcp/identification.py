@@ -3,8 +3,8 @@
 from ingenialink.enums.node import NodeMode
 from ingenialink.ethernet.tsn.sdcp.connection import DEFAULT_SDCP_TIMEOUT_S, SDCPConnection
 from ingenialink.ethernet.tsn.sdcp.discovery import SDCPNodeDiscovery
+from ingenialink.ethernet.tsn.sdcp.enums import SDCPDeviceMode
 from ingenialink.ethernet.tsn.sdcp.messages import (
-    SDCPDeviceMode,
     SDCPIdentificationRequest,
     SDCPIdentificationResponse,
     SDCPIdentificationResponseError,
@@ -49,6 +49,7 @@ def identify_sdcp_node(
         product_code=identification.product_code,
         revision_number=identification.revision_number,
         mode=mode,
+        profile_flags=identification.profile_flags,
     )
 
 
