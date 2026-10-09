@@ -6,6 +6,7 @@ import pytest
 
 from ingenialink.ethernet.tsn.sdcp.messages import (
     SDCPDeserializer,
+    SDCPDeviceMode,
     SDCPErrorResponse,
     SDCPEventSubscriptionRequest,
     SDCPFlag,
@@ -14,6 +15,7 @@ from ingenialink.ethernet.tsn.sdcp.messages import (
     SDCPIdentificationResponseError,
     SDCPOpcode,
     SDCPPeriodicSubscriptionRequest,
+    SDCPProfileFlags,
     SDCPReadRequest,
     SDCPReadResponse,
     SDCPReadResponseError,
@@ -61,8 +63,16 @@ from ingenialink.ethernet.tsn.sdcp.messages import (
             bytes.fromhex("050012345678"),
         ),
         (
-            SDCPIdentificationResponse(0x1234, 0, 0x12345678, 0x90ABCDEF, 0),
-            bytes.fromhex("01011234001234567890ABCDEF00000000"),
+            SDCPIdentificationResponse(
+                0x1234,
+                0,
+                SDCPProfileFlags.SECURITY | SDCPProfileFlags.SAFETY,
+                SDCPDeviceMode.BOOTLOADER,
+                0x12345678,
+                0x90ABCDEF,
+                0,
+            ),
+            bytes.fromhex("01011234000005011234567890ABCDEF00000000"),
         ),
         (
             SDCPReadResponse(0x1234, bytes.fromhex("12345678")),
@@ -120,7 +130,15 @@ def test_serialize_message_objects(message: _SDCPMessage, expected_frame: bytes)
         SDCPPeriodicSubscriptionRequest(0x1234, 0x2031, 0x00, 100, 2000),
         SDCPEventSubscriptionRequest(0x1234, 0x2E4D, 0x00, 2000),
         SDCPUnsubscribeRequest(0x1234, 0x5678),
-        SDCPIdentificationResponse(0x1234, 0, 0x12345678, 0x90ABCDEF, 0),
+        SDCPIdentificationResponse(
+            0x1234,
+            0,
+            SDCPProfileFlags.SECURITY | SDCPProfileFlags.SAFETY,
+            SDCPDeviceMode.BOOTLOADER,
+            0x12345678,
+            0x90ABCDEF,
+            0,
+        ),
         SDCPReadResponse(0x1234, bytes.fromhex("12345678")),
         SDCPWriteResponse(0x1234),
         SDCPSubscribeResponse(0x1234, 0x5678),
@@ -248,9 +266,82 @@ def test_deserialize_requires_bytes() -> None:
 
 
 def test_identification_response_requires_revision_number() -> None:
-    """Keep Identification responses strict at the documented 13-byte layout."""
+    """Keep Identification responses strict at the documented 16-byte layout."""
     with pytest.raises(ValueError, match="requested 4 bytes.*only 0 remain"):
-        SDCPDeserializer.deserialize(bytes.fromhex("01011234001234567890ABCDEF"))
+        SDCPDeserializer.deserialize(bytes.fromhex("01011234000000001234567890ABCDEF"))
+
+
+@pytest.mark.parametrize(
+    "profile_flags, device_mode",
+    [
+        (SDCPProfileFlags(0), SDCPDeviceMode.APPLICATION),
+        (SDCPProfileFlags.SECURITY, SDCPDeviceMode.APPLICATION),
+        (SDCPProfileFlags.REALTIME, SDCPDeviceMode.APPLICATION),
+        (SDCPProfileFlags.SAFETY, SDCPDeviceMode.APPLICATION),
+        (
+            SDCPProfileFlags.SECURITY | SDCPProfileFlags.REALTIME | SDCPProfileFlags.SAFETY,
+            SDCPDeviceMode.BOOTLOADER,
+        ),
+    ],
+)
+def test_identification_response_round_trips_profile_flags_and_device_mode(
+    profile_flags: SDCPProfileFlags, device_mode: SDCPDeviceMode
+) -> None:
+    """Round-trip empty, individual, and combined profiles across valid device modes."""
+    response = SDCPIdentificationResponse(
+        transaction_id=0x1234,
+        protocol_version=1,
+        profile_flags=profile_flags,
+        device_mode=device_mode,
+        serial_number=0x12345678,
+        product_code=0x90ABCDEF,
+        revision_number=0x00010002,
+    )
+
+    frame = bytes(response)
+
+    assert len(frame) == 20
+    assert frame[5:8] == int(profile_flags).to_bytes(2, "big") + int(device_mode).to_bytes(1, "big")
+    assert SDCPDeserializer.deserialize(frame) == response
+
+
+def test_identification_response_normalizes_directly_constructed_enum_fields() -> None:
+    """Normalize valid integer protocol values when constructing a response."""
+    response = SDCPIdentificationResponse(
+        transaction_id=0x1234,
+        protocol_version=1,
+        profile_flags=SDCPProfileFlags.SECURITY.value,
+        device_mode=SDCPDeviceMode.BOOTLOADER.value,
+        serial_number=0x12345678,
+        product_code=0x90ABCDEF,
+        revision_number=0x00010002,
+    )
+
+    assert response.profile_flags is SDCPProfileFlags.SECURITY
+    assert response.device_mode is SDCPDeviceMode.BOOTLOADER
+
+
+@pytest.mark.parametrize(
+    "profile_flags, device_mode, message",
+    [
+        (0x0008, 0x00, "reserved profile flag bits set"),
+        (0x0000, 0x02, "unknown device mode: 0x02"),
+    ],
+)
+def test_identification_response_rejects_reserved_values_on_direct_construction(
+    profile_flags: int, device_mode: int, message: str
+) -> None:
+    """Reject reserved protocol values when constructing a response directly."""
+    with pytest.raises(ValueError, match=message):
+        SDCPIdentificationResponse(
+            transaction_id=0x1234,
+            protocol_version=1,
+            profile_flags=profile_flags,
+            device_mode=device_mode,
+            serial_number=0x12345678,
+            product_code=0x90ABCDEF,
+            revision_number=0x00010002,
+        )
 
 
 @pytest.mark.parametrize(
@@ -269,8 +360,16 @@ def test_identification_response_requires_revision_number() -> None:
         ("040012342E4D000207D0", SDCPEventSubscriptionRequest(0x1234, 0x2E4D, 0x00, 2000)),
         ("050012345678", SDCPUnsubscribeRequest(0x1234, 0x5678)),
         (
-            "01011234001234567890ABCDEF00000000",
-            SDCPIdentificationResponse(0x1234, 0, 0x12345678, 0x90ABCDEF, 0),
+            "01011234000005011234567890ABCDEF00000000",
+            SDCPIdentificationResponse(
+                0x1234,
+                0,
+                SDCPProfileFlags.SECURITY | SDCPProfileFlags.SAFETY,
+                SDCPDeviceMode.BOOTLOADER,
+                0x12345678,
+                0x90ABCDEF,
+                0,
+            ),
         ),
         ("0201123412345678", SDCPReadResponse(0x1234, bytes.fromhex("12345678"))),
         ("03011234", SDCPWriteResponse(0x1234)),
@@ -333,7 +432,15 @@ def test_message_representation_uses_protocol_field_formats() -> None:
     """Fixed-width protocol fields use hexadecimal formatting."""
     write_request = SDCPWriteRequest(0x1234, 0x2821, 0x00, bytes.fromhex("42C80000"))
     periodic_subscription = SDCPPeriodicSubscriptionRequest(0x1234, 0x2031, 0x00, 100, 2000)
-    identification_response = SDCPIdentificationResponse(0x1234, 0, 0x12345678, 0x90ABCDEF, 0)
+    identification_response = SDCPIdentificationResponse(
+        0x1234,
+        0,
+        SDCPProfileFlags.SECURITY | SDCPProfileFlags.SAFETY,
+        SDCPDeviceMode.BOOTLOADER,
+        0x12345678,
+        0x90ABCDEF,
+        0,
+    )
     unsubscribe_request = SDCPUnsubscribeRequest(0x1234, 0x5678)
     error_response = SDCPReadResponseError(0x1234, 0xFFFF0001)
 
@@ -346,7 +453,8 @@ def test_message_representation_uses_protocol_field_formats() -> None:
     )
     assert repr(identification_response) == (
         "SDCPIdentificationResponse(transaction_id=0x1234, protocol_version=0x00, "
-        "serial_number=0x12345678, product_code=0x90ABCDEF, revision_number=0x00000000)"
+        "profile_flags=0x0005, device_mode=0x01, serial_number=0x12345678, "
+        "product_code=0x90ABCDEF, revision_number=0x00000000)"
     )
     assert repr(unsubscribe_request) == (
         "SDCPUnsubscribeRequest(transaction_id=0x1234, subscription_id=0x5678)"
@@ -367,9 +475,19 @@ def test_message_representation_uses_protocol_field_formats() -> None:
             "0100123400", "1 unexpected trailing bytes", id="identification-request-trailing"
         ),
         pytest.param(
-            "01011234001234567890ABCDEF0000000000",
+            "01011234000005011234567890ABCDEF0000000000",
             "1 unexpected trailing bytes",
             id="identification-response-trailing",
+        ),
+        pytest.param(
+            "01011234000008001234567890ABCDEF00000000",
+            "reserved profile flag bits set",
+            id="identification-response-reserved-profile-flags",
+        ),
+        pytest.param(
+            "01011234000000021234567890ABCDEF00000000",
+            "unknown device mode: 0x02",
+            id="identification-response-reserved-device-mode",
         ),
         pytest.param(
             "02001234", "requested 2 bytes.*only 0 remain", id="read-request-truncated-address"

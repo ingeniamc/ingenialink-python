@@ -5,6 +5,7 @@ from ingenialink.ethernet.tsn.sdcp.discovery import SDCPNodeDiscovery
 from ingenialink.ethernet.tsn.sdcp.identification import identify_sdcp_node
 from ingenialink.ethernet.tsn.sdcp.messages import (
     SDCPDeserializer,
+    SDCPDeviceMode,
     SDCPErrorResponse,
     SDCPEventSubscriptionRequest,
     SDCPFlag,
@@ -14,6 +15,7 @@ from ingenialink.ethernet.tsn.sdcp.messages import (
     SDCPMessage,
     SDCPOpcode,
     SDCPPeriodicSubscriptionRequest,
+    SDCPProfileFlags,
     SDCPReadRequest,
     SDCPReadResponse,
     SDCPReadResponseError,
@@ -36,6 +38,7 @@ from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
 __all__ = [
     "SDCPConnection",
     "SDCPDeserializer",
+    "SDCPDeviceMode",
     "SDCPErrorResponse",
     "SDCPEventSubscriptionRequest",
     "SDCPFlag",
@@ -46,6 +49,7 @@ __all__ = [
     "SDCPNode",
     "SDCPNodeDiscovery",
     "SDCPPeriodicSubscriptionRequest",
+    "SDCPProfileFlags",
     "SDCPReadRequest",
     "SDCPReadResponse",
     "SDCPReadResponseError",

@@ -33,7 +33,23 @@ class SDCPSubscriptionMode(IntEnum):
     EVENT = 0x02
 
 
+class SDCPDeviceMode(IntEnum):
+    """Device modes defined by the SDCP Identification response."""
+
+    APPLICATION = 0x00
+    BOOTLOADER = 0x01
+
+
+class SDCPProfileFlags(IntFlag):
+    """Profile flags defined by the SDCP Identification response."""
+
+    SECURITY = 0x0001
+    REALTIME = 0x0002
+    SAFETY = 0x0004
+
+
 _SDCP_BYTE_ORDER: Literal["big"] = "big"
+_SDCP_PROFILE_FLAGS_RESERVED_MASK = 0xFFF8
 
 
 @dataclass(frozen=True)
@@ -83,6 +99,8 @@ class _SDCPFields:
     MESSAGE_COUNT = _SDCPField(2)
     ERROR_CODE = _SDCPField(4)
     PROTOCOL_VERSION = _SDCPField(1)
+    PROFILE_FLAGS = _SDCPField(2)
+    DEVICE_MODE = _SDCPField(1)
     SERIAL_NUMBER = _SDCPField(4)
     PRODUCT_CODE = _SDCPField(4)
     REVISION_NUMBER = _SDCPField(4)
@@ -364,9 +382,40 @@ class SDCPIdentificationResponse(_SDCPMessage):
     """An SDCP Identification response."""
 
     protocol_version: int
+    profile_flags: SDCPProfileFlags
+    device_mode: SDCPDeviceMode
     serial_number: int
     product_code: int
     revision_number: int
+
+    def __post_init__(self) -> None:
+        """Validate and normalize the protocol enum fields.
+
+        Raises:
+            TypeError: If a protocol field is not an integer.
+            ValueError: If a Device Mode or reserved Profile Flags value is invalid.
+
+        """
+        device_mode_value = int.from_bytes(
+            _SDCPFields.DEVICE_MODE.serialize(self.device_mode), _SDCP_BYTE_ORDER
+        )
+        try:
+            device_mode = SDCPDeviceMode(device_mode_value)
+        except ValueError as error:
+            raise ValueError(
+                f"Identification response has an unknown device mode: 0x{device_mode_value:02X}"
+            ) from error
+        object.__setattr__(self, "device_mode", device_mode)
+
+        profile_flags_value = int.from_bytes(
+            _SDCPFields.PROFILE_FLAGS.serialize(self.profile_flags), _SDCP_BYTE_ORDER
+        )
+        if profile_flags_value & _SDCP_PROFILE_FLAGS_RESERVED_MASK:
+            raise ValueError(
+                "Identification response has reserved profile flag bits set: "
+                f"0x{profile_flags_value:04X}"
+            )
+        object.__setattr__(self, "profile_flags", SDCPProfileFlags(profile_flags_value))
 
     def __bytes__(self) -> bytes:
         """Serialize this Identification response.
@@ -377,6 +426,8 @@ class SDCPIdentificationResponse(_SDCPMessage):
         """
         payload = (
             _SDCPFields.PROTOCOL_VERSION.serialize(self.protocol_version)
+            + _SDCPFields.PROFILE_FLAGS.serialize(self.profile_flags)
+            + _SDCPFields.DEVICE_MODE.serialize(self.device_mode)
             + _SDCPFields.SERIAL_NUMBER.serialize(self.serial_number)
             + _SDCPFields.PRODUCT_CODE.serialize(self.product_code)
             + _SDCPFields.REVISION_NUMBER.serialize(self.revision_number)
@@ -781,15 +832,16 @@ class SDCPDeserializer:
             The parsed Identification response.
 
         Raises:
-            ValueError: If the payload is not the fixed 13-byte layout. SDCP
-                Identification responses with a 9-byte firmware layout are not
-                supported because the public message requires a revision number.
+            ValueError: If the payload is not the fixed 16-byte layout or
+                contains a reserved profile flag or device mode value.
 
         """
         reader = _SDCPPayloadReader(payload)
         response = SDCPIdentificationResponse(
             transaction_id,
             reader.read_uint(_SDCPFields.PROTOCOL_VERSION),
+            reader.read_uint(_SDCPFields.PROFILE_FLAGS),
+            reader.read_uint(_SDCPFields.DEVICE_MODE),
             reader.read_uint(_SDCPFields.SERIAL_NUMBER),
             reader.read_uint(_SDCPFields.PRODUCT_CODE),
             reader.read_uint(_SDCPFields.REVISION_NUMBER),
