@@ -629,7 +629,6 @@ def test_selected_group_mapping_skips_uncommissioned_slave(
     assert unselected_slave.state == unselected_state
     assert net._active_pdo_group == 1
     assert net._selected_pdo_slave_ids == {selected_servo.slave_id}
-    assert net._pdo_map_size > 0
     assert net._ecat_master.get_expected_wkc(group=1) > 0
 
     start_time = time.time()

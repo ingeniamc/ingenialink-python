@@ -283,7 +283,6 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         self._overlapping_io_map = overlapping_io_map
         self._active_pdo_group = 0
         self._selected_pdo_slave_ids: set[int] = set()
-        self._pdo_map_size = 0
         self._pdo_exchange_active = False
         self.__is_master_running = False
         self.__last_init_nodes: list[int] = []
@@ -654,21 +653,21 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         # Notify that disconnect_from_slave has been called
         servo._disconnect_event_publisher.notify(servo)
 
-    def config_pdo_maps(
+    def _resolve_pdo_map_configuration(
         self,
         selected_slave_ids: Optional[set[int]] = None,
         active_group: Optional[int] = None,
-    ) -> None:
-        """Configure the PDO maps.
-
-        Assign discovered slaves to process-data groups and map only the active group.
-        By default, all discovered slaves are mapped in group 0.
+    ) -> tuple[set[int], int]:
+        """Normalize and validate the requested PDO map configuration.
 
         Args:
             selected_slave_ids: 1-based discovered slave IDs to include in the process image.
                 If omitted, all discovered slaves are selected.
             active_group: Process-data group to map. Defaults to group 0 for all slaves
                 or group 1 for a subset. PySOEM supports groups 0 and 1.
+
+        Returns:
+            The selected slave IDs and active process-data group.
 
         Raises:
             ValueError: If the selected group or slave IDs are invalid.
@@ -692,22 +691,54 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             raise ValueError("PySOEM group 0 maps all discovered slaves; use group 1 for a subset.")
 
         if self._pdo_exchange_active:
-            if (
+            same_configuration = (
                 active_group == self._active_pdo_group
                 and selected_slave_ids == self._selected_pdo_slave_ids
-            ):
-                return
-            if not self._pdo_manager.is_starting_pdos:
+            )
+            if not same_configuration and not self._pdo_manager.is_starting_pdos:
                 raise RuntimeError("Stop PDO exchange before reconfiguring the process-data group.")
+
+        return selected_slave_ids, active_group
+
+    def config_pdo_maps(
+        self,
+        selected_slave_ids: Optional[set[int]] = None,
+        active_group: Optional[int] = None,
+    ) -> None:
+        """Configure the PDO maps.
+
+        Assign discovered slaves to process-data groups and map only the active group.
+        By default, all discovered slaves are mapped in group 0.
+
+        Args:
+            selected_slave_ids: 1-based discovered slave IDs to include in the process image.
+                If omitted, all discovered slaves are selected.
+            active_group: Process-data group to map. Defaults to group 0 for all slaves
+                or group 1 for a subset. PySOEM supports groups 0 and 1.
+
+        Raises:
+            ValueError: If the selected group or slave IDs are invalid.
+            RuntimeError: If the active mapping is changed during PDO exchange.
+        """
+        selected_slave_ids, active_group = self._resolve_pdo_map_configuration(
+            selected_slave_ids=selected_slave_ids,
+            active_group=active_group,
+        )
+        if (
+            self._pdo_exchange_active
+            and active_group == self._active_pdo_group
+            and selected_slave_ids == self._selected_pdo_slave_ids
+        ):
+            return
 
         other_group = 1 - active_group
         for slave_id, slave in enumerate(self._ecat_master.slaves, start=1):
             slave.group = active_group if slave_id in selected_slave_ids else other_group
 
         if self._overlapping_io_map:
-            self._pdo_map_size = self._ecat_master.config_overlap_map(group=active_group)
+            self._ecat_master.config_overlap_map(group=active_group)
         else:
-            self._pdo_map_size = self._ecat_master.config_map(group=active_group)
+            self._ecat_master.config_map(group=active_group)
         self._active_pdo_group = active_group
         self._selected_pdo_slave_ids = selected_slave_ids
 
@@ -761,14 +792,20 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             return
         if selected_slave_ids is None:
             selected_slave_ids = {servo.slave_id for servo in pdo_servo_list}
-        # Configure the PDO maps
-        self.config_pdo_maps(selected_slave_ids=selected_slave_ids, active_group=active_group)
-        op_servo_list = [
-            servo for servo in pdo_servo_list if servo.slave_id in self._selected_pdo_slave_ids
-        ]
+
+        selected_slave_ids, active_group = self._resolve_pdo_map_configuration(
+            selected_slave_ids=selected_slave_ids,
+            active_group=active_group,
+        )
+        op_servo_list = [servo for servo in pdo_servo_list if servo.slave_id in selected_slave_ids]
         if not op_servo_list:
             logger.warning("There are no PDOs assigned to any selected connected slave.")
             return
+
+        self.config_pdo_maps(
+            selected_slave_ids=selected_slave_ids,
+            active_group=active_group,
+        )
 
         self._pdo_exchange_active = True
         try:
