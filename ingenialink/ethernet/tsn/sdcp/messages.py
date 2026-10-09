@@ -97,7 +97,7 @@ class _SDCPFields:
     SUBSCRIPTION_ID = _SDCPField(2)
     CYCLIC_TIME_MS = _SDCPField(2)
     MESSAGE_COUNT = _SDCPField(2)
-    ERROR_CODE = _SDCPField(4)
+    ERROR_CODE = _SDCPField(2)
     PROTOCOL_VERSION = _SDCPField(1)
     PROFILE_FLAGS = _SDCPField(2)
     DEVICE_MODE = _SDCPField(1)
@@ -798,7 +798,7 @@ class SDCPDeserializer:
             The specialized error response.
 
         Raises:
-            ValueError: If the error payload is not a 32-bit error code.
+            ValueError: If the error payload is not a 2-byte error code.
 
         """
         try:

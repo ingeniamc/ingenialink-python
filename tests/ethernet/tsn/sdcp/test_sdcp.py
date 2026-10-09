@@ -91,24 +91,24 @@ from ingenialink.ethernet.tsn.sdcp.messages import (
             bytes.fromhex("05011234"),
         ),
         (
-            SDCPIdentificationResponseError(0x1234, 0xFFFF0001),
-            bytes.fromhex("01031234FFFF0001"),
+            SDCPIdentificationResponseError(0x1234, 0x0001),
+            bytes.fromhex("010312340001"),
         ),
         (
-            SDCPReadResponseError(0x1234, 0xFFFF0001),
-            bytes.fromhex("02031234FFFF0001"),
+            SDCPReadResponseError(0x1234, 0x0001),
+            bytes.fromhex("020312340001"),
         ),
         (
-            SDCPWriteResponseError(0x1234, 0xFFFF0001),
-            bytes.fromhex("03031234FFFF0001"),
+            SDCPWriteResponseError(0x1234, 0x0001),
+            bytes.fromhex("030312340001"),
         ),
         (
-            SDCPSubscribeResponseError(0x1234, 0xFFFF0001),
-            bytes.fromhex("04031234FFFF0001"),
+            SDCPSubscribeResponseError(0x1234, 0x0001),
+            bytes.fromhex("040312340001"),
         ),
         (
-            SDCPUnsubscribeResponseError(0x1234, 0xFFFF0001),
-            bytes.fromhex("05031234FFFF0001"),
+            SDCPUnsubscribeResponseError(0x1234, 0x0001),
+            bytes.fromhex("050312340001"),
         ),
         (
             SDCPUnknownFrame(0x1234, 0xFF, 0x80, bytes.fromhex("ABCD")),
@@ -143,11 +143,11 @@ def test_serialize_message_objects(message: _SDCPMessage, expected_frame: bytes)
         SDCPWriteResponse(0x1234),
         SDCPSubscribeResponse(0x1234, 0x5678),
         SDCPUnsubscribeResponse(0x1234),
-        SDCPIdentificationResponseError(0x1234, 0xFFFF0001),
-        SDCPReadResponseError(0x1234, 0xFFFF0001),
-        SDCPWriteResponseError(0x1234, 0xFFFF0001),
-        SDCPSubscribeResponseError(0x1234, 0xFFFF0001),
-        SDCPUnsubscribeResponseError(0x1234, 0xFFFF0001),
+        SDCPIdentificationResponseError(0x1234, 0x0001),
+        SDCPReadResponseError(0x1234, 0x0001),
+        SDCPWriteResponseError(0x1234, 0x0001),
+        SDCPSubscribeResponseError(0x1234, 0x0001),
+        SDCPUnsubscribeResponseError(0x1234, 0x0001),
         SDCPUnknownFrame(0x1234, 0xFF, 0x80, bytes.fromhex("ABCD")),
     ],
 )
@@ -159,11 +159,11 @@ def test_deserialize_serialized_message(message: _SDCPMessage) -> None:
 @pytest.mark.parametrize(
     "message, expected_opcode",
     [
-        (SDCPIdentificationResponseError(0x1234, 0xFFFF0001), SDCPOpcode.IDENTIFICATION),
-        (SDCPReadResponseError(0x1234, 0xFFFF0001), SDCPOpcode.READ),
-        (SDCPWriteResponseError(0x1234, 0xFFFF0001), SDCPOpcode.WRITE),
-        (SDCPSubscribeResponseError(0x1234, 0xFFFF0001), SDCPOpcode.SUBSCRIBE),
-        (SDCPUnsubscribeResponseError(0x1234, 0xFFFF0001), SDCPOpcode.UNSUBSCRIBE),
+        (SDCPIdentificationResponseError(0x1234, 0x0001), SDCPOpcode.IDENTIFICATION),
+        (SDCPReadResponseError(0x1234, 0x0001), SDCPOpcode.READ),
+        (SDCPWriteResponseError(0x1234, 0x0001), SDCPOpcode.WRITE),
+        (SDCPSubscribeResponseError(0x1234, 0x0001), SDCPOpcode.SUBSCRIBE),
+        (SDCPUnsubscribeResponseError(0x1234, 0x0001), SDCPOpcode.UNSUBSCRIBE),
     ],
 )
 def test_serialize_error_response_uses_opcode_and_error_flags(
@@ -176,10 +176,22 @@ def test_serialize_error_response_uses_opcode_and_error_flags(
     assert SDCPDeserializer.deserialize(frame) == message
 
 
+@pytest.mark.parametrize("error_code", [0x0000, 0xFFFF])
+def test_error_response_round_trips_uint16_boundary_codes(error_code: int) -> None:
+    """Preserve both boundary values of the 16-bit error-code field."""
+    response = SDCPReadResponseError(0x1234, error_code)
+
+    frame = bytes(response)
+
+    assert len(frame) == 6
+    assert frame[-2:] == error_code.to_bytes(2, "big")
+    assert SDCPDeserializer.deserialize(frame) == response
+
+
 def test_serialize_rejects_base_error_response() -> None:
     """Keep the base error response abstract and non-serializable."""
     with pytest.raises(TypeError, match="abstract method"):
-        SDCPErrorResponse(0x1234, 0xFFFF0001)
+        SDCPErrorResponse(0x1234, 0x0001)
 
 
 def test_message_base_is_abstract() -> None:
@@ -400,21 +412,21 @@ def test_deserialize_unknown_frame(frame: str, expected_message: SDCPUnknownFram
     "frame, expected_message",
     [
         (
-            "01031234FFFF0001",
-            SDCPIdentificationResponseError(0x1234, 0xFFFF0001),
+            "010312340001",
+            SDCPIdentificationResponseError(0x1234, 0x0001),
         ),
-        ("02031234FFFF0001", SDCPReadResponseError(0x1234, 0xFFFF0001)),
+        ("020312340001", SDCPReadResponseError(0x1234, 0x0001)),
         (
-            "03031234FFFF0001",
-            SDCPWriteResponseError(0x1234, 0xFFFF0001),
-        ),
-        (
-            "04031234FFFF0001",
-            SDCPSubscribeResponseError(0x1234, 0xFFFF0001),
+            "030312340001",
+            SDCPWriteResponseError(0x1234, 0x0001),
         ),
         (
-            "05031234FFFF0001",
-            SDCPUnsubscribeResponseError(0x1234, 0xFFFF0001),
+            "040312340001",
+            SDCPSubscribeResponseError(0x1234, 0x0001),
+        ),
+        (
+            "050312340001",
+            SDCPUnsubscribeResponseError(0x1234, 0x0001),
         ),
     ],
 )
@@ -442,7 +454,7 @@ def test_message_representation_uses_protocol_field_formats() -> None:
         0,
     )
     unsubscribe_request = SDCPUnsubscribeRequest(0x1234, 0x5678)
-    error_response = SDCPReadResponseError(0x1234, 0xFFFF0001)
+    error_response = SDCPReadResponseError(0x1234, 0x0001)
 
     assert repr(write_request) == (
         "SDCPWriteRequest(transaction_id=0x1234, index=0x2821, subindex=0x00, value=0x42C80000)"
@@ -459,10 +471,7 @@ def test_message_representation_uses_protocol_field_formats() -> None:
     assert repr(unsubscribe_request) == (
         "SDCPUnsubscribeRequest(transaction_id=0x1234, subscription_id=0x5678)"
     )
-    assert (
-        repr(error_response)
-        == "SDCPReadResponseError(transaction_id=0x1234, error_code=0xFFFF0001)"
-    )
+    assert repr(error_response) == "SDCPReadResponseError(transaction_id=0x1234, error_code=0x0001)"
 
 
 @pytest.mark.parametrize(
@@ -539,12 +548,12 @@ def test_message_representation_uses_protocol_field_formats() -> None:
             "0501123400", "1 unexpected trailing bytes", id="unsubscribe-response-trailing"
         ),
         pytest.param(
-            "02031234FFFF",
-            "requested 4 bytes.*only 2 remain",
+            "0203123400",
+            "requested 2 bytes.*only 1 remain",
             id="error-response-truncated-code",
         ),
         pytest.param(
-            "02031234FFFF0001FF",
+            "020312340001FF",
             "1 unexpected trailing bytes",
             id="error-response-trailing",
         ),
@@ -563,7 +572,7 @@ def test_deserialize_rejects_malformed_frames(frame: str, message: str) -> None:
         SDCPReadRequest(0x1234, 0x1_0000, 0x00),
         SDCPReadRequest(0x1234, 0x100B, 0x100),
         SDCPUnsubscribeRequest(0x1234, 0x1_0000),
-        SDCPReadResponseError(0x1234, 0x1_0000_0000),
+        SDCPReadResponseError(0x1234, 0x1_0000),
         SDCPPeriodicSubscriptionRequest(-1, 0x2031, 0x00, 100, 2000),
     ],
 )
@@ -579,6 +588,7 @@ def test_serialize_rejects_out_of_range_fields(message: _SDCPMessage) -> None:
         SDCPIdentificationRequest(True),
         SDCPReadRequest(0x1234, "0x100B", 0x00),
         SDCPUnsubscribeRequest(0x1234, False),
+        SDCPReadResponseError(0x1234, True),
         SDCPReadResponseError(0x1234, 1.0),
     ],
 )

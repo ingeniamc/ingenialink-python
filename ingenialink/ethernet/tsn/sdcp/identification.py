@@ -74,7 +74,7 @@ def _read_identification(
     )
 
     if isinstance(response, SDCPIdentificationResponseError):
-        raise ILIOError(f"SDCP identification failed with error code 0x{response.error_code:08X}")
+        raise ILIOError(f"SDCP identification failed with error code 0x{response.error_code:04X}")
 
     if not isinstance(response, SDCPIdentificationResponse):
         raise ILIOError(f"Unexpected SDCP identification response: {response}")

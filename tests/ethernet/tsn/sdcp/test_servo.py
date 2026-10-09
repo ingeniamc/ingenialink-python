@@ -161,12 +161,12 @@ def test_read_error_response_raises_il_io_error(
     """Convert an SDCP Read error response to ILIOError."""
     connection_mock.request.return_value = SDCPReadResponseError(
         transaction_id=0x0000,
-        error_code=0xFFFF0001,
+        error_code=0x0001,
     )
 
     with pytest.raises(
         ILIOError,
-        match="SDCP read failed with error code 0xFFFF0001",
+        match="SDCP read failed with error code 0x0001",
     ):
         servo._read_raw(register)
 
@@ -179,12 +179,12 @@ def test_write_error_response_raises_il_io_error(
     """Convert an SDCP Write error response to ILIOError."""
     connection_mock.request.return_value = SDCPWriteResponseError(
         transaction_id=0x0000,
-        error_code=0xFFFF0002,
+        error_code=0x0002,
     )
 
     with pytest.raises(
         ILIOError,
-        match="SDCP write failed with error code 0xFFFF0002",
+        match="SDCP write failed with error code 0x0002",
     ):
         servo._write_raw(register, b"\x12\x34")
 

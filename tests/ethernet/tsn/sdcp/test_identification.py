@@ -105,7 +105,7 @@ def test_identify_tsn_node_raises_identification_error(
     """Convert an SDCP Identification error response to ILIOError."""
     connection_mock.request.return_value = SDCPIdentificationResponseError(
         transaction_id=0x0000,
-        error_code=0xFFFF0001,
+        error_code=0x0001,
     )
     context = _connection_context(connection_mock)
 
@@ -116,7 +116,7 @@ def test_identify_tsn_node_raises_identification_error(
         ),
         pytest.raises(
             ILIOError,
-            match="SDCP identification failed with error code 0xFFFF0001",
+            match="SDCP identification failed with error code 0x0001",
         ),
     ):
         identify_sdcp_node(TARGET, INTERFACE)
