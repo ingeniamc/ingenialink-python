@@ -4,36 +4,17 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, fields
-from enum import IntEnum, IntFlag
 from typing import Literal, Union
 
-
-class SDCPOpcode(IntEnum):
-    """Opcodes defined by the SDCP acyclic communication protocol."""
-
-    IDENTIFICATION = 0x01
-    READ = 0x02
-    WRITE = 0x03
-    SUBSCRIBE = 0x04
-    UNSUBSCRIBE = 0x05
-
-
-class SDCPFlag(IntFlag):
-    """Flags defined by the SDCP acyclic communication protocol."""
-
-    NONE = 0x00
-    REPLY = 0x01
-    ERROR = 0x02
-
-
-class SDCPSubscriptionMode(IntEnum):
-    """Subscription modes defined by the SDCP acyclic communication protocol."""
-
-    PERIODIC = 0x01
-    EVENT = 0x02
-
+from ingenialink.ethernet.tsn.sdcp.enums import (
+    SDCPDeviceMode,
+    SDCPFlag,
+    SDCPOpcode,
+    SDCPProfileFlags,
+)
 
 _SDCP_BYTE_ORDER: Literal["big"] = "big"
+_SDCP_PROFILE_FLAGS_RESERVED_MASK = 0xFFF8
 
 
 @dataclass(frozen=True)
@@ -78,15 +59,13 @@ class _SDCPFields:
     TRANSACTION_ID = _SDCPField(2)
     INDEX = _SDCPField(2)
     SUBINDEX = _SDCPField(1)
-    SUBSCRIPTION_ID = _SDCPField(2)
-    CYCLIC_TIME_MS = _SDCPField(2)
-    MESSAGE_COUNT = _SDCPField(2)
-    ERROR_CODE = _SDCPField(4)
+    ERROR_CODE = _SDCPField(2)
     PROTOCOL_VERSION = _SDCPField(1)
+    PROFILE_FLAGS = _SDCPField(2)
+    DEVICE_MODE = _SDCPField(1)
     SERIAL_NUMBER = _SDCPField(4)
     PRODUCT_CODE = _SDCPField(4)
     REVISION_NUMBER = _SDCPField(4)
-    SUBSCRIPTION_MODE = _SDCPField(1)
 
 
 class _SDCPPayloadReader:
@@ -287,86 +266,44 @@ class SDCPWriteRequest(_SDCPMessage):
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPPeriodicSubscriptionRequest(_SDCPMessage):
-    """An SDCP periodic Subscribe request."""
-
-    index: int
-    subindex: int
-    cyclic_time_ms: int
-    message_count: int
-
-    def __bytes__(self) -> bytes:
-        """Serialize this periodic Subscribe request.
-
-        Returns:
-            The binary SDCP frame.
-
-        """
-        payload = (
-            _SDCPFields.INDEX.serialize(self.index)
-            + _SDCPFields.SUBINDEX.serialize(self.subindex)
-            + _SDCPFields.SUBSCRIPTION_MODE.serialize(SDCPSubscriptionMode.PERIODIC)
-            + _SDCPFields.CYCLIC_TIME_MS.serialize(self.cyclic_time_ms)
-            + _SDCPFields.MESSAGE_COUNT.serialize(self.message_count)
-        )
-        return _SDCPCodec.serialize_frame(
-            SDCPOpcode.SUBSCRIBE, SDCPFlag.NONE, self.transaction_id, payload
-        )
-
-
-@dataclass(frozen=True, repr=False)
-class SDCPEventSubscriptionRequest(_SDCPMessage):
-    """An SDCP event-based Subscribe request."""
-
-    index: int
-    subindex: int
-    message_count: int
-
-    def __bytes__(self) -> bytes:
-        """Serialize this event-based Subscribe request.
-
-        Returns:
-            The binary SDCP frame.
-
-        """
-        payload = (
-            _SDCPFields.INDEX.serialize(self.index)
-            + _SDCPFields.SUBINDEX.serialize(self.subindex)
-            + _SDCPFields.SUBSCRIPTION_MODE.serialize(SDCPSubscriptionMode.EVENT)
-            + _SDCPFields.MESSAGE_COUNT.serialize(self.message_count)
-        )
-        return _SDCPCodec.serialize_frame(
-            SDCPOpcode.SUBSCRIBE, SDCPFlag.NONE, self.transaction_id, payload
-        )
-
-
-@dataclass(frozen=True, repr=False)
-class SDCPUnsubscribeRequest(_SDCPMessage):
-    """An SDCP Unsubscribe request."""
-
-    subscription_id: int
-
-    def __bytes__(self) -> bytes:
-        """Serialize this Unsubscribe request.
-
-        Returns:
-            The binary SDCP frame.
-
-        """
-        payload = _SDCPFields.SUBSCRIPTION_ID.serialize(self.subscription_id)
-        return _SDCPCodec.serialize_frame(
-            SDCPOpcode.UNSUBSCRIBE, SDCPFlag.NONE, self.transaction_id, payload
-        )
-
-
-@dataclass(frozen=True, repr=False)
 class SDCPIdentificationResponse(_SDCPMessage):
     """An SDCP Identification response."""
 
     protocol_version: int
+    profile_flags: SDCPProfileFlags
+    device_mode: SDCPDeviceMode
     serial_number: int
     product_code: int
     revision_number: int
+
+    def __post_init__(self) -> None:
+        """Validate and normalize the protocol enum fields.
+
+        Raises:
+            TypeError: If a protocol field is not an integer.
+            ValueError: If a Device Mode or reserved Profile Flags value is invalid.
+
+        """
+        device_mode_value = int.from_bytes(
+            _SDCPFields.DEVICE_MODE.serialize(self.device_mode), _SDCP_BYTE_ORDER
+        )
+        try:
+            device_mode = SDCPDeviceMode(device_mode_value)
+        except ValueError as error:
+            raise ValueError(
+                f"Identification response has an unknown device mode: 0x{device_mode_value:02X}"
+            ) from error
+        object.__setattr__(self, "device_mode", device_mode)
+
+        profile_flags_value = int.from_bytes(
+            _SDCPFields.PROFILE_FLAGS.serialize(self.profile_flags), _SDCP_BYTE_ORDER
+        )
+        if profile_flags_value & _SDCP_PROFILE_FLAGS_RESERVED_MASK:
+            raise ValueError(
+                "Identification response has reserved profile flag bits set: "
+                f"0x{profile_flags_value:04X}"
+            )
+        object.__setattr__(self, "profile_flags", SDCPProfileFlags(profile_flags_value))
 
     def __bytes__(self) -> bytes:
         """Serialize this Identification response.
@@ -377,6 +314,8 @@ class SDCPIdentificationResponse(_SDCPMessage):
         """
         payload = (
             _SDCPFields.PROTOCOL_VERSION.serialize(self.protocol_version)
+            + _SDCPFields.PROFILE_FLAGS.serialize(self.profile_flags)
+            + _SDCPFields.DEVICE_MODE.serialize(self.device_mode)
             + _SDCPFields.SERIAL_NUMBER.serialize(self.serial_number)
             + _SDCPFields.PRODUCT_CODE.serialize(self.product_code)
             + _SDCPFields.REVISION_NUMBER.serialize(self.revision_number)
@@ -424,41 +363,6 @@ class SDCPWriteResponse(_SDCPMessage):
 
         """
         return _SDCPCodec.serialize_frame(SDCPOpcode.WRITE, SDCPFlag.REPLY, self.transaction_id)
-
-
-@dataclass(frozen=True, repr=False)
-class SDCPSubscribeResponse(_SDCPMessage):
-    """An SDCP Subscribe response containing a subscription identifier."""
-
-    subscription_id: int
-
-    def __bytes__(self) -> bytes:
-        """Serialize this Subscribe response.
-
-        Returns:
-            The binary SDCP frame.
-
-        """
-        payload = _SDCPFields.SUBSCRIPTION_ID.serialize(self.subscription_id)
-        return _SDCPCodec.serialize_frame(
-            SDCPOpcode.SUBSCRIBE, SDCPFlag.REPLY, self.transaction_id, payload
-        )
-
-
-@dataclass(frozen=True, repr=False)
-class SDCPUnsubscribeResponse(_SDCPMessage):
-    """An SDCP Unsubscribe response."""
-
-    def __bytes__(self) -> bytes:
-        """Serialize this Unsubscribe response.
-
-        Returns:
-            The binary SDCP frame.
-
-        """
-        return _SDCPCodec.serialize_frame(
-            SDCPOpcode.UNSUBSCRIBE, SDCPFlag.REPLY, self.transaction_id
-        )
 
 
 @dataclass(frozen=True, repr=False)
@@ -523,43 +427,6 @@ class SDCPWriteResponseError(SDCPErrorResponse):
 
 
 @dataclass(frozen=True, repr=False)
-class SDCPSubscribeResponseError(SDCPErrorResponse):
-    """An SDCP Subscribe error response."""
-
-    def __bytes__(self) -> bytes:
-        """Serialize this Subscribe error response.
-
-        Returns:
-            The binary SDCP frame.
-
-        """
-        payload = _SDCPFields.ERROR_CODE.serialize(self.error_code)
-        return _SDCPCodec.serialize_frame(
-            SDCPOpcode.SUBSCRIBE, SDCPFlag.REPLY | SDCPFlag.ERROR, self.transaction_id, payload
-        )
-
-
-@dataclass(frozen=True, repr=False)
-class SDCPUnsubscribeResponseError(SDCPErrorResponse):
-    """An SDCP Unsubscribe error response."""
-
-    def __bytes__(self) -> bytes:
-        """Serialize this Unsubscribe error response.
-
-        Returns:
-            The binary SDCP frame.
-
-        """
-        payload = _SDCPFields.ERROR_CODE.serialize(self.error_code)
-        return _SDCPCodec.serialize_frame(
-            SDCPOpcode.UNSUBSCRIBE,
-            SDCPFlag.REPLY | SDCPFlag.ERROR,
-            self.transaction_id,
-            payload,
-        )
-
-
-@dataclass(frozen=True, repr=False)
 class SDCPUnknownFrame(_SDCPMessage):
     """An SDCP frame whose opcode or flags are not recognized."""
 
@@ -583,17 +450,12 @@ SDCPRequest = Union[
     SDCPIdentificationRequest,
     SDCPReadRequest,
     SDCPWriteRequest,
-    SDCPPeriodicSubscriptionRequest,
-    SDCPEventSubscriptionRequest,
-    SDCPUnsubscribeRequest,
 ]
 
 SDCPResponse = Union[
     SDCPIdentificationResponse,
     SDCPReadResponse,
     SDCPWriteResponse,
-    SDCPSubscribeResponse,
-    SDCPUnsubscribeResponse,
     SDCPErrorResponse,
 ]
 
@@ -679,15 +541,6 @@ class SDCPDeserializer:
             if not value:
                 raise ValueError("Write requests require a value payload")
             return SDCPWriteRequest(transaction_id, index, subindex, value)
-        if operation == SDCPOpcode.SUBSCRIBE:
-            return cls._deserialize_subscription_request(transaction_id, reader)
-        if operation == SDCPOpcode.UNSUBSCRIBE:
-            subscription_id = reader.read_uint(_SDCPFields.SUBSCRIPTION_ID)
-            reader.ensure_end()
-            return SDCPUnsubscribeRequest(
-                transaction_id,
-                subscription_id,
-            )
 
     @classmethod
     def _deserialize_success_response(
@@ -711,31 +564,9 @@ class SDCPDeserializer:
             return cls._deserialize_identification_response(transaction_id, payload)
         if operation == SDCPOpcode.READ:
             return SDCPReadResponse(transaction_id, payload)
-        if operation == SDCPOpcode.SUBSCRIBE:
-            # Subscribe notifications cannot yet be distinguished from initial Subscribe replies.
-            return cls._deserialize_subscribe_response(transaction_id, payload)
-
         if operation == SDCPOpcode.WRITE:
             _SDCPPayloadReader(payload).ensure_end()
             return SDCPWriteResponse(transaction_id)
-        if operation == SDCPOpcode.UNSUBSCRIBE:
-            _SDCPPayloadReader(payload).ensure_end()
-            return SDCPUnsubscribeResponse(transaction_id)
-
-    @classmethod
-    def _deserialize_subscribe_response(
-        cls, transaction_id: int, payload: bytes
-    ) -> SDCPSubscribeResponse:
-        """Deserialize a Subscribe response containing a subscription identifier.
-
-        Returns:
-            The parsed Subscribe response.
-
-        """
-        reader = _SDCPPayloadReader(payload)
-        subscription_id = reader.read_uint(_SDCPFields.SUBSCRIPTION_ID)
-        reader.ensure_end()
-        return SDCPSubscribeResponse(transaction_id, subscription_id)
 
     @classmethod
     def _deserialize_error_response(
@@ -747,7 +578,7 @@ class SDCPDeserializer:
             The specialized error response.
 
         Raises:
-            ValueError: If the error payload is not a 32-bit error code.
+            ValueError: If the error payload is not a 2-byte error code.
 
         """
         try:
@@ -766,10 +597,6 @@ class SDCPDeserializer:
             return SDCPReadResponseError(transaction_id, error_code)
         if operation == SDCPOpcode.WRITE:
             return SDCPWriteResponseError(transaction_id, error_code)
-        if operation == SDCPOpcode.SUBSCRIBE:
-            return SDCPSubscribeResponseError(transaction_id, error_code)
-        if operation == SDCPOpcode.UNSUBSCRIBE:
-            return SDCPUnsubscribeResponseError(transaction_id, error_code)
 
     @classmethod
     def _deserialize_identification_response(
@@ -781,61 +608,19 @@ class SDCPDeserializer:
             The parsed Identification response.
 
         Raises:
-            ValueError: If the payload is not the fixed 13-byte layout. SDCP
-                Identification responses with a 9-byte firmware layout are not
-                supported because the public message requires a revision number.
+            ValueError: If the payload is not the fixed 16-byte layout or
+                contains a reserved profile flag or device mode value.
 
         """
         reader = _SDCPPayloadReader(payload)
         response = SDCPIdentificationResponse(
             transaction_id,
             reader.read_uint(_SDCPFields.PROTOCOL_VERSION),
+            reader.read_uint(_SDCPFields.PROFILE_FLAGS),
+            reader.read_uint(_SDCPFields.DEVICE_MODE),
             reader.read_uint(_SDCPFields.SERIAL_NUMBER),
             reader.read_uint(_SDCPFields.PRODUCT_CODE),
             reader.read_uint(_SDCPFields.REVISION_NUMBER),
         )
         reader.ensure_end()
         return response
-
-    @classmethod
-    def _deserialize_subscription_request(
-        cls, transaction_id: int, reader: _SDCPPayloadReader
-    ) -> SDCPMessage:
-        """Deserialize a Subscribe request into its mode-specific message type.
-
-        Returns:
-            A periodic or event-based subscription request.
-
-        Raises:
-            ValueError: If the subscription payload is malformed.
-
-        """
-        index = reader.read_uint(_SDCPFields.INDEX)
-        subindex = reader.read_uint(_SDCPFields.SUBINDEX)
-        mode_value = reader.read_uint(_SDCPFields.SUBSCRIPTION_MODE)
-        try:
-            mode = SDCPSubscriptionMode(mode_value)
-        except ValueError as error:
-            raise ValueError(
-                f"Subscribe request has an unknown subscription mode: 0x{mode_value:02X}"
-            ) from error
-
-        if mode == SDCPSubscriptionMode.PERIODIC:
-            request: SDCPPeriodicSubscriptionRequest | SDCPEventSubscriptionRequest = (
-                SDCPPeriodicSubscriptionRequest(
-                    transaction_id,
-                    index,
-                    subindex,
-                    reader.read_uint(_SDCPFields.CYCLIC_TIME_MS),
-                    reader.read_uint(_SDCPFields.MESSAGE_COUNT),
-                )
-            )
-        else:
-            request = SDCPEventSubscriptionRequest(
-                transaction_id,
-                index,
-                subindex,
-                reader.read_uint(_SDCPFields.MESSAGE_COUNT),
-            )
-        reader.ensure_end()
-        return request
