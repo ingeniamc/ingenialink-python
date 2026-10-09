@@ -705,10 +705,11 @@ def test_start_pdos_only_changes_state_of_selected_slaves(
 
 
 @pytest.mark.pcap
+@pytest.mark.parametrize("selected_slave_ids", [{2}, {1, 2}])
 def test_start_pdos_without_selected_mapped_servo_does_not_configure_map(
-    mocker: "MockerFixture", pysoem_mock_network
+    selected_slave_ids: set[int], mocker: "MockerFixture", pysoem_mock_network
 ) -> None:
-    """Do not change process-data mapping when no selected servo has PDO maps."""
+    """Reject selected slaves without PDO maps before changing the process-data mapping."""
     pysoem_mock_network.set_num_slaves(2)
     net = EthercatNetwork("dummy_ifname")
     net._ecat_master.config_init()
@@ -720,7 +721,8 @@ def test_start_pdos_without_selected_mapped_servo_does_not_configure_map(
     config_pdo_maps_mock = mocker.patch.object(net, "config_pdo_maps")
 
     initial_groups = [slave.group for slave in net._ecat_master.slaves]
-    net.start_pdos(selected_slave_ids={2}, active_group=1)
+    with pytest.raises(ValueError, match="Selected slave IDs have no configured PDO maps: \\[2\\]"):
+        net.start_pdos(selected_slave_ids=selected_slave_ids, active_group=1)
 
     config_pdo_maps_mock.assert_not_called()
     assert [slave.group for slave in net._ecat_master.slaves] == initial_groups

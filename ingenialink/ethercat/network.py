@@ -748,27 +748,35 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         Args:
             timeout: timeout in seconds to reach Op state, 2.0 seconds by default.
             selected_slave_ids: 1-based discovered slave IDs to include in the process image.
-                If omitted, connected servos with PDO maps are selected.
+                Each selected slave must have configured PDO maps. If omitted, connected servos
+                with PDO maps are selected.
             active_group: Process-data group to map. Defaults to group 0 for all slaves
                 or group 1 for a subset. PySOEM supports groups 0 and 1.
 
         Raises:
             ILStateError: If slaves can not reach SafeOp or Op state.
             RuntimeError: If EtherCAT master is not running.
+            ValueError: If a selected slave does not have configured PDO maps.
         """
         if not self.__is_master_running:
             raise RuntimeError("EtherCAT master is not running.")
         pdo_servo_list = [servo for servo in self.servos if servo._rpdo_maps or servo._tpdo_maps]
-        if not pdo_servo_list:
-            logger.warning("There are no PDOs assigned to any connected slave.")
-            return
         if selected_slave_ids is None:
+            if not pdo_servo_list:
+                logger.warning("There are no PDOs assigned to any connected slave.")
+                return
             selected_slave_ids = {servo.slave_id for servo in pdo_servo_list}
 
         selected_slave_ids, active_group = self._resolve_pdo_map_configuration(
             selected_slave_ids=selected_slave_ids,
             active_group=active_group,
         )
+        pdo_slave_ids = {servo.slave_id for servo in pdo_servo_list}
+        missing_pdo_slave_ids = selected_slave_ids - pdo_slave_ids
+        if missing_pdo_slave_ids:
+            raise ValueError(
+                f"Selected slave IDs have no configured PDO maps: {sorted(missing_pdo_slave_ids)}"
+            )
         op_servo_list = [servo for servo in pdo_servo_list if servo.slave_id in selected_slave_ids]
         if not op_servo_list:
             logger.warning("There are no PDOs assigned to any selected connected slave.")
