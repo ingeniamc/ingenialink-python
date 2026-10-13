@@ -109,7 +109,13 @@ def pipelineParams = PyTestParams.pytestParams(this, currentBuild, [
         default: DEFAULT_LOGGING_LEVEL,
     ],
     wiresharkLoggingConfig: [
-        default: true,
+        default: PyTestParams.BooleanParameterDefault.TRUE_ONLY_ON_DEVELOP_BRANCH,
+    ],
+    pytestTimelineConfig: [
+        default: PyTestParams.BooleanParameterDefault.TRUE_ONLY_ON_DEVELOP_BRANCH,
+    ],
+    profilerConfig: [
+        default: PyTestParams.BooleanParameterDefault.TRUE_ONLY_ON_DEVELOP_BRANCH,
     ],
     checkStateScopeConfig: [
         default: 'session',
@@ -181,11 +187,13 @@ pipeline {
                         checkStateScope: PyTestParams.readValue(params, 'checkStateScope'),
                         archiveData: "*",
                         testSelectionRepeatCount: PyTestParams.readValue(params, 'pytestRepeatCounts'),
-                        logLevel: PyTestParams.readValue(params, 'pytestLoggingLevel')
+                        logLevel: PyTestParams.readValue(params, 'pytestLoggingLevel'),
+                        useTimeline: PyTestParams.readValue(params, 'pytestTimeline'),
+                        useProfiler: PyTestParams.readValue(params, 'profiler')
                     )
 
                     // Configure if ECAT and ETH sessions use Wireshark logging based on parameter
-                    def wiresharkLogging = PyTestParams.readValue(params, 'wiresharkLogging', env, currentBuild)
+                    def wiresharkLogging = PyTestParams.readValue(params, 'wiresharkLogging')
                     ECAT_TESTS.baseTestSession.setAttributeInCascade(useWiresharkLogging: wiresharkLogging)
                     ETH_TESTS.baseTestSession.setAttributeInCascade(useWiresharkLogging: wiresharkLogging)
 
