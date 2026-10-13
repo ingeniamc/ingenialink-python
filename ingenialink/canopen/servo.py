@@ -1,6 +1,6 @@
 import contextlib
 from abc import ABC
-from collections.abc import Iterator
+from collections.abc import Generator
 from typing import Callable, Optional, Union
 
 import canopen
@@ -172,7 +172,7 @@ class CanopenServo(CanopenServoBase):
         self.__node.sdo.RESPONSE_TIMEOUT = value
 
     @contextlib.contextmanager
-    def _minimum_sdo_timeout(self, value: float) -> Iterator[None]:
+    def _minimum_sdo_timeout(self, value: float) -> Generator[None, None, None]:
         """Context manager to ensure a minimum SDO timeout for the node.
 
         This context manager will only increase the current SDO timeout; it will
