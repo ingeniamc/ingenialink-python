@@ -1,4 +1,4 @@
-from collections.abc import Iterator, Sequence
+from collections.abc import Generator, Iterator, Sequence
 from contextlib import contextmanager
 from types import TracebackType
 from typing import TYPE_CHECKING, Optional
@@ -60,7 +60,7 @@ class Table:
         self.__max_index = max_index
 
     @contextmanager
-    def context(self) -> Iterator["TableContext"]:
+    def context(self) -> Generator["TableContext", None, None]:
         """Context manager to rollback index register after operations.
 
         Yields:
