@@ -246,7 +246,7 @@ class PDONetworkManager:
             self.stop_pdos()
             raise ILError("PDOs are already active.")
         if group is not None:
-            self._net._validate_slave_group(group)
+            self._net.validate_slave_group(group)
         self._pdo_thread = self.ProcessDataThread(
             net=self._net,
             refresh_rate=refresh_rate,

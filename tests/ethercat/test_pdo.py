@@ -16,6 +16,7 @@ from ingenialink.dictionary import CanOpenObject, CanOpenObjectType, Interface
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethercat.servo import EthercatServo
+from ingenialink.ethercat.slave_group import EthercatSlaveGroup
 from ingenialink.exceptions import ILEcatStateError, ILError
 from ingenialink.pdo import BIT_ENDIAN, PDOMap, RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.register import Register
@@ -626,7 +627,7 @@ def test_selected_group_mapping_skips_uncommissioned_slave(
     rpdo_map.items[0].value = selected_servo.read("DRV_OP_CMD")
     selected_servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
 
-    net.start_pdos(selected_slave_ids={selected_servo.slave_id}, active_group=1)
+    net.start_pdos(group=EthercatSlaveGroup([selected_servo]), active_group=1)
 
     assert selected_servo.slave.group == 1
     assert unselected_slave.group == 0
@@ -673,7 +674,7 @@ def test_selected_group_mapping_with_only_one_connected_servo(
     rpdo_map.items[0].value = selected_servo.read("DRV_OP_CMD")
     selected_servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
 
-    net.start_pdos(selected_slave_ids={selected_servo.slave_id}, active_group=1)
+    net.start_pdos(group=EthercatSlaveGroup([selected_servo]), active_group=1)
 
     assert selected_servo.slave.group == 1
     assert selected_servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE

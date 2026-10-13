@@ -9,9 +9,9 @@ if TYPE_CHECKING:
     from ingenialink.ethercat.servo import EthercatServo
 
 
-@dataclass(frozen=True)
+@dataclass
 class EthercatSlaveGroup:
-    """An immutable selection of connected EtherCAT servos."""
+    """A selection of connected EtherCAT servos."""
 
     servos: tuple[EthercatServo, ...]
 
@@ -28,7 +28,7 @@ class EthercatSlaveGroup:
         slave_ids = [servo.slave_id for servo in servo_members]
         if len(slave_ids) != len(set(slave_ids)):
             raise ValueError("An EthercatSlaveGroup cannot contain duplicate slaves.")
-        object.__setattr__(self, "servos", servo_members)
+        self.servos = servo_members
 
     @property
     def slave_ids(self) -> frozenset[int]:
