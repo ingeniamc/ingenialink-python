@@ -134,6 +134,37 @@ def test_serialize_error_response_uses_opcode_and_error_flags(
     assert SDCPDeserializer.deserialize(frame) == message
 
 
+@pytest.mark.parametrize(
+    "message, expected_opcode",
+    [
+        (
+            SDCPIdentificationResponse(
+                0x1234,
+                0,
+                SDCPProfileFlags.SECURITY | SDCPProfileFlags.SAFETY,
+                SDCPDeviceMode.BOOTLOADER,
+                0x12345678,
+                0x90ABCDEF,
+                0,
+            ),
+            SDCPOpcode.IDENTIFICATION,
+        ),
+        (SDCPReadResponse(0x1234, bytes.fromhex("12345678")), SDCPOpcode.READ),
+        (SDCPWriteResponse(0x1234), SDCPOpcode.WRITE),
+        (SDCPIdentificationResponseError(0x1234, 0x0001), SDCPOpcode.IDENTIFICATION),
+        (SDCPReadResponseError(0x1234, 0x0001), SDCPOpcode.READ),
+        (SDCPWriteResponseError(0x1234, 0x0001), SDCPOpcode.WRITE),
+    ],
+)
+def test_response_opcode_matches_encoded_frame_header(
+    message: SDCPIdentificationResponse | SDCPReadResponse | SDCPWriteResponse | SDCPErrorResponse,
+    expected_opcode: SDCPOpcode,
+) -> None:
+    """Expose the same opcode that the response encodes into its frame header."""
+    assert message.opcode == expected_opcode
+    assert bytes(message)[0] == expected_opcode
+
+
 @pytest.mark.parametrize("error_code", [0x0000, 0xFFFF])
 def test_error_response_round_trips_uint16_boundary_codes(error_code: int) -> None:
     """Preserve both boundary values of the 16-bit error-code field."""

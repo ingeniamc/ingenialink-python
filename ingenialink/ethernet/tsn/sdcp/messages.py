@@ -287,6 +287,11 @@ class SDCPIdentificationResponse(_SDCPMessage):
     product_code: int
     revision_number: int
 
+    @property
+    def opcode(self) -> SDCPOpcode:
+        """The opcode of this response."""
+        return SDCPOpcode.IDENTIFICATION
+
     @staticmethod
     def _parse_device_mode(value: int) -> SDCPDeviceMode:
         """Convert a raw Device Mode value into an `SDCPDeviceMode`.
@@ -355,9 +360,7 @@ class SDCPIdentificationResponse(_SDCPMessage):
             + _SDCPFields.PRODUCT_CODE.serialize(self.product_code)
             + _SDCPFields.REVISION_NUMBER.serialize(self.revision_number)
         )
-        return _SDCPCodec.serialize_frame(
-            SDCPOpcode.IDENTIFICATION, SDCPFlag.REPLY, self.transaction_id, payload
-        )
+        return _SDCPCodec.serialize_frame(self.opcode, SDCPFlag.REPLY, self.transaction_id, payload)
 
 
 @dataclass(frozen=True, repr=False)
@@ -365,6 +368,11 @@ class SDCPReadResponse(_SDCPMessage):
     """An SDCP Read response with raw register value bytes."""
 
     value: bytes
+
+    @property
+    def opcode(self) -> SDCPOpcode:
+        """The opcode of this response."""
+        return SDCPOpcode.READ
 
     def __bytes__(self) -> bytes:
         """Serialize this Read response.
@@ -379,7 +387,7 @@ class SDCPReadResponse(_SDCPMessage):
         if not isinstance(self.value, bytes):
             raise TypeError("value must be bytes")
         return _SDCPCodec.serialize_frame(
-            SDCPOpcode.READ,
+            self.opcode,
             SDCPFlag.REPLY,
             self.transaction_id,
             self.value,
@@ -390,6 +398,11 @@ class SDCPReadResponse(_SDCPMessage):
 class SDCPWriteResponse(_SDCPMessage):
     """An SDCP Write response."""
 
+    @property
+    def opcode(self) -> SDCPOpcode:
+        """The opcode of this response."""
+        return SDCPOpcode.WRITE
+
     def __bytes__(self) -> bytes:
         """Serialize this Write response.
 
@@ -397,7 +410,7 @@ class SDCPWriteResponse(_SDCPMessage):
             The binary SDCP frame.
 
         """
-        return _SDCPCodec.serialize_frame(SDCPOpcode.WRITE, SDCPFlag.REPLY, self.transaction_id)
+        return _SDCPCodec.serialize_frame(self.opcode, SDCPFlag.REPLY, self.transaction_id)
 
 
 @dataclass(frozen=True, repr=False)
@@ -406,10 +419,20 @@ class SDCPErrorResponse(_SDCPMessage):
 
     error_code: int
 
+    @property
+    @abstractmethod
+    def opcode(self) -> SDCPOpcode:
+        """The opcode of the operation this error response answers."""
+
 
 @dataclass(frozen=True, repr=False)
 class SDCPIdentificationResponseError(SDCPErrorResponse):
     """An SDCP Identification error response."""
+
+    @property
+    def opcode(self) -> SDCPOpcode:
+        """The opcode of this error response."""
+        return SDCPOpcode.IDENTIFICATION
 
     def __bytes__(self) -> bytes:
         """Serialize this Identification error response.
@@ -420,7 +443,7 @@ class SDCPIdentificationResponseError(SDCPErrorResponse):
         """
         payload = _SDCPFields.ERROR_CODE.serialize(self.error_code)
         return _SDCPCodec.serialize_frame(
-            SDCPOpcode.IDENTIFICATION,
+            self.opcode,
             SDCPFlag.REPLY | SDCPFlag.ERROR,
             self.transaction_id,
             payload,
@@ -431,6 +454,11 @@ class SDCPIdentificationResponseError(SDCPErrorResponse):
 class SDCPReadResponseError(SDCPErrorResponse):
     """An SDCP Read error response."""
 
+    @property
+    def opcode(self) -> SDCPOpcode:
+        """The opcode of this error response."""
+        return SDCPOpcode.READ
+
     def __bytes__(self) -> bytes:
         """Serialize this Read error response.
 
@@ -440,13 +468,18 @@ class SDCPReadResponseError(SDCPErrorResponse):
         """
         payload = _SDCPFields.ERROR_CODE.serialize(self.error_code)
         return _SDCPCodec.serialize_frame(
-            SDCPOpcode.READ, SDCPFlag.REPLY | SDCPFlag.ERROR, self.transaction_id, payload
+            self.opcode, SDCPFlag.REPLY | SDCPFlag.ERROR, self.transaction_id, payload
         )
 
 
 @dataclass(frozen=True, repr=False)
 class SDCPWriteResponseError(SDCPErrorResponse):
     """An SDCP Write error response."""
+
+    @property
+    def opcode(self) -> SDCPOpcode:
+        """The opcode of this error response."""
+        return SDCPOpcode.WRITE
 
     def __bytes__(self) -> bytes:
         """Serialize this Write error response.
@@ -457,7 +490,7 @@ class SDCPWriteResponseError(SDCPErrorResponse):
         """
         payload = _SDCPFields.ERROR_CODE.serialize(self.error_code)
         return _SDCPCodec.serialize_frame(
-            SDCPOpcode.WRITE, SDCPFlag.REPLY | SDCPFlag.ERROR, self.transaction_id, payload
+            self.opcode, SDCPFlag.REPLY | SDCPFlag.ERROR, self.transaction_id, payload
         )
 
 
