@@ -1,5 +1,5 @@
 import socket
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from threading import Lock
 from typing import Any
@@ -17,7 +17,7 @@ class VirtualServoBase:
         self._lock = lock
 
     @contextmanager
-    def transaction(self) -> Iterator[None]:
+    def transaction(self) -> Generator[None, None, None]:
         """Acquire the communication lock for a full request/response transaction."""
         self._lock.acquire()
         try:
