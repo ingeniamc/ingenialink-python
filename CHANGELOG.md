@@ -1,12 +1,21 @@
 # Changelog
 
-## [Unreleased]
+## [7.6.3] - 2026-10-14
 ### Added
 - SDCP support for physical and virtual drives.
+- Added cloning and register lookup methods to `ConfigurationFile` and `ConfigRegister`.
+- Added `DriveContextRestoreError` and a `RestoreResult` return value for improved error reporting.
+- Added Poller `timestamp_origin` to expose the start time used for sample timestamps.
 
 ### Changed
-- Fix race condition where network state is notified before being updated
 - Remove the Cython-based adapter address extension and its build configuration
+
+### Fixed
+- A race condition where network state is notified before being updated.
+- Avoid unnecessary register writes during drive context restoration when a register already matches its baseline.
+- Retry Ethernet drive information reads during network scans after communication errors.
+- Recreate the Ethernet UDP socket after disconnection to prevent stale responses from disrupting recovery.
+- Corrected the access type of EtherCAT monitoring and disturbance subindex 0 registers.
 
 ## [7.6.2] - 2026-08-12
 ### Added
