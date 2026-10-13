@@ -188,7 +188,7 @@ def test_subscribe_exceptions(net: "EthercatNetwork", mocker) -> None:
     error_msg = "Test error"
     received_exceptions: list[ILError] = []
 
-    def start_pdos(*_):
+    def start_pdos(*_, **_kwargs):
         raise ILWrongWorkingCountError(error_msg)
 
     stop_pdos_mock = mocker.patch("ingenialink.ethercat.network.EthercatNetwork.stop_pdos")
