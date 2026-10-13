@@ -195,6 +195,11 @@ class _SDCPMessage(ABC):
 class SDCPIdentificationRequest(_SDCPMessage):
     """An SDCP Identification request."""
 
+    @property
+    def opcode(self) -> SDCPOpcode:
+        """The opcode of this request."""
+        return SDCPOpcode.IDENTIFICATION
+
     def __bytes__(self) -> bytes:
         """Serialize this Identification request.
 
@@ -202,9 +207,7 @@ class SDCPIdentificationRequest(_SDCPMessage):
             The binary SDCP frame.
 
         """
-        return _SDCPCodec.serialize_frame(
-            SDCPOpcode.IDENTIFICATION, SDCPFlag.NONE, self.transaction_id
-        )
+        return _SDCPCodec.serialize_frame(self.opcode, SDCPFlag.NONE, self.transaction_id)
 
 
 @dataclass(frozen=True, repr=False)
@@ -213,6 +216,11 @@ class SDCPReadRequest(_SDCPMessage):
 
     index: int
     subindex: int
+
+    @property
+    def opcode(self) -> SDCPOpcode:
+        """The opcode of this request."""
+        return SDCPOpcode.READ
 
     def __bytes__(self) -> bytes:
         """Serialize this Read request.
@@ -224,9 +232,7 @@ class SDCPReadRequest(_SDCPMessage):
         payload = _SDCPFields.INDEX.serialize(self.index) + _SDCPFields.SUBINDEX.serialize(
             self.subindex
         )
-        return _SDCPCodec.serialize_frame(
-            SDCPOpcode.READ, SDCPFlag.NONE, self.transaction_id, payload
-        )
+        return _SDCPCodec.serialize_frame(self.opcode, SDCPFlag.NONE, self.transaction_id, payload)
 
 
 @dataclass(frozen=True, repr=False)
@@ -236,6 +242,11 @@ class SDCPWriteRequest(_SDCPMessage):
     index: int
     subindex: int
     value: bytes
+
+    @property
+    def opcode(self) -> SDCPOpcode:
+        """The opcode of this request."""
+        return SDCPOpcode.WRITE
 
     def __bytes__(self) -> bytes:
         """Serialize this Write request.
@@ -258,7 +269,7 @@ class SDCPWriteRequest(_SDCPMessage):
             + self.value
         )
         return _SDCPCodec.serialize_frame(
-            SDCPOpcode.WRITE,
+            self.opcode,
             SDCPFlag.NONE,
             self.transaction_id,
             payload,
