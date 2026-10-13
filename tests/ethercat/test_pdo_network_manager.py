@@ -7,6 +7,7 @@ import pytest
 from summit_testing_framework.setups.descriptors import EthercatMultiSlaveSetup
 
 from ingenialink.ethercat.network import EthercatNetwork
+from ingenialink.ethercat.slave_group import EthercatSlaveGroup
 from ingenialink.exceptions import ILError, ILWrongWorkingCountError
 from ingenialink.pdo import PDOMap, RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.pdo_network_manager import PDONetworkManager
@@ -14,6 +15,46 @@ from ingenialink.utils.timeout import Timeout
 
 if TYPE_CHECKING:
     from ingenialink.ethercat.servo import EthercatServo
+
+
+def test_start_network_pdos_forwards_slave_group(mocker) -> None:
+    """Forward the selected group to initial network setup and the worker thread."""
+    network = mocker.Mock()
+    manager = PDONetworkManager(network)
+    group = EthercatSlaveGroup([])
+
+    manager._start_network_pdos(group)
+
+    network.start_pdos.assert_called_once_with(group=group)
+    assert not manager.is_starting_pdos
+
+    process_thread = mocker.patch.object(manager, "ProcessDataThread")
+    manager.start_pdos(group=group)
+
+    assert process_thread.call_args.kwargs["group"] is group
+    process_thread.return_value.start.assert_called_once_with()
+
+
+def test_pdo_thread_sets_watchdog_only_for_group_members(mocker) -> None:
+    """Configure PDO watchdogs only on servos selected for the exchange."""
+    selected_servo = mocker.Mock()
+    unselected_servo = mocker.Mock()
+    network = mocker.Mock(servos=[selected_servo, unselected_servo])
+    group = EthercatSlaveGroup([selected_servo])
+    thread = PDONetworkManager.ProcessDataThread(
+        net=network,
+        refresh_rate=None,
+        watchdog_timeout=None,
+        notify_send_process_data=mocker.Mock(),
+        notify_receive_process_data=mocker.Mock(),
+        notify_exceptions=mocker.Mock(),
+        group=group,
+    )
+
+    thread._ProcessDataThread__set_watchdog_timeout()
+
+    selected_servo.set_pdo_watchdog_time.assert_called_once()
+    unselected_servo.set_pdo_watchdog_time.assert_not_called()
 
 
 @pytest.mark.ethercat

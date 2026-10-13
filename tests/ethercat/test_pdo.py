@@ -632,7 +632,7 @@ def test_selected_group_mapping_skips_uncommissioned_slave(
     assert unselected_slave.group == 0
     assert unselected_slave.state == unselected_state
     assert net._active_pdo_group == 1
-    assert net._selected_pdo_slave_ids == {selected_servo.slave_id}
+    assert net._active_slave_group.slave_ids == {selected_servo.slave_id}
     assert net._ecat_master.get_expected_wkc(group=1) > 0
 
     start_time = time.time()
@@ -677,7 +677,7 @@ def test_selected_group_mapping_with_only_one_connected_servo(
 
     assert selected_servo.slave.group == 1
     assert selected_servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
-    assert net._selected_pdo_slave_ids == {selected_servo.slave_id}
+    assert net._active_slave_group.slave_ids == {selected_servo.slave_id}
 
     start_time = time.time()
     while time.time() < start_time + 1:

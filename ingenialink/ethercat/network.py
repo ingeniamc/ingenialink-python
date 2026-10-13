@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 
 from ingenialink.constants import ECAT_STATE_CHANGE_TIMEOUT_US
 from ingenialink.ethercat.servo import EthercatServo, EthercatServoBase
+from ingenialink.ethercat.slave_group import EthercatSlaveGroup
 from ingenialink.ethercat.state import SlaveState
 from ingenialink.exceptions import (
     ILError,
@@ -283,7 +284,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         self._overlapping_io_map = overlapping_io_map
         # Default to group 0 for all slaves; group 1 is used for selected subsets.
         self._active_pdo_group = 0
-        self._selected_pdo_slave_ids: set[int] = set()
+        self._active_slave_group = EthercatSlaveGroup(())
         self._pdo_exchange_active = False
         self.__is_master_running = False
         self.__last_init_nodes: list[int] = []
@@ -358,7 +359,11 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             self._pdo_thread_status_observers.remove(callback)
 
     def activate_pdos(
-        self, refresh_rate: Optional[float] = None, watchdog_timeout: Optional[float] = None
+        self,
+        refresh_rate: Optional[float] = None,
+        watchdog_timeout: Optional[float] = None,
+        *,
+        group: Optional[EthercatSlaveGroup] = None,
     ) -> None:
         """Start PDOs and notify the status to the observers.
 
@@ -366,9 +371,12 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             refresh_rate: Determines how often (seconds) the PDO values will be updated.
             watchdog_timeout: The PDO watchdog time. If not provided it will be set proportional
              to the refresh rate.
+            group: Connected EtherCAT servos included in the process-data exchange.
         """
         n_exceptions = self.__exceptions_in_thread
-        self.pdo_manager.start_pdos(refresh_rate=refresh_rate, watchdog_timeout=watchdog_timeout)
+        self.pdo_manager.start_pdos(
+            refresh_rate=refresh_rate, watchdog_timeout=watchdog_timeout, group=group
+        )
         # Make sure that there were no exceptions while starting the PDOs to notify activation
         if self.__exceptions_in_thread == n_exceptions:
             self._notify_pdo_thread_status(True)
@@ -692,17 +700,31 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         if self._pdo_exchange_active:
             same_configuration = (
                 active_group == self._active_pdo_group
-                and selected_slave_ids == self._selected_pdo_slave_ids
+                and selected_slave_ids == self._get_slave_ids_for_pdo_group(active_group)
             )
             if not same_configuration and not self._pdo_manager.is_starting_pdos:
                 raise RuntimeError("Stop PDO exchange before reconfiguring the process-data group.")
 
         return selected_slave_ids, active_group
 
+    def _get_slave_ids_for_pdo_group(self, active_group: int) -> set[int]:
+        """Read the slave membership currently assigned to a PySOEM group.
+
+        Returns:
+            The discovered slave IDs assigned to the requested group.
+        """
+        return {
+            slave_id
+            for slave_id, slave in enumerate(self._ecat_master.slaves, start=1)
+            if slave.group == active_group
+        }
+
     def config_pdo_maps(
         self,
         selected_slave_ids: Optional[set[int]] = None,
         active_group: Optional[int] = None,
+        *,
+        group: Optional[EthercatSlaveGroup] = None,
     ) -> None:
         """Configure the PDO maps.
 
@@ -714,11 +736,19 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
                 If omitted, all discovered slaves are selected.
             active_group: Process-data group to map. Defaults to group 0 for all slaves
                 or group 1 for a subset. PySOEM supports groups 0 and 1.
+            group: Connected EtherCAT servos to include in the process image. When supplied,
+                PySOEM group selection is resolved automatically.
 
         Raises:
             ValueError: If the selected group or slave IDs are invalid.
             RuntimeError: If the active mapping is changed during PDO exchange.
         """
+        if group is not None:
+            if selected_slave_ids is not None:
+                raise ValueError("Pass either group or selected_slave_ids, not both.")
+            self._validate_slave_group(group)
+            selected_slave_ids = {servo.slave_id for servo in group.servos}
+
         selected_slave_ids, active_group = self._resolve_pdo_map_configuration(
             selected_slave_ids=selected_slave_ids,
             active_group=active_group,
@@ -726,8 +756,13 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         if (
             self._pdo_exchange_active
             and active_group == self._active_pdo_group
-            and selected_slave_ids == self._selected_pdo_slave_ids
+            and selected_slave_ids == self._get_slave_ids_for_pdo_group(active_group)
         ):
+            if group is None:
+                group = EthercatSlaveGroup(
+                    servo for servo in self.servos if servo.slave_id in selected_slave_ids
+                )
+            self._active_slave_group = group
             return
 
         other_group = 1 - active_group
@@ -739,7 +774,28 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         else:
             self._ecat_master.config_map(group=active_group)
         self._active_pdo_group = active_group
-        self._selected_pdo_slave_ids = selected_slave_ids
+        if group is None:
+            group = EthercatSlaveGroup(
+                servo for servo in self.servos if servo.slave_id in selected_slave_ids
+            )
+        self._active_slave_group = group
+
+    def _validate_slave_group(self, group: EthercatSlaveGroup) -> None:
+        """Ensure every group member is connected to this network.
+
+        Args:
+            group: The EthercatSlaveGroup to validate.
+
+        Raises:
+            ValueError: If a group member is not connected to this network.
+        """
+        disconnected_servos = [
+            servo
+            for servo in group.servos
+            if not any(servo is connected_servo for connected_servo in self.servos)
+        ]
+        if disconnected_servos:
+            raise ValueError("Every EthercatSlaveGroup member must be connected to this network.")
 
     def _set_pdo_servos_to_op(self, servos: list[EthercatServo], timeout: float) -> None:
         """Transition the selected PDO servos through SafeOP to OP.
@@ -763,6 +819,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         self,
         timeout: float = 2.0,
         *,
+        group: Optional[EthercatSlaveGroup] = None,
         selected_slave_ids: Optional[set[int]] = None,
         active_group: Optional[int] = None,
     ) -> None:
@@ -770,6 +827,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
 
         Args:
             timeout: timeout in seconds to reach Op state, 2.0 seconds by default.
+            group: Connected EtherCAT servos included in the process-data exchange.
             selected_slave_ids: 1-based discovered slave IDs to include in the process image.
                 Each selected slave must have configured PDO maps. If omitted, connected servos
                 with PDO maps are selected.
@@ -783,8 +841,14 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         """
         if not self.__is_master_running:
             raise RuntimeError("EtherCAT master is not running.")
+        if group is not None and selected_slave_ids is not None:
+            raise ValueError("Pass either group or selected_slave_ids, not both.")
+        requested_active_group = active_group
         pdo_servo_list = [servo for servo in self.servos if servo._rpdo_maps or servo._tpdo_maps]
-        if selected_slave_ids is None:
+        if group is not None:
+            self._validate_slave_group(group)
+            selected_slave_ids = {servo.slave_id for servo in group.servos}
+        elif selected_slave_ids is None:
             if not pdo_servo_list:
                 logger.warning("There are no PDOs assigned to any connected slave.")
                 return
@@ -806,8 +870,8 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             return
 
         self.config_pdo_maps(
-            selected_slave_ids=selected_slave_ids,
-            active_group=active_group,
+            group=EthercatSlaveGroup(op_servo_list),
+            active_group=requested_active_group,
         )
 
         self._pdo_exchange_active = True
@@ -858,9 +922,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
 
         if release_gil is None:
             release_gil = self.__gil_release_config.send_receive_processdata
-        active_servos = [
-            servo for servo in self.servos if servo.slave_id in self._selected_pdo_slave_ids
-        ]
+        active_servos = list(self._active_slave_group.servos)
         for servo in active_servos:
             servo.generate_pdo_outputs()
         self._lock.acquire()

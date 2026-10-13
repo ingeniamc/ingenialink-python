@@ -9,6 +9,7 @@ from ingenialink.utils.event import create_event
 
 if TYPE_CHECKING:
     from ingenialink.ethercat.network import EthercatNetwork
+    from ingenialink.ethercat.slave_group import EthercatSlaveGroup
 
 
 class PDONetworkManager:
@@ -32,6 +33,7 @@ class PDONetworkManager:
             notify_send_process_data: Callback to notify when process data is about to be sent.
             notify_receive_process_data: Callback to notify when process data is received.
             notify_exceptions: Callback to notify when an exception is raised.
+            group: Connected EtherCAT servos included in the PDO exchange.
 
         Raises:
             ValueError: If the provided refresh rate is unfeasible.
@@ -53,6 +55,7 @@ class PDONetworkManager:
             notify_send_process_data: Callable[[], None],
             notify_receive_process_data: Callable[[], None],
             notify_exceptions: Callable[[ILError], None],
+            group: Optional["EthercatSlaveGroup"] = None,
         ) -> None:
             super().__init__()
 
@@ -68,6 +71,7 @@ class PDONetworkManager:
             self._notify_send_process_data = notify_send_process_data
             self._notify_receive_process_data = notify_receive_process_data
             self._notify_exceptions = notify_exceptions
+            self._group = group
             self._pd_thread_stop_event = threading.Event()
 
         def run(self) -> None:
@@ -84,7 +88,7 @@ class PDONetworkManager:
                 self._notify_send_process_data()
                 try:
                     if first_iteration:
-                        self._net.pdo_manager._start_network_pdos()
+                        self._net.pdo_manager._start_network_pdos(self._group)
                         first_iteration = False
                     else:
                         self._net.send_receive_processdata(self._refresh_rate)
@@ -160,7 +164,8 @@ class PDONetworkManager:
             else:
                 is_watchdog_timeout_manually_set = True
             try:
-                for servo in self._net.servos:
+                servos = self._group.servos if self._group is not None else self._net.servos
+                for servo in servos:
                     servo.set_pdo_watchdog_time(self._watchdog_timeout)
             except AttributeError as e:
                 max_pdo_watchdog_s = servo.get_max_pdo_watchdog_time()
@@ -191,11 +196,15 @@ class PDONetworkManager:
         """Check whether the manager is performing its initial PDO setup."""
         return self._is_starting_pdos
 
-    def _start_network_pdos(self) -> None:
-        """Start network PDOs while marking the manager's initial setup window."""
+    def _start_network_pdos(self, group: Optional["EthercatSlaveGroup"] = None) -> None:
+        """Start network PDOs while marking the manager's initial setup window.
+
+        Args:
+            group: Connected EtherCAT servos included in the PDO exchange.
+        """
         self._is_starting_pdos = True
         try:
-            self._net.start_pdos()
+            self._net.start_pdos(group=group)
         finally:
             self._is_starting_pdos = False
 
@@ -219,6 +228,8 @@ class PDONetworkManager:
         self,
         refresh_rate: Optional[float] = None,
         watchdog_timeout: Optional[float] = None,
+        *,
+        group: Optional["EthercatSlaveGroup"] = None,
     ) -> None:
         """Start the PDO exchange process.
 
@@ -226,6 +237,7 @@ class PDONetworkManager:
             refresh_rate: Determines how often (seconds) the PDO values will be updated.
             watchdog_timeout: The PDO watchdog time. If not provided it will be set proportional
              to the refresh rate.
+            group: Connected EtherCAT servos included in the process-data exchange.
 
         Raises:
             ILError: If the PDOs are already active.
@@ -233,6 +245,8 @@ class PDONetworkManager:
         if self._pdo_thread is not None:
             self.stop_pdos()
             raise ILError("PDOs are already active.")
+        if group is not None:
+            self._net._validate_slave_group(group)
         self._pdo_thread = self.ProcessDataThread(
             net=self._net,
             refresh_rate=refresh_rate,
@@ -240,6 +254,7 @@ class PDONetworkManager:
             notify_send_process_data=self._notify_send_process_data,
             notify_receive_process_data=self._notify_receive_process_data,
             notify_exceptions=self._notify_exceptions,
+            group=group,
         )
         self._pdo_thread.start()
 
