@@ -741,6 +741,24 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         self._active_pdo_group = active_group
         self._selected_pdo_slave_ids = selected_slave_ids
 
+    def _set_pdo_servos_to_op(self, servos: list[EthercatServo], timeout: float) -> None:
+        """Transition the selected PDO servos through SafeOP to OP.
+
+        Raises:
+            ILStateError: If the servos do not reach SafeOP or OP before the timeout.
+        """
+        with Timeout(timeout) as timer:
+            self._change_nodes_state(servos, SlaveState.SAFEOP_STATE)
+            while not self._check_node_state(servos, pysoem.SAFEOP_STATE):
+                if timer.has_expired:
+                    raise ILStateError("Drives can not reach SafeOp state")
+
+            self._change_nodes_state(servos, SlaveState.OP_STATE)
+            while not self._check_node_state(servos, pysoem.OP_STATE):
+                self.send_receive_processdata()
+                if timer.has_expired:
+                    raise ILStateError("Drives can not reach Op state")
+
     def start_pdos(
         self,
         timeout: float = 2.0,
@@ -794,18 +812,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
 
         self._pdo_exchange_active = True
         try:
-            with Timeout(timeout) as t:
-                self._change_nodes_state(op_servo_list, SlaveState.SAFEOP_STATE)
-                while not self._check_node_state(op_servo_list, pysoem.SAFEOP_STATE):
-                    if t.has_expired:
-                        raise ILStateError("Drives can not reach SafeOp state")
-
-                # Set all slaves to Op state
-                self._change_nodes_state(op_servo_list, SlaveState.OP_STATE)
-                while not self._check_node_state(op_servo_list, pysoem.OP_STATE):
-                    self.send_receive_processdata()
-                    if t.has_expired:
-                        raise ILStateError("Drives can not reach Op state")
+            self._set_pdo_servos_to_op(op_servo_list, timeout)
         except Exception:
             self._pdo_exchange_active = False
             raise
