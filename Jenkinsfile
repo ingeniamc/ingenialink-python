@@ -1,4 +1,4 @@
-@Library('cicd-lib@bf5e383') _
+@Library('cicd-lib@bc76f39') _
 
 import python.VEnvManager
 import python.VirtualEnvironment
@@ -189,7 +189,7 @@ pipeline {
                         testSelectionRepeatCount: PyTestParams.readValue(params, 'pytestRepeatCounts'),
                         logLevel: PyTestParams.readValue(params, 'pytestLoggingLevel'),
                         useTimeline: PyTestParams.readValue(params, 'timeline'),
-                        useProfiler: PyTestParams.readValue(params, 'profilers')
+                        useProfilers: PyTestParams.readValue(params, 'profilers')
                     )
 
                     // Configure if ECAT and ETH sessions use Wireshark logging based on parameter
