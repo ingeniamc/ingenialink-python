@@ -669,7 +669,7 @@ def test_send_receive_processdata_raises_for_active_group_wkc_mismatch(
 
 @pytest.mark.pcap
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
-def test_start_pdos_forwards_group_configuration_without_master_state_request(
+def test_start_pdos_resolves_group_configuration_without_master_state_request(
     mocker: "MockerFixture",
 ) -> None:
     """Start the selected process image while state changes remain per servo."""
@@ -692,7 +692,7 @@ def test_start_pdos_forwards_group_configuration_without_master_state_request(
     change_state_mock = mocker.patch.object(net, "_change_nodes_state", return_value=True)
     mocker.patch.object(net, "_check_node_state", return_value=True)
 
-    net.start_pdos(group=EthercatSlaveGroup([servo]), active_group=1)
+    net.start_pdos(group=EthercatSlaveGroup([servo]))
 
     config_pdo_maps_mock.assert_called_once_with(group=EthercatSlaveGroup([servo]), active_group=1)
     assert net._ecat_master.state == initial_master_state
@@ -794,7 +794,7 @@ def test_start_pdos_without_selected_mapped_servo_does_not_configure_map(
 
     initial_groups = [slave.group for slave in net._ecat_master.slaves]
     with pytest.raises(ValueError, match="Selected slave IDs have no configured PDO maps: \\[2\\]"):
-        net.start_pdos(group=group, active_group=1)
+        net.start_pdos(group=group)
 
     config_pdo_maps_mock.assert_not_called()
     assert [slave.group for slave in net._ecat_master.slaves] == initial_groups
