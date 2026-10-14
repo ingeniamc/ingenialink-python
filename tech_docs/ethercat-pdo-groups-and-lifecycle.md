@@ -127,9 +127,12 @@ working counter is compared against the expected working counter for that same
 PySOEM group.
 
 Stopping the manager stops and joins its exchange thread, then calls
-`EthercatNetwork.stop_pdos()`. The network requests Init for slaves that are
-alive and not already in PreOP or NONE, reinitializes nodes (which returns
-connected servos to PreOP), and clears its active-exchange flag.
+`EthercatNetwork.stop_pdos()`. If connected servos are excluded from the active
+selection, the network transitions only selected servos that are alive and not
+already in PreOP or NONE through Init to PreOP; excluded connected servos keep
+their states. If no connected servos are excluded, the existing full-network
+shutdown path requests Init and reinitializes nodes to PreOP. The network then
+clears its active-exchange flag.
 
 ```mermaid
 sequenceDiagram
@@ -155,7 +158,12 @@ sequenceDiagram
   Caller->>Manager: stop_pdos()
   Manager->>Thread: signal stop and join
   Thread->>Network: stop_pdos()
-  Network->>Master: request Init, then reinitialize nodes to PreOP
+  alt Connected servos are excluded from the active group
+    Network->>Servo: transition selected servos through Init to PreOP
+    Note over Servo: Excluded connected servos retain their states
+  else No connected servos are excluded
+    Network->>Master: request Init and reinitialize nodes to PreOP
+  end
 ```
 
 ## Reconfiguration Constraints
@@ -178,7 +186,7 @@ sequenceDiagram
 | `EthercatNetwork.config_pdo_maps(group)` | Assign group members to a PySOEM group and map the active process image. |
 | `EthercatNetwork.start_pdos(timeout, group)` | Validate group members, configure mapping, and transition them to SafeOP/OP. |
 | `EthercatNetwork.send_receive_processdata(timeout)` | Run one exchange iteration for the active group and selected servos. |
-| `EthercatNetwork.stop_pdos()` | Stop network PDO state and return connected servos to PreOP. |
+| `EthercatNetwork.stop_pdos()` | Stop PDO state; preserve excluded connected servos' states for a partial group. |
 | `PDONetworkManager.start_pdos(refresh_rate, watchdog_timeout, group)` | Start the managed periodic exchange thread using the supplied group or the default selection. |
 | `PDONetworkManager.stop_pdos()` | Stop the managed thread and ask the network to stop PDO operation. |
 
