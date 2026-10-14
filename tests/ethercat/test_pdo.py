@@ -16,6 +16,7 @@ from ingenialink.dictionary import CanOpenObject, CanOpenObjectType, Interface
 from ingenialink.enums.register import RegAccess, RegCyclicType, RegDtype
 from ingenialink.ethercat.register import EthercatRegister
 from ingenialink.ethercat.servo import EthercatServo
+from ingenialink.ethercat.slave_group import EthercatSlaveGroup
 from ingenialink.exceptions import ILEcatStateError, ILError
 from ingenialink.pdo import BIT_ENDIAN, PDOMap, RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.register import Register
@@ -23,6 +24,8 @@ from ingenialink.servo import DictionaryFactory
 from ingenialink.utils._utils import convert_dtype_to_bytes, dtype_length_bits
 
 if TYPE_CHECKING:
+    from summit_testing_framework.connection.reconnect_utils import ConnectionWrapper
+
     from ingenialink.dictionary import Dictionary
     from ingenialink.ethercat.network import EthercatNetwork
 
@@ -602,7 +605,9 @@ def test_start_stop_pdo(servo, net):
 
 @pytest.mark.multislave
 def test_selected_group_mapping_skips_uncommissioned_slave(
-    servo: "EthercatServo", net: "EthercatNetwork", setup_descriptor: "EthercatMultiSlaveSetup"
+    servo: list["EthercatServo"],
+    net: "EthercatNetwork",
+    setup_descriptor: "EthercatMultiSlaveSetup",
 ) -> None:
     """Map only the selected rack slave and leave an uncommissioned slave untouched."""
     if not isinstance(setup_descriptor, EthercatMultiSlaveSetup):
@@ -622,13 +627,13 @@ def test_selected_group_mapping_skips_uncommissioned_slave(
     rpdo_map.items[0].value = selected_servo.read("DRV_OP_CMD")
     selected_servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
 
-    net.start_pdos(selected_slave_ids={selected_servo.slave_id}, active_group=1)
+    net.start_pdos(group=EthercatSlaveGroup([selected_servo]), active_group=1)
 
     assert selected_servo.slave.group == 1
     assert unselected_slave.group == 0
     assert unselected_slave.state == unselected_state
     assert net._active_pdo_group == 1
-    assert net._selected_pdo_slave_ids == {selected_servo.slave_id}
+    assert net._active_slave_group.slave_ids == {selected_servo.slave_id}
     assert net._ecat_master.get_expected_wkc(group=1) > 0
 
     start_time = time.time()
@@ -642,6 +647,47 @@ def test_selected_group_mapping_skips_uncommissioned_slave(
     assert unselected_slave.state == unselected_state
     net.stop_pdos()
     net._EthercatNetwork__init_nodes()
+
+
+@pytest.mark.multislave
+def test_selected_group_mapping_with_only_one_connected_servo(
+    servo: list["EthercatServo"],
+    net: "EthercatNetwork",
+    setup_descriptor: "EthercatMultiSlaveSetup",
+    connection_wrappers: list["ConnectionWrapper"],
+) -> None:
+    """Run selected-group PDO exchange after disconnecting the other rack servos."""
+    if not isinstance(setup_descriptor, EthercatMultiSlaveSetup):
+        pytest.skip("Requires the multislave EtherCAT rack setup.")
+    if len(servo) < 2:
+        pytest.skip("Requires at least two connected rack servos.")
+
+    selected_servo = servo[0]
+    disconnected_wrappers = [
+        wrapper for wrapper in connection_wrappers if wrapper.get_servo() is not selected_servo
+    ]
+    for wrapper in disconnected_wrappers:
+        wrapper.disconnect()
+
+    assert net.servos == [selected_servo]
+    assert all(not wrapper.is_connected() for wrapper in disconnected_wrappers)
+
+    rpdo_map, tpdo_map = create_pdo_maps(selected_servo, ["DRV_OP_CMD"], ["DRV_OP_VALUE"])
+    rpdo_map.items[0].value = selected_servo.read("DRV_OP_CMD")
+    selected_servo.set_pdo_map_to_slave([rpdo_map], [tpdo_map])
+
+    net.start_pdos(group=EthercatSlaveGroup([selected_servo]), active_group=1)
+
+    assert selected_servo.slave.group == 1
+    assert selected_servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
+    assert net._active_slave_group.slave_ids == {selected_servo.slave_id}
+
+    start_time = time.time()
+    while time.time() < start_time + 1:
+        net.send_receive_processdata()
+
+    assert selected_servo._rpdo_maps[0x1600].items[0].value == selected_servo.read("DRV_OP_CMD")
+    assert selected_servo._tpdo_maps[0x1A00].items[0].value == selected_servo.read("DRV_OP_VALUE")
 
 
 @pytest.mark.ethercat
