@@ -38,10 +38,13 @@ def withGithubCredentials = { Closure body ->
     ]) {
         def sshKeyPath = env.GITHUB_SSH_KEY.replace('\\', '/')
         withEnv([
+            // Use Jenkins' SSH key for GitHub and avoid prompts during clone.
             "GIT_SSH_COMMAND=ssh -i \"${sshKeyPath}\" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no",
+            // Rewrite GitHub HTTPS dependency URLs to SSH so the key is used.
             'GIT_CONFIG_COUNT=1',
             'GIT_CONFIG_KEY_0=url.git@github.com:.insteadOf',
             'GIT_CONFIG_VALUE_0=https://github.com/',
+            // Make Poetry use system Git, which honors the settings above.
             'POETRY_SYSTEM_GIT_CLIENT=true',
         ]) {
             body()
