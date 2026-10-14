@@ -38,7 +38,6 @@ def reassignFilePermissions() {
     }
 }
 
-
 VEnvManager venvManager = new VEnvManager(
     pipeline: this,
     default_python_version: DEFAULT_PYTHON_VERSION,
