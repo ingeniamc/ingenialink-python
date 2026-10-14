@@ -821,15 +821,12 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         timeout: float = 2.0,
         *,
         group: Optional[EthercatSlaveGroup] = None,
-        active_group: Optional[int] = None,
     ) -> None:
         """Set all slaves with mapped PDOs to Operational State.
 
         Args:
             timeout: timeout in seconds to reach Op state, 2.0 seconds by default.
             group: Connected EtherCAT servos included in the process-data exchange.
-            active_group: Process-data group to map. Defaults to group 0 for all slaves
-                or group 1 for a subset. PySOEM supports groups 0 and 1.
 
         Raises:
             ILStateError: If slaves can not reach SafeOp or Op state.
@@ -845,10 +842,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
                 return
             group = EthercatSlaveGroup(pdo_servo_list)
 
-        group, active_group = self._resolve_pdo_map_configuration(
-            group=group,
-            active_group=active_group,
-        )
+        group, active_group = self._resolve_pdo_map_configuration(group=group)
         pdo_servo_ids = {servo.slave_id for servo in pdo_servo_list}
         servos_without_pdos = [
             servo for servo in group.servos if servo.slave_id not in pdo_servo_ids
