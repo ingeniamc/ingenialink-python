@@ -27,16 +27,23 @@ def PYTHON_VERSION_MAX = "3.12"
 def BRANCH_NAME_MASTER = "master"
 def DEFAULT_LOGGING_LEVEL = 'INFO'
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
-def GITHUB_HTTPS_CREDENTIALS_ID = 'IngeniaJenkinsGitHub'
+def GITHUB_SSH_CREDENTIALS_ID = 'GithubSSH'
 
 def withGithubCredentials = { Closure body ->
     withCredentials([
-        gitUsernamePassword(
-            credentialsId: GITHUB_HTTPS_CREDENTIALS_ID,
-            gitToolName: 'Default'
+        sshUserPrivateKey(
+            credentialsId: GITHUB_SSH_CREDENTIALS_ID,
+            keyFileVariable: 'GITHUB_SSH_KEY'
         )
     ]) {
-        withEnv(['POETRY_SYSTEM_GIT_CLIENT=true']) {
+        def sshKeyPath = env.GITHUB_SSH_KEY.replace('\\', '/')
+        withEnv([
+            "GIT_SSH_COMMAND=ssh -i \"${sshKeyPath}\" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no",
+            'GIT_CONFIG_COUNT=1',
+            'GIT_CONFIG_KEY_0=url.git@github.com:.insteadOf',
+            'GIT_CONFIG_VALUE_0=https://github.com/',
+            'POETRY_SYSTEM_GIT_CLIENT=true',
+        ]) {
             body()
         }
     }
