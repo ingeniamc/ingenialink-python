@@ -366,10 +366,11 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
     ) -> None:
         """Start PDOs and notify the status to the observers.
 
-        refresh_rate: Determines how often (seconds) the PDO values will be updated.
-        watchdog_timeout: The PDO watchdog time. If not provided it will be set proportional
-         to the refresh rate.
-        group: Connected EtherCAT servos included in the process-data exchange.
+        Args:
+            refresh_rate: Determines how often (seconds) the PDO values will be updated.
+            watchdog_timeout: The PDO watchdog time. If not provided it will be set proportional
+                to the refresh rate.
+            group: Connected EtherCAT servos included in the process-data exchange.
         """
         n_exceptions = self.__exceptions_in_thread
         self.pdo_manager.start_pdos(
