@@ -7,6 +7,7 @@ import pytest
 from summit_testing_framework.setups.descriptors import EthercatMultiSlaveSetup
 
 from ingenialink.ethercat.network import EthercatNetwork
+from ingenialink.ethercat.slave_group import EthercatSlaveGroup
 from ingenialink.exceptions import ILError, ILWrongWorkingCountError
 from ingenialink.pdo import PDOMap, RPDOMap, RPDOMapItem, TPDOMap, TPDOMapItem
 from ingenialink.pdo_network_manager import PDONetworkManager
@@ -14,6 +15,46 @@ from ingenialink.utils.timeout import Timeout
 
 if TYPE_CHECKING:
     from ingenialink.ethercat.servo import EthercatServo
+
+
+def test_start_network_pdos_forwards_slave_group(mocker) -> None:
+    """Forward the selected group to initial network setup and the worker thread."""
+    network = mocker.Mock()
+    manager = PDONetworkManager(network)
+    group = EthercatSlaveGroup([])
+
+    manager._start_network_pdos(group)
+
+    network.start_pdos.assert_called_once_with(group=group)
+    assert not manager.is_starting_pdos
+
+    process_thread = mocker.patch.object(manager, "ProcessDataThread")
+    manager.start_pdos(group=group)
+
+    assert process_thread.call_args.kwargs["group"] is group
+    process_thread.return_value.start.assert_called_once_with()
+
+
+def test_pdo_thread_sets_watchdog_only_for_group_members(mocker) -> None:
+    """Configure PDO watchdogs only on servos selected for the exchange."""
+    selected_servo = mocker.Mock()
+    unselected_servo = mocker.Mock()
+    network = mocker.Mock(servos=[selected_servo, unselected_servo])
+    group = EthercatSlaveGroup([selected_servo])
+    thread = PDONetworkManager.ProcessDataThread(
+        net=network,
+        refresh_rate=None,
+        watchdog_timeout=None,
+        notify_send_process_data=mocker.Mock(),
+        notify_receive_process_data=mocker.Mock(),
+        notify_exceptions=mocker.Mock(),
+        group=group,
+    )
+
+    thread._ProcessDataThread__set_watchdog_timeout()
+
+    selected_servo.set_pdo_watchdog_time.assert_called_once()
+    unselected_servo.set_pdo_watchdog_time.assert_not_called()
 
 
 @pytest.mark.ethercat
@@ -110,11 +151,18 @@ def test_start_pdos(
         rpdo_maps[a].subscribe_to_process_data_event(partial(send_callback, a))
         tpdo_maps[a].subscribe_to_process_data_event(partial(receive_callback, a))
 
+    cycles: list[None] = []
+    net.pdo_manager.subscribe_to_receive_process_data(partial(cycles.append, None))
+
     assert not net.pdo_manager.is_active
     refresh_rate = 0.5
     net.activate_pdos(refresh_rate=refresh_rate)
     assert net.pdo_manager.is_active
-    time.sleep(2 * refresh_rate)
+    # The first notification is sent on startup, before any process data is received.
+    with Timeout(5) as timeout:
+        while len(cycles) < 2 and not timeout.has_expired:
+            time.sleep(0.01)
+    assert len(cycles) >= 2
     net.deactivate_pdos()
     assert not net.pdo_manager.is_active
     for s, a in zip(servo, alias):
@@ -140,7 +188,7 @@ def test_subscribe_exceptions(net: "EthercatNetwork", mocker) -> None:
     error_msg = "Test error"
     received_exceptions: list[ILError] = []
 
-    def start_pdos(*_):
+    def start_pdos(*_, **_kwargs):
         raise ILWrongWorkingCountError(error_msg)
 
     stop_pdos_mock = mocker.patch("ingenialink.ethercat.network.EthercatNetwork.stop_pdos")
