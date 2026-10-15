@@ -1,5 +1,22 @@
 # Changelog
 
+## [7.6.3] - 2026-10-14
+### Added
+- SDCP support for physical and virtual drives.
+- Added cloning and register lookup methods to `ConfigurationFile` and `ConfigRegister`.
+- Added `DriveContextRestoreError` and a `RestoreResult` return value for improved error reporting.
+- Added Poller `timestamp_origin` to expose the start time used for sample timestamps.
+
+### Changed
+- Remove the Cython-based adapter address extension and its build configuration
+
+### Fixed
+- A race condition where network state is notified before being updated.
+- Avoid unnecessary register writes during drive context restoration when a register already matches its baseline.
+- Retry Ethernet drive information reads during network scans after communication errors.
+- Recreate the Ethernet UDP socket after disconnection to prevent stale responses from disrupting recovery.
+- Corrected the access type of EtherCAT monitoring and disturbance subindex 0 registers.
+
 ## [7.6.2] - 2026-08-12
 ### Added
 - Extended the `ConfigurationFile` API with `from_dictionary_defaults()`, `override_values()`, and direct `ConfigurationFile` support in `load_configuration()`.
@@ -74,7 +91,7 @@
 ### Added
 - Implement the scan method for Ethernet networks.
 - GIL release control for EtherCAT functions.
-  Created ConfigurationFile class, used in load_configuration, save_configuration and check_configuration
+- Created ConfigurationFile class, used in load_configuration, save_configuration and check_configuration
 - Functions to update pysoem timeouts
 
 ### Deprecated

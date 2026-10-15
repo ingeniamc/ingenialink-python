@@ -1,4 +1,5 @@
 import logging
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -12,15 +13,21 @@ from virtual_drive.core import VirtualDrive
 from virtual_drive.resources import VIRTUAL_DRIVE_CAN_V2_XDF
 
 from ingenialink.dictionary import Interface
+from ingenialink.exceptions import ILRegisterNotFoundError
+from ingenialink.servo import Servo
 from ingenialink.virtual.canopen.network import VirtualCanopenNetwork
 from ingenialink.virtual.ethercat.network import VirtualEthercatNetwork
 from ingenialink.virtual.ethernet.network import VirtualEthernetNetwork
+from ingenialink.virtual.sdcp.network import VirtualSDCPNetwork
 from tests.ethercat.mock import pysoem_mock_network  # noqa: F401
 
 pytest_plugins = [
     "summit_testing_framework.pytest_addoptions",
+    "summit_testing_framework.pytest_markers",
     "summit_testing_framework.setup_fixtures",
+    "tests.dictionaries.fixtures",
 ]
+logger = logging.getLogger(__name__)
 
 
 # Pytest runs with importlib import mode, which means that it will run the tests with the installed
@@ -28,7 +35,7 @@ pytest_plugins = [
 # in the tests.
 # The issue is solved by dynamically importing them before the tests start. All modules that should
 # be imported and ARE NOT part of the package should be specified here
-_DYNAMIC_MODULES_IMPORT = ["tests"]
+_DYNAMIC_MODULES_IMPORT = ["summit_drives_ci_configs", "tests"]
 
 
 class SuppressSpecificLogs(logging.Filter):
@@ -111,6 +118,12 @@ def _connect_virtual_canopen(server: VirtualDrive) -> tuple[Any, Any]:
     return net, servo
 
 
+def _connect_virtual_sdcp(server: VirtualDrive) -> tuple[VirtualSDCPNetwork, Any]:
+    net = VirtualSDCPNetwork()
+    servo = net.connect_to_slave(server.dictionary_path)
+    return net, servo
+
+
 @pytest.fixture()
 def virtual_drive():
     server, _, virtual_servo = _create_virtual_drive_connection(
@@ -118,6 +131,29 @@ def virtual_drive():
         Interface.ETH,
     )
     yield server, virtual_servo
+    server.stop()
+
+
+@pytest.fixture()
+def virtual_drive_sdcp():
+    """Connect to a virtual SDCP drive on the endpoint used by the SDCP client.
+
+    Yields:
+        The virtual drive server, network, and connected servo.
+    """
+    dictionary_path = Path(__file__).parent / "resources" / "ethernet" / "sdcp_example.xdf3"
+    server = VirtualDrive(
+        port=22_334,
+        dictionary_path=str(dictionary_path),
+        protocol=Interface.SDCP,
+    )
+    server.start()
+    try:
+        net, servo = _connect_virtual_sdcp(server)
+    except Exception:
+        server.stop()
+        raise
+    yield server, net, servo
     server.stop()
 
 
@@ -206,3 +242,26 @@ def xcf_schema():
     """
     schema_path = Path(__file__).parent.parent / "xcf-specification" / "config.xsd"
     return xmlschema.XMLSchema(schema_path)
+
+
+@contextmanager
+def refresh_registers_for_test_rollback(servo: Servo, register_uids: list[str]):
+    """Refresh stale registers if drive context manager
+
+    Some mechanisms of the drive might not be detected by the drive context manager
+    and the drive might not be rolled back to the initial state after test execution.
+    Using this context manager on a test will force a read after test execution
+    to avoid any register change leak
+
+    Args:
+        servo: Servo instance to read registers from.
+        register_uids: List of register UIDs to read after test execution.
+    """
+    yield
+    for register_uid in register_uids:
+        try:
+            servo.read(register_uid)
+        except ILRegisterNotFoundError:  # noqa: PERF203
+            logger.warning(
+                f"Register {register_uid} not found during refresh after test execution."
+            )

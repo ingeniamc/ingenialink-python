@@ -1,4 +1,4 @@
-## Class Hierarchy (Network)
+# Class Hierarchy (Network)
 ```mermaid
 classDiagram
   class Network {
@@ -27,10 +27,12 @@ classDiagram
 
   class CanopenNetwork
   class VirtualCanopenNetwork
+  class VirtualSDCPNetwork
 
   Network <|-- EthernetNetworkBase
   Network <|-- EthercatNetworkBase
   Network <|-- CanopenNetworkBase
+  Network <|-- VirtualSDCPNetwork
 
   EthernetNetworkBase <|-- EthernetNetwork
   EthernetNetworkBase <|-- VirtualEthernetNetwork

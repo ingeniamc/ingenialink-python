@@ -1,0 +1,30 @@
+name: Check pull request checkboxes
+
+# This workflow does not check out the pull request's code. It reads only
+# GitHub metadata, so it is safe to run for pull requests from forks.
+#
+# Runs triggered by issue_comment are associated with the default branch, not
+# the pull request, so the action reports the result as a `pr-checkboxes`
+# commit status on the pull request head commit instead of failing the job.
+# Make `pr-checkboxes` the required check in branch protection, not this job.
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+  issue_comment:
+    types: [created, edited, deleted]
+
+permissions:
+  issues: read
+  pull-requests: read
+  statuses: write
+
+jobs:
+  check-checkboxes:
+    if: github.event_name != 'issue_comment' || github.event.issue.pull_request != null
+    runs-on: ubuntu-latest
+    steps:
+      # add-commit-status-support branch
+      - uses: ingeniamc/require-checklist-action@8ccb7177cf740d1ba759906d5c91f54ee1137598
+        with:
+          commitStatusContext: pr-checkboxes
+          requireChecklist: false

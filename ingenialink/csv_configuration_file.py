@@ -59,7 +59,7 @@ class RegisterRow:
 
     @property
     def csv_row(self) -> list[str]:
-        """Return the row data as a list for CSV writing."""
+        """The row data as a list for CSV writing."""
         return [self.index, self.subindex, self.value]
 
 

@@ -30,17 +30,17 @@ class Timeout:
 
     @property
     def elapsed_time_s(self) -> float:
-        """Get the elapsed time since the context manager was entered."""
+        """The elapsed time since the context manager was entered."""
         return time.time() - self.__initial_time
 
     @property
     def remaining_time_s(self) -> float:
-        """Get the remaining time before the timeout is reached."""
+        """The remaining time before the timeout is reached."""
         return max(0.0, self.__timeout - self.elapsed_time_s)
 
     @property
     def remaining_time_us(self) -> int:
-        """Get the remaining time in microseconds before the timeout is reached."""
+        """The remaining time in microseconds before the timeout is reached."""
         return int(self.remaining_time_s * 1_000_000)
 
     @property

@@ -1,5 +1,5 @@
 import socket
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from threading import Lock
 from typing import Any
@@ -17,7 +17,7 @@ class VirtualServoBase:
         self._lock = lock
 
     @contextmanager
-    def transaction(self) -> Iterator[None]:
+    def transaction(self) -> Generator[None, None, None]:
         """Acquire the communication lock for a full request/response transaction."""
         self._lock.acquire()
         try:
@@ -43,13 +43,12 @@ class VirtualServoBase:
     def receive_frame(self) -> bytes:
         """Receive a raw frame from the virtual drive.
 
-        Raises:
-            ILTimeoutError: If the receive operation times out.
-            ILIOError: If there is an error receiving the data.
-
         Returns:
             The received frame bytes.
 
+        Raises:
+            ILTimeoutError: If the receive operation times out.
+            ILIOError: If there is an error receiving the data.
         """
         try:
             return self._socket.recv(VIRTUAL_DRIVE_RECV_BUFFER_SIZE)

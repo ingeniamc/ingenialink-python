@@ -1,6 +1,6 @@
 import contextlib
 from abc import ABC
-from collections.abc import Iterator
+from collections.abc import Generator
 from typing import Callable, Optional, Union
 
 import canopen
@@ -172,7 +172,7 @@ class CanopenServo(CanopenServoBase):
         self.__node.sdo.RESPONSE_TIMEOUT = value
 
     @contextlib.contextmanager
-    def _minimum_sdo_timeout(self, value: float) -> Iterator[None]:
+    def _minimum_sdo_timeout(self, value: float) -> Generator[None, None, None]:
         """Context manager to ensure a minimum SDO timeout for the node.
 
         This context manager will only increase the current SDO timeout; it will
@@ -227,11 +227,11 @@ class CanopenServo(CanopenServoBase):
             config_register: Configuration file register instance.
             target_register: Target register instance.
 
-        Raises:
-            ValueError: If the value is not compatible with the register dtype.
-
         Returns:
             Adapted storage value as bytes.
+
+        Raises:
+            ValueError: If the value is not compatible with the register dtype.
         """
         data = super()._adapt_configuration_file_storage_value(
             configuration_file, config_register, target_register
@@ -272,4 +272,7 @@ class CanopenServo(CanopenServoBase):
     @node.setter
     def node(self, node: canopen.RemoteNode) -> None:
         """Remote node of the servo."""
+        if node is self.__node:
+            return
+        node.emcy.add_callback(self._on_emcy)
         self.__node = node

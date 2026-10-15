@@ -4,24 +4,44 @@ import ipaddress
 import os
 import socket
 import time
-from collections import OrderedDict, defaultdict
+from abc import abstractmethod
+from collections import OrderedDict
 from ftplib import FTP
 from threading import Thread
 from time import sleep
-from typing import Any, Callable, Optional, Union
+from typing import Callable, Generic, Optional, Union
 
 import ingenialogger
 from multiping import multi_ping
-from typing_extensions import override
+from typing_extensions import TypeVar, override
 
 from ingenialink.constants import DEFAULT_ETH_CONNECTION_TIMEOUT
+from ingenialink.ethernet.interface import get_interface_ipv4_subnet
 from ingenialink.ethernet.resources import BASIC_ETHERNET_V2_XDF
+from ingenialink.ethernet.servo import EthernetServo, EthernetServoBase
+from ingenialink.ethernet.tsn.ipv6_discovery import (
+    discover_ipv6_devices,
+)
+from ingenialink.ethernet.tsn.sdcp.connection import (
+    DEFAULT_SDCP_TIMEOUT_S,
+)
+from ingenialink.ethernet.tsn.sdcp.identification import (
+    identify_sdcp_node,
+)
+from ingenialink.ethernet.tsn.sdcp.node import SDCPNode
+from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
-from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
+from ingenialink.network import (
+    NetDevEvt,
+    NetProt,
+    NetState,
+    Network,
+    ServoT,
+    ServoTarget,
+    SlaveInfo,
+)
 from ingenialink.servo import Servo
 from ingenialink.utils.udp import UDP
-
-from .servo import EthernetServo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -36,10 +56,13 @@ CMD_CHANGE_CPU = 0x67E4
 MAX_NUM_UNSUCCESSFUL_PINGS = 3
 
 MAX_NUMBER_OF_SCAN_TRIES = 2
+MAX_NUMBER_OF_SCAN_INFO_TRIES = 2
 SCAN_CONNECTION_TIMEOUT = 0.5
 
+EthernetServoT = TypeVar("EthernetServoT", bound=EthernetServoBase, default=EthernetServoBase)
 
-class NetStatusListener(Thread):
+
+class NetStatusListener(Thread, Generic[ServoT]):
     """Network status listener thread to check if the drive is alive.
 
     Args:
@@ -47,7 +70,7 @@ class NetStatusListener(Thread):
 
     """
 
-    def __init__(self, network: "EthernetNetworkBase", refresh_time: float = 0.25) -> None:
+    def __init__(self, network: "Network[ServoT]", refresh_time: float = 0.25) -> None:
         super().__init__()
         self.__network = network
         self.__refresh_time = refresh_time
@@ -60,19 +83,20 @@ class NetStatusListener(Thread):
         subscribers of any state changes (connection/disconnection).
         """
         for servo in self.__network.servos:
-            servo_ip = servo.ip_address
-            servo_state = self.__network.get_servo_state(servo_ip)
+            servo_state = self.__network.get_servo_state(servo)
             is_servo_alive = servo.is_alive(attemps=MAX_NUM_UNSUCCESSFUL_PINGS)
             if servo_state == NetState.CONNECTED and not is_servo_alive:
-                self.__network._notify_status(servo_ip, NetDevEvt.REMOVED)
-                self.__network._set_servo_state(servo_ip, NetState.DISCONNECTED)
+                try:
+                    if isinstance(servo, EthernetServo):
+                        servo.recreate_socket()
+                finally:
+                    self.__network._transition_servo_state(servo, NetDevEvt.REMOVED)
             if (
                 servo_state == NetState.DISCONNECTED
                 and is_servo_alive
                 and self.__network.recover_from_disconnection(servo)
             ):
-                self.__network._notify_status(servo_ip, NetDevEvt.ADDED)
-                self.__network._set_servo_state(servo_ip, NetState.CONNECTED)
+                self.__network._transition_servo_state(servo, NetDevEvt.ADDED)
 
     def run(self) -> None:
         """Check the network status."""
@@ -88,23 +112,173 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-class EthernetNetworkBase(Network):
+class EthernetNetworkBase(Generic[EthernetServoT], Network[Servo]):
+    """Base class  for all Ethernet communications."""
+
+    def __init__(
+        self,
+    ) -> None:
+        super().__init__()
+        self.__listener_net_status: Optional[NetStatusListener[Servo]] = None
+
+    @abstractmethod
+    def _create_servo(
+        self,
+        *,
+        target: str,
+        dictionary: str,
+        port: int,
+        connection_timeout: float,
+        servo_status_listener: bool,
+        is_eoe: bool,
+        disconnect_callback: Optional[Callable[[Servo], None]],
+    ) -> EthernetServoT:
+        """Create a servo for this Ethernet network implementation."""
+        raise NotImplementedError
+
+    def connect_to_slave(
+        self,
+        target: str,
+        dictionary: str,
+        port: int = 1061,
+        connection_timeout: float = DEFAULT_ETH_CONNECTION_TIMEOUT,
+        servo_status_listener: bool = False,
+        net_status_listener: bool = False,
+        is_eoe: bool = False,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
+    ) -> EthernetServoT:
+        """Connects to a slave through the given network settings.
+
+        Args:
+            target: IP of the target slave.
+            dictionary: Path to the target dictionary file.
+            port: Port to connect to the slave.
+            connection_timeout: Time in seconds of the connection timeout.
+            servo_status_listener: Toggle the listener of the servo for
+                its status, errors, faults, etc.
+            net_status_listener: Toggle the listener of the network
+                status, connection and disconnection.
+            is_eoe: True if communication is EoE. ``False`` by default.
+            disconnect_callback: Callback function to be called when the servo is disconnected.
+                If not specified, no callback will be called.
+
+        Returns:
+            EthernetServo: Instance of the servo connected.
+
+        Raises:
+            ILError: If the drive is not found.
+        """
+        servo = self._create_servo(
+            target=target,
+            dictionary=dictionary,
+            port=port,
+            connection_timeout=connection_timeout,
+            servo_status_listener=servo_status_listener,
+            is_eoe=is_eoe,
+            disconnect_callback=disconnect_callback,
+        )
+        try:
+            servo.get_state()
+        except ILError as e:
+            servo.stop_status_listener()
+            raise ILError(f"Drive not found in IP {target}.") from e
+        self.servos.append(servo)
+        self._set_servo_state(target, NetState.CONNECTED)
+
+        if net_status_listener:
+            self.start_status_listener()
+        return servo
+
+    def disconnect_from_slave(self, servo: EthernetServoT) -> None:  # type: ignore [override]
+        """Disconnects the slave from the network.
+
+        Args:
+            servo: Instance of the servo connected.
+
+        Raises:
+            ValueError: If the provided servo is not an Ethernet servo.
+
+        """
+        servo.stop_status_listener()
+        with servo._lock:
+            self._close_socket(servo.socket)
+        self._set_servo_state(servo, NetState.DISCONNECTED)
+        self.servos.remove(servo)
+        if len(self.servos) == 0:
+            self.stop_status_listener()
+        # Notify that disconnect_from_slave has been called
+        servo._disconnect_event_publisher.notify(servo)
+
+    @staticmethod
+    def _close_socket(sock: socket.socket) -> None:
+        """Closes the established network socket."""
+        sock.shutdown(socket.SHUT_RDWR)
+        sock.close()
+
+    def start_status_listener(self) -> None:
+        """Start monitoring network events (CONNECTION/DISCONNECTION)."""
+        if self.__listener_net_status is None:
+            listener = NetStatusListener(self)
+            listener.start()
+            self.__listener_net_status = listener
+
+    def stop_status_listener(self) -> None:
+        """Stops the NetStatusListener from listening to the drive."""
+        if self.__listener_net_status is not None:
+            self.__listener_net_status.stop()
+            self.__listener_net_status.join()
+        self.__listener_net_status = None
+
+    def get_servo_state(self, servo_id: ServoTarget) -> NetState:
+        """Get the state of a servo that's a part of network.
+
+        The state indicates if the servo is connected or disconnected.
+
+        Args:
+            servo_id: The servo target or servo instance.
+
+        Returns:
+            The servo's state.
+
+        Raises:
+            ValueError: if the servo ID is not a string or a servo instance.
+        """
+        if not isinstance(servo_id, (str, Servo)):
+            raise ValueError("The servo ID must be a string or an instance of Servo.")
+        return super().get_servo_state(servo_id)
+
+    @property
+    def protocol(self) -> NetProt:
+        """Obtain network protocol."""
+        return NetProt.ETH
+
+
+class EthernetNetwork(EthernetNetworkBase[EthernetServo]):
     """Network for all Ethernet communications.
 
     Args:
-        subnet: The subnet in CIDR notation.
+        subnet: Optional subnet in CIDR notation used for IPv4 scanning.
+        interface: Optional network interface used to derive the IPv4 subnet
+            and perform IPv6 discovery.
 
+    The interface is required for SDCP because link-local IPv6 subnets can
+    exist on multiple network interfaces. The interface identifies the network
+    link used for SDCP communication.
     """
 
-    def __init__(self, subnet: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        subnet: Optional[str] = None,
+        interface: Optional[str] = None,
+    ) -> None:
         super().__init__()
         self.__subnet: Optional[Union[ipaddress.IPv4Network, ipaddress.IPv6Network]]
         if subnet is not None:
             self.__subnet = ipaddress.ip_network(subnet, strict=False)
         else:
             self.__subnet = None
-        self.__listener_net_status: Optional[NetStatusListener] = None
-        self.__observers_net_state: dict[str, list[Callable[[NetDevEvt], Any]]] = defaultdict(list)
+        self.__interface = interface
+        self._sdcp_nodes: dict[str, SDCPNode] = {}
 
     @staticmethod
     def load_firmware(
@@ -216,25 +390,6 @@ class EthernetNetworkBase(Network):
                 logger.error(e)
                 raise ILFirmwareLoadError("Error during bootloader process.")
 
-    def _scan_slaves(self) -> list[str]:
-        """Ping all the network IPs.
-
-        Returns:
-            List containing the IPs that responded to the ping request.
-
-        """
-        if self.__subnet is None:
-            return []
-        hosts_ips = [str(ip) for ip in self.__subnet]
-        # The scanning process can fail sometimes. Retry
-        # Check https://github.com/romana/multi-ping/issues/19
-        detected_slaves: dict[str, int] = {}
-        for _ in range(MAX_NUMBER_OF_SCAN_TRIES):
-            with contextlib.suppress(OSError):
-                ping_responses, _ = multi_ping(hosts_ips, timeout=1, ignore_lookup_errors=True)
-                detected_slaves.update(ping_responses)
-        return list(detected_slaves.keys())
-
     def scan_slaves(self) -> list[str]:  # type: ignore [override]
         """Scan drives connected to the network.
 
@@ -250,105 +405,86 @@ class EthernetNetworkBase(Network):
         slave_info: OrderedDict[str, SlaveInfo] = OrderedDict()
         slaves = self._scan_slaves()
         for slave_id in slaves:
-            with contextlib.suppress(ILError):
-                slave_info[slave_id] = self._get_servo_info_for_scan(slave_id)
+            # Retry because retrieving the drive information may occasionally time out.
+            for _ in range(MAX_NUMBER_OF_SCAN_INFO_TRIES):
+                try:
+                    slave_info[slave_id] = self._get_servo_info_for_scan(slave_id)
+                    break
+                except ILError:
+                    continue
         return slave_info
 
-    def connect_to_slave(
-        self,
-        target: str,
-        dictionary: str,
-        port: int = 1061,
-        connection_timeout: float = DEFAULT_ETH_CONNECTION_TIMEOUT,
-        servo_status_listener: bool = False,
-        net_status_listener: bool = False,
-        is_eoe: bool = False,
-        disconnect_callback: Optional[Callable[[Servo], None]] = None,
-    ) -> EthernetServo:
-        """Connects to a slave through the given network settings.
-
-        Args:
-            target: IP of the target slave.
-            dictionary: Path to the target dictionary file.
-            port: Port to connect to the slave.
-            connection_timeout: Time in seconds of the connection timeout.
-            servo_status_listener: Toggle the listener of the servo for
-                its status, errors, faults, etc.
-            net_status_listener: Toggle the listener of the network
-                status, connection and disconnection.
-            is_eoe: True if communication is EoE. ``False`` by default.
-            disconnect_callback: Callback function to be called when the servo is disconnected.
-                If not specified, no callback will be called.
-
-        Raises:
-            ILError: If the drive is not found.
+    def _scan_slaves(self) -> list[str]:
+        """Ping all IPv4 addresses in the configured network.
 
         Returns:
-            EthernetServo: Instance of the servo connected.
+            List containing the IP addresses that responded to the ping request.
         """
-        servo = EthernetServo(
-            target,
-            dictionary,
-            port,
-            connection_timeout,
-            servo_status_listener,
-            is_eoe,
-            disconnect_callback=disconnect_callback,
+        subnet = self._get_ipv4_subnet()
+        if subnet is None:
+            return []
+        hosts_ips = [str(ip) for ip in subnet]
+        # The scanning process can fail sometimes. Retry
+        # Check https://github.com/romana/multi-ping/issues/19
+        detected_slaves: dict[str, int] = {}
+        for _ in range(MAX_NUMBER_OF_SCAN_TRIES):
+            with contextlib.suppress(OSError):
+                ping_responses, _ = multi_ping(hosts_ips, timeout=1, ignore_lookup_errors=True)
+                detected_slaves.update(ping_responses)
+        return list(detected_slaves.keys())
+
+    def _get_ipv4_subnet(self) -> Optional[ipaddress.IPv4Network]:
+        """Return the IPv4 subnet used for slave scanning.
+
+        The explicitly configured subnet takes precedence. If no subnet was
+        provided, the subnet is derived from the configured interface.
+
+        Returns:
+            IPv4 subnet used for scanning, or ``None`` if neither a subnet nor
+            an interface was configured.
+
+        Raises:
+            ValueError: If the configured subnet is not an IPv4 subnet.
+            OSError: If the interface cannot be resolved or has no IPv4 address.
+        """
+        if self.__subnet is not None:
+            if not isinstance(self.__subnet, ipaddress.IPv4Network):
+                raise ValueError("An IPv4 subnet is required for IPv4 scanning")
+            return self.__subnet
+
+        interface = self.interface
+        if interface is None:
+            return None
+
+        return get_interface_ipv4_subnet(interface)
+
+    def _get_servo_info_for_scan(self, ip_address: str) -> SlaveInfo:
+        """Get the product code and revision number of a drive.
+
+        It's used for the scan_slaves_info method.
+
+        Returns:
+            product code and revision number.
+
+        Raises:
+            TypeError: if the product code type is not an integer.
+            ILError: if a register read fails.
+        """
+        servo = self.connect_to_slave(
+            ip_address, BASIC_ETHERNET_V2_XDF, connection_timeout=SCAN_CONNECTION_TIMEOUT
         )
         try:
-            servo.get_state()
-        except ILError as e:
-            servo.stop_status_listener()
-            raise ILError(f"Drive not found in IP {target}.") from e
-        self.servos.append(servo)
-        self._set_servo_state(target, NetState.CONNECTED)
-
-        if net_status_listener:
-            self.start_status_listener()
-        else:
-            self.stop_status_listener()
-        return servo
-
-    def disconnect_from_slave(self, servo: EthernetServo) -> None:  # type: ignore [override]
-        """Disconnects the slave from the network.
-
-        Args:
-            servo: Instance of the servo connected.
-
-        """
-        self.servos.remove(servo)
-        servo.stop_status_listener()
-        self.close_socket(servo.socket)
-        self._set_servo_state(servo.ip_address, NetState.DISCONNECTED)
-        if len(self.servos) == 0:
-            self.stop_status_listener()
-        # Notify that disconnect_from_slave has been called
-        servo._disconnect_event_publisher.notify(servo)
-
-    @staticmethod
-    def close_socket(sock: socket.socket) -> None:
-        """Closes the established network socket."""
-        sock.shutdown(socket.SHUT_RDWR)
-        sock.close()
-
-    def start_status_listener(self) -> None:
-        """Start monitoring network events (CONNECTION/DISCONNECTION)."""
-        if self.__listener_net_status is None:
-            listener = NetStatusListener(self)
-            listener.start()
-            self.__listener_net_status = listener
-
-    def stop_status_listener(self) -> None:
-        """Stops the NetStatusListener from listening to the drive."""
-        if self.__listener_net_status is not None:
-            self.__listener_net_status.stop()
-            self.__listener_net_status.join()
-        self.__listener_net_status = None
-
-    def _notify_status(self, ip: str, status: NetDevEvt) -> None:
-        """Notify subscribers of a network state change."""
-        for callback in self.__observers_net_state[ip]:
-            callback(status)
+            product_code = servo.read("DRV_ID_PRODUCT_CODE_COCO", subnode=0)
+            if not isinstance(product_code, int):
+                raise TypeError(f"Expected product code type to be int, got {type(product_code)}")
+            revision_number = servo.read("DRV_ID_REVISION_NUMBER_COCO", subnode=0)
+            if not isinstance(revision_number, int):
+                raise TypeError(
+                    f"Expected revision number type to be int, got {type(revision_number)}"
+                )
+            return SlaveInfo(product_code, revision_number)
+        finally:
+            self.disconnect_from_slave(servo)
 
     @override
     def recover_from_disconnection(self, servo: Optional[Servo] = None) -> bool:
@@ -361,114 +497,173 @@ class EthernetNetworkBase(Network):
         Args:
             servo: The servo to recover communication with.
 
-        Raises:
-            ValueError: If the servo argument is None.
-
         Returns:
             True if communication with the servo is recovered, False otherwise.
+
+        Raises:
+            ValueError: If the servo argument is None or not an Ethernet or SDCP Servo instance.
         """
-        if servo is None or not isinstance(servo, EthernetServo):
-            raise ValueError("Ethernet Servo instance must be provided for recovery.")
+        if servo is None or not isinstance(servo, (EthernetServo, SDCPServo)):
+            raise ValueError("An Ethernet or SDCP Servo instance must be provided for recovery.")
 
         if servo.is_alive(attemps=MAX_NUM_UNSUCCESSFUL_PINGS):
-            logger.info(f"Communication with servo at IP {servo.ip_address} recovered.")
+            logger.info(f"Communication with servo at {servo.target} recovered.")
             return True
-        else:
-            logger.warning(f"Failed to recover communication with servo at IP {servo.ip_address}.")
-            return False
 
-    def subscribe_to_status(self, ip: str, callback: Callable[[NetDevEvt], Any]) -> None:  # type: ignore [override]
-        """Subscribe to network state changes.
+        logger.warning(f"Failed to recover communication with servo at {servo.target}.")
+        return False
 
-        Args:
-            ip: IP of the drive to subscribe.
-            callback: Callback function.
+    def scan_sdcp_nodes(
+        self,
+        timeout: float = DEFAULT_SDCP_TIMEOUT_S,
+    ) -> list[SDCPNode]:
+        """Discover SDCP-compatible nodes through IPv6.
 
-        """
-        if callback in self.__observers_net_state[ip]:
-            logger.info("Callback already subscribed.")
-            return
-        self.__observers_net_state[ip].append(callback)
-
-    def unsubscribe_from_status(self, ip: str, callback: Callable[[NetDevEvt], Any]) -> None:  # type: ignore [override]
-        """Unsubscribe from network state changes.
+        IPv6 devices that do not respond to SDCP identification are ignored.
+        Previously known nodes are updated instead of replaced.
 
         Args:
-            ip: IP of the drive to unsubscribe.
-            callback: Callback function.
-
-        """
-        if callback not in self.__observers_net_state[ip]:
-            logger.info("Callback not subscribed.")
-            return
-        self.__observers_net_state[ip].remove(callback)
-
-    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
-        """Get the state of a servo that's a part of network.
-
-        The state indicates if the servo is connected or disconnected.
-
-        Args:
-            servo_id: The servo's IP address.
-
-        Raises:
-            ValueError: if the servo ID is not a string.
+            timeout: Timeout in seconds for SDCP identification transactions.
 
         Returns:
-            The servo's state.
-        """
-        if not isinstance(servo_id, str):
-            raise ValueError("The servo ID must be a string.")
-        return self._servos_state[servo_id]
-
-    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
-        """Set the state of a servo that's a part of network.
-
-        Args:
-            servo_id: The servo's IP address.
-            state: The servo's state.
-
-        """
-        self._servos_state[servo_id] = state
-
-    def _get_servo_info_for_scan(self, ip_address: str) -> SlaveInfo:
-        """Get the product code and revision number of a drive.
-
-        It's used for the scan_slaves_info method.
+            SDCP nodes identified during the current scan.
 
         Raises:
-            TypeError: if the product code type is not an integer.
+            ValueError: If no network interface was configured.
+        """
+        if self.interface is None:
+            raise ValueError("A network interface is required to scan SDCP nodes")
+
+        discovered_nodes: dict[str, SDCPNode] = {}
+        for target in discover_ipv6_devices(self.interface):
+            try:
+                discovery = identify_sdcp_node(
+                    target=target,
+                    interface=self.interface,
+                    timeout=timeout,
+                )
+            except ILError:
+                continue
+
+            node = self._sdcp_nodes.get(discovery.target)
+            if node is None:
+                node = SDCPNode(discovery)
+                self._sdcp_nodes[discovery.target] = node
+            else:
+                node.update(discovery)
+
+            discovered_nodes[discovery.target] = node
+
+        return list(discovered_nodes.values())
+
+    def connect_to_node(
+        self,
+        node: SDCPNode,
+        dictionary: str,
+        servo_status_listener: bool = False,
+        net_status_listener: bool = False,
+        disconnect_callback: Optional[Callable[[Servo], None]] = None,
+        connection_timeout: float = DEFAULT_SDCP_TIMEOUT_S,
+    ) -> SDCPServo:
+        """Connect to an SDCP node managed by the network.
+
+        Args:
+            node: SDCP node to connect to.
+            dictionary: Path to the target dictionary file.
+            servo_status_listener: Whether to start the servo status listener.
+            net_status_listener: Whether to start the network status listener.
+            disconnect_callback: Callback invoked when the servo is disconnected.
+            connection_timeout: Timeout in seconds for SDCP transactions.
 
         Returns:
-            product code and revision number.
+            Connected SDCP servo.
+
+        Raises:
+            ValueError: If the node is not managed by this network.
         """
-        servo = self.connect_to_slave(
-            ip_address, BASIC_ETHERNET_V2_XDF, connection_timeout=SCAN_CONNECTION_TIMEOUT
+        self._validate_sdcp_node(node)
+
+        servo = node.connect(
+            dictionary_path=dictionary,
+            servo_status_listener=servo_status_listener,
+            disconnect_callback=disconnect_callback,
+            connection_timeout=connection_timeout,
         )
-        try:
-            product_code = servo.read("DRV_ID_PRODUCT_CODE_COCO", subnode=0)
-        except ILError:
-            logger.error(f"The product code cannot be read from the drive with IP: {ip_address}.")
-            product_code = None
-        if not isinstance(product_code, int):
-            raise TypeError(f"Expected product code type to be int, got {type(product_code)}")
-        try:
-            revision_number = servo.read("DRV_ID_REVISION_NUMBER_COCO", subnode=0)
-        except ILError:
-            logger.error(
-                f"The revision number cannot be read from the drive with IP: {ip_address}."
-            )
-            revision_number = None
-        if not isinstance(revision_number, int):
-            raise TypeError(f"Expected revision number type to be int, got {type(revision_number)}")
-        self.disconnect_from_slave(servo)
-        return SlaveInfo(product_code, revision_number)
+        self.servos.append(servo)
+        self._set_servo_state(servo, NetState.CONNECTED)
+
+        if net_status_listener:
+            self.start_status_listener()
+
+        return servo
+
+    def disconnect_from_node(self, node: SDCPNode) -> None:
+        """Disconnect from an SDCP node managed by the network.
+
+        Args:
+            node: SDCP node to disconnect from.
+
+        Raises:
+            ValueError: If the node is not managed by the network or is not
+                connected through it.
+        """
+        self._validate_sdcp_node(node)
+
+        servo = node.servo
+        if servo is None or servo not in self.servos:
+            raise ValueError("The SDCP node is not connected through this network")
+
+        servo.stop_status_listener()
+        node.disconnect()
+        self._set_servo_state(servo, NetState.DISCONNECTED)
+        self.servos.remove(servo)
+
+        if not self.servos:
+            self.stop_status_listener()
+
+    def _validate_sdcp_node(self, node: SDCPNode) -> None:
+        """Validate that an SDCP node is managed by this network.
+
+        Args:
+            node: SDCP node to validate.
+
+        Raises:
+            ValueError: If the node is not managed by this network.
+        """
+        if self._sdcp_nodes.get(node.target) is not node:
+            raise ValueError("The SDCP node is not managed by this network")
 
     @property
-    def protocol(self) -> NetProt:
-        """Obtain network protocol."""
-        return NetProt.ETH
+    def sdcp_nodes(self) -> list[SDCPNode]:
+        """The list of SDCP nodes managed by the network.
 
+        Returns:
+            Copy of the list of SDCP nodes managed by the network.
+        """
+        return list(self._sdcp_nodes.values())
 
-class EthernetNetwork(EthernetNetworkBase):
-    """Network for all Ethernet communications."""
+    def _create_servo(
+        self,
+        *,
+        target: str,
+        dictionary: str,
+        port: int,
+        connection_timeout: float,
+        servo_status_listener: bool,
+        is_eoe: bool,
+        disconnect_callback: Optional[Callable[[Servo], None]],
+    ) -> EthernetServo:
+        return EthernetServo(
+            target,
+            dictionary,
+            port,
+            connection_timeout,
+            servo_status_listener,
+            is_eoe,
+            disconnect_callback=disconnect_callback,
+        )
+
+    @property
+    def interface(self) -> Optional[str]:
+        """Obtain network interface."""
+        return self.__interface

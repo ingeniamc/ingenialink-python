@@ -95,6 +95,13 @@ class RegCyclicType(Enum):
     SAFETY_INPUT_OUTPUT = "CYCLIC_SISO"
 
 
+class ByteOrder(str, Enum):
+    """Supported register byte orders."""
+
+    LITTLE = "little"
+    BIG = "big"
+
+
 _DEPRECATED = {
     "REG_DTYPE": "RegDtype",
     "REG_ACCESS": "RegAccess",

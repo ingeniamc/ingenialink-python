@@ -184,6 +184,7 @@ def test_subscribe_to_pdo_thread_status(net: "EthercatNetwork", mocker) -> None:
 
 @pytest.mark.ethercat
 def test_subscribe_callbacks(net: "EthercatNetwork", servo: "EthercatServo", mocker) -> None:
+
     # Network callbacks - notifications for all PDO maps
     send_callback = mocker.Mock()
     receive_callback = mocker.Mock()

@@ -3,15 +3,15 @@ import os
 import re
 import threading
 import time
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from collections.abc import Generator
 from contextlib import contextmanager
-from enum import Enum
+from functools import lru_cache
 from threading import Thread
-from typing import TYPE_CHECKING, Callable, Optional, Union, cast
+from typing import TYPE_CHECKING, Callable, Generic, Optional, Union, cast
 
 import ingenialogger
-from typing_extensions import override
+from typing_extensions import TypeVar, override
 
 from ingenialink.pdo_network_manager import PDONetworkManager
 from ingenialink.servo import Servo
@@ -29,14 +29,15 @@ if TYPE_CHECKING:
 from dataclasses import dataclass, field
 
 from ingenialink.constants import ECAT_STATE_CHANGE_TIMEOUT_US
-from ingenialink.ethercat.servo import EthercatServo
+from ingenialink.ethercat.servo import EthercatServo, EthercatServoBase
+from ingenialink.ethercat.state import SlaveState
 from ingenialink.exceptions import (
     ILError,
     ILFirmwareLoadError,
     ILStateError,
     ILWrongWorkingCountError,
 )
-from ingenialink.network import NetDevEvt, NetProt, NetState, Network, SlaveInfo
+from ingenialink.network import NetDevEvt, NetProt, NetState, Network, ServoTarget, SlaveInfo
 
 logger = ingenialogger.get_logger(__name__)
 
@@ -87,7 +88,7 @@ class GilReleaseConfig:
 
     @property
     def always_release(self) -> bool:
-        """Returns True if the GIL should be released for all functions, False otherwise."""
+        """True if the GIL should be released for all functions, False otherwise."""
         return self._always_release
 
     @classmethod
@@ -107,18 +108,7 @@ class GilReleaseConfig:
         return instance
 
 
-class SlaveState(Enum):
-    """EtherCAT state enum."""
-
-    NONE_STATE = 0
-    INIT_STATE = 1
-    PREOP_STATE = 2
-    BOOT_STATE = 3
-    SAFEOP_STATE = 4
-    OP_STATE = 8
-    ERROR_STATE = 16
-    PREOP_ERROR_STATE = PREOP_STATE + ERROR_STATE
-    SAFEOP_ERROR_STATE = SAFEOP_STATE + ERROR_STATE
+EthercatServoT = TypeVar("EthercatServoT", bound=EthercatServoBase, default=EthercatServoBase)
 
 
 class NetStatusListener(Thread):
@@ -134,7 +124,7 @@ class NetStatusListener(Thread):
 
     """
 
-    def __init__(self, network: "EthercatNetwork", refresh_time: float = 0.25):
+    def __init__(self, network: "EthercatNetwork", refresh_time: float = 0.25) -> None:
         super().__init__()
         self.__network = network
         self.__refresh_time = refresh_time
@@ -163,16 +153,20 @@ class NetStatusListener(Thread):
 
         # Phase 1: per-slave disconnection detection
         for servo in self.__network.servos:
+            if not isinstance(servo, EthercatServo):
+                # Virtual servos do not have slave id
+                # https://novantamotion.atlassian.net/browse/INGK-1286
+                continue
             slave_id = servo.slave_id
             servo_state = self.__network.get_servo_state(slave_id)
             is_servo_alive = servo.slave_exists and (servo.slave.state != pysoem.NONE_STATE)
             if not is_servo_alive and servo_state == NetState.CONNECTED:
-                self.__network._notify_status(slave_id, NetDevEvt.REMOVED)
-                self.__network._set_servo_state(slave_id, NetState.DISCONNECTED)
+                self.__network._transition_servo_state(slave_id, NetDevEvt.REMOVED)
 
         # Phase 2: skip recovery if every slave is already connected
         if not any(
-            self.__network.get_servo_state(servo.slave_id) == NetState.DISCONNECTED
+            isinstance(servo, EthercatServo)  # INGK-1286
+            and self.__network.get_servo_state(servo.slave_id) == NetState.DISCONNECTED
             for servo in self.__network.servos
         ):
             return
@@ -183,12 +177,14 @@ class NetStatusListener(Thread):
 
         # Phase 4: emit ADDED only for slaves that are actually alive after recovery
         for servo in self.__network.servos:
+            if not isinstance(servo, EthercatServo):
+                # INGK-1286
+                continue
             slave_id = servo.slave_id
             servo_state = self.__network.get_servo_state(slave_id)
             is_servo_alive = servo.slave_exists and (servo.slave.state != pysoem.NONE_STATE)
             if is_servo_alive and servo_state == NetState.DISCONNECTED:
-                self.__network._notify_status(slave_id, NetDevEvt.ADDED)
-                self.__network._set_servo_state(slave_id, NetState.CONNECTED)
+                self.__network._transition_servo_state(slave_id, NetDevEvt.ADDED)
 
     def run(self) -> None:
         """Check the network status continuously.
@@ -209,71 +205,20 @@ class NetStatusListener(Thread):
         self.__stop = True
 
 
-class EthercatNetworkBase(Network):
+class EthercatNetworkBase(Generic[EthercatServoT], Network[EthercatServoT]):
     """Base class for EtherCAT network communications."""
 
-    def __init__(self) -> None:
-        super().__init__()
-        self._observers_net_state: dict[Union[int, str], list[Callable[[NetDevEvt], None]]] = (
-            defaultdict(list)
-        )
-
-    def subscribe_to_status(
-        self, target: Union[int, str], callback: Callable[[NetDevEvt], None]
-    ) -> None:
-        """Subscribe to network state changes.
-
-        Args:
-            target: Target slave ID.
-            callback: Callback function to execute on state changes.
-
-        """
-        if callback in self._observers_net_state[target]:
-            logger.info("Callback already subscribed.")
-            return
-        self._observers_net_state[target].append(callback)
-
-    def unsubscribe_from_status(
-        self, target: Union[int, str], callback: Callable[[NetDevEvt], None]
-    ) -> None:
-        """Unsubscribe from network state changes.
-
-        Args:
-            target: Target slave ID.
-            callback: Callback function previously subscribed.
-
-        """
-        if callback not in self._observers_net_state[target]:
-            logger.info("Callback not subscribed.")
-            return
-        self._observers_net_state[target].remove(callback)
-
-    def get_servo_state(self, servo_id: Union[int, str]) -> NetState:
+    def get_servo_state(self, servo_id: ServoTarget) -> NetState:
         """Get the state of a servo in the network.
 
         Args:
-            servo_id: Servo ID.
+            servo_id: Servo ID, or the servo instance itself.
 
         Returns:
             Current state of the servo.
 
         """
-        return self._servos_state[servo_id]
-
-    def _set_servo_state(self, servo_id: Union[int, str], state: NetState) -> None:
-        """Set the state of a servo in the network.
-
-        Args:
-            servo_id: Servo ID.
-            state: New servo state.
-
-        """
-        self._servos_state[servo_id] = state
-
-    def _notify_status(self, target: Union[int, str], status: NetDevEvt) -> None:
-        """Notify subscribers of a network state change."""
-        for callback in self._observers_net_state[target]:
-            callback(status)
+        return super().get_servo_state(servo_id)
 
     @property
     def protocol(self) -> NetProt:
@@ -281,7 +226,7 @@ class EthercatNetworkBase(Network):
         return NetProt.ECAT
 
 
-class EthercatNetwork(EthercatNetworkBase):
+class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
     """Network for all EtherCAT communications.
 
     Args:
@@ -386,7 +331,7 @@ class EthercatNetwork(EthercatNetworkBase):
 
     @property
     def pdo_manager(self) -> PDONetworkManager:
-        """Returns the PDO manager."""
+        """The PDO manager."""
         return self._pdo_manager
 
     def subscribe_to_pdo_thread_status(self, callback: Callable[[bool], None]) -> None:
@@ -577,7 +522,7 @@ class EthercatNetwork(EthercatNetworkBase):
         self._lock.release()
         if len(self.servos):
             self._change_nodes_state(
-                [servo for servo in self.servos if servo.slave_exists], pysoem.PREOP_STATE
+                [servo for servo in self.servos if servo.slave_exists], SlaveState.PREOP_STATE
             )
         if nodes is not None:
             self.__last_init_nodes = list(range(1, nodes + 1))
@@ -592,6 +537,8 @@ class EthercatNetwork(EthercatNetworkBase):
                 # Servos that are not in init_nodes must set their slave reference to None
                 # The slave object is no longer valid and contains wrong information
                 servo.update_slave_reference(None)
+
+        self.__get_servo_by_slave.cache_clear()
 
     def connect_to_slave(
         self,
@@ -613,13 +560,13 @@ class EthercatNetwork(EthercatNetworkBase):
             disconnect_callback: Callback function to be called when the servo is disconnected.
                 If not specified, no callback will be called.
 
+        Returns:
+            ethercat servo.
+
         Raises:
             ValueError: If the slave ID is not valid.
             ILError: If no slaves are found.
             ILStateError: If slave can not reach PreOp state
-
-        Returns:
-            ethercat servo.
         """
         if not isinstance(slave_id, int) or slave_id < 0:
             raise ValueError("Invalid slave ID value")
@@ -641,12 +588,13 @@ class EthercatNetwork(EthercatNetworkBase):
             sdo_read_write_release_gil=self.__gil_release_config.sdo_read_write,
             disconnect_callback=disconnect_callback,
         )
-        if not self._change_nodes_state(servo, pysoem.PREOP_STATE):
+        if not self._change_nodes_state(servo, SlaveState.PREOP_STATE):
             if servo_status_listener:
                 servo.stop_status_listener()
             raise ILStateError("Slave can not reach PreOp state")
         servo.reset_pdo_mapping()
         self.servos.append(servo)
+        self.__get_servo_by_slave.cache_clear()
         self._set_servo_state(slave_id, NetState.CONNECTED)
         if net_status_listener:
             self.start_status_listener()
@@ -675,10 +623,11 @@ class EthercatNetwork(EthercatNetworkBase):
             servo: Instance of the servo connected.
 
         """
-        if not self._change_nodes_state(servo, pysoem.INIT_STATE):
+        if not self._change_nodes_state(servo, SlaveState.INIT_STATE):
             logger.warning("Drive can not reach Init state")
         servo.teardown()
         self.servos.remove(servo)
+        self.__get_servo_by_slave.cache_clear()
         if not self.servos:
             self.stop_status_listener()
             self.close_ecat_master()
@@ -718,13 +667,13 @@ class EthercatNetwork(EthercatNetworkBase):
         with Timeout(timeout) as t:
             # Set all slaves to SafeOp state
             self._ecat_master.state = pysoem.SAFEOP_STATE
-            self._change_nodes_state(op_servo_list, pysoem.SAFEOP_STATE)
+            self._change_nodes_state(op_servo_list, SlaveState.SAFEOP_STATE)
             while not self._check_node_state(op_servo_list, pysoem.SAFEOP_STATE):
                 if t.has_expired:
                     raise ILStateError("Drives can not reach SafeOp state")
 
             # Set all slaves to Op state
-            self._change_nodes_state(op_servo_list, pysoem.OP_STATE)
+            self._change_nodes_state(op_servo_list, SlaveState.OP_STATE)
             while not self._check_node_state(op_servo_list, pysoem.OP_STATE):
                 self.send_receive_processdata()
                 if t.has_expired:
@@ -744,7 +693,7 @@ class EthercatNetwork(EthercatNetworkBase):
         ]
         if len(restore_servos_list) == 0:
             return
-        if not self._change_nodes_state(restore_servos_list, pysoem.INIT_STATE):
+        if not self._change_nodes_state(restore_servos_list, SlaveState.INIT_STATE):
             logger.warning("Not all drives could reach the Init state")
         self.__init_nodes()
 
@@ -798,8 +747,35 @@ class EthercatNetwork(EthercatNetworkBase):
         for servo in self.servos:
             servo.process_pdo_inputs()
 
+    @lru_cache
+    def __get_servo_by_slave(self, slave: "CdefSlave") -> Optional[EthercatServo]:
+        """Get the EthercatServo instance corresponding to a given CdefSlave.
+
+        Args:
+            slave: The CdefSlave instance.
+
+        Returns:
+            The corresponding EthercatServo instance, or None if it's not registered as servo
+        """
+        for servo in self.servos:
+            if servo.slave == slave:
+                return servo
+        return None
+
+    def _request_slave_change(self, node: "CdefSlave", target_state: SlaveState) -> None:
+        """Request a state change for a given node."""
+        # The node is a CdefSlave, it may be associate with a servo or not
+        servo = self.__get_servo_by_slave(node)
+        if servo is not None:
+            # The node is connected, use the EthercatServo method so subscribers are notified
+            servo.request_node_state(target_state)
+        else:
+            # The node is not connected, set the state directly on the CdefSlave
+            node.state = target_state.value
+            node.write_state()
+
     def _change_nodes_state(
-        self, nodes: Union["EthercatServo", list["EthercatServo"]], target_state: int
+        self, nodes: Union["EthercatServo", list["EthercatServo"]], target_state: SlaveState
     ) -> bool:
         """Set ECAT state to target state for all nodes in list.
 
@@ -814,9 +790,8 @@ class EthercatNetwork(EthercatNetworkBase):
         for drive in node_list:
             if not drive.slave_exists:
                 continue
-            drive.slave.state = target_state
-            drive.slave.write_state()
-        return self._check_node_state(nodes, target_state)
+            drive.request_node_state(target_state)
+        return self._check_node_state(nodes, target_state.value)
 
     def _check_node_state(
         self, nodes: Union["EthercatServo", list["EthercatServo"]], target_state: int
@@ -929,8 +904,7 @@ class EthercatNetwork(EthercatNetworkBase):
             recovered = False
             while time.time() < (start_time + self.__FOE_RECOVERY_TIMEOUT_S) and not recovered:
                 self.__init_nodes()
-                slave.state = pysoem.PREOP_STATE
-                slave.write_state()
+                self._request_slave_change(slave, SlaveState.PREOP_STATE)
                 recovered = (
                     slave.state_check(pysoem.PREOP_STATE, ECAT_STATE_CHANGE_TIMEOUT_US)
                     == pysoem.PREOP_STATE
@@ -947,8 +921,7 @@ class EthercatNetwork(EthercatNetworkBase):
         Returns:
             True if the slave reached the boot state, False otherwise.
         """
-        slave.state = pysoem.BOOT_STATE
-        slave.write_state()
+        self._request_slave_change(slave, SlaveState.BOOT_STATE)
         return bool(
             slave.state_check(pysoem.BOOT_STATE, ECAT_STATE_CHANGE_TIMEOUT_US) == pysoem.BOOT_STATE
         )
@@ -959,8 +932,7 @@ class EthercatNetwork(EthercatNetworkBase):
         Raises:
             ILFirmwareLoadError: If there is an error writing to the Boot mode register.
         """
-        slave.state = pysoem.PREOP_STATE
-        slave.write_state()
+        self._request_slave_change(slave, SlaveState.PREOP_STATE)
         if (
             slave.state_check(pysoem.PREOP_STATE, ECAT_STATE_CHANGE_TIMEOUT_US)
             == pysoem.PREOP_STATE
@@ -973,10 +945,8 @@ class EthercatNetwork(EthercatNetworkBase):
                 )
             except pysoem.WkcError as e:
                 raise ILFirmwareLoadError("Error writing to the Boot mode register.") from e
-        slave.state = pysoem.INIT_STATE
-        slave.write_state()
-        slave.state = pysoem.BOOT_STATE
-        slave.write_state()
+        self._request_slave_change(slave, SlaveState.INIT_STATE)
+        self._request_slave_change(slave, SlaveState.BOOT_STATE)
         time.sleep(self.__FORCE_BOOT_SLEEP_TIME_S)
         self.__init_nodes()
 

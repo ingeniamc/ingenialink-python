@@ -11,7 +11,9 @@ from ingenialink.constants import PASSWORD_RESTORE_SAFETY_REGS, PASSWORD_STORE_S
 from ingenialink.csv_configuration_file import CSVConfigurationFile
 from ingenialink.emcy import EmergencyMessage
 from ingenialink.ethercat.dictionary import EthercatDictionary
+from ingenialink.ethercat.state import SlaveState
 from ingenialink.table import Table
+from ingenialink.utils.event import create_event
 
 try:
     import pysoem
@@ -126,6 +128,18 @@ class EthercatServo(EthercatServoBase):
             servo_status_listener,
             disconnect_callback=disconnect_callback,
         )
+        self.state_requested_event, self._state_requested_event_publisher = create_event(SlaveState)
+
+    def request_node_state(self, state: "SlaveState") -> None:
+        """Request a state change for the slave.
+
+        Args:
+            state: The requested state.
+
+        """
+        self.slave.state = state.value
+        self.slave.write_state()
+        self._state_requested_event_publisher.notify(state)
 
     @property  # type: ignore[misc]
     def dictionary(self) -> EthercatDictionary:  # type: ignore[override]
@@ -286,12 +300,12 @@ class EthercatServo(EthercatServoBase):
     def _monitoring_read_data(self) -> bytes:
         """Read monitoring data frame.
 
+        Returns:
+            Monitoring data.
+
         Raises:
             NotImplementedError: If monitoring is not supported by the device.
             ValueError: If unexpected data type was returned from read.
-
-        Returns:
-            Monitoring data.
         """
         if not super()._is_monitoring_implemented():
             raise NotImplementedError("Monitoring is not supported by this device.")

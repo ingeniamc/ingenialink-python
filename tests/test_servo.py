@@ -29,6 +29,7 @@ from ingenialink.exceptions import (
 from ingenialink.register import RegAddressType
 from ingenialink.servo import Servo, ServoState, StoreRestoreManager
 from ingenialink.utils._utils import convert_bytes_to_dtype
+from tests.conftest import refresh_registers_for_test_rollback
 
 if TYPE_CHECKING:
     from summit_testing_framework.environment import Environment
@@ -85,16 +86,18 @@ def create_monitoring(servo):
 
 @pytest.fixture()
 def create_disturbance(servo):
-
-    data = list(range(DISTURBANCE_NUM_SAMPLES))
-    servo.disturbance_disable()
-    servo.disturbance_remove_all_mapped_registers()
-    servo.disturbance_set_mapped_register(
-        channel=0, uid="CL_POS_SET_POINT_VALUE", size=DISTURBANCE_CH_DATA_SIZE
-    )
-    servo.disturbance_write_data(0, RegDtype.S32, data)
-    yield servo
-    servo.disturbance_disable()
+    # refresh registers for rollback as disturbance mapped registers
+    # are not detected by drive context manager (CIT-749)
+    with refresh_registers_for_test_rollback(servo, ["CL_POS_SET_POINT_VALUE"]):
+        data = list(range(DISTURBANCE_NUM_SAMPLES))
+        servo.disturbance_disable()
+        servo.disturbance_remove_all_mapped_registers()
+        servo.disturbance_set_mapped_register(
+            channel=0, uid="CL_POS_SET_POINT_VALUE", size=DISTURBANCE_CH_DATA_SIZE
+        )
+        servo.disturbance_write_data(0, RegDtype.S32, data)
+        yield servo
+        servo.disturbance_disable()
 
 
 @pytest.mark.canopen
@@ -601,6 +604,11 @@ def test_disturbance_data_size(create_disturbance):
 @pytest.mark.ethernet
 @pytest.mark.ethercat
 @pytest.mark.virtual
+@pytest.mark.not_valid_for_product(
+    part_number="CAP-*",
+    interfaces=[Interface.ETH],
+    skip_reason="https://novantamotion.atlassian.net/browse/CAP-924",
+)
 def test_enable_disable(servo):
     servo.enable()
     assert servo.status[1] == ServoState.ENABLED
@@ -651,21 +659,13 @@ def test_is_alive(servo):
     assert servo.is_alive()
 
 
-@pytest.mark.canopen
-@pytest.mark.ethernet
-@pytest.mark.ethercat
 @pytest.mark.virtual
 def test_status_word_wait_change(servo):
     subnode = 1
     timeout = 0.5
     current_status_word = servo.read(servo.STATUS_WORD_REGISTERS, subnode=subnode)
-    try:
+    with pytest.raises(ILTimeoutError):
         servo.status_word_wait_change(current_status_word, timeout, subnode)
-    except ILTimeoutError:
-        # Success. The status word did not change
-        return
-    new_status_word = servo.read(servo.STATUS_WORD_REGISTERS, subnode=subnode)
-    pytest.fail(f"The status word changed from {current_status_word} to {new_status_word}.")
 
 
 @pytest.mark.ethernet

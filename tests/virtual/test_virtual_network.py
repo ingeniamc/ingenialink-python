@@ -28,7 +28,7 @@ def test_virtual_drive_disconnection(virtual_drive_custom_dict):
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     _, net, servo = virtual_drive_custom_dict(dictionary, Interface.ETH)
     net.disconnect_from_slave(servo)
-    assert net.get_servo_state(VirtualDrive.IP_ADDRESS) == NetState.DISCONNECTED
+    assert net.get_servo_state(servo.ip_address) == NetState.DISCONNECTED
     assert len(net.servos) == 0
     assert servo.socket._closed
 
@@ -94,14 +94,9 @@ def test_virtual_ethernet_servo_and_network_status_listeners(mocker):
         servo = net.connect_to_slave(
             dictionary,
             server.port,
-            servo_status_listener=True,
+            servo_status_listener=False,
             net_status_listener=True,
         )
-
-        servo_events = []
-        net_events = []
-        servo.subscribe_to_status(lambda state, subnode: servo_events.append((state, subnode)))
-        net.subscribe_to_status(server.ip, net_events.append)
 
         state_sequence = iter([ServoState.DISABLED, ServoState.ENABLED, ServoState.ENABLED])
 
@@ -109,6 +104,13 @@ def test_virtual_ethernet_servo_and_network_status_listeners(mocker):
             return next(state_sequence)
 
         mocker.patch.object(servo, "get_state", side_effect=mocked_get_state)
+
+        servo_events = []
+        net_events = []
+        servo.subscribe_to_status(lambda state, subnode: servo_events.append((state, subnode)))
+        net.subscribe_to_status(server.ip, net_events.append)
+        # Start state polling only after the status observers have been registered.
+        servo.start_status_listener()
 
         timeout = time.time() + 4
         while len(servo_events) < 2 and time.time() < timeout:

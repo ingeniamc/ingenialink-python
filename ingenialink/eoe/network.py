@@ -105,11 +105,11 @@ class EoENetwork(EthernetNetwork):
             disconnect_callback: Callback function to be called when the servo is disconnected.
                 If not specified, no callback will be called.
 
-        Raises:
-            ValueError: ip_address must be a subnetwork of 192.168.3.0/24.
-
         Returns:
             EthernetServo: Instance of the servo connected.
+
+        Raises:
+            ValueError: ip_address must be a subnetwork of 192.168.3.0/24.
         """
         if ipaddress.ip_address(ip_address) not in self.ECAT_SERVICE_NETWORK:
             raise ValueError("ip_address must be a subnetwork of 192.168.3.0/24")
@@ -125,8 +125,7 @@ class EoENetwork(EthernetNetwork):
             self._start_eoe_service()
         self.__wait_eoe_starts()
         self._configured_slaves[ip_address] = slave_id
-        self.subscribe_to_status(ip_address, self._recover_from_power_cycle)
-        return super().connect_to_slave(
+        servo = super().connect_to_slave(
             target=ip_address,
             dictionary=dictionary,
             port=port,
@@ -136,6 +135,8 @@ class EoENetwork(EthernetNetwork):
             is_eoe=True,
             disconnect_callback=disconnect_callback,
         )
+        self.subscribe_to_status(servo, self._recover_from_power_cycle)
+        return servo
 
     def __wait_eoe_starts(self) -> None:
         """Wait until the EoE service starts the EoE or the timeout was reached."""

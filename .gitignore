@@ -36,8 +36,6 @@ out.txt
 # Documentation
 /_docs
 
-# Cython compilation
-/ingenialink/cython_files/*.cpp
 temp/*
 
 # tests setups and JSON export files
@@ -59,3 +57,6 @@ tests/outputs/
 # Config files from examples
 can_config*.xcf
 eth_config*.xcf
+
+# Wireshark files
+*.*pcap

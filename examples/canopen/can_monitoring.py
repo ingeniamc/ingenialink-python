@@ -14,6 +14,9 @@ def monitoring_example(args: argparse.Namespace) -> list[NDArray[np.float64]]:
     Args:
         args: Command line arguments.
 
+    Returns:
+        List of numpy arrays with the monitored data for each register.
+
     Raises:
         TypeError: If the register type is not as expected.
         TypeError: If the read register value type is not as expected.
@@ -21,9 +24,6 @@ def monitoring_example(args: argparse.Namespace) -> list[NDArray[np.float64]]:
         TypeError: If the read register value type is not as expected.
         TypeError: If the register or item types are not as expected.
         ValueError: If the monitor status indicates an error.
-
-    Returns:
-        List of numpy arrays with the monitored data for each register.
     """
     registers_key = [
         "DRV_PROT_TEMP_VALUE",

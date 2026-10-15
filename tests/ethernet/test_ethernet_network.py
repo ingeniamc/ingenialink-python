@@ -1,10 +1,12 @@
 import contextlib
 import ftplib
+import ipaddress
 import socket
 import time
 from ftplib import error_temp
-from threading import Event, Thread
+from threading import Event, Lock, Thread
 from typing import TYPE_CHECKING
+from unittest.mock import Mock
 
 import pytest
 from summit_testing_framework.setups import (
@@ -24,11 +26,19 @@ from ingenialink.ethernet.network import (
     NetDevEvt,
     NetProt,
     NetState,
+    NetStatusListener,
 )
+from ingenialink.ethernet.servo import EthernetServo
 from ingenialink.exceptions import ILError, ILFirmwareLoadError
+from ingenialink.network import SlaveInfo
+from tests.net_status_helpers import NetStatusRecorder
 
 if TYPE_CHECKING:
-    from ingenialink.ethernet.servo import EthernetServo
+    from summit_testing_framework.environment import Environment
+
+
+INTERFACE = "test-interface"
+IPV4_SUBNET = "192.168.2.0/24"
 
 
 class FTPServer(Thread):
@@ -238,9 +248,12 @@ def test_scan_slaves_no_subnet():
     assert len(net.scan_slaves()) == 0
 
 
+# Rerun once after 5 seconds if the test fails.
+# https://novantamotion.atlassian.net/browse/CAP-924
+@pytest.mark.flaky(reruns=1, reruns_delay=5)
 @pytest.mark.ethernet
-def test_scan_slaves(setup_descriptor):
-    drive_ip = setup_descriptor.ip
+def test_scan_slaves(servo):
+    drive_ip = servo.ip_address
     subnet = drive_ip + "/24"
     net = EthernetNetwork(subnet)
     detected_slaves = net.scan_slaves()
@@ -249,8 +262,8 @@ def test_scan_slaves(setup_descriptor):
 
 
 @pytest.mark.ethernet
-def test_scan_slaves_info(setup_specifier, setup_descriptor, request):
-    drive_ip = setup_descriptor.ip
+def test_scan_slaves_info(setup_specifier, servo, request):
+    drive_ip = servo.ip_address
     subnet = drive_ip + "/24"
     net = EthernetNetwork(subnet)
     slaves_info = net.scan_slaves_info()
@@ -261,6 +274,89 @@ def test_scan_slaves_info(setup_specifier, setup_descriptor, request):
     if isinstance(setup_specifier, (RackServiceConfigSpecifier, MultiRackServiceConfigSpecifier)):
         drive = request.getfixturevalue("get_drive_configuration_from_rack_service")
         assert slaves_info[drive_ip].product_code == drive.product_code
+
+
+def test_scan_slaves_info_retries_after_register_read_error(mocker) -> None:
+    """Retry servo information retrieval after a register read error."""
+    net = EthernetNetwork("192.168.2.0/24")
+    expected_info = SlaveInfo(product_code=1, revision_number=2)
+    get_servo_info = mocker.patch.object(
+        net,
+        "_get_servo_info_for_scan",
+        side_effect=[ILError("timeout"), expected_info],
+    )
+    mocker.patch.object(net, "_scan_slaves", return_value=["192.168.2.10"])
+
+    assert net.scan_slaves_info() == {"192.168.2.10": expected_info}
+    assert get_servo_info.call_count == 2
+
+
+def test_scan_slaves_info_does_not_retry_success(mocker) -> None:
+    """Retrieve servo information only once when the first attempt succeeds."""
+    net = EthernetNetwork("192.168.2.0/24")
+    expected_info = SlaveInfo(product_code=1, revision_number=2)
+    get_servo_info = mocker.patch.object(
+        net,
+        "_get_servo_info_for_scan",
+        return_value=expected_info,
+    )
+    mocker.patch.object(net, "_scan_slaves", return_value=["192.168.2.10"])
+
+    assert net.scan_slaves_info() == {"192.168.2.10": expected_info}
+    get_servo_info.assert_called_once_with("192.168.2.10")
+
+
+def test_scan_slaves_info_does_not_retry_type_error(mocker) -> None:
+    """Propagate invalid register value errors without retrying."""
+    net = EthernetNetwork("192.168.2.0/24")
+    get_servo_info = mocker.patch.object(
+        net,
+        "_get_servo_info_for_scan",
+        side_effect=TypeError("invalid register value"),
+    )
+    mocker.patch.object(net, "_scan_slaves", return_value=["192.168.2.10"])
+
+    with pytest.raises(TypeError, match="invalid register value"):
+        net.scan_slaves_info()
+
+    get_servo_info.assert_called_once_with("192.168.2.10")
+
+
+def test_get_servo_info_for_scan_disconnects_after_read_error(mocker) -> None:
+    """Disconnect the servo when register retrieval raises an ILError."""
+    net = EthernetNetwork("192.168.2.0/24")
+    servo = Mock()
+    servo.read.side_effect = ILError("timeout")
+    mocker.patch.object(net, "connect_to_slave", return_value=servo)
+    disconnect = mocker.patch.object(net, "disconnect_from_slave")
+
+    with pytest.raises(ILError, match="timeout"):
+        net._get_servo_info_for_scan("192.168.2.10")
+
+    disconnect.assert_called_once_with(servo)
+
+
+@pytest.mark.parametrize(
+    ("read_values", "error_match"),
+    [
+        (["invalid", 2], "Expected product code type"),
+        ([1, "invalid"], "Expected revision number type"),
+    ],
+)
+def test_get_servo_info_for_scan_disconnects_after_invalid_value(
+    mocker, read_values, error_match
+) -> None:
+    """Disconnect the servo when a product or revision value is invalid."""
+    net = EthernetNetwork("192.168.2.0/24")
+    servo = Mock()
+    servo.read.side_effect = read_values
+    mocker.patch.object(net, "connect_to_slave", return_value=servo)
+    disconnect = mocker.patch.object(net, "disconnect_from_slave")
+
+    with pytest.raises(TypeError, match=error_match):
+        net._get_servo_info_for_scan("192.168.2.10")
+
+    disconnect.assert_called_once_with(servo)
 
 
 @pytest.mark.ethernet
@@ -276,28 +372,28 @@ def test_ethernet_connection(servo, net, setup_descriptor):
 
 
 @pytest.mark.ethernet
-def test_ethernet_disconnection(setup_descriptor):
+def test_ethernet_disconnection(servo):
     disconnected_servos = []
 
     def dummy_callback(servo):
         disconnected_servos.append(servo.target)
 
     net = EthernetNetwork()
-    servo = net.connect_to_slave(
-        setup_descriptor.ip,
-        setup_descriptor.dictionary,
-        setup_descriptor.port,
+    connected_servo = net.connect_to_slave(
+        servo.ip_address,
+        servo.dictionary.path,
+        servo.port,
         disconnect_callback=dummy_callback,
     )
-    assert servo.target == setup_descriptor.ip
+    assert connected_servo.target == servo.ip_address
 
     assert len(disconnected_servos) == 0
-    net.disconnect_from_slave(servo)
-    assert net.get_servo_state(setup_descriptor.ip) == NetState.DISCONNECTED
+    net.disconnect_from_slave(connected_servo)
+    assert net.get_servo_state(servo.ip_address) == NetState.DISCONNECTED
     assert len(net.servos) == 0
-    assert servo.socket._closed
+    assert connected_servo.socket._closed
     assert len(disconnected_servos) == 1
-    assert disconnected_servos[0] == setup_descriptor.ip
+    assert disconnected_servos[0] == servo.ip_address
 
 
 def test_load_firmware_file_not_found():
@@ -418,3 +514,232 @@ def test_recover_from_disconnection(net: "EthernetNetwork", servo: "EthernetServ
     # Simulate servo reconnection by mocking is_alive to return True again
     mocker.patch.object(servo, "is_alive", return_value=True)
     assert net.recover_from_disconnection(servo) is True
+
+
+def test_recreate_socket_replaces_old_socket_and_preserves_configuration(mocker) -> None:
+    """Replace the socket while preserving its connection configuration."""
+    servo = EthernetServo.__new__(EthernetServo)
+    servo.ip_address = "192.0.2.1"
+    servo.port = 1061
+    servo._connection_timeout = 2.5
+    servo._lock = Lock()
+    old_socket = mocker.Mock()
+    new_socket = mocker.Mock()
+    servo.socket = old_socket
+    mocker.patch("ingenialink.ethernet.servo.socket.socket", return_value=new_socket)
+
+    servo.recreate_socket()
+
+    assert servo.socket is new_socket
+    new_socket.settimeout.assert_called_once_with(2.5)
+    new_socket.connect.assert_called_once_with(("192.0.2.1", 1061))
+    old_socket.close.assert_called_once_with()
+    new_socket.close.assert_not_called()
+
+
+@pytest.mark.parametrize("failing_method", ["settimeout", "connect"])
+def test_recreate_socket_closes_new_socket_and_keeps_old_on_setup_failure(
+    mocker, failing_method
+) -> None:
+    """Close a replacement socket and retain the old one if setup fails."""
+    servo = EthernetServo.__new__(EthernetServo)
+    servo.ip_address = "192.0.2.1"
+    servo.port = 1061
+    servo._connection_timeout = 2.5
+    servo._lock = Lock()
+    old_socket = mocker.Mock()
+    new_socket = mocker.Mock()
+    getattr(new_socket, failing_method).side_effect = OSError(f"{failing_method} failed")
+    servo.socket = old_socket
+    mocker.patch("ingenialink.ethernet.servo.socket.socket", return_value=new_socket)
+
+    with pytest.raises(OSError, match=f"{failing_method} failed"):
+        servo.recreate_socket()
+
+    assert servo.socket is old_socket
+    old_socket.close.assert_not_called()
+    new_socket.close.assert_called_once_with()
+
+
+def test_disconnect_waits_for_active_servo_transaction() -> None:
+    """Wait for an active servo transaction before closing its socket."""
+
+    class SignalingLock:
+        def __init__(self) -> None:
+            self.lock = Lock()
+            self.lock.acquire()
+            self.attempted = Event()
+
+        def __enter__(self):
+            self.attempted.set()
+            self.lock.acquire()
+            return self
+
+        def __exit__(self, *_args) -> None:
+            self.lock.release()
+
+    net = EthernetNetwork()
+    servo = EthernetServo.__new__(EthernetServo)
+    servo.ip_address = "192.0.2.1"
+    servo.target = "192.0.2.1"
+    servo._lock = SignalingLock()
+    servo.socket = Mock()
+    servo.stop_status_listener = Mock()
+    servo._disconnect_event_publisher = Mock()
+    servo._net_state = NetState.CONNECTED
+    net.servos.append(servo)
+    disconnect_thread = Thread(target=net.disconnect_from_slave, args=(servo,))
+
+    disconnect_thread.start()
+    assert servo._lock.attempted.wait(timeout=2)
+    servo.socket.shutdown.assert_not_called()
+
+    servo._lock.lock.release()
+    disconnect_thread.join(timeout=2)
+
+    assert not disconnect_thread.is_alive()
+    servo.socket.shutdown.assert_called_once_with(socket.SHUT_RDWR)
+    servo.socket.close.assert_called_once_with()
+
+
+def test_listener_probes_before_recovering_disconnected_servo(mocker) -> None:
+    """Probe a disconnected servo before attempting communication recovery."""
+    events = []
+    servo = mocker.Mock()
+    net = mocker.Mock()
+    net.servos = [servo]
+    net.get_servo_state.return_value = NetState.DISCONNECTED
+    servo.is_alive.side_effect = lambda **_kwargs: events.append("probe") or True
+    net.recover_from_disconnection.side_effect = lambda _servo: events.append("recovery") or True
+    net._transition_servo_state.side_effect = lambda *_args: events.append("connected")
+
+    NetStatusListener(net).process()
+
+    servo.is_alive.assert_called_once_with(attemps=3)
+    assert events == ["probe", "recovery", "connected"]
+
+
+def test_listener_recreates_socket_after_ethernet_disconnection(mocker) -> None:
+    """Recreate the socket before notifying subscribers of the disconnection."""
+    events = []
+
+    servo = mocker.Mock(spec=EthernetServo)
+    servo.is_alive.side_effect = lambda **_kwargs: events.append("probe") or False
+    servo.recreate_socket.side_effect = lambda: events.append("recreate")
+
+    net = mocker.Mock()
+    net.servos = [servo]
+    net.get_servo_state.return_value = NetState.CONNECTED
+    net._transition_servo_state.side_effect = lambda *_args: events.append("disconnected")
+
+    NetStatusListener(net).process()
+
+    servo.is_alive.assert_called_once_with(attemps=3)
+    net._transition_servo_state.assert_called_once_with(
+        servo,
+        NetDevEvt.REMOVED,
+    )
+    servo.recreate_socket.assert_called_once_with()
+    assert events == ["probe", "recreate", "disconnected"]
+
+
+@pytest.mark.ethernet
+def test_net_status_listener_detects_power_cycle(
+    net: "EthernetNetwork", servo: "EthernetServo", environment: "Environment"
+) -> None:
+    """Test that NetStatusListener detects disconnection and reconnection on a real power cycle.
+
+    The detection latencies are logged at INFO to profile the library's real reconnection
+    timing (ping-based ``is_alive`` detection, see ``EthernetNetwork.NetStatusListener``).
+    """
+    with NetStatusRecorder(net, servo, "ethernet") as recorder:
+        environment.power_cycle(wait_for_drives=False, reconnect_drives=False)
+
+        assert recorder.wait_removed(timeout=30.0), (
+            "NetStatusListener did not detect the drive disconnection within 30 s"
+        )
+        assert net.get_servo_state(servo.ip_address) == NetState.DISCONNECTED
+
+        assert recorder.wait_added(timeout=60.0), (
+            "NetStatusListener did not detect the drive reconnection within 60 s"
+        )
+        assert net.get_servo_state(servo.ip_address) == NetState.CONNECTED
+
+
+def test_get_ipv4_subnet_uses_configured_subnet(mocker) -> None:
+    """Use the configured subnet instead of resolving the interface."""
+    resolver_mock = mocker.patch(
+        "ingenialink.ethernet.network.get_interface_ipv4_subnet",
+    )
+    net = EthernetNetwork(
+        subnet=IPV4_SUBNET,
+        interface=INTERFACE,
+    )
+
+    subnet = net._get_ipv4_subnet()
+
+    assert subnet == ipaddress.IPv4Network(IPV4_SUBNET)
+    resolver_mock.assert_not_called()
+
+
+def test_get_ipv4_subnet_uses_interface(mocker) -> None:
+    """Derive the subnet from the interface when no subnet is configured."""
+    expected_subnet = ipaddress.IPv4Network(IPV4_SUBNET)
+    resolver_mock = mocker.patch(
+        "ingenialink.ethernet.network.get_interface_ipv4_subnet",
+        return_value=expected_subnet,
+    )
+    net = EthernetNetwork(interface=INTERFACE)
+
+    subnet = net._get_ipv4_subnet()
+
+    assert subnet == expected_subnet
+    resolver_mock.assert_called_once_with(INTERFACE)
+
+
+def test_get_ipv4_subnet_rejects_ipv6_subnet() -> None:
+    """Reject an IPv6 subnet for IPv4 scanning."""
+    net = EthernetNetwork(subnet="2001:db8::/64")
+
+    with pytest.raises(
+        ValueError,
+        match="An IPv4 subnet is required for IPv4 scanning",
+    ):
+        net._get_ipv4_subnet()
+
+
+def test_get_ipv4_subnet_propagates_interface_error(mocker) -> None:
+    """Propagate errors raised while resolving the interface."""
+    mocker.patch(
+        "ingenialink.ethernet.network.get_interface_ipv4_subnet",
+        side_effect=OSError("Interface not found"),
+    )
+    net = EthernetNetwork(interface=INTERFACE)
+
+    with pytest.raises(OSError, match="Interface not found"):
+        net._get_ipv4_subnet()
+
+
+def test_scan_slaves_uses_interface_subnet(mocker) -> None:
+    """Scan the subnet derived from the configured interface."""
+    subnet = ipaddress.IPv4Network("192.168.2.0/30")
+    resolver_mock = mocker.patch(
+        "ingenialink.ethernet.network.get_interface_ipv4_subnet",
+        return_value=subnet,
+    )
+    ping_mock = mocker.patch(
+        "ingenialink.ethernet.network.multi_ping",
+        return_value=({"192.168.2.2": 0.01}, []),
+    )
+    net = EthernetNetwork(interface=INTERFACE)
+
+    detected_slaves = net._scan_slaves()
+
+    assert detected_slaves == ["192.168.2.2"]
+    resolver_mock.assert_called_once_with(INTERFACE)
+    assert ping_mock.call_count == 2
+    ping_mock.assert_called_with(
+        [str(ip) for ip in subnet],
+        timeout=1,
+        ignore_lookup_errors=True,
+    )

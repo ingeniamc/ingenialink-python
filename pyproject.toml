@@ -17,21 +17,22 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "Programming Language :: Cython",
   "Topic :: Communications",
   "Topic :: Software Development :: Libraries"
 ]
 
 requires-python = ">=3.9"
 dependencies = [
-    "canopen==2.2.0",
+    "canopen==2.4.1",
     "python-can==4.6.1",
     "ingenialogger>=0.2.1",
     "ping3==5.1.5",
     "pysoem>=1.1.13, <1.2.0",
-    "bitarray==3.8.0",
+    "bitarray==3.11.0",
     "multiping==1.1.2",
     "numpy>=1.26.0",
+    "cypcap>=0.6.2,<0.7.0 ; sys_platform == 'win32'",
+    "ifaddr==0.2.0",
 ]
 
 [project.urls]
@@ -40,7 +41,7 @@ Documentation = "https://distext.ingeniamc.com/doc/ingenialink-python/latest/"
 Source = "https://github.com/ingeniamc/ingenialink-python"
 
 [tool.poetry]
-version = "7.6.2"  # base version
+version = "7.6.3"  # base version
 
 [[tool.poetry.source]]
 name = "PyPI"
@@ -57,7 +58,6 @@ requires = [
   "setuptools==75.6.0",
   "setuptools_scm[toml]>=8",
   "wheel==0.42.0",
-  "Cython==3.0.11",
   "setuptools_scm_policies @ http://pypi.novanta.com/packages/setuptools_scm_policies-0.2.0-py3-none-any.whl"
 ]
 build-backend = "setuptools.build_meta"
@@ -74,14 +74,14 @@ include-package-data = true
 include = ["ingenialink"]
 
 [tool.setuptools.package-data]
-ingenialink = ["py.typed", "*.pyd"]
+ingenialink = ["py.typed"]
 
 # Dependencies to run poe tasks
 [tool.poetry.group.dev]
 optional = true
 [tool.poetry.group.dev.dependencies]
 poethepoet = {extras = ["poetry-plugin"], version = "^0.35.0"}
-Cython  = "==3.2.4"
+setuptools = "==75.9.1"
 
 # Dependencies for build wheel tasks
 [tool.poetry.group.build]
@@ -93,7 +93,7 @@ twine = "==6.2.0"
 [tool.poetry.group.format]
 optional = true
 [tool.poetry.group.format.dependencies]
-ruff = "==0.15.2"
+ruff = "==0.17.0"
 
 # Dependencies for type task
 [tool.poetry.group.type]
@@ -109,7 +109,7 @@ sphinx = "==7.4.7"
 sphinx-rtd-theme = "==3.1.0"
 sphinxcontrib-bibtex = "==2.6.2"
 nbsphinx = "==0.9.8"
-m2r2 = "==0.3.4"
+myst-parser = "==3.0.1"
 jinja2 = "==3.1.6"
 
 # Dependencies for tests task
@@ -122,27 +122,24 @@ pytest-cov = "==7.1.0"
 pytest-mock = "==3.15.1"
 pytest-repeat = "==0.9.4"
 pytest-console-scripts = "==1.4.1"
+pytest-timeout = "==2.4.0"
+pytest-rerunfailures = "==16.0.1"
 twisted = "==25.5.0"
-summit-testing-framework = {version = "0.3.1"}
-virtual_drive = {version = "==0.1.1"}
+summit-testing-framework = { git = "https://github.com/CeleraMotion/summit-testing-framework.git", rev = "7d58fec6665a7afd5af95ae0aa7d31d9a42ff51a" }
+virtual_drive = { git = "https://github.com/CeleraMotion/summit_virtual_drive", rev = "324f3102b14199760c1b6b6ec5ea2fcda0dd630a" }
 xmlschema = ">=3.0.0"
 
 # -----------------------------------------------------------------------
 #                                   TASKS
 # -----------------------------------------------------------------------
 
-# ----------------------------- Build wheel -----------------------------
-[tool.poe.tasks.build-wheel]
+# ----------------------------- Build package -----------------------------
+[tool.poe.tasks.build]
 help = "Build wheels"
-cmd = "poetry build"
-
-[tool.poe.tasks.check-wheels]
-help = "Check wheels"
-cmd = "twine check dist/*"
-
-[tool.poe.tasks.build-cython]
-help = "Build Cython"
-cmd = "python setup.py build_ext --inplace"
+sequence = [
+  { cmd = "poetry build" },
+  { cmd = "twine check dist/*" }
+]
 
 # ----------------------------- Ruff format -----------------------------
 [tool.poe.tasks.ruff-format-check]
@@ -178,11 +175,7 @@ cmd = "mypy ingenialink examples"
 # ----------------------------- Documentation -----------------------------
 [tool.poe.tasks.docs]
 help = "Build documentation"
-cmd = "python -I -m sphinx -b html docs _docs"
-
-# ----------------------------- Install wheel -----------------------------
-[tool.poe.tasks.install-wheel]
-cmd = "pip install --force-reinstall --no-deps --no-index --find-links dist/ ingenialink"
+cmd = "python -I -m sphinx -E -W --keep-going -b html docs _docs"
 
 # ----------------------------- Run unit tests -----------------------------
 [tool.poe.tasks.tests]

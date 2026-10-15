@@ -91,12 +91,12 @@ class BitField:
             value: Previous integer value of the register.
                 If not provided, it defaults to 0.
 
+        Returns:
+            New integer value of the register with the bitfields set
+
         Raises:
             KeyError: If the bitfield name does not exist.
             ValueError: If one of the values to set does not fit in the bitfield space
-
-        Returns:
-            New integer value of the register with the bitfields set
         """
         if value is None:
             value = 0
