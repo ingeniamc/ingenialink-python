@@ -1,8 +1,8 @@
 # EtherCAT PDO Groups and Lifecycle
 
 This document describes EtherCAT PDO mapping and exchange behavior in
-IngeniaLink. The terms *selected servos* and *PySOEM group* describe different
-parts of the mapping configuration.
+IngeniaLink. An `EthercatSlaveGroup` combines the selected servos with their
+PySOEM process-data group ID.
 
 ## Vocabulary
 
@@ -13,24 +13,24 @@ parts of the mapping configuration.
   connected servo object.
 - **PDO-mapped servo**: A connected servo with at least one configured RPDO or
   TPDO map.
-- **EthercatSlaveGroup**: A selection of connected `EthercatServo` objects.
-  Group members have unique slave IDs and are validated against the network
-  when used for mapping or startup.
+- **EthercatSlaveGroup**: Connected `EthercatServo` objects assigned to a
+  PySOEM process-data group. Group members have unique slave IDs and are
+  validated against the network when used for mapping or startup. If the group
+  ID is omitted, the network resolves it and stores it on the group.
 - **PySOEM group**: The numeric `CdefSlave.group` value used by PySOEM when
   configuring and exchanging a process image. Only group `0` and group `1` are
   supported by this API.
 
-`EthercatSlaveGroup` expresses which connected servos participate. Its
-`slave_ids` property is derived from those servo references. The network keeps
-the group as its active selection and resolves the PySOEM mapping group when it
-configures the process image.
+`EthercatSlaveGroup` carries both the selected servo references and the PySOEM
+group ID. Its `slave_ids` property is derived from the servo references. The
+network stores this object as the active mapping.
 
 ## Responsibilities
 
 ```mermaid
 flowchart LR
   Servo["EthercatServo<br/>Owns per-servo RPDO and TPDO maps"]
-  Group["EthercatSlaveGroup<br/>Selection of connected servos"]
+  Group["EthercatSlaveGroup<br/>Selected servos and PySOEM group ID"]
   Network["EthercatNetwork<br/>Selects servos, assigns PySOEM groups,<br/>configures process image and states"]
   Manager["PDONetworkManager<br/>Owns periodic exchange thread and callbacks"]
   Master["PySOEM Master<br/>Stores slave group values and performs<br/>process-data map/send/receive"]
@@ -53,29 +53,28 @@ mapping groups are applied.
 
 `EthercatNetwork.config_pdo_maps()` assigns every discovered slave to one of the
 two PySOEM groups, then maps only the active group. Slaves not in the selected
-set are assigned to the other group (`1 - active_group`). The call uses either
+set are assigned to the other group (`1 - group_id`). The call uses either
 PySOEM's overlapping or regular map operation, depending on the network's
 `overlapping_io_map` setting.
 
-| Selection | Default active group | Meaning |
+| Group | Default group ID | Meaning |
 | --- | --- | --- |
 | Omitted from `config_pdo_maps()` | `0` | Select every discovered slave. |
 | An `EthercatSlaveGroup` subset | `1` | Put the selected connected servos in group 1 and all other discovered slaves in group 0. |
-| Explicit `active_group=0` | `0` | Valid only when every discovered slave is selected. |
-| Explicit `active_group=1` | `1` | Select the requested group members in group 1; other discovered slaves are assigned to group 0. |
+| `EthercatSlaveGroup(servos, group_id=0)` | `0` | Valid only when every discovered slave is selected. |
+| `EthercatSlaveGroup(servos, group_id=1)` | `1` | Put the group's members in group 1 and all other discovered slaves in group 0. |
 
 The default is based on discovered slaves, not connected servos. Explicit
-`active_group` values must be `0` or `1`. Group 0 always maps the complete set
-of discovered slaves, so selecting a subset with group 0 raises `ValueError`.
+`group_id` values must be `0` or `1`. Group 0 always maps the complete set of
+discovered slaves, so selecting a subset with group 0 raises `ValueError`.
 Group 1 can be used for a subset or for all discovered slaves.
 
-`config_pdo_maps(group=...)` accepts an `EthercatSlaveGroup` and assigns its
-members to the active PySOEM group. The public selection API uses servo
-references; slave IDs are derived internally for PySOEM mapping. Omitting the
-group maps every discovered slave. `start_pdos()` validates that each selected
-servo is connected and has configured PDO maps, then performs the state
-transitions. `send_receive_processdata()` and the PDO manager drive
-process-data exchange.
+`config_pdo_maps(group=...)` assigns the group's members to its PySOEM group.
+The public selection API uses servo references; slave IDs are derived
+internally for PySOEM mapping. Omitting the group maps every discovered slave.
+`start_pdos()` validates that each selected servo is connected and has
+configured PDO maps, then performs the state transitions.
+`send_receive_processdata()` and the PDO manager drive process-data exchange.
 
 ## Starting PDOs
 
@@ -88,10 +87,9 @@ at least one RPDO or TPDO map. To select a subset, create an
 Each member must belong to the network and have configured PDO maps; otherwise
 startup raises `ValueError`.
 
-The network resolves the PySOEM group automatically: group 0 when the selection
-covers every discovered slave, otherwise group 1. Callers select servo objects
-through `EthercatSlaveGroup`; `active_group` remains an optional mapping
-override on the lower-level mapping and startup methods.
+If `group_id` is omitted, the network resolves it to group 0 when the selection
+covers every discovered slave, otherwise group 1. Callers can specify an
+explicit ID on `EthercatSlaveGroup` when needed.
 
 For the resolved selection, startup configures the map and transitions only the
 selected PDO servos through SafeOP and OP. If a state transition times out, it
@@ -176,10 +174,10 @@ sequenceDiagram
 
 | API | Responsibility |
 | --- | --- |
-| `EthercatSlaveGroup(servos)` | Represent a unique selection of connected `EthercatServo` objects. |
+| `EthercatSlaveGroup(servos, group_id=None)` | Represent unique connected `EthercatServo` members and their optional PySOEM group ID. |
 | `EthercatNetwork.activate_pdos(refresh_rate, watchdog_timeout, group)` | Start managed PDO exchange for the supplied group or the default selection. |
-| `EthercatNetwork.config_pdo_maps(group, active_group)` | Assign group members to a PySOEM group and map the active process image. |
-| `EthercatNetwork.start_pdos(timeout, group, active_group)` | Validate group members, configure mapping, and transition them to SafeOP/OP. |
+| `EthercatNetwork.config_pdo_maps(group)` | Assign group members to their PySOEM group and map the active process image. |
+| `EthercatNetwork.start_pdos(timeout, group)` | Validate group members, configure mapping, and transition them to SafeOP/OP. |
 | `EthercatNetwork.send_receive_processdata(timeout)` | Run one exchange iteration for the active group and selected servos. |
 | `EthercatNetwork.stop_pdos()` | Stop network PDO state and return connected servos to PreOP. |
 | `PDONetworkManager.start_pdos(refresh_rate, watchdog_timeout, group)` | Start the managed periodic exchange thread using the supplied group or the default selection. |
