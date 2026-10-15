@@ -281,9 +281,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         self.update_sdo_timeout(timeout_us, timeout_us)
         self._ecat_master.manual_state_change = self.MANUAL_STATE_CHANGE
         self._overlapping_io_map = overlapping_io_map
-        # Default to group 0 for all slaves; group 1 is used for selected subsets.
-        self._active_pdo_group = 0
-        self._active_slave_group = EthercatSlaveGroup(())
+        self._active_slave_group = EthercatSlaveGroup((), group_id=0)
         self._pdo_exchange_active = False
         self.__is_master_running = False
         self.__last_init_nodes: list[int] = []
@@ -649,21 +647,18 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
     def _resolve_pdo_map_configuration(
         self,
         group: Optional[EthercatSlaveGroup] = None,
-        active_group: Optional[int] = None,
-    ) -> tuple[EthercatSlaveGroup, int]:
+    ) -> EthercatSlaveGroup:
         """Normalize and validate the requested PDO map configuration.
 
         Args:
             group: Connected EtherCAT servos to include. If omitted, all discovered slaves are
                 mapped and all discovered connected servos are selected.
-            active_group: Process-data group to map. Defaults to group 0 for all slaves
-                or group 1 for a subset. PySOEM supports groups 0 and 1.
 
         Returns:
-            The selected connected servos and active process-data group.
+            The selected connected servos with a resolved PySOEM group ID.
 
         Raises:
-            ValueError: If the selected group is invalid.
+            ValueError: If the selected group or its PySOEM group ID is invalid.
             RuntimeError: If the active mapping is changed during PDO exchange.
         """
         discovered_slave_ids = set(range(1, len(self._ecat_master.slaves) + 1))
@@ -675,17 +670,15 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         else:
             self.validate_slave_group(group)
         selected_slave_ids = discovered_slave_ids if map_all_slaves else set(group.slave_ids)
-        # Use group 0 for the full network and group 1 for a subset by default.
-        if active_group is None:
-            active_group = 0 if selected_slave_ids == discovered_slave_ids else 1
-        elif (
-            isinstance(active_group, bool)
-            or not isinstance(active_group, int)
-            or active_group not in (0, 1)
-        ):
-            raise ValueError("active_group must be 0 or 1.")
+        group_id = group.group_id
+        if group_id is None:
+            # Use group 0 for the full network and group 1 for a subset by default.
+            group_id = 0 if selected_slave_ids == discovered_slave_ids else 1
+            group.group_id = group_id
+        if isinstance(group_id, bool) or not isinstance(group_id, int) or group_id not in (0, 1):
+            raise ValueError("group_id must be 0 or 1.")
         # PySOEM reserves group 0 for all discovered slaves.
-        if active_group == 0 and selected_slave_ids != discovered_slave_ids:
+        if group_id == 0 and selected_slave_ids != discovered_slave_ids:
             raise ValueError("PySOEM group 0 maps all discovered slaves; use group 1 for a subset.")
 
         # Do not change the process image during exchange, except during PDO startup.
@@ -693,40 +686,42 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             mapped_slave_ids = {
                 slave_id
                 for slave_id, slave in enumerate(self._ecat_master.slaves, start=1)
-                if slave.group == active_group
+                if slave.group == group_id
             }
             same_configuration = (
-                active_group == self._active_pdo_group
+                group_id == self._active_slave_group.group_id
                 and selected_slave_ids == mapped_slave_ids
-                and group == self._get_slave_group_for_pdo_group(active_group)
+                and group == self._get_slave_group_for_pdo_group(group_id)
             )
             if not same_configuration and not self._pdo_manager.is_starting_pdos:
                 raise RuntimeError("Stop PDO exchange before reconfiguring the process-data group.")
 
-        return group, active_group
+        return group
 
-    def _get_slave_group_for_pdo_group(self, active_group: int) -> EthercatSlaveGroup:
+    def _get_slave_group_for_pdo_group(self, group_id: int) -> EthercatSlaveGroup:
         """Read the connected servo membership assigned to a PySOEM group.
 
         Args:
-            active_group: The PySOEM process-data group number.
+            group_id: The PySOEM process-data group number.
 
         Returns:
             The connected servo references assigned to the requested group.
         """
         discovered_slave_ids = set(range(1, len(self._ecat_master.slaves) + 1))
         return EthercatSlaveGroup(
-            servo
-            for servo in self.servos
-            if servo.slave_id in discovered_slave_ids
-            and self._ecat_master.slaves[servo.slave_id - 1].group == active_group
+            (
+                servo
+                for servo in self.servos
+                if servo.slave_id in discovered_slave_ids
+                and self._ecat_master.slaves[servo.slave_id - 1].group == group_id
+            ),
+            group_id=group_id,
         )
 
     def config_pdo_maps(
         self,
         *,
         group: Optional[EthercatSlaveGroup] = None,
-        active_group: Optional[int] = None,
     ) -> None:
         """Configure the PDO maps.
 
@@ -736,43 +731,39 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         Args:
             group: Connected EtherCAT servos to include. If omitted, all discovered slaves are
                 mapped.
-            active_group: Process-data group to map. Defaults to group 0 for all slaves
-                or group 1 for a subset. PySOEM supports groups 0 and 1.
 
         Raises:
-            ValueError: If the selected group is invalid.
+            ValueError: If the selected group or its PySOEM group ID is invalid.
             RuntimeError: If the active mapping is changed during PDO exchange.
         """
         map_all_slaves = group is None
-        group, active_group = self._resolve_pdo_map_configuration(
-            group=group,
-            active_group=active_group,
-        )
+        group = self._resolve_pdo_map_configuration(group=group)
+        group_id = group.group_id
+        assert group_id is not None
         discovered_slave_ids = set(range(1, len(self._ecat_master.slaves) + 1))
         selected_slave_ids = discovered_slave_ids if map_all_slaves else set(group.slave_ids)
         if (
             self._pdo_exchange_active
-            and active_group == self._active_pdo_group
+            and group_id == self._active_slave_group.group_id
             and selected_slave_ids
             == {
                 slave_id
                 for slave_id, slave in enumerate(self._ecat_master.slaves, start=1)
-                if slave.group == active_group
+                if slave.group == group_id
             }
-            and group == self._get_slave_group_for_pdo_group(active_group)
+            and group == self._get_slave_group_for_pdo_group(group_id)
         ):
             self._active_slave_group = group
             return
 
-        other_group = 1 - active_group
+        other_group = 1 - group_id
         for slave_id, slave in enumerate(self._ecat_master.slaves, start=1):
-            slave.group = active_group if slave_id in selected_slave_ids else other_group
+            slave.group = group_id if slave_id in selected_slave_ids else other_group
 
         if self._overlapping_io_map:
-            self._ecat_master.config_overlap_map(group=active_group)
+            self._ecat_master.config_overlap_map(group=group_id)
         else:
-            self._ecat_master.config_map(group=active_group)
-        self._active_pdo_group = active_group
+            self._ecat_master.config_map(group=group_id)
         self._active_slave_group = group
 
     def validate_slave_group(self, group: EthercatSlaveGroup) -> None:
@@ -842,7 +833,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
                 return
             group = EthercatSlaveGroup(pdo_servo_list)
 
-        group, active_group = self._resolve_pdo_map_configuration(group=group)
+        group = self._resolve_pdo_map_configuration(group=group)
         pdo_servo_ids = {servo.slave_id for servo in pdo_servo_list}
         servos_without_pdos = [
             servo for servo in group.servos if servo.slave_id not in pdo_servo_ids
@@ -856,7 +847,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             logger.warning("There are no PDOs assigned to any selected connected slave.")
             return
 
-        self.config_pdo_maps(group=group, active_group=active_group)
+        self.config_pdo_maps(group=group)
 
         self._pdo_exchange_active = True
         try:
@@ -916,24 +907,22 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         if release_gil is None:
             release_gil = self.__gil_release_config.send_receive_processdata
         active_servos = list(self._active_slave_group.servos)
+        group_id = self._active_slave_group.group_id
+        assert group_id is not None
         for servo in active_servos:
             servo.generate_pdo_outputs()
         self._lock.acquire()
         if self._overlapping_io_map:
-            self._ecat_master.send_overlap_processdata(
-                group=self._active_pdo_group, release_gil=release_gil
-            )
+            self._ecat_master.send_overlap_processdata(group=group_id, release_gil=release_gil)
         else:
-            self._ecat_master.send_processdata(
-                group=self._active_pdo_group, release_gil=release_gil
-            )
+            self._ecat_master.send_processdata(group=group_id, release_gil=release_gil)
         processdata_wkc = self._ecat_master.receive_processdata(
             timeout=int(timeout * 1_000_000),
-            group=self._active_pdo_group,
+            group=group_id,
             release_gil=release_gil,
         )
         self._lock.release()
-        expected_wkc = self._ecat_master.get_expected_wkc(group=self._active_pdo_group)
+        expected_wkc = self._ecat_master.get_expected_wkc(group=group_id)
         if processdata_wkc != expected_wkc:
             self._ecat_master.read_state()
             servos_state_msg = ""

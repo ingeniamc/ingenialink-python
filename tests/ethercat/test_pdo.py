@@ -632,7 +632,7 @@ def test_selected_group_mapping_skips_uncommissioned_slave(
     assert selected_servo.slave.group == 1
     assert unselected_slave.group == 0
     assert unselected_slave.state == unselected_state
-    assert net._active_pdo_group == 1
+    assert net._active_slave_group.group_id == 1
     assert net._active_slave_group.slave_ids == {selected_servo.slave_id}
     assert net._ecat_master.get_expected_wkc(group=1) > 0
 

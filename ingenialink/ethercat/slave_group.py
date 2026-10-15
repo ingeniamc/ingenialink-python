@@ -11,15 +11,17 @@ if TYPE_CHECKING:
 
 @dataclass
 class EthercatSlaveGroup:
-    """A selection of connected EtherCAT servos."""
+    """Connected EtherCAT servos assigned to a PySOEM process-data group."""
 
     servos: tuple[EthercatServo, ...]
+    group_id: int | None
 
-    def __init__(self, servos: Iterable[EthercatServo]) -> None:
+    def __init__(self, servos: Iterable[EthercatServo], group_id: int | None = None) -> None:
         """Create a group from servo references with unique slave IDs.
 
         Args:
             servos: Connected EtherCAT servos included in the group.
+            group_id: PySOEM process-data group number. If omitted, the network chooses it.
 
         Raises:
             ValueError: If multiple servos have the same slave ID.
@@ -29,6 +31,7 @@ class EthercatSlaveGroup:
         if len(slave_ids) != len(set(slave_ids)):
             raise ValueError("An EthercatSlaveGroup cannot contain duplicate slaves.")
         self.servos = servo_members
+        self.group_id = group_id
 
     @property
     def slave_ids(self) -> frozenset[int]:
