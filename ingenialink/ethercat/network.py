@@ -860,7 +860,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         """Set the selected PDO group to PreOp, preserving excluded servos' states.
 
         Raises:
-            ILError: If a selected drive cannot reach INIT.
+            ILError: If a selected drive cannot reach PreOp.
         """
         if not self.__is_master_running:
             self._pdo_exchange_active = False
@@ -879,12 +879,10 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             self._pdo_exchange_active = False
             return
         try:
-            if not self._change_nodes_state(selected_servos, SlaveState.INIT_STATE):
-                raise ILError("Not all selected drives could reach the Init state.")
+            if not self._change_nodes_state(selected_servos, SlaveState.PREOP_STATE):
+                raise ILError("Not all selected drives could reach the PreOp state.")
             for servo in selected_servos:
                 servo.slave.clear_pdo_mapping()
-            if not self._change_nodes_state(selected_servos, SlaveState.PREOP_STATE):
-                logger.warning("Not all selected drives could reach the PreOp state")
         finally:
             self._pdo_exchange_active = False
 

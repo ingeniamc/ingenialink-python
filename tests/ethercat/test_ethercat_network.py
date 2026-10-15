@@ -911,10 +911,7 @@ def test_stop_pdos_clears_only_selected_group_mapping(
 
     net.stop_pdos()
 
-    assert change_state_mock.call_args_list == [
-        call([selected_servo], SlaveState.INIT_STATE),
-        call([selected_servo], SlaveState.PREOP_STATE),
-    ]
+    change_state_mock.assert_called_once_with([selected_servo], SlaveState.PREOP_STATE)
     selected_clear_mock.assert_called_once_with()
     excluded_clear_mock.assert_not_called()
     assert selected_servo.slave.state == pysoem.PREOP_STATE
@@ -945,10 +942,7 @@ def test_stop_pdos_clears_mapping_for_all_selected_slaves(mocker: "MockerFixture
 
     net.stop_pdos()
 
-    assert change_state_mock.call_args_list == [
-        call(servos, SlaveState.INIT_STATE),
-        call(servos, SlaveState.PREOP_STATE),
-    ]
+    change_state_mock.assert_called_once_with(servos, SlaveState.PREOP_STATE)
     for clear_mock in clear_mocks:
         clear_mock.assert_called_once_with()
     init_nodes_mock.assert_not_called()
