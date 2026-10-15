@@ -880,8 +880,10 @@ def test_disconnect_from_slave_with_non_existent_slave(
 
 @pytest.mark.pcap
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
-def test_stop_pdos_only_changes_state_of_selected_slaves(mocker: "MockerFixture") -> None:
-    """Stop the selected group without changing excluded connected servos."""
+def test_stop_pdos_clears_only_selected_group_mapping(
+    mocker: "MockerFixture",
+) -> None:
+    """Clear the selected slave mapping without changing excluded connected servos."""
     net = EthercatNetwork("dummy_ifname")
     net._ecat_master.config_init()
     selected_servo = mocker.Mock(slave_id=1, slave_exists=True)
@@ -893,6 +895,12 @@ def test_stop_pdos_only_changes_state_of_selected_slaves(mocker: "MockerFixture"
     net._pdo_exchange_active = True
     net._EthercatNetwork__is_master_running = True
     init_nodes_mock = mocker.patch.object(net, "_EthercatNetwork__init_nodes")
+    selected_clear_mock = mocker.patch.object(
+        selected_servo.slave, "clear_pdo_mapping", create=True
+    )
+    excluded_clear_mock = mocker.patch.object(
+        excluded_servo.slave, "clear_pdo_mapping", create=True
+    )
 
     def change_state(servos, state):
         for servo in servos:
@@ -907,6 +915,8 @@ def test_stop_pdos_only_changes_state_of_selected_slaves(mocker: "MockerFixture"
         call([selected_servo], SlaveState.INIT_STATE),
         call([selected_servo], SlaveState.PREOP_STATE),
     ]
+    selected_clear_mock.assert_called_once_with()
+    excluded_clear_mock.assert_not_called()
     assert selected_servo.slave.state == pysoem.PREOP_STATE
     assert excluded_servo.slave.state == pysoem.OP_STATE
     assert net._pdo_exchange_active is False
@@ -916,8 +926,8 @@ def test_stop_pdos_only_changes_state_of_selected_slaves(mocker: "MockerFixture"
 
 @pytest.mark.pcap
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
-def test_stop_pdos_reinitializes_full_selected_network(mocker: "MockerFixture") -> None:
-    """Keep the existing network reinitialization when every connected servo is selected."""
+def test_stop_pdos_clears_mapping_for_all_selected_slaves(mocker: "MockerFixture") -> None:
+    """Clear mapping for every slave when the full network is selected."""
     net = EthercatNetwork("dummy_ifname")
     net._ecat_master.config_init()
     servos = [mocker.Mock(slave_id=slave_id, slave_exists=True) for slave_id in (1, 2)]
@@ -929,11 +939,19 @@ def test_stop_pdos_reinitializes_full_selected_network(mocker: "MockerFixture") 
     net._EthercatNetwork__is_master_running = True
     change_state_mock = mocker.patch.object(net, "_change_nodes_state", return_value=True)
     init_nodes_mock = mocker.patch.object(net, "_EthercatNetwork__init_nodes")
+    clear_mocks = [
+        mocker.patch.object(servo.slave, "clear_pdo_mapping", create=True) for servo in servos
+    ]
 
     net.stop_pdos()
 
-    change_state_mock.assert_called_once_with(servos, SlaveState.INIT_STATE)
-    init_nodes_mock.assert_called_once_with()
+    assert change_state_mock.call_args_list == [
+        call(servos, SlaveState.INIT_STATE),
+        call(servos, SlaveState.PREOP_STATE),
+    ]
+    for clear_mock in clear_mocks:
+        clear_mock.assert_called_once_with()
+    init_nodes_mock.assert_not_called()
     assert net._pdo_exchange_active is False
     net.close_ecat_master()
 
