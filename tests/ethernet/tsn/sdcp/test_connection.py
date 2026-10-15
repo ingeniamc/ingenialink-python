@@ -177,7 +177,7 @@ def test_request_returns_valid_error_response(
     request_message = _read_request()
     response_message = SDCPReadResponseError(
         transaction_id=TRANSACTION_ID,
-        error_code=0xFFFF0001,
+        error_code=0x0001,
     )
     socket_mock.recv.return_value = bytes(response_message)
 

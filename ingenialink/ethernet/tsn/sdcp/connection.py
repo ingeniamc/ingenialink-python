@@ -15,8 +15,6 @@ from .messages import (
     SDCPReadResponse,
     SDCPRequest,
     SDCPResponse,
-    SDCPSubscribeResponse,
-    SDCPUnsubscribeResponse,
     SDCPWriteResponse,
 )
 
@@ -128,8 +126,6 @@ class SDCPConnection:
                 SDCPIdentificationResponse,
                 SDCPReadResponse,
                 SDCPWriteResponse,
-                SDCPSubscribeResponse,
-                SDCPUnsubscribeResponse,
                 SDCPErrorResponse,
             ),
         ):
