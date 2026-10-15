@@ -5375,12 +5375,14 @@ test = ["pytest"]
 
 [[package]]
 name = "summit-testing-framework"
-version = "0.3.0"
+version = "0.3.1.post857+develop.8c6e743"
 description = "Testing framework for Novanta drives"
 optional = false
 python-versions = ">=3.9"
 groups = ["tests"]
-files = []
+files = [
+    {file = "summit_testing_framework-0.3.1.post857+develop.8c6e743-py3-none-any.whl", hash = "sha256:067add37ffd0d436aaaae71fcc92a778b5540b614d5760d3ab4583dcd1ae2905"},
+]
 develop = false
 
 [package.dependencies]
@@ -5684,13 +5686,14 @@ zstd = ["backports-zstd (>=1.0.0) ; python_version < \"3.14\""]
 
 [[package]]
 name = "virtual-drive"
-version = "0.1.1"
+version = "0.1.1.post343+develop.324f310"
 description = "Emulates a Summit drive for development and testing purposes."
 optional = false
 python-versions = ">=3.9"
 groups = ["tests"]
-files = []
-develop = false
+files = [
+    {file = "virtual_drive-0.1.1.post343+develop.324f310-py3-none-any.whl", hash = "sha256:7aa8ab6fd822e61cb077be75c82af93d239245a9d7c2ed103b5713e3ae3526d7"},
+]
 
 [package.dependencies]
 ingenialink = ">=7.6.0"
@@ -5701,10 +5704,9 @@ scipy = [
 ]
 
 [package.source]
-type = "git"
-url = "https://github.com/CeleraMotion/summit_virtual_drive"
-reference = "324f310"
-resolved_reference = "324f3102b14199760c1b6b6ec5ea2fcda0dd630a"
+type = "legacy"
+url = "http://pypi.novanta.com/simple"
+reference = "novanta"
 
 [[package]]
 name = "virtualenv"
@@ -6322,4 +6324,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "29536463510b599ba44d187b2ff6cbb05d0548fefa8a7a49377c7c755648ff4b"
+content-hash = "ceeddf8b5672fc30adf22103a6c36f3d3c1b019113e29eeda94fb0d721b18fe7"
