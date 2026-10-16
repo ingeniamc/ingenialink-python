@@ -376,17 +376,17 @@ def test_modifying_pdos_prevented_if_servo_is_not_in_preoperational_state(
             "map_tpdos": {"kwargs": {}},
         }
 
-        net.activate_pdos(refresh_rate=0.1, watchdog_timeout=1.0)
+        net.start_pdos()
         try:
             net._ecat_master.read_state()
-            assert servo.slave.state_check(pysoem.OP_STATE, timeout=1_000_000) == pysoem.OP_STATE
+            assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
 
             for method, method_args in locked_methods.items():
+                net.send_receive_processdata()
                 with pytest.raises(ILEcatStateError):
                     getattr(servo, method)(**method_args["kwargs"])
         finally:
-            if net.pdo_manager.is_active:
-                net.deactivate_pdos()
+            net.stop_pdos()
 
 
 @pytest.mark.ethercat
