@@ -315,7 +315,7 @@ pipeline {
                         stage('Check Dependencies') {
                             steps {
                                 script {
-                                    def excludeManagers = ['poetry:tests']
+                                    def excludeManagers = ['poetry:tests', 'git_submodules']
                                     if (env.BRANCH_NAME != 'master' && !env.BRANCH_NAME.startsWith('release/')) {
                                         excludeManagers.add('jenkins_shared_library')
                                     }
