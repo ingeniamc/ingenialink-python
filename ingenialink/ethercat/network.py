@@ -847,13 +847,19 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             logger.warning("There are no PDOs assigned to any selected connected slave.")
             return
 
-        self.config_pdo_maps(group=group)
-
-        self._pdo_exchange_active = True
         try:
+            self.config_pdo_maps(group=group)
+            self._pdo_exchange_active = True
             self._set_pdo_servos_to_op(list(group.servos), timeout)
         except Exception:
             self._pdo_exchange_active = False
+            try:
+                if not self._change_nodes_state(list(group.servos), SlaveState.PREOP_STATE):
+                    logger.warning(
+                        "Could not return selected slaves to PREOP after PDO startup failed."
+                    )
+            except Exception:
+                logger.exception("Could not recover selected slaves after PDO startup failed.")
             raise
 
     def stop_pdos(self) -> None:
@@ -982,10 +988,24 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             True if all nodes reached the target state, else False.
         """
         node_list = nodes if isinstance(nodes, list) else [nodes]
+        self._ecat_master.read_state()
+        all_errors_acknowledged = True
         for drive in node_list:
             if not drive.slave_exists:
                 continue
+            if drive.slave.state & pysoem.STATE_ERROR:
+                current_state = drive.slave.state & 0x0F
+                drive.slave.state = current_state | pysoem.STATE_ACK
+                drive.slave.write_state()
+                if (
+                    drive.slave.state_check(current_state, ECAT_STATE_CHANGE_TIMEOUT_US)
+                    != current_state
+                ):
+                    all_errors_acknowledged = False
+                    continue
             drive.request_node_state(target_state)
+        if not all_errors_acknowledged:
+            return False
         return self._check_node_state(nodes, target_state.value)
 
     def _check_node_state(
