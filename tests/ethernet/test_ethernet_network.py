@@ -568,14 +568,13 @@ def test_recreate_socket_closes_new_socket_and_keeps_old_on_setup_failure(
 
 
 def test_recreate_socket_falls_back_after_bind_failure_and_preserves_source_ip(mocker) -> None:
-    """Use an unbound fallback without replacing the source IP kept for later recreations."""
+    """Fallback without binding and retain the original source IP for later recreations."""
     servo = EthernetServo.__new__(EthernetServo)
     servo.ip_address = "192.0.2.1"
     servo.port = 1061
     servo._connection_timeout = 2.5
     servo._lock = Lock()
     servo._source_ip = "192.0.2.10"
-
     old_socket = mocker.Mock()
     failed_socket = mocker.Mock()
     fallback_socket = mocker.Mock()
