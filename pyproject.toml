@@ -28,7 +28,7 @@ dependencies = [
     "ingenialogger>=0.2.1",
     "ping3==5.1.5",
     # Bring back to "pysoem>=1.1.14, <1.2.0" once there is a release
-    "pysoem==1.1.14.dev1",
+    "pysoem==1.1.14.dev1+g521080f",
     "bitarray==3.11.0",
     "multiping==1.1.2",
     "numpy>=1.26.0",
