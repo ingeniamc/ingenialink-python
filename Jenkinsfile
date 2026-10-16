@@ -27,6 +27,30 @@ def PYTHON_VERSION_MAX = "3.12"
 def BRANCH_NAME_MASTER = "master"
 def DEFAULT_LOGGING_LEVEL = 'INFO'
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
+def GITHUB_SSH_CREDENTIALS_ID = 'GithubSSH'
+
+def withGithubCredentials = { Closure body ->
+    withCredentials([
+        sshUserPrivateKey(
+            credentialsId: GITHUB_SSH_CREDENTIALS_ID,
+            keyFileVariable: 'GITHUB_SSH_KEY'
+        )
+    ]) {
+        def sshKeyPath = env.GITHUB_SSH_KEY.replace('\\', '/')
+        withEnv([
+            // Use Jenkins' SSH key for GitHub and avoid prompts during clone.
+            "GIT_SSH_COMMAND=ssh -i \"${sshKeyPath}\" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no",
+            // Rewrite GitHub HTTPS dependency URLs to SSH so the key is used.
+            'GIT_CONFIG_COUNT=1',
+            'GIT_CONFIG_KEY_0=url.git@github.com:.insteadOf',
+            'GIT_CONFIG_VALUE_0=https://github.com/',
+            // Make Poetry use system Git, which honors the settings above.
+            'POETRY_SYSTEM_GIT_CLIENT=true',
+        ]) {
+            body()
+        }
+    }
+}
 
 
 /* List of markers that require hardware */
@@ -210,7 +234,9 @@ pipeline {
 
                     // Create a minimal virtual environment for specifier export and test collection
                     venvManager.copyToWorkingFolder()
-                    venvManager.createPoetryEnvironment()
+                    withGithubCredentials {
+                        venvManager.createPoetryEnvironment()
+                    }
 
                     // Export specifiers and populate TestGroup sessions (policy + uid-regex evaluated here).
                     testManager.buildTestSessions("tests.setups.rack_specifiers")
@@ -280,9 +306,11 @@ pipeline {
                         stage('Create virtual environments') {
                             steps {
                                 script {
-                                    venvManager.createPoetryEnvironments(
-                                        pythonVersions: venvManager.defaultVenvNamesToVersion(WIN_DOCKER_TESTS.baseTestSession.runInVirtualEnvs) + [DEFAULT_PYTHON_VERSION] as Set
-                                    )
+                                    withGithubCredentials {
+                                        venvManager.createPoetryEnvironments(
+                                            pythonVersions: venvManager.defaultVenvNamesToVersion(WIN_DOCKER_TESTS.baseTestSession.runInVirtualEnvs) + [DEFAULT_PYTHON_VERSION] as Set
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -333,9 +361,11 @@ pipeline {
                         stage('Create virtual environments') {
                             steps {
                                 script {
-                                    venvManager.createPoetryEnvironments(
-                                        pythonVersions: venvManager.defaultVenvNamesToVersion(LINUX_DOCKER_TESTS.baseTestSession.runInVirtualEnvs) + [DEFAULT_PYTHON_VERSION] as Set
-                                    )
+                                    withGithubCredentials {
+                                        venvManager.createPoetryEnvironments(
+                                            pythonVersions: venvManager.defaultVenvNamesToVersion(LINUX_DOCKER_TESTS.baseTestSession.runInVirtualEnvs) + [DEFAULT_PYTHON_VERSION] as Set
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -436,9 +466,11 @@ pipeline {
                         stage('Create virtual environments') {
                             steps {
                                 script {
-                                    venvManager.createPoetryEnvironments(
-                                        pythonVersions: venvManager.defaultVenvNamesToVersion(ECAT_TESTS.baseTestSession.runInVirtualEnvs)
-                                    )
+                                    withGithubCredentials {
+                                        venvManager.createPoetryEnvironments(
+                                            pythonVersions: venvManager.defaultVenvNamesToVersion(ECAT_TESTS.baseTestSession.runInVirtualEnvs)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -469,9 +501,11 @@ pipeline {
                         stage('Create virtual environments') {
                             steps {
                                 script {
-                                    venvManager.createPoetryEnvironments(
-                                        pythonVersions: venvManager.defaultVenvNamesToVersion(HW_TEST_SESSIONS.runInVirtualEnvs)
-                                    )
+                                    withGithubCredentials {
+                                        venvManager.createPoetryEnvironments(
+                                            pythonVersions: venvManager.defaultVenvNamesToVersion(HW_TEST_SESSIONS.runInVirtualEnvs)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -501,7 +535,9 @@ pipeline {
                 script {
                     def coverage_files = testManager.getCoverageFiles()
                     venvManager.copyToWorkingFolder()
-                    venvManager.createPoetryEnvironment()
+                    withGithubCredentials {
+                        venvManager.createPoetryEnvironment()
+                    }
 
                     if (coverage_files) {
                         venvManager.withPython(DEFAULT_PYTHON_VERSION) { venv ->
