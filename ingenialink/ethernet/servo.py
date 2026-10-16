@@ -68,17 +68,33 @@ class EthernetServoBase(Servo, ABC):
             The configured UDP socket.
         """
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        bind_failed = False
         try:
             sock.settimeout(self._connection_timeout)
             if source_ip is not None:
-                sock.bind((source_ip, 0))
-            sock.connect((self.ip_address, self.port))
+                try:
+                    sock.bind((source_ip, 0))
+                except OSError:
+                    bind_failed = True
+            if not bind_failed:
+                sock.connect((self.ip_address, self.port))
         except Exception:
             try:
                 sock.close()
             except Exception:
                 logger.exception("Failed to close UDP socket after setup failure.")
             raise
+
+        if bind_failed:
+            try:
+                sock.close()
+            except Exception:
+                logger.exception("Failed to close UDP socket after bind failure.")
+            logger.warning(
+                f"Could not bind the socket to {source_ip}, letting the OS select the source IP."
+            )
+            return self._create_socket()
+
         return sock
 
 
@@ -110,14 +126,7 @@ class EthernetServo(EthernetServoBase):
         source IP is no longer available, the OS selects it.
         """
         with self._lock:
-            try:
-                new_socket = self._create_socket(self._source_ip)
-            except OSError:
-                logger.warning(
-                    f"Could not bind the socket to {self._source_ip}, "
-                    "letting the OS select the source IP."
-                )
-                new_socket = self._create_socket()
+            new_socket = self._create_socket(self._source_ip)
             old_socket = self.socket
             self.socket = new_socket
             old_socket.close()
