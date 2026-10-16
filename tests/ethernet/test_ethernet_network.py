@@ -523,6 +523,7 @@ def test_recreate_socket_replaces_old_socket_and_preserves_configuration(mocker)
     servo.port = 1061
     servo._connection_timeout = 2.5
     servo._lock = Lock()
+    servo._source_ip = "192.0.2.10"
     old_socket = mocker.Mock()
     new_socket = mocker.Mock()
     servo.socket = old_socket
@@ -547,6 +548,7 @@ def test_recreate_socket_closes_new_socket_and_keeps_old_on_setup_failure(
     servo.port = 1061
     servo._connection_timeout = 2.5
     servo._lock = Lock()
+    servo._source_ip = "192.0.2.10"
     old_socket = mocker.Mock()
     new_socket = mocker.Mock()
     getattr(new_socket, failing_method).side_effect = OSError(f"{failing_method} failed")
@@ -558,7 +560,25 @@ def test_recreate_socket_closes_new_socket_and_keeps_old_on_setup_failure(
 
     assert servo.socket is old_socket
     old_socket.close.assert_not_called()
-    new_socket.close.assert_called_once_with()
+    assert new_socket.close.call_count == 2
+
+
+def test_recreate_socket_keeps_original_source_ip() -> None:
+    """The recreated socket keeps the source IP of the original socket."""
+    servo = EthernetServo.__new__(EthernetServo)
+    servo.ip_address = "127.0.0.1"
+    servo.port = 1061
+    servo._connection_timeout = 2.5
+    servo._lock = Lock()
+    servo._source_ip = "127.0.0.2"
+    servo.socket = servo._create_socket(servo._source_ip)
+
+    try:
+        servo.recreate_socket()
+
+        assert servo.socket.getsockname()[0] == "127.0.0.2"
+    finally:
+        servo.socket.close()
 
 
 def test_disconnect_waits_for_active_servo_transaction() -> None:

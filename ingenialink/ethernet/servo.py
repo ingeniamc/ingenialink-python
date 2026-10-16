@@ -50,6 +50,7 @@ class EthernetServoBase(Servo, ABC):
         self.port = port
         self._connection_timeout = connection_timeout
         self.socket = self._create_socket()
+        self._source_ip: str = self.socket.getsockname()[0]
         super().__init__(
             self.ip_address,
             dictionary_path,
@@ -57,8 +58,11 @@ class EthernetServoBase(Servo, ABC):
             disconnect_callback=disconnect_callback,
         )
 
-    def _create_socket(self) -> socket.socket:
+    def _create_socket(self, source_ip: Optional[str] = None) -> socket.socket:
         """Create and configure the connected UDP socket.
+
+        Args:
+            source_ip: Local IP to bind the socket to. If ``None``, the OS selects it.
 
         Returns:
             The configured UDP socket.
@@ -66,6 +70,8 @@ class EthernetServoBase(Servo, ABC):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
             sock.settimeout(self._connection_timeout)
+            if source_ip is not None:
+                sock.bind((source_ip, 0))
             sock.connect((self.ip_address, self.port))
         except Exception:
             try:
@@ -96,9 +102,22 @@ class EthernetServo(EthernetServoBase):
     COMMS_ETH_MAC = "COMMS_ETH_MAC"
 
     def recreate_socket(self) -> None:
-        """Replace the UDP socket used for Ethernet communication."""
+        """Replace the UDP socket used for Ethernet communication.
+
+        The new socket is bound to the source IP of the original socket. Otherwise, if the drive
+        is unreachable when the socket is recreated, Windows may route it through another
+        interface and the socket keeps that wrong source IP after the drive comes back. If the
+        source IP is no longer available, the OS selects it.
+        """
         with self._lock:
-            new_socket = self._create_socket()
+            try:
+                new_socket = self._create_socket(self._source_ip)
+            except OSError:
+                logger.warning(
+                    f"Could not bind the socket to {self._source_ip}, "
+                    "letting the OS select the source IP."
+                )
+                new_socket = self._create_socket()
             old_socket = self.socket
             self.socket = new_socket
             old_socket.close()
