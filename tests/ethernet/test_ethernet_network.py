@@ -539,7 +539,7 @@ def test_recreate_socket_replaces_old_socket_and_preserves_configuration(mocker)
     new_socket.close.assert_not_called()
 
 
-@pytest.mark.parametrize("failing_method", ["settimeout", "connect"])
+@pytest.mark.parametrize("failing_method", ["settimeout", "bind", "connect"])
 def test_recreate_socket_closes_new_socket_and_keeps_old_on_setup_failure(
     mocker, failing_method
 ) -> None:
@@ -565,47 +565,6 @@ def test_recreate_socket_closes_new_socket_and_keeps_old_on_setup_failure(
     socket_factory.assert_called_once_with(socket.AF_INET, socket.SOCK_DGRAM)
     new_socket.close.assert_called_once_with()
     old_socket.close.assert_not_called()
-
-
-def test_recreate_socket_falls_back_after_bind_failure_and_preserves_source_ip(mocker) -> None:
-    """Fallback without binding and retain the original source IP for later recreations."""
-    servo = EthernetServo.__new__(EthernetServo)
-    servo.ip_address = "192.0.2.1"
-    servo.port = 1061
-    servo._connection_timeout = 2.5
-    servo._lock = Lock()
-    servo._source_ip = "192.0.2.10"
-    old_socket = mocker.Mock()
-    failed_socket = mocker.Mock()
-    fallback_socket = mocker.Mock()
-    rebound_socket = mocker.Mock()
-    failed_socket.bind.side_effect = OSError("bind failed")
-    fallback_socket.getsockname.return_value = ("192.0.2.20", 12345)
-    servo.socket = old_socket
-    socket_factory = mocker.patch(
-        "ingenialink.ethernet.servo.socket.socket",
-        side_effect=[failed_socket, fallback_socket, rebound_socket],
-    )
-
-    servo.recreate_socket()
-
-    assert servo.socket is fallback_socket
-    assert servo.socket.getsockname()[0] == "192.0.2.20"
-    failed_socket.bind.assert_called_once_with(("192.0.2.10", 0))
-    failed_socket.close.assert_called_once_with()
-    fallback_socket.bind.assert_not_called()
-    fallback_socket.connect.assert_called_once_with(("192.0.2.1", 1061))
-    old_socket.close.assert_called_once_with()
-    assert servo._source_ip == "192.0.2.10"
-
-    servo.recreate_socket()
-
-    assert servo.socket is rebound_socket
-    rebound_socket.bind.assert_called_once_with(("192.0.2.10", 0))
-    rebound_socket.connect.assert_called_once_with(("192.0.2.1", 1061))
-    fallback_socket.close.assert_called_once_with()
-    assert socket_factory.call_count == 3
-    assert servo._source_ip == "192.0.2.10"
 
 
 def test_recreate_socket_keeps_original_source_ip() -> None:

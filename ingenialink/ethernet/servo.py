@@ -71,16 +71,7 @@ class EthernetServoBase(Servo, ABC):
         try:
             sock.settimeout(self._connection_timeout)
             if source_ip is not None:
-                try:
-                    sock.bind((source_ip, 0))
-                except OSError:
-                    sock.close()
-                    logger.warning(
-                        f"Could not bind the socket to {source_ip}, "
-                        "letting the OS select the source IP."
-                    )
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                    sock.settimeout(self._connection_timeout)
+                sock.bind((source_ip, 0))
             sock.connect((self.ip_address, self.port))
         except Exception:
             try:
@@ -116,7 +107,7 @@ class EthernetServo(EthernetServoBase):
         The new socket is bound to the source IP of the original socket. Otherwise, if the drive
         is unreachable when the socket is recreated, Windows may route it through another
         interface and the socket keeps that wrong source IP after the drive comes back. If the
-        source IP is no longer available, the OS selects it.
+        new socket cannot be created, the current one is kept.
         """
         with self._lock:
             new_socket = self._create_socket(self._source_ip)
