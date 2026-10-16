@@ -854,10 +854,14 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         except Exception:
             self._pdo_exchange_active = False
             try:
-                if not self._change_nodes_state(list(group.servos), SlaveState.PREOP_STATE):
-                    logger.warning(
-                        "Could not return selected slaves to PREOP after PDO startup failed."
-                    )
+                selected_servos = list(group.servos)
+                if not self._change_nodes_state(selected_servos, SlaveState.PREOP_STATE):
+                    if not self._change_nodes_state(selected_servos, SlaveState.INIT_STATE):
+                        logger.warning("Could not reset selected slaves after PDO startup failed.")
+                    elif not self._change_nodes_state(selected_servos, SlaveState.PREOP_STATE):
+                        logger.warning(
+                            "Could not return selected slaves to PREOP after PDO startup failed."
+                        )
             except Exception:
                 logger.exception("Could not recover selected slaves after PDO startup failed.")
             raise

@@ -759,12 +759,18 @@ def test_start_pdos_attempts_preop_recovery_after_startup_failure(
     mocker.patch.object(net, "_resolve_pdo_map_configuration", return_value=group)
     mocker.patch.object(net, "config_pdo_maps")
     mocker.patch.object(net, "_set_pdo_servos_to_op", side_effect=RuntimeError("startup failed"))
-    change_state_mock = mocker.patch.object(net, "_change_nodes_state", return_value=True)
+    change_state_mock = mocker.patch.object(
+        net, "_change_nodes_state", side_effect=[False, True, True]
+    )
 
     with pytest.raises(RuntimeError, match="startup failed"):
         net.start_pdos(group=group)
 
-    change_state_mock.assert_called_once_with([servo], SlaveState.PREOP_STATE)
+    assert change_state_mock.call_args_list == [
+        call([servo], SlaveState.PREOP_STATE),
+        call([servo], SlaveState.INIT_STATE),
+        call([servo], SlaveState.PREOP_STATE),
+    ]
     assert not net._pdo_exchange_active
     net.close_ecat_master()
 
