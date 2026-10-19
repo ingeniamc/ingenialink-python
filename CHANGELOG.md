@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+### Fixed
+- Ethernet `NetStatusListener` not detecting the drive reconnection on Windows when the socket was recreated while the drive was unreachable. The recreated socket now keeps its original source IP.
+
 ## [7.6.3] - 2026-10-14
 ### Added
 - SDCP support for physical and virtual drives.

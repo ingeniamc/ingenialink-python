@@ -523,6 +523,7 @@ def test_recreate_socket_replaces_old_socket_and_preserves_configuration(mocker)
     servo.port = 1061
     servo._connection_timeout = 2.5
     servo._lock = Lock()
+    servo._source_ip = "192.0.2.10"
     old_socket = mocker.Mock()
     new_socket = mocker.Mock()
     servo.socket = old_socket
@@ -532,12 +533,13 @@ def test_recreate_socket_replaces_old_socket_and_preserves_configuration(mocker)
 
     assert servo.socket is new_socket
     new_socket.settimeout.assert_called_once_with(2.5)
+    new_socket.bind.assert_called_once_with(("192.0.2.10", 0))
     new_socket.connect.assert_called_once_with(("192.0.2.1", 1061))
     old_socket.close.assert_called_once_with()
     new_socket.close.assert_not_called()
 
 
-@pytest.mark.parametrize("failing_method", ["settimeout", "connect"])
+@pytest.mark.parametrize("failing_method", ["settimeout", "bind", "connect"])
 def test_recreate_socket_closes_new_socket_and_keeps_old_on_setup_failure(
     mocker, failing_method
 ) -> None:
@@ -547,18 +549,40 @@ def test_recreate_socket_closes_new_socket_and_keeps_old_on_setup_failure(
     servo.port = 1061
     servo._connection_timeout = 2.5
     servo._lock = Lock()
+    servo._source_ip = "192.0.2.10"
     old_socket = mocker.Mock()
     new_socket = mocker.Mock()
     getattr(new_socket, failing_method).side_effect = OSError(f"{failing_method} failed")
     servo.socket = old_socket
-    mocker.patch("ingenialink.ethernet.servo.socket.socket", return_value=new_socket)
+    socket_factory = mocker.patch(
+        "ingenialink.ethernet.servo.socket.socket", return_value=new_socket
+    )
 
     with pytest.raises(OSError, match=f"{failing_method} failed"):
         servo.recreate_socket()
 
     assert servo.socket is old_socket
-    old_socket.close.assert_not_called()
+    socket_factory.assert_called_once_with(socket.AF_INET, socket.SOCK_DGRAM)
     new_socket.close.assert_called_once_with()
+    old_socket.close.assert_not_called()
+
+
+def test_recreate_socket_keeps_original_source_ip() -> None:
+    """The recreated socket keeps the source IP of the original socket."""
+    servo = EthernetServo.__new__(EthernetServo)
+    servo.ip_address = "127.0.0.1"
+    servo.port = 1061
+    servo._connection_timeout = 2.5
+    servo._lock = Lock()
+    servo._source_ip = "127.0.0.2"
+    servo.socket = servo._create_socket(servo._source_ip)
+
+    try:
+        servo.recreate_socket()
+
+        assert servo.socket.getsockname()[0] == "127.0.0.2"
+    finally:
+        servo.socket.close()
 
 
 def test_disconnect_waits_for_active_servo_transaction() -> None:
