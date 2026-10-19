@@ -849,6 +849,9 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
 
         try:
             self.config_pdo_maps(group=group)
+            for servo in group.servos:
+                for rpdo_map in servo._rpdo_maps.values():
+                    rpdo_map.get_item_bytes()
             self._pdo_exchange_active = True
             self._set_pdo_servos_to_op(list(group.servos), timeout)
         except Exception:

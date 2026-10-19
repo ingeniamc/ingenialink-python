@@ -721,7 +721,7 @@ def test_start_pdos_resolves_group_configuration_without_master_state_request(
     net._ecat_master.config_init()
     initial_master_state = net._ecat_master.state
     servo = mocker.Mock(slave_id=1)
-    servo._rpdo_maps = [object()]
+    servo._rpdo_maps = {0x1600: mocker.Mock()}
     servo._tpdo_maps = []
     net.servos = [servo]
     net._EthercatNetwork__is_master_running = True
@@ -748,11 +748,37 @@ def test_start_pdos_resolves_group_configuration_without_master_state_request(
 
 @pytest.mark.pcap
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_start_pdos_validates_rpdo_data_before_state_transition(
+    mocker: "MockerFixture",
+) -> None:
+    net = EthercatNetwork("dummy_ifname")
+    rpdo_map = mocker.Mock()
+    rpdo_map.get_item_bytes.side_effect = ILError("PDO item has no data stored")
+    servo = mocker.Mock(slave_id=1, _rpdo_maps={0x1600: rpdo_map}, _tpdo_maps={})
+    net.servos = [servo]
+    net._EthercatNetwork__is_master_running = True
+    group = EthercatSlaveGroup([servo], group_id=1)
+    mocker.patch.object(net, "_resolve_pdo_map_configuration", return_value=group)
+    mocker.patch.object(net, "config_pdo_maps")
+    set_state_mock = mocker.patch.object(net, "_change_nodes_state", return_value=True)
+    set_to_op_mock = mocker.patch.object(net, "_set_pdo_servos_to_op")
+
+    with pytest.raises(ILError, match="PDO item has no data stored"):
+        net.start_pdos(group=group)
+
+    set_state_mock.assert_called_once_with([servo], SlaveState.PREOP_STATE)
+    set_to_op_mock.assert_not_called()
+    assert not net._pdo_exchange_active
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
 def test_start_pdos_attempts_preop_recovery_after_startup_failure(
     mocker: "MockerFixture",
 ) -> None:
     net = EthercatNetwork("dummy_ifname")
-    servo = mocker.Mock(slave_id=1, _rpdo_maps={0x1600: object()}, _tpdo_maps={})
+    servo = mocker.Mock(slave_id=1, _rpdo_maps={0x1600: mocker.Mock()}, _tpdo_maps={})
     net.servos = [servo]
     net._EthercatNetwork__is_master_running = True
     group = EthercatSlaveGroup([servo], group_id=1)
@@ -785,7 +811,11 @@ def test_start_pdos_defaults_to_mapped_servos_and_reuses_active_mapping(
     net._ecat_master.config_init()
     for slave in net._ecat_master.slaves:
         slave.group = 0
-    servo = mocker.Mock(slave_id=1, _rpdo_maps=[object()], _tpdo_maps=[])
+    servo = mocker.Mock(
+        slave_id=1,
+        _rpdo_maps={0x1600: mocker.Mock(get_item_bytes=mocker.Mock(return_value=b""))},
+        _tpdo_maps=[],
+    )
     unselected_servo = mocker.Mock(slave_id=2, _rpdo_maps=[], _tpdo_maps=[])
     net.servos = [servo, unselected_servo]
     net._EthercatNetwork__is_master_running = True
@@ -817,8 +847,16 @@ def test_start_pdos_only_changes_state_of_selected_slaves(
     """Do not request state changes for mapped servos outside the active group."""
     net = EthercatNetwork("dummy_ifname")
     net._ecat_master.config_init()
-    selected_servo = mocker.Mock(slave_id=1, _rpdo_maps=[object()], _tpdo_maps=[])
-    unselected_servo = mocker.Mock(slave_id=2, _rpdo_maps=[object()], _tpdo_maps=[])
+    selected_servo = mocker.Mock(
+        slave_id=1,
+        _rpdo_maps={0x1600: mocker.Mock(get_item_bytes=mocker.Mock(return_value=b""))},
+        _tpdo_maps=[],
+    )
+    unselected_servo = mocker.Mock(
+        slave_id=2,
+        _rpdo_maps={0x1600: mocker.Mock(get_item_bytes=mocker.Mock(return_value=b""))},
+        _tpdo_maps=[],
+    )
     net.servos = [selected_servo, unselected_servo]
     net._EthercatNetwork__is_master_running = True
     config_pdo_maps_mock = mocker.patch.object(
@@ -852,7 +890,11 @@ def test_start_pdos_without_selected_mapped_servo_does_not_configure_map(
     net._ecat_master.config_init()
     for slave in net._ecat_master.slaves:
         slave.group = 0
-    mapped_servo = mocker.Mock(slave_id=1, _rpdo_maps=[object()], _tpdo_maps=[])
+    mapped_servo = mocker.Mock(
+        slave_id=1,
+        _rpdo_maps={0x1600: mocker.Mock(get_item_bytes=mocker.Mock(return_value=b""))},
+        _tpdo_maps=[],
+    )
     unmapped_servo = mocker.Mock(slave_id=2, _rpdo_maps=[], _tpdo_maps=[])
     net.servos = [mapped_servo, unmapped_servo]
     selected_servos = [unmapped_servo]
