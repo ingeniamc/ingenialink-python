@@ -125,7 +125,7 @@ pytest-console-scripts = "==1.4.1"
 pytest-timeout = "==2.4.0"
 pytest-rerunfailures = "==16.0.1"
 twisted = "==25.5.0"
-summit-testing-framework = { git = "https://github.com/CeleraMotion/summit-testing-framework.git", branch = "CIT-913-do-not-run-heavy-output-metrics-on-branches", rev = "0ffb39afb198895f641273ffa952cbb636fbf05d" }
+summit-testing-framework = { version = "0.3.1.post874+pr.170.b18" }
 virtual_drive = {version = "0.1.1.post343+develop.324f310"}
 xmlschema = ">=3.0.0"
 

@@ -5375,13 +5375,14 @@ test = ["pytest"]
 
 [[package]]
 name = "summit-testing-framework"
-version = "0.3.0"
+version = "0.3.1.post874+pr.170.b18"
 description = "Testing framework for Novanta drives"
 optional = false
 python-versions = ">=3.9"
 groups = ["tests"]
-files = []
-develop = false
+files = [
+    {file = "summit_testing_framework-0.3.1.post874+pr.170.b18-py3-none-any.whl", hash = "sha256:1668ea57e1400d2132b83192938feac140571a697444ec1344273d1903f13a86"},
+]
 
 [package.dependencies]
 exceptiongroup = ">=1.3.1,<2.0.0"
@@ -5402,10 +5403,9 @@ ingenialink = ["ingenialink (>=7.6.2)"]
 ingeniamotion = ["ingeniamotion[fsoe] (>=0.10.4)"]
 
 [package.source]
-type = "git"
-url = "https://github.com/CeleraMotion/summit-testing-framework.git"
-reference = "0ffb39afb198895f641273ffa952cbb636fbf05d"
-resolved_reference = "0ffb39afb198895f641273ffa952cbb636fbf05d"
+type = "legacy"
+url = "http://pypi.novanta.com/simple"
+reference = "novanta"
 
 [[package]]
 name = "tinycss2"
@@ -6322,4 +6322,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "86ce07765c8e1aa4019daca16c8f87034110b811857d30857ad989315ec4c51e"
+content-hash = "dded01d0700553ed9a0f6dc33115ce4e5dcc8fb2b73b5f3d36f769cdf386a989"
