@@ -5404,8 +5404,8 @@ ingeniamotion = ["ingeniamotion[fsoe] (>=0.10.4)"]
 [package.source]
 type = "git"
 url = "https://github.com/CeleraMotion/summit-testing-framework.git"
-reference = "8c6e7438a1fde506d08bca32019101f5ab07b312"
-resolved_reference = "8c6e7438a1fde506d08bca32019101f5ab07b312"
+reference = "84c815b1ee03b6a9b3b82b9124134d04836f1120"
+resolved_reference = "84c815b1ee03b6a9b3b82b9124134d04836f1120"
 
 [[package]]
 name = "tinycss2"
@@ -6322,4 +6322,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "baea26f25940508a6f660156d629c73345632637f04a8f4dedf2d6cd65290883"
+content-hash = "edc8ba1ccce6fd078f4f50e4804c75adf966ada52041b0804e659b259ca276a8"
