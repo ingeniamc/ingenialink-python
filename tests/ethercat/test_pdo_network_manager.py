@@ -320,9 +320,16 @@ def test_pdo_mapping_can_change_after_stop(net: "EthercatNetwork", servo: "Ether
     )
 
     try:
+
+        def wait_for_op_state() -> None:
+            deadline = time.monotonic() + 3.0
+            while servo.slave.state != pysoem.OP_STATE and time.monotonic() < deadline:
+                time.sleep(0.01)
+            assert servo.slave.state == pysoem.OP_STATE
+
         servo.set_pdo_map_to_slave([rpdo_map_x], [tpdo_map_x])
         net.activate_pdos()
-        assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
+        wait_for_op_state()
         mapping_x = (len(servo.slave.input), len(servo.slave.output))
 
         net.deactivate_pdos()
@@ -350,7 +357,7 @@ def test_pdo_mapping_can_change_after_stop(net: "EthercatNetwork", servo: "Ether
 
         servo.set_pdo_map_to_slave([rpdo_map_y], [tpdo_map_y])
         net.activate_pdos()
-        assert servo.slave.state_check(pysoem.OP_STATE) == pysoem.OP_STATE
+        wait_for_op_state()
         mapping_y = (len(servo.slave.input), len(servo.slave.output))
         assert mapping_y != mapping_x
     finally:
