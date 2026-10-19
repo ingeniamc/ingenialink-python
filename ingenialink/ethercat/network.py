@@ -742,6 +742,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         assert group_id is not None
         discovered_slave_ids = set(range(1, len(self._ecat_master.slaves) + 1))
         selected_slave_ids = discovered_slave_ids if map_all_slaves else set(group.slave_ids)
+        # Avoid remapping the live process image when its group and membership are unchanged.
         if (
             self._pdo_exchange_active
             and group_id == self._active_slave_group.group_id
@@ -849,6 +850,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
 
         try:
             self.config_pdo_maps(group=group)
+            # Validate RPDO serialization before requesting SafeOP, where cyclic exchange begins.
             for servo in group.servos:
                 for rpdo_map in servo._rpdo_maps.values():
                     rpdo_map.get_item_bytes()
@@ -858,6 +860,8 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             self._pdo_exchange_active = False
             try:
                 selected_servos = list(group.servos)
+                # Try the least disruptive recovery first; use INIT to reset a failed transition
+                # before retrying PREOP if a direct transition fails.
                 if not self._change_nodes_state(selected_servos, SlaveState.PREOP_STATE):
                     if not self._change_nodes_state(selected_servos, SlaveState.INIT_STATE):
                         logger.warning("Could not reset selected slaves after PDO startup failed.")
@@ -1001,6 +1005,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             if not drive.slave_exists:
                 continue
             if drive.slave.state & pysoem.STATE_ERROR:
+                # A slave reporting an AL error must be acknowledged before a state change.
                 current_state = drive.slave.state & 0x0F
                 drive.slave.state = current_state | pysoem.STATE_ACK
                 drive.slave.write_state()

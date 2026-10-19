@@ -471,6 +471,8 @@ def test_change_nodes_state_notifies_connected_servos(den_net_e_2_9_1_xdf_v3: st
 def test_change_nodes_state_acknowledges_slave_error_before_transition(
     mocker: "MockerFixture", den_net_e_2_9_1_xdf_v3: str
 ) -> None:
+    """Test that _change_nodes_state acknowledges a slave error before
+    transitioning to the target state."""
     net = EthercatNetwork("dummy_ifname")
     servo = net.connect_to_slave(slave_id=1, dictionary=den_net_e_2_9_1_xdf_v3)
     servo.slave.state = pysoem.SAFEOP_STATE | pysoem.STATE_ERROR
@@ -751,6 +753,7 @@ def test_start_pdos_resolves_group_configuration_without_master_state_request(
 def test_start_pdos_validates_rpdo_data_before_state_transition(
     mocker: "MockerFixture",
 ) -> None:
+    """Test that start_pdos validates RPDO data before attempting a state transition."""
     net = EthercatNetwork("dummy_ifname")
     rpdo_map = mocker.Mock()
     rpdo_map.get_item_bytes.side_effect = ILError("PDO item has no data stored")
@@ -777,6 +780,8 @@ def test_start_pdos_validates_rpdo_data_before_state_transition(
 def test_start_pdos_attempts_preop_recovery_after_startup_failure(
     mocker: "MockerFixture",
 ) -> None:
+    """Test that start_pdos attempts to recover by transitioning to PREOP after
+    a startup failure."""
     net = EthercatNetwork("dummy_ifname")
     servo = mocker.Mock(slave_id=1, _rpdo_maps={0x1600: mocker.Mock()}, _tpdo_maps={})
     net.servos = [servo]

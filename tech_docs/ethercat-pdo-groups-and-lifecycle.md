@@ -91,11 +91,17 @@ If `group_id` is omitted, the network resolves it to group 0 when the selection
 covers every discovered slave, otherwise group 1. Callers can specify an
 explicit ID on `EthercatSlaveGroup` when needed.
 
-For the resolved selection, startup configures the map and transitions only the
-selected PDO servos through SafeOP and OP. If a state transition times out, it
-raises `ILStateError` and clears the network's active-exchange flag. If there
-are no selected PDO servos, it logs a warning and returns without configuring
-the process image.
+For the resolved selection, startup configures the map and validates that each
+RPDO map can be serialized before requesting SafeOP. This catches missing output
+data before cyclic exchange begins. It then transitions only the selected PDO
+servos through SafeOP and OP.
+
+If map setup, RPDO validation, or a state transition fails, startup clears the
+active-exchange flag and attempts best-effort recovery: it requests PreOP
+directly, then falls back to Init followed by another PreOP request if needed.
+The original startup exception is re-raised even if recovery also fails. If
+there are no selected PDO servos, startup logs a warning and returns without
+configuring the process image.
 
 Example: map and transition only the servo connected as slave 2:
 
@@ -127,12 +133,12 @@ working counter is compared against the expected working counter for that same
 PySOEM group.
 
 Stopping the manager stops and joins its exchange thread, then calls
-`EthercatNetwork.stop_pdos()`. If connected servos are excluded from the active
-selection, the network transitions only selected servos that are alive and not
-already in PreOP or NONE through Init to PreOP; excluded connected servos keep
-their states. If no connected servos are excluded, the existing full-network
-shutdown path requests Init and reinitializes nodes to PreOP. The network then
-clears its active-exchange flag.
+`EthercatNetwork.stop_pdos()`. The network requests PreOP for each selected
+connected servo that exists and is not in NONE state; excluded connected servos
+keep their states. After the selected servos reach PreOP, the network clears
+their PDO SyncManagers and FMMUs. Mailbox SyncManagers and cached PDO mapping
+descriptors are preserved so the process image can be configured again on the
+next start. The active-exchange flag is cleared even if stopping fails.
 
 ```mermaid
 sequenceDiagram
@@ -158,12 +164,9 @@ sequenceDiagram
   Caller->>Manager: stop_pdos()
   Manager->>Thread: signal stop and join
   Thread->>Network: stop_pdos()
-  alt Connected servos are excluded from the active group
-    Network->>Servo: transition selected servos through Init to PreOP
-    Note over Servo: Excluded connected servos retain their states
-  else No connected servos are excluded
-    Network->>Master: request Init and reinitialize nodes to PreOP
-  end
+  Network->>Servo: request PreOP for selected connected servos
+  Network->>Servo: clear PDO SyncManagers and FMMUs
+  Note over Servo: Mailbox SMs and cached PDO descriptors remain; excluded servos keep their states
 ```
 
 ## Reconfiguration Constraints
@@ -187,7 +190,7 @@ sequenceDiagram
 | `EthercatNetwork.config_pdo_maps(group)` | Assign group members to their PySOEM group and map the active process image. |
 | `EthercatNetwork.start_pdos(timeout, group)` | Validate group members, configure mapping, and transition them to SafeOP/OP. |
 | `EthercatNetwork.send_receive_processdata(timeout)` | Run one exchange iteration for the active group and selected servos. |
-| `EthercatNetwork.stop_pdos()` | Stop PDO state; preserve excluded connected servos' states for a partial group. |
+| `EthercatNetwork.stop_pdos()` | Request PreOP for selected connected servos and clear their PDO mapping while preserving mailbox SMs and excluded servos' states. |
 | `PDONetworkManager.start_pdos(refresh_rate, watchdog_timeout, group)` | Start the managed periodic exchange thread using the supplied group or the default selection. |
 | `PDONetworkManager.stop_pdos()` | Stop the managed thread and ask the network to stop PDO operation. |
 
