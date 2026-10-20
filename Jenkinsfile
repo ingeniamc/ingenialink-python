@@ -1,4 +1,4 @@
-@Library('cicd-lib@0.23') _
+@Library('cicd-lib@bc76f39') _
 
 import python.VEnvManager
 import python.VirtualEnvironment
@@ -133,7 +133,13 @@ def pipelineParams = PyTestParams.pytestParams(this, currentBuild, [
         default: DEFAULT_LOGGING_LEVEL,
     ],
     wiresharkLoggingConfig: [
-        default: true,
+        default: PyTestParams.BooleanParameterDefault.TRUE_ONLY_ON_DEVELOP_BRANCH,
+    ],
+    timelineConfig: [
+        default: PyTestParams.BooleanParameterDefault.TRUE_ONLY_ON_DEVELOP_BRANCH,
+    ],
+    profilersConfig: [
+        default: PyTestParams.BooleanParameterDefault.TRUE_ONLY_ON_DEVELOP_BRANCH,
     ],
     checkStateScopeConfig: [
         default: 'session',
@@ -205,7 +211,9 @@ pipeline {
                         checkStateScope: PyTestParams.readValue(params, 'checkStateScope'),
                         archiveData: "*",
                         testSelectionRepeatCount: PyTestParams.readValue(params, 'pytestRepeatCounts'),
-                        logLevel: PyTestParams.readValue(params, 'pytestLoggingLevel')
+                        logLevel: PyTestParams.readValue(params, 'pytestLoggingLevel'),
+                        useTimeline: PyTestParams.readValue(params, 'timeline', env, currentBuild),
+                        useProfilers: PyTestParams.readValue(params, 'profilers', env, currentBuild)
                     )
 
                     // Configure if ECAT and ETH sessions use Wireshark logging based on parameter
@@ -335,7 +343,11 @@ pipeline {
                         stage('Check Dependencies') {
                             steps {
                                 script {
-                                    checkDependencies(excludeManagers: ['poetry:tests', 'git_submodules'])
+                                    def excludeManagers = ['poetry:tests', 'git_submodules']
+                                    if (env.BRANCH_NAME != 'master' && !env.BRANCH_NAME.startsWith('release/')) {
+                                        excludeManagers.add('jenkins_shared_library')
+                                    }
+                                    checkDependencies(excludeManagers: excludeManagers)
                                 }
                             }
                         }
@@ -543,4 +555,3 @@ pipeline {
         }
     }
 }
-

@@ -125,7 +125,7 @@ pytest-console-scripts = "==1.4.1"
 pytest-timeout = "==2.4.0"
 pytest-rerunfailures = "==16.0.1"
 twisted = "==25.5.0"
-summit-testing-framework = { git = "https://github.com/CeleraMotion/summit-testing-framework.git", branch = "develop", rev = "84c815b1ee03b6a9b3b82b9124134d04836f1120" }
+summit-testing-framework = { version = "0.3.1.post874+pr.170.b18" }
 virtual_drive = {version = "0.1.1.post343+develop.324f310"}
 xmlschema = ">=3.0.0"
 
