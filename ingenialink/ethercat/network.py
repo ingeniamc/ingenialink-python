@@ -367,7 +367,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         Args:
             refresh_rate: Determines how often (seconds) the PDO values will be updated.
             watchdog_timeout: The PDO watchdog time. If not provided it will be set proportional
-             to the refresh rate.
+                to the refresh rate.
             group: Connected EtherCAT servos included in the process-data exchange.
         """
         n_exceptions = self.__exceptions_in_thread
@@ -742,6 +742,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         assert group_id is not None
         discovered_slave_ids = set(range(1, len(self._ecat_master.slaves) + 1))
         selected_slave_ids = discovered_slave_ids if map_all_slaves else set(group.slave_ids)
+        # Avoid remapping the live process image when its group and membership are unchanged.
         if (
             self._pdo_exchange_active
             and group_id == self._active_slave_group.group_id
@@ -847,35 +848,59 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             logger.warning("There are no PDOs assigned to any selected connected slave.")
             return
 
-        self.config_pdo_maps(group=group)
-
-        self._pdo_exchange_active = True
         try:
+            self.config_pdo_maps(group=group)
+            # Validate RPDO serialization before requesting SafeOP, where cyclic exchange begins.
+            for servo in group.servos:
+                servo.validate_rpdo_output_data()
+            self._pdo_exchange_active = True
             self._set_pdo_servos_to_op(list(group.servos), timeout)
         except Exception:
             self._pdo_exchange_active = False
+            try:
+                selected_servos = list(group.servos)
+                # Try the least disruptive recovery first; use INIT to reset a failed transition
+                # before retrying PREOP if a direct transition fails.
+                if not self._change_nodes_state(selected_servos, SlaveState.PREOP_STATE):
+                    if not self._change_nodes_state(selected_servos, SlaveState.INIT_STATE):
+                        logger.warning("Could not reset selected slaves after PDO startup failed.")
+                    elif not self._change_nodes_state(selected_servos, SlaveState.PREOP_STATE):
+                        logger.warning(
+                            "Could not return selected slaves to PREOP after PDO startup failed."
+                        )
+            except Exception:
+                logger.exception("Could not recover selected slaves after PDO startup failed.")
             raise
 
     def stop_pdos(self) -> None:
-        """For all slaves not in PreOp state, set state to PreOp."""
+        """Set the selected PDO group to PreOp, preserving excluded servos' states.
+
+        Raises:
+            ILError: If a selected drive cannot reach PreOp.
+        """
         if not self.__is_master_running:
             self._pdo_exchange_active = False
             logger.warning("EtherCAT master is not running, no PDOs to stop.")
             return
         self._ecat_master.read_state()
-        restore_servos_list = [
+        active_slave_ids = set(self._active_slave_group.slave_ids)
+        selected_servos = [
             servo
             for servo in self.servos
             if servo.slave_exists
-            and servo.slave.state not in (pysoem.PREOP_STATE, pysoem.NONE_STATE)
+            and servo.slave_id in active_slave_ids
+            and servo.slave.state != pysoem.NONE_STATE
         ]
-        if len(restore_servos_list) == 0:
+        if not selected_servos:
             self._pdo_exchange_active = False
             return
-        if not self._change_nodes_state(restore_servos_list, SlaveState.INIT_STATE):
-            logger.warning("Not all drives could reach the Init state")
-        self.__init_nodes()
-        self._pdo_exchange_active = False
+        try:
+            if not self._change_nodes_state(selected_servos, SlaveState.PREOP_STATE):
+                raise ILError("Not all selected drives could reach the PreOp state.")
+            for servo in selected_servos:
+                servo.slave.clear_pdo_mapping()
+        finally:
+            self._pdo_exchange_active = False
 
     def send_receive_processdata(
         self, timeout: float = ECAT_PROCESSDATA_TIMEOUT_S, *, release_gil: Optional[bool] = None
@@ -973,10 +998,17 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             True if all nodes reached the target state, else False.
         """
         node_list = nodes if isinstance(nodes, list) else [nodes]
+        self._ecat_master.read_state()
+        all_errors_acknowledged = True
         for drive in node_list:
             if not drive.slave_exists:
                 continue
+            if not drive.acknowledge_state_error():
+                all_errors_acknowledged = False
+                continue
             drive.request_node_state(target_state)
+        if not all_errors_acknowledged:
+            return False
         return self._check_node_state(nodes, target_state.value)
 
     def _check_node_state(
