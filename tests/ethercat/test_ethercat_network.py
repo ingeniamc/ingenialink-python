@@ -755,9 +755,8 @@ def test_start_pdos_validates_rpdo_data_before_state_transition(
 ) -> None:
     """Test that start_pdos validates RPDO data before attempting a state transition."""
     net = EthercatNetwork("dummy_ifname")
-    rpdo_map = mocker.Mock()
-    rpdo_map.get_item_bytes.side_effect = ILError("PDO item has no data stored")
-    servo = mocker.Mock(slave_id=1, _rpdo_maps={0x1600: rpdo_map}, _tpdo_maps={})
+    servo = mocker.Mock(slave_id=1, _rpdo_maps={0x1600: mocker.Mock()}, _tpdo_maps={})
+    servo.validate_rpdo_output_data.side_effect = ILError("PDO item has no data stored")
     net.servos = [servo]
     net._EthercatNetwork__is_master_running = True
     group = EthercatSlaveGroup([servo], group_id=1)
@@ -772,6 +771,24 @@ def test_start_pdos_validates_rpdo_data_before_state_transition(
     set_state_mock.assert_called_once_with([servo], SlaveState.PREOP_STATE)
     set_to_op_mock.assert_not_called()
     assert not net._pdo_exchange_active
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_ethercat_servo_validates_each_rpdo_map(
+    mocker: "MockerFixture", den_net_e_2_9_1_xdf_v3: str
+) -> None:
+    net = EthercatNetwork("dummy_ifname")
+    servo = net.connect_to_slave(slave_id=1, dictionary=den_net_e_2_9_1_xdf_v3)
+    first_map = mocker.Mock()
+    second_map = mocker.Mock()
+    servo._rpdo_maps = {0x1600: first_map, 0x1601: second_map}
+
+    servo.validate_rpdo_output_data()
+
+    first_map.get_item_bytes.assert_called_once_with()
+    second_map.get_item_bytes.assert_called_once_with()
     net.close_ecat_master()
 
 

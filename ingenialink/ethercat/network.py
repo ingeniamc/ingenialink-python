@@ -852,8 +852,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
             self.config_pdo_maps(group=group)
             # Validate RPDO serialization before requesting SafeOP, where cyclic exchange begins.
             for servo in group.servos:
-                for rpdo_map in servo._rpdo_maps.values():
-                    rpdo_map.get_item_bytes()
+                servo.validate_rpdo_output_data()
             self._pdo_exchange_active = True
             self._set_pdo_servos_to_op(list(group.servos), timeout)
         except Exception:
@@ -1004,17 +1003,9 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
         for drive in node_list:
             if not drive.slave_exists:
                 continue
-            if drive.slave.state & pysoem.STATE_ERROR:
-                # A slave reporting an AL error must be acknowledged before a state change.
-                current_state = drive.slave.state & 0x0F
-                drive.slave.state = current_state | pysoem.STATE_ACK
-                drive.slave.write_state()
-                if (
-                    drive.slave.state_check(current_state, ECAT_STATE_CHANGE_TIMEOUT_US)
-                    != current_state
-                ):
-                    all_errors_acknowledged = False
-                    continue
+            if not drive.acknowledge_state_error():
+                all_errors_acknowledged = False
+                continue
             drive.request_node_state(target_state)
         if not all_errors_acknowledged:
             return False

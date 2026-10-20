@@ -166,7 +166,8 @@ sequenceDiagram
   Thread->>Network: stop_pdos()
   Network->>Servo: request PreOP for selected connected servos
   Network->>Servo: clear PDO SyncManagers and FMMUs
-  Note over Servo: Mailbox SMs and cached PDO descriptors remain; excluded servos keep their states
+  Note over Servo: Mailbox SyncManagers and cached PDO descriptors are preserved
+  Note over Servo: Excluded servos keep their states
 ```
 
 ## Reconfiguration Constraints
