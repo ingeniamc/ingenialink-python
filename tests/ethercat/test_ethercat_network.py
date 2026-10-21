@@ -60,7 +60,7 @@ def mocked_network_for_firmware_loading(mocker):
 @pytest.mark.no_pcap
 def test_raise_exception_if_not_winpcap():
     try:
-        import pysoem  # noqa: F401,PLC0415
+        import pysoem  # ruff: ignore[unused-import, import-outside-top-level]
 
         pytest.fail("WinPcap appears to be installed and thus the test cannot be executed.")
     except ImportError:
@@ -767,7 +767,7 @@ def test_network_is_not_released_if_gil_operation_ongoing(
 ) -> None:
     blocking_time = 5
 
-    def dummy_config_init(usetable=False, *, release_gil=None):  # noqa: ARG001
+    def dummy_config_init(usetable=False, *, release_gil=None):  # ruff: ignore[unused-function-argument]
         start_time = time.time()
         while time.time() - start_time < blocking_time:
             time.sleep(0.01)
@@ -1174,7 +1174,7 @@ def test_slave_is_in_preop_state_if_exception_in_pdo_thread(
         rpdo_map.subscribe_to_process_data_event(send_callback)
         tpdo_map.subscribe_to_process_data_event(receive_callback)
 
-        def mock_send_receive_processdata(*args, **kwargs) -> None:  # type: ignore [no-untyped-def]  # noqa: ARG001
+        def mock_send_receive_processdata(*args, **kwargs) -> None:  # type: ignore [no-untyped-def]  # ruff: ignore[unused-function-argument]
             raise RuntimeError("Test error in PDO thread")
 
         refresh_rate: float = 0.5

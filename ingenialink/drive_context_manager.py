@@ -47,7 +47,7 @@ def _execute_with_retry(
     for attempt in range(1, max_attempts + 1):
         try:
             return operation()
-        except Exception as e:  # noqa: PERF203
+        except Exception as e:  # ruff: ignore[try-except-in-loop]
             if attempt < max_attempts:
                 logger.info(
                     f"{register.identifier} failed to {action_name} on axis={register.subnode} "
@@ -428,7 +428,7 @@ class DriveRegistersSession:
 
     def _register_update_callback(
         self,
-        servo: Servo,  # noqa: ARG002 - required by callback signature, unused here
+        servo: Servo,  # ruff: ignore[unused-method-argument] - required by callback signature, unused here
         register: Register,
         value: REG_VALUE,
     ) -> None:

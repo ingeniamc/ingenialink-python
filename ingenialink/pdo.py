@@ -972,7 +972,7 @@ class PDOServo(Servo):
             tpdo_assigns += tpdo_map.map_register_index_bytes
         self.write_complete_access(self.ETG_COMMS_TPDO_ASSIGN_1, tpdo_assigns, subnode=0)
 
-    def map_pdos(self, slave_index: int) -> None:  # noqa: ARG002
+    def map_pdos(self, slave_index: int) -> None:  # ruff: ignore[unused-method-argument]
         """Map RPDO and TPDO register into the slave.
 
         WARNING: This operation can not be done if the servo is not in pre-operational state.

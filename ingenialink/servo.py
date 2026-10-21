@@ -569,7 +569,7 @@ class Servo:
             try:
                 target_reg = self._get_reg(config_reg.uid, subnode=config_reg.subnode)
                 stored_data = self.read(target_reg, config_reg.subnode)
-            except ILError as e:  # noqa: PERF203
+            except ILError as e:  # ruff: ignore[try-except-in-loop]
                 il_error = f"{config_reg.uid} -- {e}"
                 logger.error(
                     "Exception during check_configuration, register %s: %s",
@@ -632,7 +632,7 @@ class Servo:
 
     def _adapt_configuration_file_storage_value(
         self,
-        configuration_file: ConfigurationFile,  # noqa: ARG002
+        configuration_file: ConfigurationFile,  # ruff: ignore[unused-method-argument]
         config_register: ConfigRegister,
         target_register: Register,
     ) -> bytes:
@@ -699,7 +699,7 @@ class Servo:
                     xcf_instance, config_register, target_register
                 )
                 self._write_raw(target_register, data)
-            except ILError as e:  # noqa: PERF203
+            except ILError as e:  # ruff: ignore[try-except-in-loop]
                 exception_message = (
                     f"Exception during load_configuration, register {config_register.uid}: {e}"
                 )
@@ -781,7 +781,7 @@ class Servo:
                     configuration_register.storage = storage
                     configuration_register.storage_valid = True
                     xcf_instance.add_register(configuration_register, storage)
-                except (ILError, NotImplementedError) as e:  # noqa: PERF203
+                except (ILError, NotImplementedError) as e:  # ruff: ignore[try-except-in-loop]
                     logger.error(
                         "Exception during save_configuration, register %s: %s",
                         str(configuration_register.identifier),
@@ -792,7 +792,7 @@ class Servo:
             try:
                 config_table = Table(self, dict_table).to_config_table()
                 xcf_instance.add_config_table(config_table)
-            except Exception as e:  # noqa: PERF203
+            except Exception as e:  # ruff: ignore[try-except-in-loop]
                 logger.error(f"Exception during save_configuration, table {dict_table.id}: {e}")
 
         xcf_instance.save_to_xcf(config_file)

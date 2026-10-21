@@ -59,7 +59,7 @@ class _Publisher(Generic[CallbackT]):
         for callback in list(self.__subscribers):
             try:
                 callback(*args, **kwargs)
-            except Exception as e:  # noqa: PERF203
+            except Exception as e:  # ruff: ignore[try-except-in-loop]
                 logger.exception("Error in event callback %s: %s", callback, e)
 
 

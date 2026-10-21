@@ -265,7 +265,7 @@ class NetStatusListener(Thread):
         while not self.__stop:
             try:
                 timestamps = self.process(timestamps)
-            except Exception as e:  # noqa: PERF203
+            except Exception as e:  # ruff: ignore[try-except-in-loop]
                 logger.exception(f"Exception occurred while processing network status: {e}")
 
     def stop(self) -> None:
@@ -422,7 +422,7 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
                     node.sdo.upload(self.DRIVE_INFO_INDEX, self.REVISION_NUMBER_SUB_IX),
                     RegDtype.U32,
                 )
-            except canopen.sdo.exceptions.SdoError as e:  # noqa: PERF203
+            except canopen.sdo.exceptions.SdoError as e:  # ruff: ignore[try-except-in-loop]
                 logger.warning(
                     f"The information of the node {slave_id} cannot be retrieved. "
                     f"{type(e).__name__}: {e}"
@@ -639,7 +639,7 @@ class CanopenNetwork(CanopenNetworkBase[CanopenServo]):
         fw_file: str,
         callback_status_msg: Optional[Callable[[str], None]] = None,
         callback_progress: Optional[Callable[[int], None]] = None,
-        callback_errors_enabled: Optional[Callable[[bool], None]] = None,  # noqa: ARG002
+        callback_errors_enabled: Optional[Callable[[bool], None]] = None,  # ruff: ignore[unused-method-argument]
     ) -> None:
         """Loads a given firmware file to a target.
 
