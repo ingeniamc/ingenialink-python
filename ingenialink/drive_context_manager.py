@@ -828,7 +828,7 @@ class DriveContextManager:
 
     def _complete_access_callback(
         self,
-        servo: Servo,  # noqa: ARG002
+        servo: Servo,
         register: Union["CanopenRegister"],
         value: Union[int, float, str, bytes],
         operation: RegisterAccessOperation,

@@ -1091,7 +1091,7 @@ def test_net_status_listener_retries_recovery_after_failed_attempt(
 @pytest.mark.pcap
 def test_net_status_listener_recovery_called_once_for_multiple_disconnected_slaves(
     pysoem_mock_network,
-    mocker,  # noqa: ARG001
+    mocker,
     den_net_e_2_9_1_xdf_v3: str,
 ):
     """Test that recover_from_disconnection() is called once even with multiple disconnected slaves.

@@ -202,7 +202,7 @@ def test_load_configuration(servo, tmp_path, xcf_schema) -> None:
             assert value == register.storage
 
 
-def test_load_configuration_strict(mocker, virtual_drive_custom_dict):  # noqa: F811
+def test_load_configuration_strict(mocker, virtual_drive_custom_dict):
     dictionary = virtual_drive_resources.VIRTUAL_DRIVE_V2_XDF
     _, _, servo = virtual_drive_custom_dict(dictionary, Interface.ETH)
     test_file = tests.resources.TEST_CONFIG_FILE
@@ -684,7 +684,7 @@ def test_disturbance_overflow(servo):
         servo.disturbance_write_data(0, RegDtype.U16, data)
 
 
-def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
+def test_subscribe_register_updates(virtual_drive_custom_dict):
     user_over_voltage_uid = "DRV_PROT_USER_OVER_VOLT"
     register_update_callback = RegisterUpdateTest()
 
@@ -711,7 +711,7 @@ def test_subscribe_register_updates(virtual_drive_custom_dict):  # noqa: F811
 
 
 @pytest.mark.virtual
-def test_subscribe_disconnection(virtual_drive_custom_dict):  # noqa: F811
+def test_subscribe_disconnection(virtual_drive_custom_dict):
     class DisconnectionTest:
         def __init__(self):
             self.call_count = 0

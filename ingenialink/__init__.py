@@ -49,7 +49,7 @@ from .network import NetDevEvt, NetProt, NetState, Network
 from .register import Register
 
 try:
-    from ._version import __version__  # noqa: F401 # type: ignore[import-not-found]
+    from ._version import __version__  # type: ignore[import-not-found]
 except ModuleNotFoundError:
     __version__ = "development"
 

@@ -612,7 +612,7 @@ class Servo:
 
             try:
                 table_helper = Table(self, dict_table)
-            except Exception as e:  # noqa: PERF203
+            except Exception as e:
                 logger.error(
                     "Exception during check_configuration creating Table %s: %s",
                     config_table.uid,
@@ -724,7 +724,7 @@ class Servo:
             # Load values of the table
             try:
                 Table(self, dict_table).load_from_config_table(config_table)
-            except ILError as e:  # noqa: PERF203
+            except ILError as e:
                 exception_message = (
                     f"Exception during load_configuration, table {config_table.uid}: {e}"
                 )

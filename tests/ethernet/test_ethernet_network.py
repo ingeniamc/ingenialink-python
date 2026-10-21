@@ -190,7 +190,7 @@ def test_load_firmware_does_not_hang_when_ftp_server_ignores_quit(
     def _run() -> None:
         try:
             net.load_firmware(str(fw_file), target="127.0.0.1", ftp_user="user", ftp_pwd="password")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             load_errors.append(exc)
 
     thread = Thread(target=_run, daemon=True)
