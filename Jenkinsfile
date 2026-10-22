@@ -14,16 +14,16 @@ def ECAT_NODE_LOCK = "test_execution_lock_ecat"
 def CAN_NODE = "canopen-test"
 def CAN_NODE_LOCK = "test_execution_lock_can"
 
-def LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:1.7"
+def LIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/docker-python:dev"
 def WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.9"
 
 def WIN_DOCKER_TMP_PATH = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
 def LIN_DOCKER_TMP_PATH = "/tmp/ingenialink_python"
 
-def DEFAULT_PYTHON_VERSION = "3.9"
-def ALL_PYTHON_VERSIONS = ["3.9", "3.10", "3.11", "3.12"] as Set
-def PYTHON_VERSION_MIN = "3.9"
-def PYTHON_VERSION_MAX = "3.12"
+def DEFAULT_PYTHON_VERSION = "3.12"
+def ALL_PYTHON_VERSIONS = ["3.11", "3.12", "3.13", "3.14"] as Set
+def PYTHON_VERSION_MIN = "3.11"
+def PYTHON_VERSION_MAX = "3.14"
 def BRANCH_NAME_MASTER = "master"
 def DEFAULT_LOGGING_LEVEL = 'INFO'
 def DISTEXT_PROJECT_DIR = "doc/ingenialink-python"
