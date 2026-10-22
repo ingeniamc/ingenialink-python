@@ -1,7 +1,11 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- Add `EthercatSlaveGroup` support for configuring PDO maps and activating PDO exchange with selected EtherCAT servos.
+
 ### Fixed
+- Validate RPDO serialization before entering SafeOP and improve slave-state recovery when PDO startup fails.
 - Ethernet `NetStatusListener` not detecting the drive reconnection on Windows when the socket was recreated while the drive was unreachable. The recreated socket now keeps its original source IP.
 
 ## [7.6.3] - 2026-10-14
