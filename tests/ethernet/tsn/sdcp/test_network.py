@@ -5,6 +5,7 @@ import pytest
 from ingenialink.enums.node import NodeMode
 from ingenialink.ethernet.network import EthernetNetwork, NetStatusListener
 from ingenialink.ethernet.tsn.sdcp.discovery import SDCPNodeDiscovery
+from ingenialink.ethernet.tsn.sdcp.enums import SDCPProfileFlags
 from ingenialink.ethernet.tsn.sdcp.node import SDCPNode
 from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
 from ingenialink.exceptions import ILError
@@ -32,6 +33,7 @@ def discovery() -> SDCPNodeDiscovery:
         product_code=PRODUCT_CODE,
         revision_number=REVISION_NUMBER,
         mode=NodeMode.APPLICATION,
+        profile_flags=SDCPProfileFlags.SECURITY,
     )
 
 
@@ -97,6 +99,7 @@ def test_scan_sdcp_nodes_creates_and_stores_node(
 
     assert len(nodes) == 1
     assert isinstance(nodes[0], SDCPNode)
+    assert nodes[0].profile_flags == discovery.profile_flags
     assert network.sdcp_nodes == nodes
     assert network.interface == INTERFACE
 
@@ -134,6 +137,7 @@ def test_scan_sdcp_nodes_updates_existing_node(
         product_code=PRODUCT_CODE,
         revision_number=REVISION_NUMBER + 1,
         mode=NodeMode.APPLICATION,
+        profile_flags=SDCPProfileFlags.REALTIME | SDCPProfileFlags.SAFETY,
     )
 
     nodes = network.scan_sdcp_nodes()
@@ -144,6 +148,7 @@ def test_scan_sdcp_nodes_updates_existing_node(
     assert node.target == TARGET
     assert node.protocol_version == PROTOCOL_VERSION + 1
     assert node.revision_number == REVISION_NUMBER + 1
+    assert node.profile_flags == (SDCPProfileFlags.REALTIME | SDCPProfileFlags.SAFETY)
 
 
 def test_scan_sdcp_nodes_ignores_identification_errors(

@@ -8,6 +8,7 @@ from ingenialink.enums.node import NodeMode
 from ingenialink.ethernet.tsn.ipv6_tftp import TftpUploader
 from ingenialink.ethernet.tsn.sdcp.connection import DEFAULT_SDCP_TIMEOUT_S
 from ingenialink.ethernet.tsn.sdcp.discovery import SDCPNodeDiscovery
+from ingenialink.ethernet.tsn.sdcp.enums import SDCPProfileFlags
 from ingenialink.ethernet.tsn.sdcp.identification import identify_sdcp_node
 from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILStateError
@@ -72,6 +73,11 @@ class SDCPNode(Node[SDCPNodeDiscovery, SDCPServo]):
     def mode(self) -> NodeMode:
         """Current operating mode of the node."""
         return self._discovery.mode
+
+    @property
+    def profile_flags(self) -> SDCPProfileFlags:
+        """Optional SDCP profiles advertised by the node."""
+        return self._discovery.profile_flags
 
     @property
     def servo(self) -> Optional[SDCPServo]:

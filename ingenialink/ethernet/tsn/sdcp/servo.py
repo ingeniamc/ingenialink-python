@@ -94,7 +94,7 @@ class SDCPServo(TSNServoBase):
             request = SDCPWriteRequest(self._next_transaction_id(), reg.idx, reg.subidx, data)
             response = self._connection.request(request)
             if isinstance(response, SDCPWriteResponseError):
-                raise ILIOError(f"SDCP write failed with error code 0x{response.error_code:08X}")
+                raise ILIOError(f"SDCP write failed with error code 0x{response.error_code:04X}")
             if not isinstance(response, SDCPWriteResponse):
                 raise ILIOError(f"Unexpected SDCP write response: {response}")
 
@@ -115,7 +115,7 @@ class SDCPServo(TSNServoBase):
             request = SDCPReadRequest(self._next_transaction_id(), reg.idx, reg.subidx)
             response = self._connection.request(request)
             if isinstance(response, SDCPReadResponseError):
-                raise ILIOError(f"SDCP read failed with error code 0x{response.error_code:08X}")
+                raise ILIOError(f"SDCP read failed with error code 0x{response.error_code:04X}")
             if not isinstance(response, SDCPReadResponse):
                 raise ILIOError(f"Unexpected SDCP read response: {response}")
             return response.value

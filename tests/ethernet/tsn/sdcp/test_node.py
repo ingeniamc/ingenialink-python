@@ -1,12 +1,14 @@
 """Tests for the SDCP node lifecycle."""
 
 import re
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from ingenialink.enums.node import NodeMode
+from ingenialink.ethernet.tsn.sdcp.enums import SDCPProfileFlags
 from ingenialink.ethernet.tsn.sdcp.node import SDCPNode, SDCPNodeDiscovery
 from ingenialink.ethernet.tsn.sdcp.servo import SDCPServo
 from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILIOError, ILStateError
@@ -34,6 +36,7 @@ def application_discovery() -> SDCPNodeDiscovery:
         product_code=PRODUCT_CODE,
         revision_number=REVISION_NUMBER,
         mode=NodeMode.APPLICATION,
+        profile_flags=SDCPProfileFlags(0),
     )
 
 
@@ -48,6 +51,7 @@ def bootloader_discovery() -> SDCPNodeDiscovery:
         product_code=PRODUCT_CODE,
         revision_number=0,
         mode=NodeMode.BOOTLOADER,
+        profile_flags=SDCPProfileFlags(0),
     )
 
 
@@ -118,8 +122,29 @@ def test_node_exposes_discovery_information(application_node: SDCPNode) -> None:
     assert application_node.product_code == PRODUCT_CODE
     assert application_node.revision_number == REVISION_NUMBER
     assert application_node.mode == NodeMode.APPLICATION
+    assert application_node.profile_flags == SDCPProfileFlags(0)
+    assert isinstance(application_node.profile_flags, SDCPProfileFlags)
     assert application_node.servo is None
     assert not application_node.is_connected
+
+
+@pytest.mark.parametrize(
+    "profile_flags",
+    [
+        SDCPProfileFlags(0),
+        SDCPProfileFlags.SECURITY | SDCPProfileFlags.REALTIME,
+        SDCPProfileFlags.REALTIME | SDCPProfileFlags.SAFETY,
+    ],
+)
+def test_node_exposes_profile_flags(
+    application_discovery: SDCPNodeDiscovery,
+    profile_flags: SDCPProfileFlags,
+) -> None:
+    """Expose typed profile flags from the latest discovery information."""
+    node = SDCPNode(replace(application_discovery, profile_flags=profile_flags))
+
+    assert node.profile_flags == profile_flags
+    assert isinstance(node.profile_flags, SDCPProfileFlags)
 
 
 def test_update_replaces_mutable_discovery_information(
@@ -134,6 +159,7 @@ def test_update_replaces_mutable_discovery_information(
         product_code=PRODUCT_CODE,
         revision_number=0,
         mode=NodeMode.BOOTLOADER,
+        profile_flags=SDCPProfileFlags.SECURITY | SDCPProfileFlags.SAFETY,
     )
 
     application_node.update(updated_discovery)
@@ -145,6 +171,7 @@ def test_update_replaces_mutable_discovery_information(
     assert application_node.product_code == PRODUCT_CODE
     assert application_node.revision_number == 0
     assert application_node.mode == NodeMode.BOOTLOADER
+    assert application_node.profile_flags == (SDCPProfileFlags.SECURITY | SDCPProfileFlags.SAFETY)
 
 
 @pytest.mark.parametrize(
@@ -168,6 +195,7 @@ def test_update_rejects_different_drive_identity(
         product_code=product_code,
         revision_number=REVISION_NUMBER,
         mode=NodeMode.APPLICATION,
+        profile_flags=SDCPProfileFlags(0),
     )
 
     with pytest.raises(ValueError, match="different drive identity"):
@@ -187,6 +215,7 @@ def test_update_allows_firmware_information_change_while_connected(
         product_code=PRODUCT_CODE,
         revision_number=REVISION_NUMBER + 1,
         mode=NodeMode.APPLICATION,
+        profile_flags=SDCPProfileFlags(0),
     )
 
     node.update(updated_discovery)
@@ -207,6 +236,7 @@ def test_update_allows_firmware_information_change_while_connected(
             product_code=PRODUCT_CODE,
             revision_number=REVISION_NUMBER,
             mode=NodeMode.APPLICATION,
+            profile_flags=SDCPProfileFlags(0),
         ),
         SDCPNodeDiscovery(
             target=TARGET,
@@ -216,6 +246,7 @@ def test_update_allows_firmware_information_change_while_connected(
             product_code=PRODUCT_CODE,
             revision_number=REVISION_NUMBER,
             mode=NodeMode.APPLICATION,
+            profile_flags=SDCPProfileFlags(0),
         ),
         SDCPNodeDiscovery(
             target=TARGET,
@@ -225,6 +256,7 @@ def test_update_allows_firmware_information_change_while_connected(
             product_code=PRODUCT_CODE,
             revision_number=0,
             mode=NodeMode.BOOTLOADER,
+            profile_flags=SDCPProfileFlags(0),
         ),
     ],
     ids=["target", "interface", "mode"],
@@ -345,6 +377,7 @@ def test_load_firmware_uploads_and_updates_node_after_recovery(
         product_code=PRODUCT_CODE,
         revision_number=REVISION_NUMBER + 1,
         mode=NodeMode.APPLICATION,
+        profile_flags=SDCPProfileFlags(0),
     )
 
     with (
@@ -398,6 +431,7 @@ def test_load_firmware_retries_if_node_cannot_be_identified(
         product_code=PRODUCT_CODE,
         revision_number=REVISION_NUMBER + 1,
         mode=NodeMode.APPLICATION,
+        profile_flags=SDCPProfileFlags(0),
     )
 
     with (
