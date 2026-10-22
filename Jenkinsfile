@@ -20,7 +20,7 @@ def WIN_DOCKER_IMAGE = "ingeniacontainers.azurecr.io/win-python-builder:1.9"
 def WIN_DOCKER_TMP_PATH = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
 def LIN_DOCKER_TMP_PATH = "/tmp/ingenialink_python"
 
-def DEFAULT_PYTHON_VERSION = "3.12"
+def DEFAULT_PYTHON_VERSION = "3.11"
 def ALL_PYTHON_VERSIONS = ["3.11", "3.12", "3.13", "3.14"] as Set
 def PYTHON_VERSION_MIN = "3.11"
 def PYTHON_VERSION_MAX = "3.14"
