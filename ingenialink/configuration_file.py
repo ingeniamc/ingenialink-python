@@ -462,7 +462,7 @@ class ConfigTable:
         for elem in element.findall(TableElement._ELEMENT_NAME):
             try:
                 elements.append(TableElement.from_xcf(elem, uid))
-            except ValueError as e:  # noqa: PERF203
+            except ValueError as e:  # ruff: ignore[try-except-in-loop]
                 logger.warning(f"Cannot load table element for table {uid}: {e}")
 
         return cls(uid, subnode, elements)
@@ -577,7 +577,7 @@ class ConfigurationFile(XMLBase, ABC):
         for reg in register_element_list:
             try:
                 xcf_instance.add_config_register(ConfigRegister.from_xcf(reg))
-            except (ValueError, KeyError, NotImplementedError) as e:  # noqa: PERF203
+            except (ValueError, KeyError, NotImplementedError) as e:  # ruff: ignore[try-except-in-loop]
                 logger.warning(f"Cannot load register. {e}")
 
         # Load tables if present (optional element)
@@ -587,7 +587,7 @@ class ConfigurationFile(XMLBase, ABC):
             for table_elem in table_element_list:
                 try:
                     xcf_instance.add_config_table(ConfigTable.from_xcf(table_elem))
-                except (ValueError, KeyError) as e:  # noqa: PERF203
+                except (ValueError, KeyError) as e:  # ruff: ignore[try-except-in-loop]
                     logger.warning(f"Cannot load table. {e}")
 
         xcf_instance.major_version = major_version

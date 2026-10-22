@@ -1,5 +1,5 @@
 def test_exported_comms_symbols():
-    import ingenialink  # noqa: PLC0415
+    import ingenialink  # ruff: ignore[import-outside-top-level]
 
     expected_attrs = []
 
