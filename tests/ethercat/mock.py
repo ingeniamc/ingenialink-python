@@ -31,7 +31,7 @@ class NetworkEnvironment:
 
 
 class MockSoemSlave:
-    def __init__(self, id: int):  # noqa: A002 shadows built-in
+    def __init__(self, id: int):  # ruff: ignore[builtin-argument-shadowing] shadows built-in
         self.id = id
         self._emcy_callbacks = []
         self.state: int = 1  # INIT_STATE
@@ -45,7 +45,7 @@ class MockSoemSlave:
     def add_emergency_callback(self, callback):
         self._emcy_callbacks.append(callback)
 
-    def state_check(self, expected_state: int, timeout: int = 50000):  # noqa: ARG002
+    def state_check(self, expected_state: int, timeout: int = 50000):  # ruff: ignore[unused-method-argument]
         return expected_state if self.state == expected_state else self.state
 
     def sdo_write(

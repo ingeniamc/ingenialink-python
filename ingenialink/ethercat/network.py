@@ -315,7 +315,7 @@ class EthercatNetwork(EthercatNetworkBase[EthercatServo]):
 
         Raises:
             ImportError: If pysoem is not installed.
-        """  # noqa: DOC502
+        """
         if not pysoem:
             raise pysoem_import_error
         adapters = []

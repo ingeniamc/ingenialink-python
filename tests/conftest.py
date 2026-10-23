@@ -19,7 +19,7 @@ from ingenialink.virtual.canopen.network import VirtualCanopenNetwork
 from ingenialink.virtual.ethercat.network import VirtualEthercatNetwork
 from ingenialink.virtual.ethernet.network import VirtualEthernetNetwork
 from ingenialink.virtual.sdcp.network import VirtualSDCPNetwork
-from tests.ethercat.mock import pysoem_mock_network  # noqa: F401
+from tests.ethercat.mock import pysoem_mock_network  # ruff: ignore[unused-import]
 
 pytest_plugins = [
     "summit_testing_framework.pytest_addoptions",
@@ -46,7 +46,7 @@ class SuppressSpecificLogs(logging.Filter):
 
 
 @pytest.hookimpl(tryfirst=True)
-def pytest_configure(config):  # noqa: ARG001
+def pytest_configure(config):  # ruff: ignore[unused-function-argument]
     logging.getLogger("ingenialink.servo").addFilter(SuppressSpecificLogs())
 
 
@@ -64,7 +64,7 @@ def pytest_sessionstart(session):
 
 
 def pytest_collection_modifyitems(
-    session: pytest.Session,  # noqa: ARG001
+    session: pytest.Session,  # ruff: ignore[unused-function-argument]
     config: pytest.Config,
     items: list[pytest.Item],
 ) -> None:
@@ -261,7 +261,7 @@ def refresh_registers_for_test_rollback(servo: Servo, register_uids: list[str]):
     for register_uid in register_uids:
         try:
             servo.read(register_uid)
-        except ILRegisterNotFoundError:  # noqa: PERF203
+        except ILRegisterNotFoundError:  # ruff: ignore[try-except-in-loop]
             logger.warning(
                 f"Register {register_uid} not found during refresh after test execution."
             )

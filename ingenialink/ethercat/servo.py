@@ -637,7 +637,7 @@ class EthercatServo(EthercatServoBase):
             try:
                 table = Table(self, dict_table)
                 csv_configuration_file.add_table(table)
-            except Exception as e:  # noqa: PERF203
+            except Exception as e:  # ruff: ignore[try-except-in-loop]
                 logger.error("Exception during save_configuration, table %s: %s", dict_table.id, e)
 
         csv_configuration_file.write_to_file()
