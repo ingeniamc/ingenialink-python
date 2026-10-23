@@ -25,12 +25,49 @@ from ingenialink.ethercat.network import (
     release_network_reference,
     set_network_reference,
 )
-from ingenialink.exceptions import ILError, ILFirmwareLoadError
+from ingenialink.ethercat.slave_group import EthercatSlaveGroup
+from ingenialink.exceptions import ILError, ILFirmwareLoadError, ILWrongWorkingCountError
 from ingenialink.network import NetDevEvt, NetState
 from ingenialink.pdo import PDOMap, RPDOMap, TPDOMap
 from tests.conftest import refresh_registers_for_test_rollback
 from tests.ethercat.mock import MockSoemSlave, pysoem_mock_network
 from tests.net_status_helpers import NetStatusRecorder
+
+
+def test_ethercat_slave_group_preserves_servo_membership() -> None:
+    """Store servo references as a tuple."""
+    first_servo = MagicMock(slave_id=1)
+    second_servo = MagicMock(slave_id=2)
+
+    group = EthercatSlaveGroup([first_servo, second_servo])
+
+    assert group.servos == (first_servo, second_servo)
+
+
+def test_ethercat_slave_group_rejects_duplicate_slaves() -> None:
+    """Reject groups containing multiple servo references for one slave ID."""
+    servo = MagicMock(slave_id=1)
+
+    with pytest.raises(ValueError, match="cannot contain duplicate slaves"):
+        EthercatSlaveGroup([servo, servo])
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_start_pdos_rejects_group_with_servo_from_another_network(
+    mocker: "MockerFixture",
+) -> None:
+    """Reject a group whose servo is not registered on the network."""
+    net = EthercatNetwork("dummy_ifname")
+    net._ecat_master.config_init()
+    net._EthercatNetwork__is_master_running = True
+    group = EthercatSlaveGroup([mocker.Mock(slave_id=1)])
+
+    with pytest.raises(ValueError, match="must be connected to this network"):
+        net.start_pdos(group=group)
+
+    net.close_ecat_master()
+
 
 if TYPE_CHECKING:
     from pytest import FixtureRequest
@@ -431,6 +468,38 @@ def test_change_nodes_state_notifies_connected_servos(den_net_e_2_9_1_xdf_v3: st
 
 @pytest.mark.pcap
 @pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_change_nodes_state_acknowledges_slave_error_before_transition(
+    mocker: "MockerFixture", den_net_e_2_9_1_xdf_v3: str
+) -> None:
+    """Test that _change_nodes_state acknowledges a slave error before
+    transitioning to the target state."""
+    net = EthercatNetwork("dummy_ifname")
+    servo = net.connect_to_slave(slave_id=1, dictionary=den_net_e_2_9_1_xdf_v3)
+    servo.slave.state = pysoem.SAFEOP_STATE | pysoem.STATE_ERROR
+    written_states = []
+
+    def write_state() -> None:
+        written_states.append(servo.slave.state)
+        if servo.slave.state & pysoem.STATE_ACK:
+            servo.slave.state &= 0x0F
+
+    mocker.patch.object(servo.slave, "write_state", side_effect=write_state)
+    mocker.patch.object(
+        servo.slave,
+        "state_check",
+        side_effect=lambda *_args, **_kwargs: servo.slave.state,
+    )
+
+    assert net._change_nodes_state(servo, SlaveState.PREOP_STATE)
+    assert written_states == [
+        pysoem.SAFEOP_STATE | pysoem.STATE_ACK,
+        pysoem.PREOP_STATE,
+    ]
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
 def test_request_slave_change_routes_through_connected_servo(den_net_e_2_9_1_xdf_v3: str):
     """When the node belongs to a connected servo, _request_slave_change goes through the
     servo so subscribers are notified."""
@@ -461,6 +530,409 @@ def test_request_slave_change_writes_directly_for_unconnected_node(den_net_e_2_9
 
     assert orphan_slave.state == SlaveState.BOOT_STATE.value
 
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_activate_pdos_forwards_slave_group(mocker: "MockerFixture") -> None:
+    """Test that activate_pdos forwards the selected servo group to the PDO manager."""
+    net = EthercatNetwork("dummy_ifname")
+    start_mock = mocker.patch.object(net.pdo_manager, "start_pdos")
+    mocker.patch.object(net, "_notify_pdo_thread_status")
+    group = EthercatSlaveGroup([mocker.Mock(slave_id=2)])
+
+    net.activate_pdos(refresh_rate=0.5, watchdog_timeout=1.0, group=group)
+
+    start_mock.assert_called_once_with(refresh_rate=0.5, watchdog_timeout=1.0, group=group)
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.parametrize("overlapping_io_map", [False, True])
+def test_config_pdo_maps_assigns_group_to_selected_discovered_slaves(
+    mocker: "MockerFixture", pysoem_mock_network, overlapping_io_map: bool
+) -> None:
+    """Assign the selected servo to its PySOEM process-data group."""
+    pysoem_mock_network.set_num_slaves(3)
+    net = EthercatNetwork("dummy_ifname", overlapping_io_map=overlapping_io_map)
+    net._ecat_master.config_init()
+    map_mock = mocker.patch.object(
+        net._ecat_master,
+        "config_overlap_map" if overlapping_io_map else "config_map",
+        create=True,
+        return_value=24,
+    )
+    selected_servo = mocker.Mock(slave_id=2)
+    net.servos = [selected_servo]
+
+    net.config_pdo_maps(group=EthercatSlaveGroup([selected_servo], group_id=1))
+
+    assert [slave.group for slave in net._ecat_master.slaves] == [0, 1, 0]
+    assert net._active_slave_group.group_id == 1
+    assert net._active_slave_group.servos == (selected_servo,)
+    map_mock.assert_called_once_with(group=1)
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+def test_config_pdo_maps_accepts_ethercat_slave_group(
+    mocker: "MockerFixture", pysoem_mock_network
+) -> None:
+    """Map group members together and resolve the PySOEM group internally."""
+    pysoem_mock_network.set_num_slaves(2)
+    net = EthercatNetwork("dummy_ifname")
+    net._ecat_master.config_init()
+    selected_servo = mocker.Mock(slave_id=1)
+    net.servos = [selected_servo]
+    map_mock = mocker.patch.object(net._ecat_master, "config_overlap_map", create=True)
+
+    group = EthercatSlaveGroup([selected_servo])
+    net.config_pdo_maps(group=group)
+
+    assert [slave.group for slave in net._ecat_master.slaves] == [1, 0]
+    assert net._active_slave_group is group
+    map_mock.assert_called_once_with(group=1)
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.parametrize("overlapping_io_map", [False, True])
+def test_config_pdo_maps_defaults_to_full_network_group_zero(
+    mocker: "MockerFixture", pysoem_mock_network, overlapping_io_map: bool
+) -> None:
+    """Keep default PDO mapping on group 0 for every discovered slave."""
+    pysoem_mock_network.set_num_slaves(3)
+    net = EthercatNetwork("dummy_ifname", overlapping_io_map=overlapping_io_map)
+    net._ecat_master.config_init()
+    map_mock = mocker.patch.object(
+        net._ecat_master,
+        "config_overlap_map" if overlapping_io_map else "config_map",
+        create=True,
+        return_value=24,
+    )
+
+    net.config_pdo_maps()
+
+    assert [slave.group for slave in net._ecat_master.slaves] == [0, 0, 0]
+    assert net._active_slave_group.group_id == 0
+    assert net._active_slave_group.slave_ids == set()
+    map_mock.assert_called_once_with(group=0)
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+def test_config_pdo_maps_rejects_group_zero_for_subset(
+    mocker: "MockerFixture", pysoem_mock_network
+) -> None:
+    """SOEM group zero always maps all discovered slaves."""
+    pysoem_mock_network.set_num_slaves(2)
+    net = EthercatNetwork("dummy_ifname")
+    net._ecat_master.config_init()
+    map_mock = mocker.patch.object(net._ecat_master, "config_map", create=True)
+    servo = mocker.Mock(slave_id=1)
+    net.servos = [servo]
+
+    with pytest.raises(ValueError, match="group 0 maps all discovered slaves"):
+        net.config_pdo_maps(group=EthercatSlaveGroup([servo], group_id=0))
+
+    map_mock.assert_not_called()
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.parametrize("overlapping_io_map", [False, True])
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_send_receive_processdata_uses_active_group_and_group_wkc(
+    mocker: "MockerFixture", pysoem_mock_network, overlapping_io_map: bool
+) -> None:
+    """Exclude unselected discovered slaves from the active process-data group."""
+    pysoem_mock_network.set_num_slaves(2)
+    net = EthercatNetwork("dummy_ifname", overlapping_io_map=overlapping_io_map)
+    net._ecat_master.config_init()
+    unselected_slave = net._ecat_master.slaves[1]
+    unselected_state = unselected_slave.state
+    servo = mocker.Mock()
+    servo.slave_id = 1
+    net.servos = [servo]
+    map_method_name = "config_overlap_map" if overlapping_io_map else "config_map"
+    map_mock = mocker.patch.object(net._ecat_master, map_method_name, create=True, return_value=24)
+    net.config_pdo_maps(group=EthercatSlaveGroup([servo], group_id=1))
+    assert [slave.group for slave in net._ecat_master.slaves] == [1, 0]
+    assert net._active_slave_group.group_id == 1
+    assert net._active_slave_group.slave_ids == {1}
+    map_mock.assert_called_once_with(group=1)
+
+    send_method_name = "send_overlap_processdata" if overlapping_io_map else "send_processdata"
+    send_mock = mocker.patch.object(net._ecat_master, send_method_name, create=True)
+    receive_mock = mocker.patch.object(
+        net._ecat_master, "receive_processdata", create=True, return_value=3
+    )
+    expected_wkc_mock = mocker.patch.object(
+        net._ecat_master, "get_expected_wkc", create=True, return_value=3
+    )
+
+    net.send_receive_processdata()
+
+    send_mock.assert_called_once_with(group=1, release_gil=None)
+    receive_mock.assert_called_once_with(timeout=100_000, group=1, release_gil=None)
+    expected_wkc_mock.assert_called_once_with(group=1)
+    servo.generate_pdo_outputs.assert_called_once_with()
+    servo.process_pdo_inputs.assert_called_once_with()
+    assert unselected_slave.state == unselected_state
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.parametrize("overlapping_io_map", [False, True])
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_send_receive_processdata_raises_for_active_group_wkc_mismatch(
+    mocker: "MockerFixture", overlapping_io_map: bool
+) -> None:
+    """Compare the received WKC with the active group's expected WKC."""
+    net = EthercatNetwork("dummy_ifname", overlapping_io_map=overlapping_io_map)
+    servo = mocker.Mock()
+    servo.slave_id = 1
+    servo.slave.state = pysoem.OP_STATE
+    servo.slave.al_status = 0
+    net.servos = [servo]
+    net._active_slave_group = EthercatSlaveGroup([servo], group_id=1)
+    send_method_name = "send_overlap_processdata" if overlapping_io_map else "send_processdata"
+    mocker.patch.object(net._ecat_master, send_method_name, create=True)
+    mocker.patch.object(net._ecat_master, "receive_processdata", create=True, return_value=3)
+    expected_wkc_mock = mocker.patch.object(
+        net._ecat_master, "get_expected_wkc", create=True, return_value=6
+    )
+    mocker.patch.object(net._ecat_master, "read_state")
+
+    with pytest.raises(ILWrongWorkingCountError, match="expected: 6, real: 3"):
+        net.send_receive_processdata()
+
+    expected_wkc_mock.assert_called_once_with(group=1)
+    servo.process_pdo_inputs.assert_not_called()
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_start_pdos_resolves_group_configuration_without_master_state_request(
+    mocker: "MockerFixture",
+) -> None:
+    """Start the selected process image while state changes remain per servo."""
+    net = EthercatNetwork("dummy_ifname")
+    net._ecat_master.config_init()
+    initial_master_state = net._ecat_master.state
+    servo = mocker.Mock(slave_id=1)
+    servo._rpdo_maps = {0x1600: mocker.Mock()}
+    servo._tpdo_maps = []
+    net.servos = [servo]
+    net._EthercatNetwork__is_master_running = True
+    config_pdo_maps_mock = mocker.patch.object(
+        net,
+        "config_pdo_maps",
+        side_effect=lambda group: setattr(net, "_active_slave_group", group),
+    )
+    change_state_mock = mocker.patch.object(net, "_change_nodes_state", return_value=True)
+    mocker.patch.object(net, "_check_node_state", return_value=True)
+
+    group = EthercatSlaveGroup([servo])
+    net.start_pdos(group=group)
+
+    config_pdo_maps_mock.assert_called_once_with(group=group)
+    assert group.group_id == 1
+    assert net._ecat_master.state == initial_master_state
+    assert change_state_mock.call_args_list == [
+        call([servo], SlaveState.SAFEOP_STATE),
+        call([servo], SlaveState.OP_STATE),
+    ]
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_start_pdos_validates_rpdo_data_before_state_transition(
+    mocker: "MockerFixture",
+) -> None:
+    """Test that start_pdos validates RPDO data before attempting a state transition."""
+    net = EthercatNetwork("dummy_ifname")
+    servo = mocker.Mock(slave_id=1, _rpdo_maps={0x1600: mocker.Mock()}, _tpdo_maps={})
+    servo.validate_rpdo_output_data.side_effect = ILError("PDO item has no data stored")
+    net.servos = [servo]
+    net._EthercatNetwork__is_master_running = True
+    group = EthercatSlaveGroup([servo], group_id=1)
+    mocker.patch.object(net, "_resolve_pdo_map_configuration", return_value=group)
+    mocker.patch.object(net, "config_pdo_maps")
+    set_state_mock = mocker.patch.object(net, "_change_nodes_state", return_value=True)
+    set_to_op_mock = mocker.patch.object(net, "_set_pdo_servos_to_op")
+
+    with pytest.raises(ILError, match="PDO item has no data stored"):
+        net.start_pdos(group=group)
+
+    set_state_mock.assert_called_once_with([servo], SlaveState.PREOP_STATE)
+    set_to_op_mock.assert_not_called()
+    assert not net._pdo_exchange_active
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_ethercat_servo_validates_each_rpdo_map(
+    mocker: "MockerFixture", den_net_e_2_9_1_xdf_v3: str
+) -> None:
+    net = EthercatNetwork("dummy_ifname")
+    servo = net.connect_to_slave(slave_id=1, dictionary=den_net_e_2_9_1_xdf_v3)
+    first_map = mocker.Mock()
+    second_map = mocker.Mock()
+    servo._rpdo_maps = {0x1600: first_map, 0x1601: second_map}
+
+    servo.validate_rpdo_output_data()
+
+    first_map.get_item_bytes.assert_called_once_with()
+    second_map.get_item_bytes.assert_called_once_with()
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_start_pdos_attempts_preop_recovery_after_startup_failure(
+    mocker: "MockerFixture",
+) -> None:
+    """Test that start_pdos attempts to recover by transitioning to PREOP after
+    a startup failure."""
+    net = EthercatNetwork("dummy_ifname")
+    servo = mocker.Mock(slave_id=1, _rpdo_maps={0x1600: mocker.Mock()}, _tpdo_maps={})
+    net.servos = [servo]
+    net._EthercatNetwork__is_master_running = True
+    group = EthercatSlaveGroup([servo], group_id=1)
+    mocker.patch.object(net, "_resolve_pdo_map_configuration", return_value=group)
+    mocker.patch.object(net, "config_pdo_maps")
+    mocker.patch.object(net, "_set_pdo_servos_to_op", side_effect=RuntimeError("startup failed"))
+    change_state_mock = mocker.patch.object(
+        net, "_change_nodes_state", side_effect=[False, True, True]
+    )
+
+    with pytest.raises(RuntimeError, match="startup failed"):
+        net.start_pdos(group=group)
+
+    assert change_state_mock.call_args_list == [
+        call([servo], SlaveState.PREOP_STATE),
+        call([servo], SlaveState.INIT_STATE),
+        call([servo], SlaveState.PREOP_STATE),
+    ]
+    assert not net._pdo_exchange_active
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+def test_start_pdos_defaults_to_mapped_servos_and_reuses_active_mapping(
+    mocker: "MockerFixture", pysoem_mock_network
+) -> None:
+    """The manager maps connected PDO servos, and repeated identical mapping is harmless."""
+    pysoem_mock_network.set_num_slaves(2)
+    net = EthercatNetwork("dummy_ifname", overlapping_io_map=False)
+    net._ecat_master.config_init()
+    for slave in net._ecat_master.slaves:
+        slave.group = 0
+    servo = mocker.Mock(
+        slave_id=1,
+        _rpdo_maps={0x1600: mocker.Mock(get_item_bytes=mocker.Mock(return_value=b""))},
+        _tpdo_maps=[],
+    )
+    unselected_servo = mocker.Mock(slave_id=2, _rpdo_maps=[], _tpdo_maps=[])
+    net.servos = [servo, unselected_servo]
+    net._EthercatNetwork__is_master_running = True
+    net._pdo_exchange_active = True
+    net._pdo_manager._pdo_thread = mocker.Mock(is_alive=mocker.Mock(return_value=True))
+    map_mock = mocker.patch.object(net._ecat_master, "config_map", create=True, return_value=8)
+    mocker.patch.object(net, "_change_nodes_state", return_value=True)
+    mocker.patch.object(net, "_check_node_state", return_value=True)
+
+    net._pdo_manager._start_network_pdos()
+
+    map_mock.assert_called_once_with(group=1)
+    assert [slave.group for slave in net._ecat_master.slaves] == [1, 0]
+    assert net._active_slave_group.group_id == 1
+    assert net._active_slave_group.slave_ids == {1}
+    assert net._pdo_exchange_active
+    net.config_pdo_maps(group=EthercatSlaveGroup([servo], group_id=1))
+    map_mock.assert_called_once_with(group=1)
+    with pytest.raises(RuntimeError, match="Stop PDO exchange"):
+        net.config_pdo_maps(group=EthercatSlaveGroup([unselected_servo], group_id=1))
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_start_pdos_only_changes_state_of_selected_slaves(
+    mocker: "MockerFixture",
+) -> None:
+    """Do not request state changes for mapped servos outside the active group."""
+    net = EthercatNetwork("dummy_ifname")
+    net._ecat_master.config_init()
+    selected_servo = mocker.Mock(
+        slave_id=1,
+        _rpdo_maps={0x1600: mocker.Mock(get_item_bytes=mocker.Mock(return_value=b""))},
+        _tpdo_maps=[],
+    )
+    unselected_servo = mocker.Mock(
+        slave_id=2,
+        _rpdo_maps={0x1600: mocker.Mock(get_item_bytes=mocker.Mock(return_value=b""))},
+        _tpdo_maps=[],
+    )
+    net.servos = [selected_servo, unselected_servo]
+    net._EthercatNetwork__is_master_running = True
+    config_pdo_maps_mock = mocker.patch.object(
+        net,
+        "config_pdo_maps",
+        side_effect=lambda group: setattr(net, "_active_slave_group", group),
+    )
+    change_state_mock = mocker.patch.object(net, "_change_nodes_state", return_value=True)
+    mocker.patch.object(net, "_check_node_state", return_value=True)
+
+    group = EthercatSlaveGroup([selected_servo])
+    net.start_pdos(group=group)
+
+    config_pdo_maps_mock.assert_called_once_with(group=group)
+    assert group.group_id == 1
+    assert change_state_mock.call_args_list == [
+        call([selected_servo], SlaveState.SAFEOP_STATE),
+        call([selected_servo], SlaveState.OP_STATE),
+    ]
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.parametrize("include_mapped_servo", [False, True])
+def test_start_pdos_without_selected_mapped_servo_does_not_configure_map(
+    include_mapped_servo: bool, mocker: "MockerFixture", pysoem_mock_network
+) -> None:
+    """Reject selected slaves without PDO maps before changing the process-data mapping."""
+    pysoem_mock_network.set_num_slaves(2)
+    net = EthercatNetwork("dummy_ifname")
+    net._ecat_master.config_init()
+    for slave in net._ecat_master.slaves:
+        slave.group = 0
+    mapped_servo = mocker.Mock(
+        slave_id=1,
+        _rpdo_maps={0x1600: mocker.Mock(get_item_bytes=mocker.Mock(return_value=b""))},
+        _tpdo_maps=[],
+    )
+    unmapped_servo = mocker.Mock(slave_id=2, _rpdo_maps=[], _tpdo_maps=[])
+    net.servos = [mapped_servo, unmapped_servo]
+    selected_servos = [unmapped_servo]
+    if include_mapped_servo:
+        selected_servos.append(mapped_servo)
+    group = EthercatSlaveGroup(selected_servos)
+    net._EthercatNetwork__is_master_running = True
+    config_pdo_maps_mock = mocker.patch.object(net, "config_pdo_maps")
+
+    initial_groups = [slave.group for slave in net._ecat_master.slaves]
+    with pytest.raises(ValueError, match="Selected slave IDs have no configured PDO maps: \\[2\\]"):
+        net.start_pdos(group=group)
+
+    config_pdo_maps_mock.assert_not_called()
+    assert [slave.group for slave in net._ecat_master.slaves] == initial_groups
+    assert net._active_slave_group.slave_ids == set()
     net.close_ecat_master()
 
 
@@ -527,6 +999,78 @@ def test_disconnect_from_slave_with_non_existent_slave(
     assert len(net.servos) == 0
     assert 1 in disconnect_called
     assert net._EthercatNetwork__is_master_running is False
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_stop_pdos_clears_only_selected_group_mapping(
+    mocker: "MockerFixture",
+) -> None:
+    """Clear the selected slave mapping without changing excluded connected servos."""
+    net = EthercatNetwork("dummy_ifname")
+    net._ecat_master.config_init()
+    selected_servo = mocker.Mock(slave_id=1, slave_exists=True)
+    excluded_servo = mocker.Mock(slave_id=2, slave_exists=True)
+    selected_servo.slave.state = pysoem.OP_STATE
+    excluded_servo.slave.state = pysoem.OP_STATE
+    net.servos = [selected_servo, excluded_servo]
+    net._active_slave_group = EthercatSlaveGroup([selected_servo])
+    net._pdo_exchange_active = True
+    net._EthercatNetwork__is_master_running = True
+    init_nodes_mock = mocker.patch.object(net, "_EthercatNetwork__init_nodes")
+    selected_clear_mock = mocker.patch.object(
+        selected_servo.slave, "clear_pdo_mapping", create=True
+    )
+    excluded_clear_mock = mocker.patch.object(
+        excluded_servo.slave, "clear_pdo_mapping", create=True
+    )
+
+    def change_state(servos, state):
+        for servo in servos:
+            servo.slave.state = state.value
+        return True
+
+    change_state_mock = mocker.patch.object(net, "_change_nodes_state", side_effect=change_state)
+
+    net.stop_pdos()
+
+    change_state_mock.assert_called_once_with([selected_servo], SlaveState.PREOP_STATE)
+    selected_clear_mock.assert_called_once_with()
+    excluded_clear_mock.assert_not_called()
+    assert selected_servo.slave.state == pysoem.PREOP_STATE
+    assert excluded_servo.slave.state == pysoem.OP_STATE
+    assert net._pdo_exchange_active is False
+    init_nodes_mock.assert_not_called()
+    net.close_ecat_master()
+
+
+@pytest.mark.pcap
+@pytest.mark.usefixtures(pysoem_mock_network.__name__)
+def test_stop_pdos_clears_mapping_for_all_selected_slaves(mocker: "MockerFixture") -> None:
+    """Clear mapping for every slave when the full network is selected."""
+    net = EthercatNetwork("dummy_ifname")
+    net._ecat_master.config_init()
+    servos = [mocker.Mock(slave_id=slave_id, slave_exists=True) for slave_id in (1, 2)]
+    for servo in servos:
+        servo.slave.state = pysoem.OP_STATE
+    net.servos = servos
+    net._active_slave_group = EthercatSlaveGroup(servos)
+    net._pdo_exchange_active = True
+    net._EthercatNetwork__is_master_running = True
+    change_state_mock = mocker.patch.object(net, "_change_nodes_state", return_value=True)
+    init_nodes_mock = mocker.patch.object(net, "_EthercatNetwork__init_nodes")
+    clear_mocks = [
+        mocker.patch.object(servo.slave, "clear_pdo_mapping", create=True) for servo in servos
+    ]
+
+    net.stop_pdos()
+
+    change_state_mock.assert_called_once_with(servos, SlaveState.PREOP_STATE)
+    for clear_mock in clear_mocks:
+        clear_mock.assert_called_once_with()
+    init_nodes_mock.assert_not_called()
+    assert net._pdo_exchange_active is False
+    net.close_ecat_master()
 
 
 @pytest.mark.pcap

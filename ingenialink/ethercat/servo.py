@@ -141,6 +141,28 @@ class EthercatServo(EthercatServoBase):
         self.slave.write_state()
         self._state_requested_event_publisher.notify(state)
 
+    def acknowledge_state_error(self) -> bool:
+        """Acknowledge an active EtherCAT AL error state.
+
+        Returns:
+            True if no error is active or the slave acknowledges the error.
+        """
+        state = self.slave.state
+        if not state & pysoem.STATE_ERROR:
+            return True
+
+        current_state = state & 0x0F
+        self.slave.state = current_state | pysoem.STATE_ACK
+        self.slave.write_state()
+        return bool(
+            self.slave.state_check(current_state, ECAT_STATE_CHANGE_TIMEOUT_US) == current_state
+        )
+
+    def validate_rpdo_output_data(self) -> None:
+        """Validate that all RPDO maps can be serialized for process-data output."""
+        for rpdo_map in self._rpdo_maps.values():
+            rpdo_map.get_item_bytes()
+
     @property  # type: ignore[misc]
     def dictionary(self) -> EthercatDictionary:  # type: ignore[override]
         """Ethercat dictionary."""
