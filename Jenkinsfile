@@ -697,12 +697,12 @@ pipeline {
         stage('Publish coverage') {
             agent {
                 docker {
-                    label SW_NODE
-                    image WIN_DOCKER_IMAGE
+                    label 'lin-worker'
+                    image LIN_DOCKER_IMAGE
                 }
             }
             environment {
-                VENV_WORKING_FOLDER = "C:\\Users\\ContainerAdministrator\\ingenialink_python"
+                VENV_WORKING_FOLDER = "/tmp/ingenialink_python"
             }
             steps {
                 script {
